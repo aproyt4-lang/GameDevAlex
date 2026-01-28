@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-<meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
+  <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
   <title>AlexanderDev Projects</title>
   <style>
     body {
@@ -39,19 +39,36 @@
     }
 
     .hero {
+      position: relative; /* для канваса */
       text-align: center;
       padding: 4rem 2rem;
       background: linear-gradient(145deg, #202020, #121212);
+      height: 500px; /* задаём высоту для 3D сцены */
+      overflow: hidden;
     }
 
     .hero h2 {
       font-size: 36px;
       margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
     }
 
     .hero p {
       font-size: 18px;
       color: #aaa;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* канвас Three.js на фоне */
+    #three-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
     }
 
     .projects {
@@ -116,6 +133,8 @@
   <section class="hero">
     <h2>Мои Проекты</h2>
     <p>Создаю игры, 3D-графику, костюмы и нейросети. Всё в одном месте.</p>
+    <!-- Тут будет 3D модель -->
+    <canvas id="three-canvas"></canvas>
   </section>
 
   <section id="projects" class="projects">
@@ -139,15 +158,52 @@
     © 2025 AlexanderDev. Все права защищены.
   </footer>
 
+  <!-- Three.js и FBXLoader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/FBXLoader.js"></script>
+
   <script>
     function createCampaign() {
-      // Тут вставь ссылку на свой сайт с рекламной кампанией
       window.location.href = "https://your-ad-campaign-site.com";
     }
+
+    // ==== Three.js для FBX модели ====
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000); // 500 px высота секции
+    camera.position.set(0, 1.5, 3);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, 500);
+
+    // Свет
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(5, 10, 7);
+    scene.add(dirLight);
+    scene.add(new THREE.AmbientLight(0x404040, 1));
+
+    // Загрузка FBX модели
+    const loader = new THREE.FBXLoader();
+    loader.load('model.fbx', function(model) {
+      scene.add(model);
+      model.position.set(0, 0, 0);
+      model.scale.set(0.01, 0.01, 0.01); // подбираешь под размер секции
+
+      // простая анимация
+      function animateModel() {
+        requestAnimationFrame(animateModel);
+        model.rotation.y += 0.002; // вращение "живого ИИ"
+        renderer.render(scene, camera);
+      }
+      animateModel();
+    });
+
+    // Подстройка при изменении размера окна
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, 500);
+      camera.aspect = window.innerWidth / 500;
+      camera.updateProjectionMatrix();
+    });
   </script>
 </body>
-
 </html>
-
-
 
