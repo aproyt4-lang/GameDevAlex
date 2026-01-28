@@ -183,7 +183,7 @@
 
     // Загрузка FBX модели
     const loader = new THREE.FBXLoader();
-    loader.load('person+3d+model.fbx', function(model) {
+    loader.load('https://raw.githubusercontent.com/USERNAME/REPO/main/person+3d+model.fbx', function(model) {
       scene.add(model);
       model.position.set(0, 0, 0);
       model.scale.set(0.01, 0.01, 0.01); // подбираешь под размер секции
@@ -206,5 +206,6 @@
   </script>
 </body>
 </html>
+
 
 
