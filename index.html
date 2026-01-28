@@ -132,7 +132,7 @@
 
   <section class="hero">
     <h2>Мои Проекты</h2>
-    <p>Создаю игры, 3D-графику, костюмы и нейросети. Всё в одном месте.</p>
+    <p>Создаю игры, 3D-графику, нейросети. Всё в одном месте.</p>
     <!-- Тут будет 3D модель -->
     <canvas id="three-canvas"></canvas>
   </section>
@@ -183,7 +183,7 @@
 
     // Загрузка FBX модели
     const loader = new THREE.FBXLoader();
-    loader.load('model.fbx', function(model) {
+    loader.load('person+3d+model.fbx', function(model) {
       scene.add(model);
       model.position.set(0, 0, 0);
       model.scale.set(0.01, 0.01, 0.01); // подбираешь под размер секции
@@ -206,4 +206,5 @@
   </script>
 </body>
 </html>
+
 
