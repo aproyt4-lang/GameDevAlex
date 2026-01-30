@@ -75,14 +75,12 @@
     scene.add(light);
 
     const loader = new THREE.GLTFLoader();
-    
-    // Прямая ссылка с добавлением даты, чтобы сбросить кэш
-    const modelUrl = 'https://proyt4-lang.github.io/GameDevAlex/SashaAI.glb?v=' + Date.now();
 
-    loader.load(modelUrl, function(gltf) {
+    // ТВОЯ ССЫЛКА
+    loader.load('https://proyt4-lang.github.io/GameDevAlex/SashaAI.glb', function(gltf) {
       const model = gltf.scene;
       
-      // Настройка масштаба и центрирование (внутри обработчика загрузки)
+      // Настройка модели (ВСЁ ВНУТРИ loader.load)
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
@@ -96,6 +94,7 @@
 
       scene.add(model);
       
+      // Анимация тоже внутри, чтобы запускалась когда модель готова
       function animate() {
         requestAnimationFrame(animate);
         model.rotation.y += 0.01;
@@ -103,9 +102,9 @@
       }
       animate();
 
-      console.log("Модель загружена успешно!");
+      console.log("Успех!");
     }, undefined, function(e) {
-      console.error("Ошибка загрузки модели:", e);
+      console.error("Ошибка:", e);
     });
 
     window.addEventListener('resize', () => {
