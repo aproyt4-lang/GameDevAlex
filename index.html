@@ -63,7 +63,7 @@
     const loader = new THREE.GLTFLoader();
 
     // Загрузка с обходом кэша через Date.now()
-    loader.load('./SashaAI.glb?v=' + Date.now(), function(gltf) {
+    loader.load('./SashaAI (1).glb?v=' + Date.now(), function(gltf) {
       const model = gltf.scene;
       
       // ЖЕСТКАЯ ГЕОМЕТРИЯ: заставляем модель встать в центр
@@ -100,6 +100,7 @@
   </script>
 </body>
 </html>
+
 
 
 
