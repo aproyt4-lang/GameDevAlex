@@ -79,8 +79,11 @@
 
     const loader = new THREE.GLTFLoader();
     // Используем прямой путь. Если модель не грузится - в консоли (F12) будет написано почему.
-    loader.load('./SashaAI.glb') {
-      const model = gltf.scene;
+   loader.load('https://proyt4-lang.github.io/GameDevAlex/SashaAI.glb', function(gltf) {
+    const model = gltf.scene;
+    scene.add(model);
+    // ... остальной код анимации
+});
       
       // Авто-масштаб
       const box = new THREE.Box3().setFromObject(model);
