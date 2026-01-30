@@ -2,218 +2,108 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-<meta name="google-site-verification" content="dxEcmyodhMVbVUDm1Wg-PCmm_DBC1GgJqEIdVzO9KfM" />
   <title>AlexanderDev Projects</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #1c1c1c;
-      color: #fff;
-    }
-
-    header {
-      background: #111;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 24px;
-      color: #00d8ff;
-    }
-
-    nav a {
-      color: #ccc;
-      margin-left: 20px;
-      text-decoration: none;
-      font-weight: bold;
-      transition: color 0.2s;
-    }
-
-    nav a:hover {
-      color: #fff;
-    }
-
-    .hero {
-      position: relative; /* для канваса */
-      text-align: center;
-      padding: 4rem 2rem;
-      background: linear-gradient(145deg, #202020, #121212);
-      height: 500px; /* задаём высоту для 3D сцены */
-      overflow: hidden;
-    }
-
-    .hero h2 {
-      font-size: 36px;
-      margin-bottom: 10px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .hero p {
-      font-size: 18px;
-      color: #aaa;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* канвас Three.js на фоне */
-    #three-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-    }
-
-    .projects {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 2rem;
-      padding: 2rem;
-    }
-
-    .project {
-      background: #2c2c2c;
-      padding: 1rem;
-      border-radius: 10px;
-      transition: transform 0.2s;
-    }
-
-    .project:hover {
-      transform: translateY(-5px);
-    }
-
-    .project h3 {
-      margin-top: 0;
-      color: #00d8ff;
-    }
-
-    .btn-create {
-      display: block;
-      width: max-content;
-      margin: 2rem auto;
-      background: #00d8ff;
-      color: #000;
-      padding: 1rem 2rem;
-      font-size: 18px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .btn-create:hover {
-      background: #00b8dd;
-    }
-
-    footer {
-      text-align: center;
-      padding: 1rem;
-      color: #666;
-      background: #111;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; background: #1c1c1c; color: #fff; overflow-x: hidden; }
+    header { background: #111; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 24px; color: #00d8ff; }
+    nav a { color: #ccc; margin-left: 20px; text-decoration: none; font-weight: bold; }
+    .hero { position: relative; text-align: center; padding: 4rem 2rem; background: #121212; height: 500px; overflow: hidden; }
+    .hero h2, .hero p { position: relative; z-index: 2; pointer-events: none; }
+    #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    .projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; padding: 2rem; }
+    .project { background: #2c2c2c; padding: 1rem; border-radius: 10px; }
+    .btn-create { display: block; width: max-content; margin: 2rem auto; background: #00d8ff; color: #000; padding: 1rem 2rem; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
+    footer { text-align: center; padding: 1rem; background: #111; color: #666; }
   </style>
 </head>
 <body>
   <header>
     <h1>AlexanderDev</h1>
-    <nav>
-      <a href="#projects">Проекты</a>
-      <a href="#contact">Контакты</a>
-    </nav>
+    <nav><a href="#projects">Проекты</a></nav>
   </header>
 
   <section class="hero">
     <h2>Мои Проекты</h2>
-    <p>Создаю игры, 3D-графику, нейросети. Всё в одном месте.</p>
+    <p>Создаю игры, 3D-графику, нейросети.</p>
     <canvas id="three-canvas"></canvas>
   </section>
 
   <section id="projects" class="projects">
-    <div class="project">
-      <h3>War of Tanks</h3>
-      <p>Шутер на Unity. Сетевая логика, физика, мультиплеер.</p>
-    </div>
-    <div class="project">
-      <h3>J.A.R.V.I.S. AI</h3>
-      <p>Голосовой помощник для запуска игр, 3D, команд и поиска заказов.</p>
-    </div>
-    <div class="project">
-      <h3>Blender Smart Export</h3>
-      <p>Автоэкспорт моделей из Blender в Unity/Unreal по голосу.</p>
-    </div>
+    <div class="project"><h3>War of Tanks</h3><p>Шутер на Unity.</p></div>
+    <div class="project"><h3>J.A.R.V.I.S. AI</h3><p>Голосовой помощник.</p></div>
+    <div class="project"><h3>Blender Smart Export</h3><p>Автоэкспорт по голосу.</p></div>
   </section>
 
-  <button class="btn-create" onclick="createCampaign()">Создать рекламную кампанию</button>
-
-  <footer>
-    © 2025 AlexanderDev. Все права защищены.
-  </footer>
+  <button class="btn-create" onclick="alert('Кампания создается!')">Создать рекламную кампанию</button>
+  <footer>© 2025 AlexanderDev</footer>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    function createCampaign() {
-      window.location.href = "https://your-ad-campaign-site.com";
-    }
-
-    // ==== Three.js для GLB модели ====
+    // 1. Сцена и Камера
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000); 
-    camera.position.set(0, 1.5, 3);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000);
+    camera.position.set(0, 0, 5);
 
+    // 2. Рендерер
     const renderer = new THREE.WebGLRenderer({ 
       canvas: document.getElementById('three-canvas'), 
       alpha: true, 
       antialias: true 
     });
     renderer.setSize(window.innerWidth, 500);
+    renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Свет
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-    dirLight.position.set(5, 10, 7);
-    scene.add(dirLight);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    // 3. Свет (без него модель будет черной)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2);
+    scene.add(ambientLight);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+    sunLight.position.set(5, 5, 5);
+    scene.add(sunLight);
 
-    // ИСПРАВЛЕНО: Создаем экземпляр лоадера
+    // 4. Загрузчик (Важно: используем THREE.GLTFLoader)
     const loader = new THREE.GLTFLoader();
+    
+    // Прямой путь к файлу в твоем репозитории
+    loader.load('./SashaAI.glb', function(gltf) {
+      const model = gltf.scene;
+      
+      // Авто-масштабирование (чтобы не гадать с размерами)
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 3 / maxDim; // Вписываем модель в размер 3 единицы
+      model.scale.set(scale, scale, scale);
+      
+      // Центрирование
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.x = -center.x * scale;
+      model.position.y = -center.y * scale;
+      model.position.z = -center.z * scale;
+      
+      scene.add(model);
 
-    // Загрузка GLB модели
-    loader.load(
-      'https://rawcdn.githack.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb',
-      function(gltf) {
-        const model = gltf.scene; // Сохраняем ссылку на сцену модели
-        scene.add(model);
-        model.position.set(0, -1, 0);
-        model.scale.set(0.5, 0.5, 0.5);
-
-        // Функция анимации перенесена так, чтобы работать с загруженной моделью
-        function animateModel() {
-          requestAnimationFrame(animateModel);
-          model.rotation.y += 0.005; // Вращаем саму модель
-          renderer.render(scene, camera);
-        }
-        animateModel();
-      },
-      undefined,
-      function(error) {
-        console.error('Ошибка загрузки модели:', error);
+      function animate() {
+        requestAnimationFrame(animate);
+        model.rotation.y += 0.01; // Вращение
+        renderer.render(scene, camera);
       }
-    );
+      animate();
+      
+      console.log("Модель успешно загружена!");
+    }, 
+    undefined, 
+    function(error) {
+      console.error("Ошибка при загрузке модели:", error);
+    });
 
-    // Подстройка при изменении размера окна
+    // Ресайз окна
     window.addEventListener('resize', () => {
-      renderer.setSize(window.innerWidth, 500);
       camera.aspect = window.innerWidth / 500;
       camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, 500);
     });
   </script>
 </body>
