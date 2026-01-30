@@ -61,7 +61,6 @@
   <script>
     function createCampaign() { window.location.href = "https://your-ad-campaign-site.com"; }
 
-    // 1. Сцена и камера
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000);
     camera.position.set(0, 0, 5);
@@ -70,23 +69,22 @@
     renderer.setSize(window.innerWidth, 500);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // 2. Свет
     scene.add(new THREE.AmbientLight(0xffffff, 2));
     const light = new THREE.DirectionalLight(0xffffff, 1.5);
     light.position.set(5, 5, 5);
     scene.add(light);
 
-    // 3. Загрузчик с анти-кэшем
     const loader = new THREE.GLTFLoader();
-    const cacheBuster = 'v=' + Date.now() + Math.floor(Math.random() * 1000);
-    const modelPath = './SashaAI.glb?' + cacheBuster;
 
-    console.log("Загрузка модели:", modelPath);
+    // --- РАДИКАЛЬНЫЙ БЛОК ЗАГРУЗКИ ---
+    const radicalCacheBuster = Math.random().toString(36).substring(7) + Date.now();
+    const modelUrl = 'https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb?v=' + radicalCacheBuster;
 
-    loader.load(modelPath, function(gltf) {
+    console.log("Радикальная загрузка по адресу:", modelUrl);
+
+    loader.load(modelUrl, function(gltf) {
       const model = gltf.scene;
-
-      // Улучшаем отображение материалов
+      
       model.traverse((node) => {
         if (node.isMesh) {
           node.material.side = THREE.DoubleSide;
@@ -94,22 +92,19 @@
         }
       });
 
-      // Авто-масштаб и центрирование
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
-      
       const maxDim = Math.max(size.x, size.y, size.z);
       const scale = 3.5 / maxDim;
-      model.scale.set(scale, scale, scale);
       
+      model.scale.set(scale, scale, scale);
       model.position.x = -center.x * scale;
       model.position.y = -center.y * scale;
       model.position.z = -center.z * scale;
 
       scene.add(model);
       
-      // Анимация вращения
       function animate() {
         requestAnimationFrame(animate);
         model.rotation.y += 0.007;
@@ -117,7 +112,7 @@
       }
       animate();
 
-      console.log("Модель успешно отрисована!");
+      console.log("ПОБЕДА: Модель загружена радикальным способом!");
     }, 
     (xhr) => { 
       if (xhr.lengthComputable) {
@@ -125,10 +120,9 @@
       }
     }, 
     (e) => { 
-      console.error("Ошибка при загрузке:", e); 
+      console.error("Критическая ошибка:", e); 
     });
 
-    // Ресайз окна
     window.addEventListener('resize', () => {
       renderer.setSize(window.innerWidth, 500);
       camera.aspect = window.innerWidth / 500;
@@ -137,6 +131,7 @@
   </script>
 </body>
 </html>
+
 
 
 
