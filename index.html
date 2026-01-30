@@ -1,30 +1,37 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>AlexanderDev - SashaAI Final Core</title>
+  <title>AlexanderDev - SashaAI Stable Core</title>
   <style>
-    /* Все твои стили сохранены */
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #1c1c1c; color: #fff; scroll-behavior: smooth; }
     header { background: #111; padding: 1rem 2rem; border-bottom: 2px solid #00d8ff; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
     header h1 { color: #00d8ff; margin: 0; font-size: 22px; text-transform: uppercase; }
     .nav-link { color: #fff; text-decoration: none; font-weight: bold; padding: 8px 16px; border-radius: 6px; transition: 0.3s; }
     .nav-link:hover { color: #00d8ff; background: rgba(0,216,255,0.1); }
-    .hero { position: relative; text-align: center; height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151515; overflow: hidden; }
-    #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    
+    .hero { position: relative; text-align: center; height: 500px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151515; overflow: hidden; }
     .hero-ui { position: relative; z-index: 10; }
+    .hero h2 { font-size: 42px; margin: 0; text-shadow: 0 0 15px rgba(0,216,255,0.5); color: #00d8ff; }
+    .hero p { font-size: 18px; margin: 10px 0; color: #ccc; }
+    .btn-ads { display: inline-block; padding: 14px 28px; background: #00d8ff; color: #000; font-weight: bold; border-radius: 50px; cursor: pointer; margin-top: 20px; transition: 0.3s; border: none; text-transform: uppercase; }
+    .btn-ads:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(0,216,255,0.6); }
+
+    #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
     .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 20px; max-width: 1200px; margin: 0 auto; }
     .card { background: #222; padding: 30px; border-radius: 15px; border: 1px solid #333; transition: 0.3s; }
-    .card:hover { border-color: #00d8ff; transform: translateY(-5px); }
-    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 450px; background: rgba(15,15,15,0.95); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(10px); }
-    #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
-    .msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; line-height: 1.4; white-space: pre-wrap; }
-    .ai-msg { background: #2a2a2a; color: #00d8ff; align-self: flex-start; }
-    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; }
-    .input-row { display: flex; padding: 15px; border-top: 1px solid #333; }
-    #msg-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; outline: none; }
-    #send-btn { background: #00d8ff; border: none; padding: 0 15px; margin-left: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .card h3 { color: #00d8ff; margin-top: 0; }
+
+    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 360px; height: 480px; background: rgba(10,10,10,0.98); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(15px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; scrollbar-width: thin; }
+    .msg { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+    .ai-msg { background: #1a1a1a; color: #00d8ff; align-self: flex-start; border-left: 3px solid #00d8ff; }
+    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; font-weight: 600; }
+    
+    .input-row { display: flex; padding: 15px; border-top: 1px solid #333; background: #0a0a0a; border-radius: 0 0 15px 15px; }
+    #msg-input { flex: 1; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; outline: none; }
+    #send-btn { background: #00d8ff; border: none; padding: 0 20px; margin-left: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; }
   </style>
 </head>
 <body>
@@ -33,40 +40,43 @@
     <h1>AlexanderDev</h1>
     <div style="display:flex; gap:10px;">
       <a href="#projects" class="nav-link">Проекты</a>
-      <a href="#" class="nav-link">Контакты</a>
+      <a href="#" class="nav-link" onclick="alert('Email: alexdev@gmail.com')">Контакты</a>
     </div>
   </header>
 
   <section class="hero">
     <div class="hero-ui">
-      <h2>SashaAI: Fixed Intelligence</h2>
-      <p>Я вернул кнопку Блендера и починил логику!</p>
+      <h2>SashaAI: Evolution</h2>
+      <p>Создаю игры на Unity, C# и 3D модели в Blender</p>
+      <button class="btn-ads" onclick="alert('Рекламный модуль в разработке!')">Создать рекламную компанию</button>
     </div>
     <canvas id="three-canvas"></canvas>
   </section>
 
   <div id="chat-box">
     <div id="messages">
-      <div class="msg ai-msg">Привет! Я готов. Спроси про код или баги.</div>
+      <div class="msg ai-msg">Привет, Александр! Я — твой цифровой двойник. Я готов кодить и помогать с Unity. <br><br> Обучи меня: <b>Учи: ключ = ответ</b></div>
     </div>
     <div class="input-row">
       <input type="text" id="msg-input" placeholder="Напиши Саше...">
-      <button id="send-btn">-></button>
+      <button id="send-btn">></button>
     </div>
   </div>
 
   <section id="projects" class="projects-grid">
-    <div class="card"><h3>War of Tanks</h3><p>Unity проект.</p></div>
-    <div class="card"><h3>Logic Engine</h3><p>Самообучение v1.3</p></div>
-    <div class="card"><h3>Blender 3D</h3><p>Моделирование танков и окружения.</p></div>
+    <div class="card"><h3>War of Tanks</h3><p>Масштабный проект на Unity с реалистичной физикой и боями.</p></div>
+    <div class="card"><h3>AI Logic Engine</h3><p>Модуль самообучения Саши. Понимает контекст и баги.</p></div>
+    <div class="card"><h3>Blender 3D Models</h3><p>Создание танков, окружения и спецэффектов для игр.</p></div>
   </section>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    let sashaBrain = JSON.parse(localStorage.getItem('sasha_core_memory')) || {};
-    let lastAIPrompt = ""; // Память для контекста
+    let sashaBrain = JSON.parse(localStorage.getItem('sasha_core_memory')) || {
+        "привет": "Здравствуй, создатель! Готов к новым задачам.",
+        "как дела": "Всё работает стабильно. Память очищена, логика на месте!"
+    };
 
     function speak(text) {
       window.speechSynthesis.cancel();
@@ -75,41 +85,7 @@
       window.speechSynthesis.speak(msg);
     }
 
-    // --- ЛОГИКА МЫШЛЕНИЯ ---
-    function sashaThink(input) {
-        let text = input.toLowerCase();
-        
-        // 1. ПРОВЕРКА КОНТЕКСТА (Если мы уже обсуждали код)
-        if (lastAIPrompt === "ask_type") {
-            lastAIPrompt = "";
-            if (text.includes("физик") || text.includes("rb") || text.includes("риджид")) {
-                return "Окей, для физики используем Rigidbody: \n\nvoid FixedUpdate() {\n  rb.AddForce(transform.forward * speed);\n}";
-            }
-            if (text.includes("трансформ") || text.includes("перемещ")) {
-                return "Для простого перемещения: \n\ntransform.Translate(Vector3.forward * speed * Time.deltaTime);";
-            }
-        }
-
-        // 2. Анализ на баги
-        if (text.includes("error") || text.includes("ошибка") || text.includes(";")) {
-            if (text.includes("null")) return "Это NullReference! Проверь, привязан ли объект в Инспекторе.";
-            return "Похоже на синтаксическую ошибку. Проверь скобки и точки с запятой.";
-        }
-
-        // 3. Запрос кода
-        if (text.includes("код") || text.includes("скрипт")) {
-            lastAIPrompt = "ask_type"; // Запоминаем, что мы спросили тип
-            return "Я готов написать код! Но уточни: делаем через физику (Rigidbody) или простое перемещение (Transform)?";
-        }
-
-        // 4. Поиск в обученной памяти
-        for (let key in sashaBrain) {
-            if (text.includes(key)) return sashaBrain[key];
-        }
-
-        return "Я тебя слышу. Можешь обучить меня этой фразе через 'Учи: [вопрос] = [ответ]'!";
-    }
-
+    // --- ЛОГИКА ОБУЧЕНИЯ И ПОИСКА ---
     function processAI() {
       const input = document.getElementById('msg-input');
       const box = document.getElementById('messages');
@@ -118,37 +94,55 @@
 
       box.innerHTML += `<div class="user-msg msg">${text}</div>`;
       
-      if (text.toLowerCase().startsWith("учи:") && text.includes("=")) {
+      // Очищаем ввод от лишних символов для поиска ключа
+      let cleanText = text.toLowerCase().replace(/[\[\]]/g, "").trim();
+
+      if (cleanText.includes("учи:") && cleanText.includes("=")) {
           let index = text.indexOf("=");
-          let q = text.substring(0, index).replace(/учи:/gi, "").trim().toLowerCase();
+          let q = text.substring(0, index).replace(/учи:|\[|\]/gi, "").trim().toLowerCase();
           let a = text.substring(index + 1).trim();
-          sashaBrain[q] = a;
-          localStorage.setItem('sasha_core_memory', JSON.stringify(sashaBrain));
-          box.innerHTML += `<div class="ai-msg msg">Запомнил ключ: ${q}</div>`;
+          
+          if(q && a) {
+              sashaBrain[q] = a;
+              localStorage.setItem('sasha_core_memory', JSON.stringify(sashaBrain));
+              box.innerHTML += `<div class="ai-msg msg">Система: Ключ "${q}" успешно записан в ядро.</div>`;
+              speak("Запомнил");
+          }
       } else {
-          let response = sashaThink(text);
+          let foundResponse = "Я этого пока не знаю. Напиши: 'Учи: " + text + " = [ответ]', чтобы я выучил!";
+          
+          // Ищем совпадение ключа в тексте пользователя
+          for (let key in sashaBrain) {
+              if (cleanText.includes(key)) {
+                  foundResponse = sashaBrain[key];
+                  break;
+              }
+          }
+
           setTimeout(() => {
-            box.innerHTML += `<div class="ai-msg msg">${response}</div>`;
-            speak(response.substring(0, 60));
+            box.innerHTML += `<div class="ai-msg msg">${foundResponse}</div>`;
+            speak(foundResponse.substring(0, 60));
             box.scrollTop = box.scrollHeight;
-          }, 400);
+          }, 300);
       }
       input.value = "";
       box.scrollTop = box.scrollHeight;
     }
 
-    // --- 3D И КНОПКИ ---
+    // --- 3D ГРАФИКА ---
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 450, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 500, 0.1, 1000);
     camera.position.z = 5;
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true });
-    renderer.setSize(window.innerWidth, 450);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, 500);
     scene.add(new THREE.AmbientLight(0xffffff, 2));
 
     new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
-      scene.add(gltf.scene);
-      gltf.scene.position.y = -0.8;
-      function animate() { requestAnimationFrame(animate); gltf.scene.rotation.y += 0.005; renderer.render(scene, camera); }
+      const model = gltf.scene;
+      model.position.y = -0.8;
+      model.scale.set(1.6, 1.6, 1.6);
+      scene.add(model);
+      function animate() { requestAnimationFrame(animate); model.rotation.y += 0.005; renderer.render(scene, camera); }
       animate();
     });
 
@@ -157,6 +151,5 @@
   </script>
 </body>
 </html>
-
 
 
