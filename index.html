@@ -26,7 +26,7 @@
 
   <section class="hero">
     <h2>Мои Проекты</h2>
-    <p>Если видишь модель — всё супер. Если нет — жми F12.</p>
+    <p>Режим принудительного отображения (Белая модель)</p>
     <canvas id="three-canvas"></canvas>
   </section>
 
@@ -45,42 +45,55 @@
   <script>
     function createCampaign() { window.location.href = "https://your-ad-campaign-site.com"; }
 
-    // 1. Настройка сцены
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000);
-    camera.position.set(0, 0, 5);
+    camera.position.set(0, 0, 10); // Камера дальше, чтобы влезло всё
 
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas: document.getElementById('three-canvas'), 
+      alpha: true, 
+      antialias: true 
+    });
     renderer.setSize(window.innerWidth, 500);
     renderer.setPixelRatio(window.devicePixelRatio);
 
-    // 2. Освещение (без него модель будет черной!)
-    scene.add(new THREE.AmbientLight(0xffffff, 2));
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
+    // Мощный свет со всех сторон
+    scene.add(new THREE.AmbientLight(0xffffff, 3));
+    const pointLight = new THREE.PointLight(0xffffff, 2);
+    pointLight.position.set(10, 10, 10);
+    scene.add(pointLight);
 
-    // 3. Загрузчик
     const loader = new THREE.GLTFLoader();
 
-    // Пытаемся загрузить твою модель
-    loader.load('./SashaAI.glb', function(gltf) {
+    // Загружаем с кэш-брейкером для GitHub
+    loader.load('./SashaAI.glb?v=' + Date.now(), function(gltf) {
       const model = gltf.scene;
-      
-      // Авто-центрирование и масштаб (чтобы модель не была микроскопической)
+
+      // ЖЕСТКИЙ ПЕРЕКРАС: Игнорируем текстуры, ставим чисто белый цвет
+      model.traverse((node) => {
+        if (node.isMesh) {
+          node.material = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff, 
+            side: THREE.DoubleSide 
+          });
+        }
+      });
+
+      // АВТО-МАСШТАБ
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 3 / maxDim; 
+      const scale = 5 / maxDim; // Увеличил масштаб до 5
       model.scale.set(scale, scale, scale);
-      
+
+      // ЦЕНТРИРОВАНИЕ
       const center = box.getCenter(new THREE.Vector3());
       model.position.x = -center.x * scale;
       model.position.y = -center.y * scale;
       model.position.z = -center.z * scale;
 
       scene.add(model);
-      console.log("Успех: Модель SashaAI.glb загружена!");
+      console.log("Модель успешно добавлена на сцену!");
 
       function animate() {
         requestAnimationFrame(animate);
@@ -91,10 +104,10 @@
     }, 
     undefined, 
     function(error) {
-      console.error("ОШИБКА: Код не видит файл SashaAI.glb или файл поврежден.", error);
+      console.error("ОШИБКА: Файл не найден или поврежден. Проверь консоль (F12).", error);
       
-      // ЕСЛИ МОДЕЛЬ НЕ ЗАГРУЗИЛАСЬ — ПОКАЖЕМ КУБ, ЧТОБЫ ТЫ ЗНАЛ, ЧТО СКРИПТ ЖИВ
-      const cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+      // Запасной красный куб, если загрузка файла провалилась совсем
+      const cube = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
       scene.add(cube);
       function animCube() { requestAnimationFrame(animCube); cube.rotation.y += 0.01; renderer.render(scene, camera); }
       animCube();
@@ -108,4 +121,3 @@
   </script>
 </body>
 </html>
-
