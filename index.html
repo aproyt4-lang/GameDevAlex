@@ -79,7 +79,7 @@
 
     const loader = new THREE.GLTFLoader();
     // Используем прямой путь. Если модель не грузится - в консоли (F12) будет написано почему.
-    loader.load('./SashaAI.glb', function(gltf) {
+    loader.load('./SashaAI.glb') {
       const model = gltf.scene;
       
       // Авто-масштаб
@@ -114,3 +114,4 @@
   </script>
 </body>
 </html>
+
