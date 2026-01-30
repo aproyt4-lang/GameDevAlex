@@ -49,7 +49,7 @@
   </section>
 
   <div id="chat-container">
-    <div id="chat-messages"><div class="msg ai-msg">SashaAI готов. Голос включен!</div></div>
+    <div id="chat-messages"><div class="msg ai-msg">SashaAI онлайн. Голос и всё остальное на месте!</div></div>
     <div class="chat-input-box">
       <input type="text" id="chat-input" placeholder="Напиши мне...">
       <button id="send-btn">-></button>
@@ -62,7 +62,7 @@
     <div class="project"><h3>Blender Smart Export</h3><p>Автоэкспорт из Blender.</p></div>
   </section>
 
-  <footer>© 2025 AlexanderDev.</footer>
+  <footer>© 2026 AlexanderDev. Все права защищены.</footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -72,10 +72,12 @@
 
     // 1. ГОЛОС
     function speak(text) {
-      window.speechSynthesis.cancel();
-      const msg = new SpeechSynthesisUtterance(text);
-      msg.lang = 'ru-RU';
-      window.speechSynthesis.speak(msg);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ru-RU';
+        window.speechSynthesis.speak(msg);
+      }
     }
 
     // 2. 3D МОДЕЛЬ (УВЕЛИЧЕНА)
@@ -84,20 +86,23 @@
     camera.position.z = 5;
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, 500);
-    scene.add(new THREE.AmbientLight(0xffffff, 2));
+    scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 
     const loader = new THREE.GLTFLoader();
     loader.load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb?v=' + Date.now(), (gltf) => {
       const model = gltf.scene;
-      // Увеличиваем масштаб модели (было примерно 1-3, ставим больше)
-      model.scale.set(4.5, 4.5, 4.5); 
-      model.position.y = -1; 
+      model.scale.set(5.5, 5.5, 5.5); // УВЕЛИЧИЛ ТУТ
+      model.position.y = -1.2; 
       scene.add(model);
-      const animate = () => { requestAnimationFrame(animate); model.rotation.y += 0.01; renderer.render(scene, camera); };
+      const animate = () => { 
+        requestAnimationFrame(animate); 
+        model.rotation.y += 0.008; 
+        renderer.render(scene, camera); 
+      };
       animate();
     });
 
-    // 3. ЧАТ
+    // 3. ЧАТ (v1 API)
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
@@ -133,22 +138,26 @@
         aiDiv.className = 'msg ai-msg';
         
         if (data.candidates && data.candidates[0].content) {
-          const textResponse = data.candidates[0].content.parts[0].text;
-          aiDiv.innerText = textResponse;
-          speak(textResponse); // Озвучка
+          const textRes = data.candidates[0].content.parts[0].text;
+          aiDiv.innerText = textRes;
+          speak(textRes); // ГОЛОС
         } else {
-          aiDiv.innerText = "Ошибка: " + (data.error ? data.error.message : "Неизвестно");
+          aiDiv.innerText = "SashaAI: Ошибка доступа. Проверь VPN или ключ.";
         }
         chatMessages.appendChild(aiDiv);
       } catch (e) {
-        loadingDiv.innerText = "Ошибка сети! Проверь VPN.";
+        loadingDiv.innerText = "Ошибка сети.";
       }
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     sendBtn.onclick = handleChat;
     chatInput.onkeypress = (e) => { if(e.key === 'Enter') handleChat(); };
-    window.onresize = () => { renderer.setSize(window.innerWidth, 500); camera.aspect = window.innerWidth / 500; camera.updateProjectionMatrix(); };
+    window.onresize = () => {
+      renderer.setSize(window.innerWidth, 500);
+      camera.aspect = window.innerWidth / 500;
+      camera.updateProjectionMatrix();
+    };
   </script>
 </body>
 </html>
