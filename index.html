@@ -2,97 +2,150 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AlexanderDev Projects</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #1c1c1c; color: #fff; }
-    header { background: #111; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 24px; color: #00d8ff; }
-    nav a { color: #ccc; margin-left: 20px; text-decoration: none; font-weight: bold; }
-    .hero { position: relative; text-align: center; padding: 4rem 2rem; background: #121212; height: 500px; overflow: hidden; }
-    .hero h2, .hero p { position: relative; z-index: 2; pointer-events: none; }
-    #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-    .projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; padding: 2rem; }
-    .project { background: #2c2c2c; padding: 1rem; border-radius: 10px; }
-    .btn-create { display: block; width: max-content; margin: 2rem auto; background: #00d8ff; color: #000; padding: 1rem 2rem; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
-    footer { text-align: center; padding: 1rem; background: #111; color: #666; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1c1c1c;
+      color: #fff;
+    }
+
+    header {
+      background: #111;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #00d8ff;
+    }
+
+    nav a {
+      color: #ccc;
+      margin-left: 20px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.2s;
+    }
+
+    nav a:hover {
+      color: #fff;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: linear-gradient(145deg, #202020, #121212);
+    }
+
+    .hero h2 {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: #aaa;
+    }
+
+    .projects {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 2rem;
+      padding: 2rem;
+    }
+
+    .project {
+      background: #2c2c2c;
+      padding: 1rem;
+      border-radius: 10px;
+      transition: transform 0.2s;
+    }
+
+    .project:hover {
+      transform: translateY(-5px);
+    }
+
+    .project h3 {
+      margin-top: 0;
+      color: #00d8ff;
+    }
+
+    .btn-create {
+      display: block;
+      width: max-content;
+      margin: 2rem auto;
+      background: #00d8ff;
+      color: #000;
+      padding: 1rem 2rem;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-create:hover {
+      background: #00b8dd;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      color: #666;
+      background: #111;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>AlexanderDev</h1>
-    <nav><a href="#projects">Проекты</a></nav>
+    <nav>
+      <a href="#projects">Проекты</a>
+      <a href="#contact">Контакты</a>
+    </nav>
   </header>
 
   <section class="hero">
     <h2>Мои Проекты</h2>
-    <p>Создаю игры, 3D-графику, нейросети.</p>
-    <canvas id="three-canvas"></canvas>
+    <p>Создаю игры, 3D-графику, костюмы и нейросети. Всё в одном месте.</p>
   </section>
 
   <section id="projects" class="projects">
-    <div class="project"><h3>War of Tanks</h3><p>Шутер на Unity.</p></div>
-    <div class="project"><h3>J.A.R.V.I.S. AI</h3><p>Голосовой помощник.</p></div>
-    <div class="project"><h3>Blender Smart Export</h3><p>Автоэкспорт по голосу.</p></div>
+    <div class="project">
+      <h3>War of Tanks</h3>
+      <p>Шутер на Unity. Сетевая логика, физика, мультиплеер.</p>
+    </div>
+    <div class="project">
+      <h3>J.A.R.V.I.S. AI</h3>
+      <p>Голосовой помощник для запуска игр, 3D, команд и поиска заказов.</p>
+    </div>
+    <div class="project">
+      <h3>Blender Smart Export</h3>
+      <p>Автоэкспорт моделей из Blender в Unity/Unreal по голосу.</p>
+    </div>
   </section>
 
-  <button class="btn-create" onclick="alert('Кампания создается!')">Создать рекламную кампанию</button>
+  <button class="btn-create" onclick="createCampaign()">Создать рекламную кампанию</button>
 
-  <footer>© 2025 AlexanderDev</footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+  <footer>
+    © 2025 AlexanderDev. Все права защищены.
+  </footer>
 
   <script>
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000);
-    camera.position.set(0, 0, 5);
-
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, 500);
-    renderer.setPixelRatio(window.devicePixelRatio);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    const spotLight = new THREE.PointLight(0xffffff, 2);
-    spotLight.position.set(5, 5, 5);
-    scene.add(spotLight);
-
-    const loader = new THREE.GLTFLoader();
-    
-    // ВАЖНО: 'SashaAI.glb' должен лежать в той же папке на GitHub, что и этот файл!
-    loader.load('SashaAI.glb', function(gltf) {
-      const model = gltf.scene;
-      
-      // Авто-центрирование и подбор размера
-      const box = new THREE.Box3().setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      
-      model.position.x += (model.position.x - center.x);
-      model.position.y += (model.position.y - center.y);
-      model.position.z += (model.position.z - center.z);
-      
-      scene.add(model);
-
-      function animate() {
-        requestAnimationFrame(animate);
-        model.rotation.y += 0.01;
-        renderer.render(scene, camera);
-      }
-      animate();
-    }, undefined, function(e) {
-      console.error("Ошибка загрузки. Проверь, лежит ли файл SashaAI.glb в репозитории.", e);
-    });
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / 500;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, 500);
-    });
+    function createCampaign() {
+      // Тут вставь ссылку на свой сайт с рекламной кампанией
+      window.location.href = "https://your-ad-campaign-site.com";
+    }
   </script>
 </body>
 </html>
-
-
-
 
 
