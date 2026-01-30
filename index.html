@@ -3,135 +3,155 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AlexanderDev Projects</title>
+  <title>SashaAI - Твой Интеллект</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #1c1c1c; color: #fff; }
-    header { background: #111; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 24px; color: #00d8ff; }
-    nav a { color: #ccc; margin-left: 20px; text-decoration: none; font-weight: bold; transition: color 0.2s; }
-    nav a:hover { color: #fff; }
-
-    .hero { position: relative; text-align: center; padding: 4rem 2rem; background: linear-gradient(145deg, #202020, #121212); height: 500px; overflow: hidden; }
-    .hero h2, .hero p { position: relative; z-index: 2; pointer-events: none; }
-    .hero h2 { font-size: 36px; margin-bottom: 10px; }
-    .hero p { font-size: 18px; color: #aaa; }
-
+    body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #111; color: #fff; overflow-x: hidden; }
+    
+    /* Сцена с моделью */
+    .hero { position: relative; height: 100vh; width: 100%; overflow: hidden; background: radial-gradient(circle at center, #222 0%, #050505 100%); }
     #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    .projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; padding: 2rem; }
-    
-    .project { background: #2c2c2c; padding: 1rem; border-radius: 10px; transition: transform 0.2s; }
-    .project:hover { transform: translateY(-5px); }
-    .project h3 { margin-top: 0; color: #00d8ff; }
-
-    .btn-create { 
-      display: block; width: max-content; margin: 2rem auto; background: #00d8ff; color: #000; 
-      padding: 1rem 2rem; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; 
-      cursor: pointer; transition: background 0.2s, transform 0.2s; 
+    /* Интерфейс чата */
+    #chat-window {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 350px;
+      height: 450px;
+      background: rgba(15, 15, 15, 0.85);
+      border: 1px solid #00d8ff;
+      border-radius: 15px;
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px rgba(0, 216, 255, 0.3);
     }
-    .btn-create:hover { background: #00b8dd; transform: translateY(-2px); }
 
-    footer { text-align: center; padding: 1rem; color: #666; background: #111; }
+    #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    
+    .msg { padding: 8px 12px; border-radius: 10px; max-width: 80%; font-size: 14px; line-height: 1.4; }
+    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; }
+    .ai-msg { background: #222; color: #00d8ff; border: 1px solid #333; align-self: flex-start; }
+
+    .input-area { display: flex; padding: 10px; background: rgba(0,0,0,0.5); border-bottom-left-radius: 15px; border-bottom-right-radius: 15px; }
+    #user-input { flex: 1; background: transparent; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 5px; outline: none; }
+    #send-btn { background: #00d8ff; border: none; padding: 0 15px; margin-left: 5px; border-radius: 5px; cursor: pointer; font-weight: bold; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>AlexanderDev</h1>
-    <nav><a href="#projects">Проекты</a><a href="#contact">Контакты</a></nav>
-  </header>
 
   <section class="hero">
-    <h2>Мои Проекты</h2>
-    <p>Создаю игры, 3D-графику, костюмы и нейросети. Всё в одном месте.</p>
     <canvas id="three-canvas"></canvas>
+    
+    <div id="chat-window">
+      <div id="messages">
+        <div class="msg ai-msg">Система инициализирована. Я SashaAI. Напиши мне что-нибудь, и я отвечу голосом.</div>
+      </div>
+      <div class="input-area">
+        <input type="text" id="user-input" placeholder="Введите сообщение...">
+        <button id="send-btn">-></button>
+      </div>
+    </div>
   </section>
-
-  <section id="projects" class="projects">
-    <div class="project"><h3>War of Tanks</h3><p>Шутер на Unity.</p></div>
-    <div class="project"><h3>J.A.R.V.I.S. AI</h3><p>Голосовой помощник.</p></div>
-    <div class="project"><h3>Blender Smart Export</h3><p>Автоэкспорт из Blender.</p></div>
-  </section>
-
-  <button class="btn-create" onclick="createCampaign()">Создать рекламную кампанию</button>
-  <footer>© 2025 AlexanderDev. Все права защищены.</footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    function createCampaign() { window.location.href = "https://your-ad-campaign-site.com"; }
-
+    // 1. НАСТРОЙКА 3D (Твой рабочий код)
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 5);
 
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, 500);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
     scene.add(new THREE.AmbientLight(0xffffff, 2));
     const light = new THREE.DirectionalLight(0xffffff, 1.5);
     light.position.set(5, 5, 5);
     scene.add(light);
 
+    // Загрузка модели с твоим SashaAI.glb
     const loader = new THREE.GLTFLoader();
+    const radicalKey = Math.random().toString(36).substring(7);
+    const modelUrl = 'https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb?v=' + radicalKey;
 
-    // --- РАДИКАЛЬНЫЙ БЛОК ЗАГРУЗКИ ---
-    const radicalCacheBuster = Math.random().toString(36).substring(7) + Date.now();
-    const modelUrl = 'https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb?v=' + radicalCacheBuster;
+    let sashaModel; // Сюда сохраним модель, чтобы менять её вращение
 
-    console.log("Радикальная загрузка по адресу:", modelUrl);
-
-    loader.load(modelUrl, function(gltf) {
-      const model = gltf.scene;
-      
-      model.traverse((node) => {
-        if (node.isMesh) {
-          node.material.side = THREE.DoubleSide;
-          node.material.depthWrite = true;
-        }
-      });
-
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
+    loader.load(modelUrl, (gltf) => {
+      sashaModel = gltf.scene;
+      sashaModel.traverse(n => { if(n.isMesh) n.material.side = THREE.DoubleSide; });
+      const box = new THREE.Box3().setFromObject(sashaModel);
       const center = box.getCenter(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 3.5 / maxDim;
-      
-      model.scale.set(scale, scale, scale);
-      model.position.x = -center.x * scale;
-      model.position.y = -center.y * scale;
-      model.position.z = -center.z * scale;
-
-      scene.add(model);
+      const scale = 3 / box.getSize(new THREE.Vector3()).length();
+      sashaModel.scale.set(scale, scale, scale);
+      sashaModel.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+      scene.add(sashaModel);
       
       function animate() {
         requestAnimationFrame(animate);
-        model.rotation.y += 0.007;
+        sashaModel.rotation.y += 0.005; 
         renderer.render(scene, camera);
       }
       animate();
+    });
 
-      console.log("ПОБЕДА: Модель загружена радикальным способом!");
-    }, 
-    (xhr) => { 
-      if (xhr.lengthComputable) {
-        console.log('Загружено: ' + Math.round(xhr.loaded / xhr.total * 100) + '%');
+    // 2. ГОЛОСОВАЯ ФУНКЦИЯ (TTS)
+    function speak(text) {
+      // Отменяем прошлую речь, если она еще идет
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ru-RU'; // Русский язык
+      utterance.pitch = 1.0;    // Высота голоса
+      utterance.rate = 1.0;     // Скорость
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // 3. ЛОГИКА ЧАТА
+    const messagesDiv = document.getElementById('messages');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    function addMessage(text, isUser) {
+      const m = document.createElement('div');
+      m.className = `msg ${isUser ? 'user-msg' : 'ai-msg'}`;
+      m.innerText = text;
+      messagesDiv.appendChild(m);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      if (!isUser) speak(text); // ОЗВУЧКА, если говорит AI
+    }
+
+    sendBtn.onclick = () => {
+      const val = userInput.value.trim();
+      if (val) {
+        addMessage(val, true);
+        userInput.value = '';
+        
+        // Эмуляция ответа ИИ (Сюда мы потом подключим Gemini/ChatGPT)
+        setTimeout(() => {
+          const answers = [
+            "Принято. Я обрабатываю твой запрос.",
+            "Интересная мысль! Я запомню это для обучения.",
+            "Система SashaAI готова к работе. Что еще хочешь узнать?",
+            "Я тебя слышу. Мои нейронные связи укрепляются."
+          ];
+          const randomAnswer = answers[Math.floor(Math.random() * answers.length)];
+          addMessage(randomAnswer, false);
+        }, 1000);
       }
-    }, 
-    (e) => { 
-      console.error("Критическая ошибка:", e); 
-    });
+    };
 
-    window.addEventListener('resize', () => {
-      renderer.setSize(window.innerWidth, 500);
-      camera.aspect = window.innerWidth / 500;
+    userInput.onkeypress = (e) => { if(e.key === 'Enter') sendBtn.click(); };
+
+    window.onresize = () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-    });
+    };
   </script>
 </body>
 </html>
-
 
 
 
