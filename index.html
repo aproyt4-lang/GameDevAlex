@@ -3,28 +3,34 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AlexanderDev - SashaAI</title>
+  <title>AlexanderDev - SashaAI Core</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #1c1c1c; color: #fff; scroll-behavior: smooth; }
     header { background: #111; padding: 1rem 2rem; border-bottom: 2px solid #00d8ff; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
     header h1 { color: #00d8ff; margin: 0; font-size: 22px; text-transform: uppercase; }
-    .nav-right { display: flex; gap: 15px; }
-    .nav-link { color: #fff; text-decoration: none; font-weight: bold; padding: 8px 16px; border-radius: 6px; border: 1px solid transparent; transition: 0.3s; }
-    .nav-link:hover { border-color: #00d8ff; color: #00d8ff; background: rgba(0,216,255,0.1); }
-    .hero { position: relative; text-align: center; height: 500px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151515; overflow: hidden; }
+    .nav-link { color: #fff; text-decoration: none; font-weight: bold; padding: 8px 16px; border-radius: 6px; transition: 0.3s; }
+    .nav-link:hover { color: #00d8ff; background: rgba(0,216,255,0.1); }
+    
+    .hero { position: relative; text-align: center; height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151515; overflow: hidden; }
     .hero-ui { position: relative; z-index: 10; }
     .hero h2 { font-size: 38px; margin: 0; text-shadow: 0 0 15px rgba(0,216,255,0.5); }
-    .btn-ads { display: inline-block; padding: 14px 28px; background: #00d8ff; color: #000; font-weight: bold; border-radius: 50px; text-decoration: none; transition: 0.3s; border: 2px solid #00d8ff; cursor: pointer; }
+    .btn-ads { display: inline-block; padding: 14px 28px; background: #00d8ff; color: #000; font-weight: bold; border-radius: 50px; cursor: pointer; margin-top: 20px; transition: 0.3s; }
+    .btn-ads:hover { transform: scale(1.05); box-shadow: 0 0 20px #00d8ff; }
+
     #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
     .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 20px; max-width: 1200px; margin: 0 auto; }
     .card { background: #222; padding: 30px; border-radius: 15px; border: 1px solid #333; transition: 0.3s; }
-    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 320px; height: 420px; background: rgba(15,15,15,0.95); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(10px); }
+    .card:hover { border-color: #00d8ff; transform: translateY(-5px); }
+
+    /* ЧАТ СТИЛЬ */
+    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 450px; background: rgba(15,15,15,0.95); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(10px); }
     #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
-    .msg { padding: 10px 14px; border-radius: 12px; max-width: 80%; }
-    .ai-msg { background: #2a2a2a; color: #00d8ff; align-self: flex-start; }
-    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; font-weight: bold; }
-    .input-row { display: flex; padding: 15px; border-top: 1px solid #333; }
+    .msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; line-height: 1.4; }
+    .ai-msg { background: #2a2a2a; color: #00d8ff; align-self: flex-start; border-bottom-left-radius: 2px; }
+    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; border-bottom-right-radius: 2px; font-weight: 500; }
+    
+    .input-row { display: flex; padding: 15px; border-top: 1px solid #333; background: #111; border-radius: 0 0 15px 15px; }
     #msg-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; outline: none; }
     #send-btn { background: #00d8ff; border: none; padding: 0 15px; margin-left: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
   </style>
@@ -33,49 +39,66 @@
 
   <header>
     <h1>AlexanderDev</h1>
-    <div class="nav-right">
-      <a href="#projects-section" class="nav-link">Проекты</a>
+    <div style="display:flex; gap:10px;">
+      <a href="#projects" class="nav-link">Проекты</a>
       <a href="#" class="nav-link" onclick="alert('alexdev@gmail.com')">Контакты</a>
     </div>
   </header>
 
   <section class="hero">
     <div class="hero-ui">
-      <h2>SashaAI & GameDev</h2>
-      <div class="btn-ads" onclick="alert('Модуль запущен')">Создать рекламную компанию</div>
+      <h2>SashaAI: Evolution</h2>
+      <p>Твой личный ИИ. Обучай меня командами!</p>
+      <div class="btn-ads">Создать рекламную компанию</div>
     </div>
     <canvas id="three-canvas"></canvas>
   </section>
 
   <div id="chat-box">
-    <div id="messages"><div class="msg ai-msg">Я готов. Кликни и пиши!</div></div>
+    <div id="messages">
+      <div class="msg ai-msg">Я — твоё новое ИИ-ядро. Пока я знаю мало, но ты можешь меня обучить! <br><br> Напиши: <b>Учи: [вопрос] = [ответ]</b></div>
+    </div>
     <div class="input-row">
-      <input type="text" id="msg-input" placeholder="Напиши Саше...">
+      <input type="text" id="msg-input" placeholder="Напиши что-нибудь...">
       <button id="send-btn">-></button>
     </div>
   </div>
 
-  <section id="projects-section" class="projects-grid">
-    <div class="card"><h3>War of Tanks</h3><p>Unity проект.</p></div>
-    <div class="card"><h3>J.A.R.V.I.S. AI</h3><p>Ассистент.</p></div>
-    <div class="card"><h3>3D Visualizer</h3><p>Three.js.</p></div>
+  <section id="projects" class="projects-grid">
+    <div class="card"><h3>War of Tanks</h3><p>Твой проект на Unity.</p></div>
+    <div class="card"><h3>AI Brain</h3><p>Модуль самообучения v1.0</p></div>
+    <div class="card"><h3>Console Status</h3><p>На рассмотрении в Google Play.</p></div>
   </section>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    const API_KEY = "AIzaSyCp4i-hZJWa7750aSuPnu0-mzGe6Mzp3_Q";
+    // --- ПАМЯТЬ ИИ ---
+    // Пытаемся загрузить память из браузера, если пусто — создаем базу
+    let sashaBrain = JSON.parse(localStorage.getItem('sasha_core_memory')) || {
+      "привет": "Здравствуй, Александр! Я готов к работе.",
+      "кто ты": "Я твой персональный цифровой двойник, SashaAI.",
+      "пап": "Да, я здесь. Что делаем дальше?",
+      "как дела": "Всё отлично, жду новых знаний!"
+    };
 
+    // --- ГОЛОС ---
     function speak(text) {
       window.speechSynthesis.cancel();
       const msg = new SpeechSynthesisUtterance(text);
       msg.lang = 'ru-RU';
+      msg.rate = 1.0;
       window.speechSynthesis.speak(msg);
     }
 
-    document.body.onclick = () => { speak("Система готова"); document.body.onclick = null; };
+    // Разблокировка звука
+    document.body.onclick = () => {
+      speak("Система инициализирована");
+      document.body.onclick = null;
+    };
 
+    // --- 3D (Твой SashaAI.glb) ---
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 450, 0.1, 1000);
     camera.position.z = 5;
@@ -88,60 +111,65 @@
       model.scale.set(1.5, 1.5, 1.5);
       model.position.y = -0.8;
       scene.add(model);
-      function animate() { requestAnimationFrame(animate); model.rotation.y += 0.01; renderer.render(scene, camera); }
+      function animate() { requestAnimationFrame(animate); model.rotation.y += 0.005; renderer.render(scene, camera); }
       animate();
     });
 
-    async function handleSend() {
+    // --- ЛОГИКА ИИ (ОБУЧЕНИЕ И ОТВЕТЫ) ---
+    function processAI() {
       const input = document.getElementById('msg-input');
       const box = document.getElementById('messages');
-      const val = input.value.trim();
-      if (!val) return;
+      const text = input.value.trim();
+      if (!text) return;
 
-      box.innerHTML += `<div class="user-msg msg">${val}</div>`;
-      input.value = '';
-      const lDiv = document.createElement('div');
-      lDiv.className = 'ai-msg msg';
-      lDiv.innerText = "...";
-      box.appendChild(lDiv);
-      box.scrollTop = box.scrollHeight;
+      // Отображаем сообщение пользователя
+      box.innerHTML += `<div class="user-msg msg">${text}</div>`;
+      const lowerText = text.toLowerCase();
 
-      // ТЕПЕРЬ ПРОБУЕМ ВСЕ ВАРИАНТЫ МОДЕЛЕЙ
-      const tryUrls = [
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`
-      ];
+      let response = "";
 
-      let success = false;
-      for (let url of tryUrls) {
-          try {
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: val }] }] })
-            });
-            const data = await response.json();
-            
-            if (data.candidates && data.candidates[0].content) {
-                lDiv.remove();
-                const reply = data.candidates[0].content.parts[0].text;
-                box.innerHTML += `<div class="ai-msg msg">${reply}</div>`;
-                speak(reply);
-                success = true;
-                break;
-            }
-          } catch (e) { console.log("Пробую следующий вариант..."); }
+      // 1. ПРОВЕРКА НА ОБУЧЕНИЕ
+      if (lowerText.startsWith("учи:") && lowerText.includes("=")) {
+        const parts = text.substring(4).split("=");
+        if (parts.length === 2) {
+          const q = parts[0].trim().toLowerCase();
+          const a = parts[1].trim();
+          sashaBrain[q] = a;
+          // Сохраняем в память навсегда
+          localStorage.setItem('sasha_core_memory', JSON.stringify(sashaBrain));
+          response = `Понял! Теперь на "${q}" я буду отвечать: "${a}"`;
+        } else {
+          response = "Ошибка! Пиши так: Учи: вопрос = ответ";
+        }
+      } 
+      // 2. ОБЫЧНЫЙ ОТВЕТ
+      else {
+        response = "Я пока не знаю, что ответить на это. Научи меня! Напиши: Учи: " + text + " = [твой ответ]";
+        
+        // Поиск совпадений в мозгах
+        for (let key in sashaBrain) {
+          if (lowerText.includes(key)) {
+            response = sashaBrain[key];
+            break;
+          }
+        }
       }
 
-      if (!success) {
-          lDiv.innerText = "SashaAI: Ошибка доступа. Попробуй включить VPN на США.";
-          speak("Ошибка доступа");
-      }
+      // Ответ ИИ
+      setTimeout(() => {
+        box.innerHTML += `<div class="ai-msg msg">${response}</div>`;
+        speak(response);
+        box.scrollTop = box.scrollHeight;
+      }, 400);
+
+      input.value = "";
       box.scrollTop = box.scrollHeight;
     }
-    document.getElementById('send-btn').onclick = handleSend;
-    document.getElementById('msg-input').onkeypress = (e) => { if(e.key==='Enter') handleSend(); };
+
+    document.getElementById('send-btn').onclick = processAI;
+    document.getElementById('msg-input').onkeypress = (e) => { if(e.key==='Enter') processAI(); };
   </script>
 </body>
 </html>
+
 
