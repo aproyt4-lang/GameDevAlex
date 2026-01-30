@@ -170,7 +170,7 @@
     // ==== Three.js для FBX модели ====
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000); // 500 px высота секции
-    camera.position.set(0, 1.5, 3);
+  camera.position.set(0, 1.5, 3);
 
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, 500);
@@ -206,6 +206,7 @@
   </script>
 </body>
 </html>
+
 
 
 
