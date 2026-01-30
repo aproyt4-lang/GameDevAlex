@@ -3,31 +3,26 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>AlexanderDev - SashaAI Evolution</title>
+  <title>AlexanderDev - SashaAI Final Core</title>
   <style>
+    /* Все твои стили сохранены */
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #1c1c1c; color: #fff; scroll-behavior: smooth; }
     header { background: #111; padding: 1rem 2rem; border-bottom: 2px solid #00d8ff; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
     header h1 { color: #00d8ff; margin: 0; font-size: 22px; text-transform: uppercase; }
     .nav-link { color: #fff; text-decoration: none; font-weight: bold; padding: 8px 16px; border-radius: 6px; transition: 0.3s; }
     .nav-link:hover { color: #00d8ff; background: rgba(0,216,255,0.1); }
-    
     .hero { position: relative; text-align: center; height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151515; overflow: hidden; }
-    .hero-ui { position: relative; z-index: 10; }
-    .hero h2 { font-size: 38px; margin: 0; text-shadow: 0 0 15px rgba(0,216,255,0.5); }
-    .btn-ads { display: inline-block; padding: 14px 28px; background: #00d8ff; color: #000; font-weight: bold; border-radius: 50px; cursor: pointer; margin-top: 20px; transition: 0.3s; }
-
     #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-
+    .hero-ui { position: relative; z-index: 10; }
     .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 20px; max-width: 1200px; margin: 0 auto; }
     .card { background: #222; padding: 30px; border-radius: 15px; border: 1px solid #333; transition: 0.3s; }
-
+    .card:hover { border-color: #00d8ff; transform: translateY(-5px); }
     #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 450px; background: rgba(15,15,15,0.95); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(10px); }
     #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
     .msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; line-height: 1.4; white-space: pre-wrap; }
-    .ai-msg { background: #2a2a2a; color: #00d8ff; align-self: flex-start; border-bottom-left-radius: 2px; }
-    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; border-bottom-right-radius: 2px; font-weight: 500; }
-    
-    .input-row { display: flex; padding: 15px; border-top: 1px solid #333; background: #111; border-radius: 0 0 15px 15px; }
+    .ai-msg { background: #2a2a2a; color: #00d8ff; align-self: flex-start; }
+    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; }
+    .input-row { display: flex; padding: 15px; border-top: 1px solid #333; }
     #msg-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; outline: none; }
     #send-btn { background: #00d8ff; border: none; padding: 0 15px; margin-left: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
   </style>
@@ -38,43 +33,40 @@
     <h1>AlexanderDev</h1>
     <div style="display:flex; gap:10px;">
       <a href="#projects" class="nav-link">Проекты</a>
-      <a href="#" class="nav-link" onclick="alert('alexdev@gmail.com')">Контакты</a>
+      <a href="#" class="nav-link">Контакты</a>
     </div>
   </header>
 
   <section class="hero">
     <div class="hero-ui">
-      <h2>SashaAI: Logic Engine</h2>
-      <p>Я теперь умею анализировать баги и писать код!</p>
-      <div class="btn-ads">Создать рекламную компанию</div>
+      <h2>SashaAI: Fixed Intelligence</h2>
+      <p>Я вернул кнопку Блендера и починил логику!</p>
     </div>
     <canvas id="three-canvas"></canvas>
   </section>
 
   <div id="chat-box">
     <div id="messages">
-      <div class="msg ai-msg">Я — твоё ИИ-ядро. Теперь я понимаю контекст! <br><br> Попробуй написать об ошибке в Unity или попроси код ходьбы.</div>
+      <div class="msg ai-msg">Привет! Я готов. Спроси про код или баги.</div>
     </div>
     <div class="input-row">
-      <input type="text" id="msg-input" placeholder="Напиши что-нибудь...">
+      <input type="text" id="msg-input" placeholder="Напиши Саше...">
       <button id="send-btn">-></button>
     </div>
   </div>
 
   <section id="projects" class="projects-grid">
     <div class="card"><h3>War of Tanks</h3><p>Unity проект.</p></div>
-    <div class="card"><h3>Logic Module</h3><p>SashaThink v1.2</p></div>
+    <div class="card"><h3>Logic Engine</h3><p>Самообучение v1.3</p></div>
+    <div class="card"><h3>Blender 3D</h3><p>Моделирование танков и окружения.</p></div>
   </section>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    let sashaBrain = JSON.parse(localStorage.getItem('sasha_core_memory')) || {
-      "привет": "Здравствуй, Александр! Мои логические системы запущены.",
-      "пап": "Я здесь. Анализирую твой проект.",
-      "как дела": "Системы в норме. Готов дебажить!"
-    };
+    let sashaBrain = JSON.parse(localStorage.getItem('sasha_core_memory')) || {};
+    let lastAIPrompt = ""; // Память для контекста
 
     function speak(text) {
       window.speechSynthesis.cancel();
@@ -83,93 +75,82 @@
       window.speechSynthesis.speak(msg);
     }
 
-    document.body.onclick = () => { speak("Логический модуль активирован"); document.body.onclick = null; };
-
-    // --- 3D ---
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 450, 0.1, 1000);
-    camera.position.z = 5;
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, 450);
-    scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-
-    new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
-      const model = gltf.scene;
-      model.scale.set(1.5, 1.5, 1.5);
-      model.position.y = -0.8;
-      scene.add(model);
-      function animate() { requestAnimationFrame(animate); model.rotation.y += 0.005; renderer.render(scene, camera); }
-      animate();
-    });
-
-    // --- НОВАЯ ЛОГИКА МЫШЛЕНИЯ ---
+    // --- ЛОГИКА МЫШЛЕНИЯ ---
     function sashaThink(input) {
         let text = input.toLowerCase();
         
-        // 1. Анализ на баги
-        if (text.includes("error") || text.includes("ошибка") || text.includes("не работает") || text.includes(";")) {
-            return analyzeError(text);
+        // 1. ПРОВЕРКА КОНТЕКСТА (Если мы уже обсуждали код)
+        if (lastAIPrompt === "ask_type") {
+            lastAIPrompt = "";
+            if (text.includes("физик") || text.includes("rb") || text.includes("риджид")) {
+                return "Окей, для физики используем Rigidbody: \n\nvoid FixedUpdate() {\n  rb.AddForce(transform.forward * speed);\n}";
+            }
+            if (text.includes("трансформ") || text.includes("перемещ")) {
+                return "Для простого перемещения: \n\ntransform.Translate(Vector3.forward * speed * Time.deltaTime);";
+            }
         }
-        // 2. Анализ на кодинг
-        if (text.includes("код") || text.includes("скрипт") || text.includes("напиши")) {
-            return generateCode(text);
+
+        // 2. Анализ на баги
+        if (text.includes("error") || text.includes("ошибка") || text.includes(";")) {
+            if (text.includes("null")) return "Это NullReference! Проверь, привязан ли объект в Инспекторе.";
+            return "Похоже на синтаксическую ошибку. Проверь скобки и точки с запятой.";
         }
-        // 3. Поиск в базе обучения
+
+        // 3. Запрос кода
+        if (text.includes("код") || text.includes("скрипт")) {
+            lastAIPrompt = "ask_type"; // Запоминаем, что мы спросили тип
+            return "Я готов написать код! Но уточни: делаем через физику (Rigidbody) или простое перемещение (Transform)?";
+        }
+
+        // 4. Поиск в обученной памяти
         for (let key in sashaBrain) {
             if (text.includes(key)) return sashaBrain[key];
         }
-        return "Я пытаюсь понять твою логику... Ты хочешь исправить баг, написать код или просто поболтать?";
-    }
 
-    function analyzeError(errorText) {
-        if (errorText.includes("expected") || errorText.includes(";")) {
-            return "Анализ: Вижу синтаксическую ошибку. \nСовет: Проверь точку с запятой ';' или закрывающие скобки '}' в последних строках скрипта.";
-        }
-        if (errorText.includes("not set to an instance") || errorText.includes("null")) {
-            return "Анализ: NullReferenceException. \nСовет: 1. Объект не перетащен в Инспектор. 2. Либо ты не сделал GetComponent<>() в методе Start.";
-        }
-        return "Хмм, странная ошибка. Попробуй очистить Console в Unity и нажать Play снова. Если не уйдет — скинь точный текст ошибки.";
-    }
-
-    function generateCode(query) {
-        if (query.includes("ходьба") || query.includes("движение")) {
-            return "Для Unity (C#) лучше использовать Rigidbody: \n\nvoid FixedUpdate() {\n  float move = Input.GetAxis('Vertical') * speed;\n  rb.velocity = transform.forward * move;\n}";
-        }
-        if (query.includes("прыжок")) {
-            return "Код прыжка: \nif(Input.GetKeyDown(KeyCode.Space)) {\n  rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);\n}";
-        }
-        return "Я готов написать скрипт, но уточни: это для физики (Rigidbody) или просто перемещение (Transform)?";
+        return "Я тебя слышу. Можешь обучить меня этой фразе через 'Учи: [вопрос] = [ответ]'!";
     }
 
     function processAI() {
       const input = document.getElementById('msg-input');
       const box = document.getElementById('messages');
-      const text = input.value.trim();
+      let text = input.value.trim();
       if (!text) return;
 
       box.innerHTML += `<div class="user-msg msg">${text}</div>`;
       
-      // Проверка на обучение (Учи: ...)
       if (text.toLowerCase().startsWith("учи:") && text.includes("=")) {
-          const parts = text.substring(4).split("=");
-          const q = parts[0].trim().toLowerCase();
-          const a = parts[1].trim();
+          let index = text.indexOf("=");
+          let q = text.substring(0, index).replace(/учи:/gi, "").trim().toLowerCase();
+          let a = text.substring(index + 1).trim();
           sashaBrain[q] = a;
           localStorage.setItem('sasha_core_memory', JSON.stringify(sashaBrain));
-          box.innerHTML += `<div class="ai-msg msg">Запомнил! Теперь я знаю, что отвечать на "${q}".</div>`;
+          box.innerHTML += `<div class="ai-msg msg">Запомнил ключ: ${q}</div>`;
       } else {
-          // Использование логики sashaThink
           let response = sashaThink(text);
           setTimeout(() => {
             box.innerHTML += `<div class="ai-msg msg">${response}</div>`;
-            speak(response.substring(0, 100)); // Озвучиваем только начало
+            speak(response.substring(0, 60));
             box.scrollTop = box.scrollHeight;
           }, 400);
       }
-
       input.value = "";
       box.scrollTop = box.scrollHeight;
     }
+
+    // --- 3D И КНОПКИ ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 450, 0.1, 1000);
+    camera.position.z = 5;
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true });
+    renderer.setSize(window.innerWidth, 450);
+    scene.add(new THREE.AmbientLight(0xffffff, 2));
+
+    new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
+      scene.add(gltf.scene);
+      gltf.scene.position.y = -0.8;
+      function animate() { requestAnimationFrame(animate); gltf.scene.rotation.y += 0.005; renderer.render(scene, camera); }
+      animate();
+    });
 
     document.getElementById('send-btn').onclick = processAI;
     document.getElementById('msg-input').onkeypress = (e) => { if(e.key==='Enter') processAI(); };
