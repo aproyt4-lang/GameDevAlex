@@ -183,7 +183,7 @@
 
     // Загрузка GLB модели
     const loader = new THREE.GLTFLoader();
-    loader.load('https://aproyt4-lang.github.io/GameDevAlex/SashaAI.glb', function(gltf)) {
+    loader.load('https://rawcdn.githack.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', function(gltf)) {
       scene.add(gltf.scene);
       gltf.scene.position.set(0, -1, 0);
       gltf.scene.scale.set(0.5, 0.5, 0.5); // подбираешь под размер секции
@@ -206,6 +206,7 @@
   </script>
 </body>
 </html>
+
 
 
 
