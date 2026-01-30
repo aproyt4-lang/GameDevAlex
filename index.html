@@ -7,7 +7,6 @@
   <style>
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #1c1c1c; color: #fff; scroll-behavior: smooth; }
     
-    /* ХЕДЕР */
     header { 
       background: #111; padding: 1rem 2rem; border-bottom: 2px solid #00d8ff; 
       display: flex; justify-content: space-between; align-items: center; 
@@ -21,28 +20,24 @@
     }
     .nav-link:hover { border-color: #00d8ff; color: #00d8ff; background: rgba(0,216,255,0.1); }
 
-    /* ГЕРОЙ */
     .hero { position: relative; text-align: center; height: 500px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151515; overflow: hidden; }
     .hero-ui { position: relative; z-index: 10; }
     .hero h2 { font-size: 38px; margin: 0; text-shadow: 0 0 15px rgba(0,216,255,0.5); }
     .hero p { color: #ccc; margin: 10px 0 25px; font-size: 18px; }
     #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* КНОПКА РЕКЛАМЫ */
     .btn-ads {
       display: inline-block; padding: 14px 28px; background: #00d8ff; color: #000; 
       font-weight: bold; border-radius: 50px; text-decoration: none; 
-      transition: 0.3s; border: 2px solid #00d8ff;
+      transition: 0.3s; border: 2px solid #00d8ff; cursor: pointer;
     }
     .btn-ads:hover { background: transparent; color: #00d8ff; transform: scale(1.05); box-shadow: 0 0 20px #00d8ff; }
 
-    /* ПРОЕКТЫ */
     .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 20px; max-width: 1200px; margin: 0 auto; }
     .card { background: #222; padding: 30px; border-radius: 15px; border: 1px solid #333; transition: 0.3s; }
     .card:hover { border-color: #00d8ff; transform: translateY(-10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .card h3 { color: #00d8ff; margin-top: 0; }
 
-    /* ЧАТ */
     #chat-box { position: fixed; bottom: 20px; right: 20px; width: 320px; height: 420px; background: rgba(15,15,15,0.98); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(10px); }
     #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
     .msg { padding: 10px 14px; border-radius: 12px; max-width: 80%; }
@@ -50,7 +45,7 @@
     .user-msg { background: #00d8ff; color: #000; align-self: flex-end; font-weight: bold; }
     .input-row { display: flex; padding: 15px; border-top: 1px solid #333; }
     #msg-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; outline: none; }
-    #send-btn { background: #00d8ff; border: none; padding: 0 15px; margin-left: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    #send-btn { background: #00d8ff; border: none; padding: 0 15px; margin-left: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
     #send-btn:hover { background: #fff; color: #000; }
   </style>
 </head>
@@ -60,7 +55,7 @@
     <h1>AlexanderDev</h1>
     <div class="nav-right">
       <a href="#projects-section" class="nav-link">Проекты</a>
-      <a href="mailto:your-email@mail.com" class="nav-link">Контакты</a>
+      <a href="#" class="nav-link" onclick="alert('Email: alexdev@example.com')">Контакты</a>
     </div>
   </header>
 
@@ -68,13 +63,13 @@
     <div class="hero-ui">
       <h2>SashaAI & GameDev</h2>
       <p>Создаю игры, 3D и обучаю нейросети.</p>
-      <a href="https://google.com" class="btn-ads">Создать рекламную компанию</a>
+      <div class="btn-ads" onclick="alert('Рекламная кампания запускается...')">Создать рекламную компанию</div>
     </div>
     <canvas id="three-canvas"></canvas>
   </section>
 
   <div id="chat-box">
-    <div id="messages"><div class="msg ai-msg">SashaAI готов. Дизайн обновлен!</div></div>
+    <div id="messages"><div class="msg ai-msg">SashaAI готов. С новым ключом всё должно работать!</div></div>
     <div class="input-row">
       <input type="text" id="msg-input" placeholder="Напиши что-нибудь...">
       <button id="send-btn">-></button>
@@ -83,15 +78,16 @@
 
   <section id="projects-section" class="projects-grid">
     <div class="card"><h3>War of Tanks</h3><p>Шутер на Unity с физикой разрушений.</p></div>
-    <div class="card"><h3>J.A.R.V.I.S. AI</h3><p>Система ИИ для управления умным домом.</p></div>
-    <div class="card"><h3>Blender Plugin</h3><p>Автоматизация текстурирования в 3D.</p></div>
+    <div class="card"><h3>J.A.R.V.I.S. AI</h3><p>Система ИИ для управления задачами.</p></div>
+    <div class="card"><h3>Blender Plugin</h3><p>Оптимизация экспорта 3D моделей.</p></div>
   </section>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    const API_KEY = "AIzaSyA42tAlAH8NTBZjIsgfcEPDbvweF0G0SQM";
+    // Твой НОВЫЙ КЛЮЧ
+    const API_KEY = "AIzaSyBssYGYWDj9suGeoKvpQuIFIan4PrE9TWs";
 
     function speak(text) {
       if ('speechSynthesis' in window) {
@@ -102,7 +98,6 @@
       }
     }
 
-    // 3D Модель 1.5
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 450, 0.1, 1000);
     camera.position.z = 5;
@@ -138,43 +133,41 @@
       box.scrollTop = box.scrollHeight;
 
       try {
-        // Пробуем v1/gemini-1.5-flash — самый стабильный путь на сегодня
+        // Используем самую стабильную ссылку v1
         const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: val }] }] })
         });
-
+        
         const data = await res.json();
         lDiv.remove();
 
-        const aDiv = document.createElement('div');
-        aDiv.className = 'msg ai-msg';
-
         if (data.candidates && data.candidates[0].content) {
+          const aDiv = document.createElement('div');
+          aDiv.className = 'msg ai-msg';
           const text = data.candidates[0].content.parts[0].text;
           aDiv.innerText = text;
+          box.appendChild(aDiv);
           speak(text);
         } else {
-          // Если ошибка, пробуем вывести её текст
-          aDiv.innerText = "SashaAI: " + (data.error ? data.error.message : "Ошибка API.");
-          console.log(data); 
+          const aDiv = document.createElement('div');
+          aDiv.className = 'msg ai-msg';
+          aDiv.innerText = "SashaAI: " + (data.error ? data.error.message : "Ошибка. Проверь VPN.");
+          box.appendChild(aDiv);
         }
-        box.appendChild(aDiv);
       } catch (e) {
-        lDiv.innerText = "Сбой сети.";
+        lDiv.innerText = "Ошибка сети.";
       }
       box.scrollTop = box.scrollHeight;
     }
 
     document.getElementById('send-btn').onclick = handleSend;
     document.getElementById('msg-input').onkeypress = (e) => { if(e.key==='Enter') handleSend(); };
-    
-    document.body.addEventListener('mousedown', () => {
-      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-    }, { once: false });
+    document.body.addEventListener('mousedown', () => { if (window.speechSynthesis.paused) window.speechSynthesis.resume(); }, { once: false });
   </script>
 </body>
 </html>
+
 
