@@ -67,45 +67,50 @@
 
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, 500);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     scene.add(new THREE.AmbientLight(0xffffff, 2));
-    const light = new THREE.DirectionalLight(0xffffff, 1);
+    const light = new THREE.DirectionalLight(0xffffff, 1.5);
     light.position.set(5, 5, 5);
     scene.add(light);
 
     const loader = new THREE.GLTFLoader();
 
-    // ТВОЯ ССЫЛКА
-    loader.load('https://github.com/aproyt4-lang/GameDevAlex/SashaAI.glb', function(gltf) {
+    // 1. ИСПРАВЛЕННАЯ ПРЯМАЯ ССЫЛКА (raw контент)
+    // 2. ДОБАВЛЕН ОБХОД КЭША (?v=...)
+    const rawUrl = 'https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb?v=' + Date.now();
+
+    loader.load(rawUrl, function(gltf) {
       const model = gltf.scene;
       
-      // Настройка модели (ВСЁ ВНУТРИ loader.load)
+      // Настройка масштаба и центрирования
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      
       const maxDim = Math.max(size.x, size.y, size.z);
       const scale = 3 / maxDim;
       model.scale.set(scale, scale, scale);
       
-      const center = box.getCenter(new THREE.Vector3());
       model.position.x = -center.x * scale;
       model.position.y = -center.y * scale;
       model.position.z = -center.z * scale;
 
       scene.add(model);
       
-      // Анимация тоже внутри, чтобы запускалась когда модель готова
       function animate() {
         requestAnimationFrame(animate);
-        model.rotation.y += 0.01;
+        model.rotation.y += 0.005; // Вращение помедленнее, чтобы рассмотреть
         renderer.render(scene, camera);
       }
       animate();
 
-      console.log("Успех!");
-    }, undefined, function(e) {
-      console.error("Ошибка:", e);
-    });
+      console.log("Модель успешно загружена!");
+    }, 
+    // Индикатор прогресса в консоли
+    (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% загружено'); }, 
+    (e) => { console.error("Ошибка загрузки:", e); }
+    );
 
     window.addEventListener('resize', () => {
       renderer.setSize(window.innerWidth, 500);
@@ -115,6 +120,7 @@
   </script>
 </body>
 </html>
+
 
 
 
