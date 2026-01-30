@@ -158,19 +158,19 @@
     © 2025 AlexanderDev. Все права защищены.
   </footer>
 
-  <!-- Three.js и FBXLoader -->
+  <!-- Three.js и загрузчик GLB -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
     function createCampaign() {
       window.location.href = "https://your-ad-campaign-site.com";
     }
 
-    // ==== Three.js для FBX модели ====
+    // ==== Three.js для GLB модели ====
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000); // 500 px высота секции
-  camera.position.set(0, 1.5, 3);
+    camera.position.set(0, 1.5, 3);
 
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, 500);
@@ -181,17 +181,17 @@
     scene.add(dirLight);
     scene.add(new THREE.AmbientLight(0x404040, 1));
 
-    // Загрузка FBX модели
-    const loader = new THREE.FBXLoader();
-    loader.load('https://aproyt4-lang.github.io/GameDevAlex/person3dmodel.fbx', function(model) {
-      scene.add(model);
-    model.position.set(0, -0.8, 0);
-      model.scale.set(0.01, 0.01, 0.01); // подбираешь под размер секции
+    // Загрузка GLB модели
+    const loader = new THREE.GLTFLoader();
+    loader.load('https://aproyt4-lang.github.io/GameDevAlex/SashaAI.glb', function(gltf) {
+      scene.add(gltf.scene);
+      gltf.scene.position.set(0, -1, 0);
+      gltf.scene.scale.set(0.5, 0.5, 0.5); // подбираешь под размер секции
 
       // простая анимация
       function animateModel() {
         requestAnimationFrame(animateModel);
-        model.rotation.y += 0.002; // вращение "живого ИИ"
+        gltf.scene.rotation.y += 0.002; // вращение "живого ИИ"
         renderer.render(scene, camera);
       }
       animateModel();
