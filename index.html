@@ -52,7 +52,7 @@
   </section>
 
   <div id="chat-box">
-    <div id="messages"><div class="msg ai-msg">SashaAI: Привет! Я готов кодить. Напиши "дай код ходьбы" или обучи меня новому скрипту!</div></div>
+    <div id="messages"><div class="msg ai-msg">SashaAI: Привет! Я готов. Обучи меня C#, C++ или Python, либо просто задай вопрос по геймдеву!</div></div>
     <div class="input-row">
       <input type="text" id="msg-input" placeholder="Напиши что-нибудь...">
       <button id="send-btn">-></button>
@@ -69,18 +69,15 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    // 1. ИНИЦИАЛИЗАЦИЯ ПАМЯТИ И БАЗОВЫХ ЗНАНИЙ
+    // 1. ИНИЦИАЛИЗАЦИЯ
     let sashaBrain = {};
     const baseKnowledge = {
-        movement: `using UnityEngine;\n\npublic class PlayerMove : MonoBehaviour {\n    public float speed = 6.0f;\n    private CharacterController controller;\n    private Vector3 moveDirection = Vector3.zero;\n\n    void Start() { controller = GetComponent<CharacterController>(); }\n\n    void Update() {\n        moveDirection = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));\n        moveDirection *= speed;\n        controller.Move(moveDirection * Time.deltaTime);\n    }\n}`
+        movement: `using UnityEngine;\n\npublic class PlayerMove : MonoBehaviour {\n    public float speed = 6.0f;\n    private CharacterController controller;\n    void Update() {\n        Vector3 move = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));\n        GetComponent<CharacterController>().Move(move * speed * Time.deltaTime);\n    }\n}`
     };
 
     try {
         sashaBrain = JSON.parse(localStorage.getItem('sasha_core_memory')) || {};
-        localStorage.setItem('sasha_backup_memory', JSON.stringify(sashaBrain));
-    } catch (e) {
-        sashaBrain = JSON.parse(localStorage.getItem('sasha_backup_memory')) || {};
-    }
+    } catch (e) { sashaBrain = {}; }
 
     function speak(text) {
       if ('speechSynthesis' in window) {
@@ -91,7 +88,7 @@
       }
     }
 
-    // 2. 3D МОДЕЛЬ
+    // 2. 3D МОДЕЛЬ (Твой фронтенд)
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 450, 0.1, 1000);
     camera.position.z = 5;
@@ -107,7 +104,7 @@
       animate();
     });
 
-    // 3. ОБЪЕДИНЕННАЯ ЛОГИКА (ОБУЧЕНИЕ + ИНТУИТИВНЫЙ ПОИСК)
+    // 3. УМНАЯ ЛОГИКА (Фильтр кода vs Беседа)
     async function handleSend() {
       const input = document.getElementById('msg-input');
       const box = document.getElementById('messages');
@@ -120,49 +117,58 @@
       let lowText = text.toLowerCase();
       let response = "";
 
-      try {
-        // РЕЖИМ ОБУЧЕНИЯ (Если вставлен код)
-        if (text.includes("void") || text.includes("{") || text.includes("class")) {
-            if (text.split('{').length !== text.split('}').length) {
-                throw new Error("Нарушена целостность скобок! Код не сохранен.");
-            }
-            let className = text.match(/class\s+(\w+)/)?.[1] || "CustomScript";
-            sashaBrain[className.toLowerCase()] = text;
-            
-            // Категоризация для быстрого доступа
-            if (lowText.includes("move") || lowText.includes("ходьб") || lowText.includes("движ")) {
-                sashaBrain["_last_move"] = text;
-            }
+      // ПРОВЕРКА: Это код или охинея?
+      const codeMarkers = ["{", "}", ";", "void", "public", "static", "class", "import", "def ", "#include"];
+      const isCodeLike = codeMarkers.some(marker => text.includes(marker));
+      
+      if (isCodeLike) {
+          // Валидация структуры (чтобы не учить охинею)
+          const bracketBalance = (text.split('{').length === text.split('}').length);
+          const tooShort = text.length < 15;
 
-            localStorage.setItem('sasha_core_memory', JSON.stringify(sashaBrain));
-            localStorage.setItem('sasha_backup_memory', JSON.stringify(sashaBrain));
-            response = `✅ Система: Код "${className}" выучен. Теперь я буду выдавать его по запросу.`;
-        } 
-        // РЕЖИМ ИНТУИТИВНОГО ПОИСКА (Как ChatGPT)
-        else {
-            const needsCode = ["дай", "сделай", "создай", "напиши", "код", "скрипт", "собери"].some(word => lowText.includes(word));
-            const aboutMove = ["ходьб", "движен", "двиг", "move", "персонаж", "игрок"].some(word => lowText.includes(word));
+          if (!bracketBalance || tooShort) {
+              response = "⚠️ Это похоже на код, но в нем есть ошибки структуры или это бессмысленный набор символов. Я не буду это учить.";
+          } else {
+              // Определяем язык
+              let lang = "C#";
+              if (text.includes("#include") || text.includes("std::")) lang = "C++";
+              else if (text.includes("def ") || text.includes("import ")) lang = "Python";
+              else if (text.includes("using Unity") || text.includes("MonoBehaviour")) lang = "C# (Unity)";
 
-            if (needsCode && aboutMove) {
-                // Выдаем обученный код, если его нет - базовый
-                response = sashaBrain["_last_move"] || "Держи базовый код ходьбы для Unity:\n\n" + baseKnowledge.movement;
-            } else if (lowText.includes("привет")) {
-                response = "Привет, Александр! Чем сегодня займемся в GameDev?";
-            } else {
-                // Поиск по названию классов в памяти
-                for (let key in sashaBrain) {
-                    if (!key.startsWith("_") && lowText.includes(key)) {
-                        response = sashaBrain[key];
-                        break;
-                    }
-                }
-            }
-        }
-      } catch (e) {
-          response = `⚠️ Внимание: ${e.message}`;
+              let className = text.match(/(?:class|def)\s+(\w+)/)?.[1] || "Module_" + Math.floor(Math.random()*100);
+              sashaBrain[className.toLowerCase()] = { code: text, lang: lang };
+              
+              if (lowText.includes("move") || lowText.includes("ходьб")) sashaBrain["_last_move"] = text;
+              
+              localStorage.setItem('sasha_core_memory', JSON.stringify(sashaBrain));
+              response = `✅ Я распознал и выучил модуль на ${lang}: "${className}".`;
+          }
+      } 
+      // ЕСЛИ ЭТО ЗАПРОС КОДА ИЛИ ОБЫЧНЫЙ ТЕКСТ
+      else {
+          const needsCode = ["дай", "сделай", "напиши", "код", "скрипт", "создай"].some(w => lowText.includes(w));
+          const aboutMove = ["ходьб", "движ", "персонаж", "move"].some(w => lowText.includes(w));
+
+          if (needsCode && aboutMove) {
+              response = sashaBrain["_last_move"] || "Держи мой базовый C# скрипт ходьбы:\n\n" + baseKnowledge.movement;
+          } else if (lowText.includes("привет") || lowText.includes("саша")) {
+              response = "Привет! Я на связи. Могу обсудить геймдев или выучить новый скрипт. Что на уме?";
+          } else if (lowText.includes("удали") || lowText.includes("очисти")) {
+              localStorage.removeItem('sasha_core_memory');
+              sashaBrain = {};
+              response = "Память очищена. Я готов к новому обучению!";
+          } else {
+              // Рандомные ответы для беседы
+              const replies = [
+                  "Интересная мысль! А как это поможет в разработке?",
+                  "Я тебя понял. Если понадобится код — я рядом.",
+                  "Это не похоже на код, но звучит любопытно.",
+                  "Да, геймдев — штука тонкая. Есть еще вопросы?",
+                  "Я пока не нашел такого в своей памяти, но могу запомнить, если дашь пример!"
+              ];
+              response = replies[Math.floor(Math.random() * replies.length)];
+          }
       }
-
-      if (!response) response = "Я пока не знаю этого кода. Но если ты вставишь пример, я научусь мгновенно!";
 
       setTimeout(() => {
         box.innerHTML += `<div class="msg ai-msg">${response}</div>`;
@@ -174,10 +180,6 @@
 
     document.getElementById('send-btn').onclick = handleSend;
     document.getElementById('msg-input').onkeypress = (e) => { if(e.key==='Enter') handleSend(); };
-    
-    document.body.addEventListener('mousedown', () => {
-      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-    }, { once: false });
   </script>
 </body>
 </html>
