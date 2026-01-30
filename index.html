@@ -33,7 +33,7 @@
 
     footer { text-align: center; padding: 1rem; color: #666; background: #111; }
 
-    /* НОВЫЙ СТИЛЬ ЧАТА (В твоем стиле) */
+    /* СТИЛЬ ЧАТА */
     #chat-container {
       position: fixed;
       bottom: 20px;
@@ -76,7 +76,7 @@
 
   <div id="chat-container">
     <div id="chat-messages">
-      <div class="msg ai-msg">SashaAI онлайн. Я готов общаться и озвучивать ответы.</div>
+      <div class="msg ai-msg">SashaAI онлайн. Я готов общаться.</div>
     </div>
     <div class="chat-input-box">
       <input type="text" id="chat-input" placeholder="Напиши мне...">
@@ -100,14 +100,13 @@
   <script>
     function createCampaign() { window.location.href = "https://your-ad-campaign-site.com"; }
 
-    // 1. ТРЕХМЕРНАЯ ГРАФИКА
+    // 1. ТРЕХМЕРНАЯ ГРАФИКА (Твоя ссылка с "бустером" загрузки)
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / 500, 0.1, 1000);
     camera.position.set(0, 0, 5);
 
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, 500);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     scene.add(new THREE.AmbientLight(0xffffff, 2));
     const light = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -115,8 +114,9 @@
     scene.add(light);
 
     const loader = new THREE.GLTFLoader();
-    const buster = Math.random().toString(36).substring(7);
-    const modelUrl = 'https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb?v=' + buster;
+    // РАДИКАЛЬНАЯ ССЫЛКА ДЛЯ ОБХОДА КЭША (как ты просил)
+    const radicalKey = Math.random().toString(36).substring(7);
+    const modelUrl = 'https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb?v=' + radicalKey;
 
     loader.load(modelUrl, (gltf) => {
       const model = gltf.scene;
@@ -144,8 +144,8 @@
       window.speechSynthesis.speak(msg);
     }
 
-    // 3. ЛОГИКА ЧАТА С ПОДКЛЮЧЕННЫМ GEMINI
-    const GEMINI_API_KEY = "AIzaSyBSz-KiycKOhxwMHOq5Hc4NgTJttYFne9o"; // Твой ключ уже здесь
+    // 3. ЛОГИКА ЧАТА (Gemini 1.5 Flash)
+    const GEMINI_API_KEY = "AIzaSyBSz-KiycKOhxwMHOq5Hc4NgTJttYFne9o"; 
 
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
@@ -167,7 +167,6 @@
       addMessage(val, true);
       chatInput.value = '';
 
-      // Создаем сообщение "думаю..."
       const loadingDiv = document.createElement('div');
       loadingDiv.className = 'msg ai-msg';
       loadingDiv.innerText = '...';
@@ -178,23 +177,24 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Ты — SashaAI, умный и харизматичный ИИ, созданный разработчиком AlexanderDev. Отвечай кратко, максимум 2 предложения. Вопрос пользователя: ${val}` }] }]
+            contents: [{ parts: [{ text: val }] }] // Прямой запрос без лишних оберток для надежности
           })
         });
 
         const data = await response.json();
-        loadingDiv.remove(); // Убираем точки
+        loadingDiv.remove();
 
         if (data.candidates && data.candidates[0].content) {
           const aiText = data.candidates[0].content.parts[0].text;
           addMessage(aiText, false);
         } else {
-          addMessage("Ой, мой мозг перезагружается. Попробуй еще раз!", false);
+          // Если Google вернул ошибку, выводим её причину
+          const errorInfo = data.error ? data.error.message : "Неизвестная ошибка API";
+          addMessage("Ошибка: " + errorInfo, false);
         }
       } catch (error) {
         loadingDiv.remove();
-        console.error("Ошибка:", error);
-        addMessage("Не удалось связаться с сервером ИИ.", false);
+        addMessage("Ошибка сети. Проверь интернет.", false);
       }
     };
 
@@ -208,6 +208,7 @@
   </script>
 </body>
 </html>
+
 
 
 
