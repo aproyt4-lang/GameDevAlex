@@ -116,35 +116,55 @@
     });
 
     // --- ФУНКЦИЯ ОТПРАВКИ (ОБЪЕДИНЕННАЯ) ---
-    async function sendMessage() {
-      const input = document.getElementById('msg-input');
-      const text = input.value.trim();
-      if (!text) return;
-      
-      const container = document.getElementById('messages');
-      container.innerHTML += `<div class="msg user-msg">${text}</div>`;
-      input.value = '';
-      
-      const loading = document.createElement('div');
-      loading.className = 'msg ai-msg';
-      loading.innerText = 'Саша думает...';
-      container.appendChild(loading);
-      container.scrollTop = container.scrollHeight;
+async function sendMessage() 
+{
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const container = document.getElementById('messages');
+  container.innerHTML += `<div class="msg user-msg">${text}</div>`;
+  input.value = '';
+  
+  const loading = document.createElement('div');
+  loading.className = 'msg ai-msg';
+  loading.innerText = 'Саша думает...';
+  container.appendChild(loading);
+  container.scrollTop = container.scrollHeight;
 
-      // Сначала пробуем v1beta для Flash 1.5
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // ТОЧНЫЙ URL ДЛЯ GEMINI 1.5 FLASH (v1beta)
+  const FINAL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ 
-              role: "user", 
-              parts: [{ text: BRAINS + "\nАлександр пишет: " + text }] 
-            }]
-          })
-        });
+  try {
+    const response = await fetch(FINAL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: BRAINS + "\nВопрос от Александра: " + text }]
+        }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.candidates && data.candidates[0].content.parts[0].text) {
+      const reply = data.candidates[0].content.parts[0].text;
+      loading.innerText = "Саша: " + reply;
+      speak(reply);
+    } else {
+      // Если всё равно ошибка, выводим её текст прямо в чат для диагностики
+      const errorMsg = data.error ? data.error.message : "Неизвестная ошибка";
+      loading.innerText = "Саша: Бро, пришел ответ с ошибкой: " + errorMsg;
+      console.error("DEBUG API:", data);
+    }
+  } catch (err) {
+    loading.innerText = "Саша: Ошибка сети. Проверь интернет или VPN.";
+    console.error("NETWORK ERROR:", err);
+  }
+  container.scrollTop = container.scrollHeight;
+}
+Почему мы оставили v1beta?
 
         const data = await response.json();
 
@@ -185,6 +205,7 @@
   </script>
 </body>
 </html>
+
 
 
 
