@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>AlexanderDev - Sasha AI Final</title>
+  <title>AlexanderDev - Sasha AI Final Fix</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; }
     header { 
@@ -57,7 +57,7 @@
   </section>
 
   <div id="chat-box">
-    <div id="messages"><div class="msg ai-msg">Саша: Здарова! Я снова на базе. Всё починили, теперь я и говорю, и думаю. Жду твой месседж!</div></div>
+    <div id="messages"><div class="msg ai-msg">Саша: Бро, я на базе! Напиши что-нибудь, проверим голос.</div></div>
     <div class="input-row">
       <input type="text" id="msg-input" placeholder="Напиши Саше...">
       <button id="send-btn">SEND</button>
@@ -74,17 +74,15 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    const API_KEY = "ТВОЙ_КЛЮЧ_СЮДА"; 
+    const API_KEY = "AIzaSyC3hNnAMXw6bRYwTAxtAS-ZNeOrDfUqCSg"; 
     const BRAINS = "Ты Саша, напарник Александра. Эксперт в Unity. Отвечай кратко, как бро.";
     let sashaMesh, isSpeaking = false;
 
-    // --- ГОЛОС (FIXED) ---
+    // --- ГОЛОС ---
     function speak(text) {
       window.speechSynthesis.cancel();
       const ut = new SpeechSynthesisUtterance(text);
       ut.lang = 'ru-RU';
-      ut.rate = 1.0;
-      ut.pitch = 1.0;
       ut.onstart = () => { isSpeaking = true; };
       ut.onend = () => { isSpeaking = false; };
       window.speechSynthesis.speak(ut);
@@ -103,7 +101,6 @@
       sashaMesh.position.y = -1;
       sashaMesh.scale.set(1.6, 1.6, 1.6);
       scene.add(sashaMesh);
-      
       function animate() {
         requestAnimationFrame(animate);
         if(sashaMesh) {
@@ -115,68 +112,34 @@
       animate();
     });
 
-    // --- ФУНКЦИЯ ОТПРАВКИ ---
-async function sendMessage() {
-  const input = document.getElementById('msg-input');
-  const text = input.value.trim();
-  if (!text) return;
-  
-  const container = document.getElementById('messages');
-  container.innerHTML += `<div class="msg user-msg">${text}</div>`;
-  input.value = '';
-  
-  const loading = document.createElement('div');
-  loading.className = 'msg ai-msg';
-  loading.innerText = 'Саша думает...';
-  container.appendChild(loading);
-  container.scrollTop = container.scrollHeight;
-
-  // ОБНОВЛЕННЫЙ КЛЮЧ И URL (Добавили -001 — это жесткая привязка к версии, чтобы не было 404)
-  const MY_KEY = "AIzaSyC3hNnAMXw6bRYwTAxtAS-ZNeOrDfUqCSg"; 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${MY_KEY}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: BRAINS + "\nВопрос: " + text }]
-        }]
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.candidates) {
-      const reply = data.candidates[0].content.parts[0].text;
-      loading.innerText = "Саша: " + reply;
-      speak(reply); // ГОЛОС ВКЛЮЧЕН
-    } else {
-      // Если опять 404, пробуем альтернативное имя модели прямо здесь
-      console.error("Первая попытка мимо, пробую запасной путь...");
-      const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${MY_KEY}`;
-      const res2 = await fetch(fallbackUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: BRAINS + "\n" + text }] }] })
-      });
-      const data2 = await res2.json();
+    // --- ЛОГИКА ЧАТА (БЕЗ ОШИБОК) ---
+    async function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text) return;
       
-      if (res2.ok) {
-        const reply2 = data2.candidates[0].content.parts[0].text;
-        loading.innerText = "Саша: " + reply2;
-        speak(reply2);
-      } else {
-        loading.innerText = "Саша: Бро, ошибка " + res2.status + ". Проверь, что в Google AI Studio выбран именно 'Gemini 1.5 Flash'.";
-      }
-    }
-  } catch (err) {
-    loading.innerText = "Саша: Сеть легла!";
-    console.error(err);
-  }
-  container.scrollTop = container.scrollHeight;
-}
+      const container = document.getElementById('messages');
+      container.innerHTML += `<div class="msg user-msg">${text}</div>`;
+      input.value = '';
+      
+      const loading = document.createElement('div');
+      loading.className = 'msg ai-msg';
+      loading.innerText = 'Саша думает...';
+      container.appendChild(loading);
+      container.scrollTop = container.scrollHeight;
+
+      // Прямой URL к 1.5 Flash
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: BRAINS + "\nВопрос: " + text }] }]
+          })
+        });
+
         const data = await response.json();
 
         if (response.ok && data.candidates) {
@@ -184,11 +147,10 @@ async function sendMessage() {
           loading.innerText = "Саша: " + reply;
           speak(reply);
         } else {
-          loading.innerText = "Саша: Ошибка API. Код: " + (data.error ? data.error.status : "Unknown");
+          loading.innerText = "Саша: Ошибка " + (data.error ? data.error.message : "API");
         }
       } catch (err) {
         loading.innerText = "Саша: Ошибка сети!";
-        console.error(err);
       }
       container.scrollTop = container.scrollHeight;
     }
