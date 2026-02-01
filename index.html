@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>AlexanderDev - Sasha AI Final Fix</title>
+  <title>AlexanderDev - Sasha AI Final</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; }
     header { 
@@ -57,7 +57,7 @@
   </section>
 
   <div id="chat-box">
-    <div id="messages"><div class="msg ai-msg">Саша: Бро, биллинг настроен, я на связи. Пиши!</div></div>
+    <div id="messages"><div class="msg ai-msg">Саша: Здарова! Я снова на базе. Всё починили, теперь я и говорю, и думаю. Жду твой месседж!</div></div>
     <div class="input-row">
       <input type="text" id="msg-input" placeholder="Напиши Саше...">
       <button id="send-btn">SEND</button>
@@ -78,19 +78,19 @@
     const BRAINS = "Ты Саша, напарник Александра. Эксперт в Unity. Отвечай кратко, как бро.";
     let sashaMesh, isSpeaking = false;
 
-    // --- ГОЛОС ---
+    // --- ГОЛОС (FIXED) ---
     function speak(text) {
       window.speechSynthesis.cancel();
       const ut = new SpeechSynthesisUtterance(text);
       ut.lang = 'ru-RU';
-      const voices = window.speechSynthesis.getVoices();
-      ut.voice = voices.find(v => v.lang.includes('ru')) || voices[0];
+      ut.rate = 1.0;
+      ut.pitch = 1.0;
       ut.onstart = () => { isSpeaking = true; };
       ut.onend = () => { isSpeaking = false; };
       window.speechSynthesis.speak(ut);
     }
 
-    // --- 3D МОДЕЛЬ (САША НА БАЗЕ) ---
+    // --- 3D МОДЕЛЬ ---
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 500, 0.1, 1000);
     camera.position.z = 4;
@@ -108,103 +108,62 @@
         requestAnimationFrame(animate);
         if(sashaMesh) {
           sashaMesh.rotation.y = Math.sin(Date.now() * 0.0005) * 0.1;
-          sashaMesh.scale.y = isSpeaking ? (1.6 + Math.sin(Date.now() * 0.06) * 0.1) : 1.6;
+          sashaMesh.scale.y = isSpeaking ? (1.6 + Math.sin(Date.now() * 0.1) * 0.05) : 1.6;
         }
         renderer.render(scene, camera);
       }
       animate();
     });
 
-    // --- ФУНКЦИЯ ОТПРАВКИ (ОБЪЕДИНЕННАЯ) ---
-async function sendMessage() 
-{
-  const input = document.getElementById('msg-input');
-  const text = input.value.trim();
-  if (!text) return;
-  
-  const container = document.getElementById('messages');
-  container.innerHTML += `<div class="msg user-msg">${text}</div>`;
-  input.value = '';
-  
-  const loading = document.createElement('div');
-  loading.className = 'msg ai-msg';
-  loading.innerText = 'Саша думает...';
-  container.appendChild(loading);
-  container.scrollTop = container.scrollHeight;
+    // --- ФУНКЦИЯ ОТПРАВКИ ---
+    async function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      const container = document.getElementById('messages');
+      container.innerHTML += `<div class="msg user-msg">${text}</div>`;
+      input.value = '';
+      
+      const loading = document.createElement('div');
+      loading.className = 'msg ai-msg';
+      loading.innerText = 'Саша думает...';
+      container.appendChild(loading);
+      container.scrollTop = container.scrollHeight;
 
-  // ТОЧНЫЙ URL ДЛЯ GEMINI 1.5 FLASH (v1beta)
-  const FINAL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
-  try {
-    const response = await fetch(FINAL_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: BRAINS + "\nВопрос от Александра: " + text }]
-        }]
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.candidates && data.candidates[0].content.parts[0].text) {
-      const reply = data.candidates[0].content.parts[0].text;
-      loading.innerText = "Саша: " + reply;
-      speak(reply);
-    } else {
-      // Если всё равно ошибка, выводим её текст прямо в чат для диагностики
-      const errorMsg = data.error ? data.error.message : "Неизвестная ошибка";
-      loading.innerText = "Саша: Бро, пришел ответ с ошибкой: " + errorMsg;
-      console.error("DEBUG API:", data);
-    }
-  } catch (err) {
-    loading.innerText = "Саша: Ошибка сети. Проверь интернет или VPN.";
-    console.error("NETWORK ERROR:", err);
-  }
-  container.scrollTop = container.scrollHeight;
-}
-Почему мы оставили v1beta?
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: BRAINS + "\nВопрос: " + text }] }]
+          })
+        });
 
         const data = await response.json();
 
-        if (data.error) {
-          throw new Error(data.error.message);
+        if (response.ok && data.candidates) {
+          const reply = data.candidates[0].content.parts[0].text;
+          loading.innerText = "Саша: " + reply;
+          speak(reply);
+        } else {
+          loading.innerText = "Саша: Ошибка API. Код: " + (data.error ? data.error.status : "Unknown");
         }
-
-        const reply = data.candidates[0].content.parts[0].text;
-        loading.innerText = "Саша: " + reply;
-        speak(reply);
-
       } catch (err) {
-        console.warn("Flash не ответил, пробую Pro версию...", err);
-        try {
-          const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
-          const res2 = await fetch(fallbackUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: BRAINS + "\nВопрос: " + text }] }]
-            })
-          });
-          const data2 = await res2.json();
-          const reply2 = data2.candidates[0].content.parts[0].text;
-          loading.innerText = "Саша: " + reply2;
-          speak(reply2);
-        } catch (finalErr) {
-          loading.innerText = "Саша: Бро, ошибка 404/API. Проверь статус ключа в Google Studio.";
-          console.error(finalErr);
-        }
+        loading.innerText = "Саша: Ошибка сети!";
+        console.error(err);
       }
       container.scrollTop = container.scrollHeight;
     }
 
-    // --- ОБРАБОТЧИКИ СОБЫТИЙ ---
     document.getElementById('send-btn').onclick = sendMessage;
     document.getElementById('msg-input').onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
   </script>
 </body>
 </html>
+
 
 
 
