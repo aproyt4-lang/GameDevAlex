@@ -116,7 +116,7 @@
     });
 
     // --- ФУНКЦИЯ ОТПРАВКИ ---
-    async function sendMessage() {
+  async function sendMessage() {
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
       if (!text) return;
@@ -131,7 +131,8 @@
       container.appendChild(loading);
       container.scrollTop = container.scrollHeight;
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+      // ИЗМЕНЕНО: Добавили -latest, чтобы убрать NOT_FOUND
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
       try {
         const response = await fetch(url, {
@@ -141,6 +142,39 @@
             contents: [{ parts: [{ text: BRAINS + "\nВопрос: " + text }] }]
           })
         });
+
+        const data = await response.json();
+
+        if (response.ok && data.candidates && data.candidates[0].content) {
+          const reply = data.candidates[0].content.parts[0].text;
+          loading.innerText = "Саша: " + reply;
+          speak(reply);
+        } else {
+          // Если снова 404, попробуем совсем старый добрый gemini-pro
+          console.warn("Flash-latest не найден, пробуем запасной вариант...");
+          const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
+          const res2 = await fetch(fallbackUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: BRAINS + "\nВопрос: " + text }] }]
+            })
+          });
+          const data2 = await res2.json();
+          if (res2.ok) {
+            const reply2 = data2.candidates[0].content.parts[0].text;
+            loading.innerText = "Саша: " + reply2;
+            speak(reply2);
+          } else {
+            loading.innerText = "Саша: Бро, Google не видит модели. Проверь регион в настройках ключа.";
+          }
+        }
+      } catch (err) {
+        loading.innerText = "Саша: Ошибка сети!";
+        console.error(err);
+      }
+      container.scrollTop = container.scrollHeight;
+    }
 
         const data = await response.json();
 
@@ -163,6 +197,7 @@
   </script>
 </body>
 </html>
+
 
 
 
