@@ -113,7 +113,7 @@
     });
 
     // --- ЛОГИКА ЧАТА (БЕЗ ОШИБОК) ---
-    async function sendMessage() {
+  async function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text) return;
@@ -128,18 +128,47 @@
   container.appendChild(loading);
   container.scrollTop = container.scrollHeight;
 
-  // Используем v1beta и модель flash
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${"AIzaSyC3hNnAMXw6bRYwTAxtAS-ZNeOrDfUqCSg"}`;
+  // ОБНОВЛЕННЫЙ URL (Мы убрали v1beta и поставили v1 — это сейчас стабильнее для Flash)
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: BRAINS + "\n" + text }] }]
+        contents: [{ parts: [{ text: BRAINS + "\nОтвечай как бро. Вопрос: " + text }] }]
       })
     });
 
+    const data = await response.json();
+
+    if (response.ok && data.candidates) {
+      const reply = data.candidates[0].content.parts[0].text;
+      loading.innerText = "Саша: " + reply;
+      speak(reply);
+    } else {
+      // Если модель всё равно "не найдена", пробуем "gemini-pro" — он есть везде
+      console.warn("Flash не прошел, пробую Pro...");
+      const fallbackUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${"AIzaSyC3hNnAMXw6bRYwTAxtAS-ZNeOrDfUqCSg"}`;
+      const res2 = await fetch(fallbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: BRAINS + "\n" + text }] }] })
+      });
+      const data2 = await res2.json();
+      
+      if (res2.ok) {
+        loading.innerText = "Саша: " + data2.candidates[0].content.parts[0].text;
+        speak(data2.candidates[0].content.parts[0].text);
+      } else {
+        loading.innerText = "Саша: Ошибка API (" + (data.error ? data.error.message : "Not Found") + ")";
+      }
+    }
+  } catch (err) {
+    loading.innerText = "Саша: Ошибка сети! Проверь VPN.";
+  }
+  container.scrollTop = container.scrollHeight;
+}
     const data = await response.json();
 
     if (response.ok && data.candidates) {
@@ -179,6 +208,7 @@
   </script>
 </body>
 </html>
+
 
 
 
