@@ -114,34 +114,50 @@
 
     // --- ЛОГИКА ЧАТА (БЕЗ ОШИБОК) ---
     async function sendMessage() {
-      const input = document.getElementById('msg-input');
-      const text = input.value.trim();
-      if (!text) return;
-      
-      const container = document.getElementById('messages');
-      container.innerHTML += `<div class="msg user-msg">${text}</div>`;
-      input.value = '';
-      
-      const loading = document.createElement('div');
-      loading.className = 'msg ai-msg';
-      loading.innerText = 'Саша думает...';
-      container.appendChild(loading);
-      container.scrollTop = container.scrollHeight;
-      
-     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${"AIzaSyC3hNnAMXw6bRYwTAxtAS-ZNeOrDfUqCSg"}`;
-     /*const models = [
-       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-        "gemini-1.5-flash-latest",
-        /*"gemini-1.5-flash",
-      ];*/
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: BRAINS + "\nВопрос: " + text }] }]
-          })
-        });
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const container = document.getElementById('messages');
+  container.innerHTML += `<div class="msg user-msg">${text}</div>`;
+  input.value = '';
+  
+  const loading = document.createElement('div');
+  loading.className = 'msg ai-msg';
+  loading.innerText = 'Саша думает...';
+  container.appendChild(loading);
+  container.scrollTop = container.scrollHeight;
+
+  // Используем v1beta и модель flash
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${"AIzaSyC3hNnAMXw6bRYwTAxtAS-ZNeOrDfUqCSg"}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: BRAINS + "\n" + text }] }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.candidates) {
+      const reply = data.candidates[0].content.parts[0].text;
+      loading.innerText = "Саша: " + reply;
+      speak(reply);
+    } else {
+      // Если Google вернул ошибку (например, ключ не тот)
+      loading.innerText = "Саша: Ошибка API: " + (data.error ? data.error.message : "Неизвестно");
+      console.error("Гугол ругается:", data);
+    }
+  } catch (err) {
+    // ВОТ ТУТ МЫ ПОЙМЕМ, ПОЧЕМУ ОН "ДУМАЕТ" ВЕЧНО
+    loading.innerText = "Саша: Бро, запрос даже не ушел. Включи VPN или проверь консоль F12. Скорее всего, твой провайдер блокирует Google API.";
+    console.error("Ошибка сети:", err);
+  }
+  container.scrollTop = container.scrollHeight;
+}
 
         const data = await response.json();
 
@@ -163,6 +179,7 @@
   </script>
 </body>
 </html>
+
 
 
 
