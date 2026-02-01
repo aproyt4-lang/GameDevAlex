@@ -127,12 +127,13 @@
       loading.innerText = 'Саша думает...';
       container.appendChild(loading);
       container.scrollTop = container.scrollHeight;
-
-     const models = [
+      
+     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${AIzaSyC3hNnAMXw6bRYwTAxtAS-ZNeOrDfUqCSg}`;
+     /*const models = [
        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
         "gemini-1.5-flash-latest",
-        /*"gemini-1.5-flash",*/
-      ];
+        /*"gemini-1.5-flash",
+      ];*/
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -162,6 +163,7 @@
   </script>
 </body>
 </html>
+
 
 
 
