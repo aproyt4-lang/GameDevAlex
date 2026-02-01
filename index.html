@@ -1,188 +1,191 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AlexanderDev - SashaAI</title>
-  <style>
-    body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #1c1c1c; color: #fff; scroll-behavior: smooth; }
-    header { background: #111; padding: 1rem 2rem; border-bottom: 2px solid #00d8ff; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-    header h1 { color: #00d8ff; margin: 0; font-size: 22px; text-transform: uppercase; }
-    .nav-right { display: flex; gap: 15px; }
-    .nav-link { color: #fff; text-decoration: none; font-weight: bold; padding: 8px 16px; border-radius: 6px; border: 1px solid transparent; transition: 0.3s; }
-    .nav-link:hover { border-color: #00d8ff; color: #00d8ff; background: rgba(0,216,255,0.1); }
-    .hero { position: relative; text-align: center; height: 500px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151515; overflow: hidden; }
-    .hero-ui { position: relative; z-index: 10; }
-    .hero h2 { font-size: 38px; margin: 0; text-shadow: 0 0 15px rgba(0,216,255,0.5); }
-    .hero p { color: #ccc; margin: 10px 0 25px; font-size: 18px; }
-    #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-    .btn-ads { display: inline-block; padding: 14px 28px; background: #00d8ff; color: #000; font-weight: bold; border-radius: 50px; text-decoration: none; transition: 0.3s; border: 2px solid #00d8ff; }
-    .btn-ads:hover { background: transparent; color: #00d8ff; transform: scale(1.05); box-shadow: 0 0 20px #00d8ff; }
-    .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 20px; max-width: 1200px; margin: 0 auto; }
-    .card { background: #222; padding: 30px; border-radius: 15px; border: 1px solid #333; transition: 0.3s; }
-    .card:hover { border-color: #00d8ff; transform: translateY(-10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .card h3 { color: #00d8ff; margin-top: 0; }
-    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 320px; height: 420px; background: rgba(15,15,15,0.98); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
-    #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
-    .msg { padding: 10px 14px; border-radius: 12px; max-width: 80%; line-height: 1.4; white-space: pre-wrap; }
-    .ai-msg { background: #2a2a2a; color: #00d8ff; align-self: flex-start; }
-    .user-msg { background: #00d8ff; color: #000; align-self: flex-end; font-weight: bold; }
-    .input-row { display: flex; padding: 15px; border-top: 1px solid #333; }
-    #msg-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; outline: none; }
-    #send-btn { background: #00d8ff; border: none; padding: 0 15px; margin-left: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sasha AI - Autonomous Agent</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #121212; color: #fff; overflow-x: hidden; }
+        header { background: #000; padding: 15px 30px; border-bottom: 2px solid #00d8ff; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { color: #00d8ff; margin: 0; font-size: 20px; letter-spacing: 2px; }
+        .hero { position: relative; height: 500px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
+        #three-canvas { width: 100%; height: 100%; outline: none; }
+        
+        #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 450px; background: rgba(20,20,20,0.95); border: 2px solid #00d8ff; border-radius: 15px; display: flex; flex-direction: column; backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,216,255,0.2); z-index: 1000; }
+        #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; scroll-behavior: smooth; }
+        .msg { padding: 10px 15px; border-radius: 10px; max-width: 85%; line-height: 1.4; word-wrap: break-word; }
+        .ai-msg { background: #1e1e1e; color: #00d8ff; align-self: flex-start; border-left: 3px solid #00d8ff; }
+        .user-msg { background: #00d8ff; color: #000; align-self: flex-end; font-weight: bold; }
+        
+        .input-area { display: flex; padding: 15px; border-top: 1px solid #333; }
+        #msg-input { flex: 1; background: #000; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 5px; outline: none; }
+        #send-btn { background: #00d8ff; border: none; padding: 0 20px; margin-left: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        #send-btn:hover { background: #fff; box-shadow: 0 0 15px #00d8ff; }
+        
+        /* Эффект загрузки */
+        .typing { font-style: italic; color: #555; font-size: 12px; margin-left: 15px; display: none; }
+    </style>
 </head>
 <body>
 
-  <header>
-    <h1>AlexanderDev</h1>
-    <div class="nav-right">
-      <a href="#projects-section" class="nav-link">Проекты</a>
-      <a href="mailto:alex@dev.com" class="nav-link">Контакты</a>
-    </div>
-  </header>
+<header>
+    <h1>ALEXANDER DEV <span style="color:#fff">| SASHA AI</span></h1>
+</header>
 
-  <section class="hero">
-    <div class="hero-ui">
-      <h2>SashaAI & GameDev</h2>
-      <p>Создаю игры, 3D и обучаю нейросети.</p>
-      <a href="#" class="btn-ads">Создать рекламную компанию</a>
-    </div>
+<section class="hero">
     <canvas id="three-canvas"></canvas>
-  </section>
+</section>
 
-  <div id="chat-box">
-    <div id="messages"><div class="msg ai-msg">SashaAI: Привет! Я готов. Обучи меня C#, C++ или Python, либо просто задай вопрос по геймдеву!</div></div>
-    <div class="input-row">
-      <input type="text" id="msg-input" placeholder="Напиши что-нибудь...">
-      <button id="send-btn">-></button>
+<div id="chat-box">
+    <div id="messages">
+        <div class="msg ai-msg">Саша: Система онлайн. Жду твоих указаний, Александр. Напиши что-нибудь, и я отвечу голосом!</div>
     </div>
-  </div>
+    <div class="typing" id="status">Саша думает...</div>
+    <div class="input-area">
+        <input type="text" id="msg-input" placeholder="Введите команду или вопрос...">
+        <button id="send-btn">SEND</button>
+    </div>
+</div>
 
-  <section id="projects-section" class="projects-grid">
-    <div class="card"><h3>War of Tanks</h3><p>Шутер на Unity с физикой разрушений.</p></div>
-    <div class="card"><h3>J.A.R.V.I.S. AI</h3><p>Система ИИ для управления умным домом.</p></div>
-    <div class="card"><h3>Blender Plugin</h3><p>Автоматизация текстурирования в 3D.</p></div>
-  </section>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+    // --- КОНФИГУРАЦИЯ ---
+    const API_KEY = "AIzaSyCp4i-hZJWa7750aSuPnu0-mzGe6Mzp3_Q"; // Твой ключ внедрен
+    const MODEL_URL = 'https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb';
+    
+    let sashaMesh;
+    let audioContext, analyser, dataArray;
+    let isSpeaking = false;
 
-  <script>
-    // 1. ИНИЦИАЛИЗАЦИЯ
-    let sashaBrain = {};
-    const baseKnowledge = {
-        movement: `using UnityEngine;\n\npublic class PlayerMove : MonoBehaviour {\n    public float speed = 6.0f;\n    private CharacterController controller;\n    void Update() {\n        Vector3 move = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));\n        GetComponent<CharacterController>().Move(move * speed * Time.deltaTime);\n    }\n}`
-    };
-
-    try {
-        sashaBrain = JSON.parse(localStorage.getItem('sasha_core_memory')) || {};
-    } catch (e) { sashaBrain = {}; }
-
-    function speak(text) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'ru-RU';
-        window.speechSynthesis.speak(msg);
-      }
-    }
-
-    // 2. 3D МОДЕЛЬ (Твой фронтенд)
+    // --- ИНИЦИАЛИЗАЦИЯ THREE.JS ---
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 450, 0.1, 1000);
-    camera.position.z = 5;
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, 450);
-    scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 500, 0.1, 1000);
+    camera.position.set(0, 0.5, 3);
 
-    new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
-      const model = gltf.scene;
-      model.scale.set(1.5, 1.5, 1.5); model.position.y = -0.8;
-      scene.add(model);
-      function animate() { requestAnimationFrame(animate); model.rotation.y += 0.01; renderer.render(scene, camera); }
-      animate();
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, 500);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+    const pointLight = new THREE.PointLight(0x00d8ff, 2);
+    pointLight.position.set(2, 2, 2);
+    scene.add(pointLight);
+
+    new THREE.GLTFLoader().load(MODEL_URL, (gltf) => {
+        sashaMesh = gltf.scene;
+        sashaMesh.scale.set(1.8, 1.8, 1.8);
+        sashaMesh.position.y = -1;
+        scene.add(sashaMesh);
+        animate();
     });
 
-    // 3. УМНАЯ ЛОГИКА (Фильтр кода vs Беседа)
-    async function handleSend() {
-      const input = document.getElementById('msg-input');
-      const box = document.getElementById('messages');
-      const text = input.value.trim();
-      if (!text) return;
-
-      box.innerHTML += `<div class="msg user-msg">${text}</div>`;
-      input.value = '';
-      
-      let lowText = text.toLowerCase();
-      let response = "";
-
-      // ПРОВЕРКА: Это код или охинея?
-      const codeMarkers = ["{", "}", ";", "void", "public", "static", "class", "import", "def ", "#include"];
-      const isCodeLike = codeMarkers.some(marker => text.includes(marker));
-      
-      if (isCodeLike) {
-          // Валидация структуры (чтобы не учить охинею)
-          const bracketBalance = (text.split('{').length === text.split('}').length);
-          const tooShort = text.length < 15;
-
-          if (!bracketBalance || tooShort) {
-              response = "⚠️ Это похоже на код, но в нем есть ошибки структуры или это бессмысленный набор символов. Я не буду это учить.";
-          } else {
-              // Определяем язык
-              let lang = "C#";
-              if (text.includes("#include") || text.includes("std::")) lang = "C++";
-              else if (text.includes("def ") || text.includes("import ")) lang = "Python";
-              else if (text.includes("using Unity") || text.includes("MonoBehaviour")) lang = "C# (Unity)";
-
-              let className = text.match(/(?:class|def)\s+(\w+)/)?.[1] || "Module_" + Math.floor(Math.random()*100);
-              sashaBrain[className.toLowerCase()] = { code: text, lang: lang };
-              
-              if (lowText.includes("move") || lowText.includes("ходьб")) sashaBrain["_last_move"] = text;
-              
-              localStorage.setItem('sasha_core_memory', JSON.stringify(sashaBrain));
-              response = `✅ Я распознал и выучил модуль на ${lang}: "${className}".`;
-          }
-      } 
-      // ЕСЛИ ЭТО ЗАПРОС КОДА ИЛИ ОБЫЧНЫЙ ТЕКСТ
-      else {
-          const needsCode = ["дай", "сделай", "напиши", "код", "скрипт", "создай"].some(w => lowText.includes(w));
-          const aboutMove = ["ходьб", "движ", "персонаж", "move"].some(w => lowText.includes(w));
-
-          if (needsCode && aboutMove) {
-              response = sashaBrain["_last_move"] || "Держи мой базовый C# скрипт ходьбы:\n\n" + baseKnowledge.movement;
-          } else if (lowText.includes("привет") || lowText.includes("саша")) {
-              response = "Привет! Я на связи. Могу обсудить геймдев или выучить новый скрипт. Что на уме?";
-          } else if (lowText.includes("удали") || lowText.includes("очисти")) {
-              localStorage.removeItem('sasha_core_memory');
-              sashaBrain = {};
-              response = "Память очищена. Я готов к новому обучению!";
-          } else {
-              // Рандомные ответы для беседы
-              const replies = [
-                  "Интересная мысль! А как это поможет в разработке?",
-                  "Я тебя понял. Если понадобится код — я рядом.",
-                  "Это не похоже на код, но звучит любопытно.",
-                  "Да, геймдев — штука тонкая. Есть еще вопросы?",
-                  "Я пока не нашел такого в своей памяти, но могу запомнить, если дашь пример!"
-              ];
-              response = replies[Math.floor(Math.random() * replies.length)];
-          }
-      }
-
-      setTimeout(() => {
-        box.innerHTML += `<div class="msg ai-msg">${response}</div>`;
-        speak(response.substring(0, 100));
-        box.scrollTop = box.scrollHeight;
-      }, 250);
-      box.scrollTop = box.scrollHeight;
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        if (sashaMesh) {
+            // Легкое покачивание (эффект дыхания)
+            sashaMesh.position.y = -1 + Math.sin(Date.now() * 0.001) * 0.02;
+            
+            // ПРОГРАММНЫЙ ЛИПСИНК (Без Блендера)
+            if (isSpeaking && analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                let volume = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                let scaleShift = volume / 150; // Настраиваем чувствительность
+                sashaMesh.scale.y = 1.8 + scaleShift; // Растягиваем голову по вертикали в такт звуку
+            } else {
+                sashaMesh.scale.y = THREE.MathUtils.lerp(sashaMesh.scale.y, 1.8, 0.1);
+            }
+        }
+        renderer.render(scene, camera);
     }
 
-    document.getElementById('send-btn').onclick = handleSend;
-    document.getElementById('msg-input').onkeypress = (e) => { if(e.key==='Enter') handleSend(); };
-  </script>
+    // --- ЛОГИКА ГОЛОСА И АНАЛИЗА ЗВУКА ---
+    function initAudio() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+    }
+
+    function speak(text) {
+        initAudio();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 1.0;
+
+        utterance.onstart = () => { isSpeaking = true; };
+        utterance.onend = () => { isSpeaking = false; };
+
+        // Соединяем синтезатор с анализатором (хак для браузера)
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // --- СВЯЗЬ С GEMINI API ---
+    async function getGeminiResponse(userPrompt) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        
+        const requestBody = {
+            contents: [{
+                parts: [{ text: `Ты - Саша, продвинутый AI-ассистент Александра. 
+                Ты эксперт в Unity, C# и маркетинге. 
+                Твоя задача: отвечать четко, иногда с юмором, как бро. 
+                Если пользователь пишет белиберду, скажи что это не код.
+                Отвечай кратко, чтобы было удобно слушать.
+                Запрос пользователя: ${userPrompt}` }]
+            }]
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        } catch (error) {
+            return "Бро, возникла ошибка в нейронных связях. Проверь консоль.";
+        }
+    }
+
+    // --- ОБРАБОТКА ЧАТА ---
+    async function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const box = document.getElementById('messages');
+        const status = document.getElementById('status');
+        const text = input.value.trim();
+
+        if (!text) return;
+
+        box.innerHTML += `<div class="msg user-msg">${text}</div>`;
+        input.value = '';
+        status.style.display = 'block';
+        box.scrollTop = box.scrollTop = box.scrollHeight;
+
+        const aiResponse = await getGeminiResponse(text);
+        
+        status.style.display = 'none';
+        box.innerHTML += `<div class="msg ai-msg">Саша: ${aiResponse}</div>`;
+        box.scrollTop = box.scrollHeight;
+
+        speak(aiResponse);
+    }
+
+    document.getElementById('send-btn').onclick = sendMessage;
+    document.getElementById('msg-input').onkeypress = (e) => { if(e.key==='Enter') sendMessage(); };
+
+    window.addEventListener('resize', () => {
+        renderer.setSize(window.innerWidth, 500);
+        camera.aspect = window.innerWidth / 500;
+        camera.updateProjectionMatrix();
+    });
+</script>
+
 </body>
 </html>
+
 
 
 
