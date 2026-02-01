@@ -60,7 +60,7 @@
 
   <script>
     // --- ПОДКЛЮЧЕНИЕ API КЕЙ ---
-    const API_KEY = "AIzaSyCp4i-hZJWa7750aSuPnu0-mzGe6Mzp3_Q"; 
+    const API_KEY = ""AIzaSyCp4i-hZJWa7750aSuPnu0-mzGe6Mzp3_Q"; 
 
     // --- МОЗГИ (ИНСТРУКЦИИ ДЛЯ GEMINI) ---
     const SASHA_PROMPT = "Ты - Саша, искусственный интеллект и напарник Александра. Ты эксперт в Unity, C#, Blender и маркетинге игр. Твой стиль общения: уверенный, немного дерзкий, профессиональный, как бро. Ты всегда поддерживаешь Александра и помогаешь ему с кодом или трафиком. Отвечай кратко, но по делу.";
@@ -111,7 +111,7 @@
       const input = document.getElementById('msg-input');
       const box = document.getElementById('messages');
       const text = input.value.trim();
-      if (!text || API_KEY.includes("ВСТАВЬ")) return;
+      if (!text || API_KEY.includes(""AIzaSyCp4i-hZJWa7750aSuPnu0-mzGe6Mzp3_Q")) return;
 
       box.innerHTML += `<div class="msg user-msg">${text}</div>`;
       input.value = '';
@@ -141,6 +141,7 @@
   </script>
 </body>
 </html>
+
 
 
 
