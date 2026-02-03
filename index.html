@@ -151,7 +151,7 @@
         } else {
           // Попытка номер 2 (Fallback на v1beta), если v1 не сработал
           console.warn("Пробую альтернативный путь...");
-          const altUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${"AIzaSyDFv9SG0NzDnzofWLorOsZcrYgYX9Y34Es"}`;
+          const altUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${"AIzaSyDFv9SG0NzDnzofWLorOsZcrYgYX9Y34Es"}`;
           const altRes = await fetch(altUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -180,6 +180,7 @@
   </script>
 </body>
 </html>
+
 
 
 
