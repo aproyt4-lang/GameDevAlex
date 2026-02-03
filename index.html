@@ -128,6 +128,11 @@
       loading.innerText = 'Саша думает...';
       container.appendChild(loading);
 
+      const endpoints = [
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`
+      ];
+
       let success = false;
       for (let url of endpoints) {
         if (success) break;
@@ -155,6 +160,7 @@
   </script>
 </body>
 </html>
+
 
 
 
