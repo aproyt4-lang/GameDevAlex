@@ -2,35 +2,14 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>AlexanderDev - Sasha AI Final Fix</title>
+  <title>AlexanderDev - Sasha AI FINAL</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; }
-    header { 
-      background: #111; padding: 1rem 3rem; border-bottom: 2px solid #00d8ff; 
-      display: flex; justify-content: space-between; align-items: center; 
-      position: sticky; top: 0; z-index: 1000;
-    }
+    header { background: #111; padding: 1rem 3rem; border-bottom: 2px solid #00d8ff; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
     header h1 { color: #00d8ff; margin: 0; font-size: 24px; text-transform: uppercase; }
-    .nav-links { display: flex; gap: 20px; }
-    .nav-links a { color: #fff; text-decoration: none; font-weight: bold; transition: 0.3s; padding: 5px 10px; }
-    .nav-links a:hover { color: #00d8ff; text-shadow: 0 0 10px #00d8ff; }
-
     .hero { position: relative; height: 500px; display: flex; justify-content: center; align-items: center; background: #111; }
     #three-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; }
-    .hero-ui { position: relative; z-index: 10; text-align: center; pointer-events: none; }
-    .btn-ads { 
-      pointer-events: auto; display: inline-block; padding: 14px 28px; 
-      background: #00d8ff; color: #000; font-weight: bold; border-radius: 50px; 
-      text-decoration: none; transition: 0.3s; box-shadow: 0 0 15px #00d8ff; 
-    }
-    .btn-ads:hover { transform: scale(1.1); background: #fff; }
-
-    .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; padding: 50px; max-width: 1200px; margin: 0 auto; }
-    .card { background: #1a1a1a; padding: 30px; border-radius: 15px; border: 1px solid #333; transition: 0.4s; cursor: pointer; }
-    .card:hover { border-color: #00d8ff; transform: translateY(-12px); box-shadow: 0 15px 35px rgba(0, 216, 255, 0.25); }
-    .card h3 { color: #00d8ff; margin: 0 0 10px 0; }
-
-    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 550px; background: rgba(10,10,10,0.98); border: 2px solid #00d8ff; border-radius: 20px; display: flex; flex-direction: column; z-index: 2000; }
+    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 550px; background: rgba(10,10,10,0.98); border: 2px solid #00d8ff; border-radius: 20px; display: flex; flex-direction: column; z-index: 2000; box-shadow: 0 0 20px rgba(0,216,255,0.3); }
     #key-wrapper { padding: 10px; border-bottom: 1px solid #333; }
     #api-key-input { width: 90%; background: #222; border: 1px solid #00d8ff; color: #00d8ff; padding: 8px; border-radius: 5px; font-size: 12px; outline: none; }
     #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -43,56 +22,32 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>AlexanderDev</h1>
-    <div class="nav-links">
-      <a href="#projects-grid">ПРОЕКТЫ</a>
-      <a href="#">КОНТАКТЫ</a>
-    </div>
-  </header>
 
-  <section class="hero">
-    <canvas id="three-canvas"></canvas>
-    <div class="hero-ui">
-      <a href="#" class="btn-ads">СОЗДАТЬ РЕКЛАМНУЮ КАМПАНИЮ</a>
-    </div>
-  </section>
+  <header><h1>AlexanderDev</h1></header>
+
+  <section class="hero"><canvas id="three-canvas"></canvas></section>
 
   <div id="chat-box">
-    <div id="key-wrapper">
-      <input type="password" id="api-key-input" placeholder="Вставь API Key сюда">
-    </div>
-    <div id="messages"><div class="msg ai-msg">Саша: Бро, ключ вставь и погнали!</div></div>
+    <div id="key-wrapper"><input type="password" id="api-key-input" placeholder="Вставь API ключ здесь"></div>
+    <div id="messages"><div class="msg ai-msg">Саша: Здорово! Вставь ключ, вруби VPN и погнали тестить.</div></div>
     <div class="input-row">
       <input type="text" id="msg-input" placeholder="Напиши Саше...">
       <button id="send-btn">SEND</button>
     </div>
   </div>
 
-  <section id="projects-grid" class="projects-grid">
-    <div class="card"><h3>War of Tanks</h3><p>Шутер на Unity.</p></div>
-    <div class="card"><h3>J.A.R.V.I.S. AI</h3><p>Твой ассистент.</p></div>
-    <div class="card"><h3>Blender Tools</h3><p>Плагины для 3D.</p></div>
-  </section>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    const BRAINS = "Ты Саша, напарник Александра. Эксперт в Unity. Отвечай кратко, как бро.";
+    const BRAINS = "Ты Саша, напарник Александра. Эксперт в Unity. Отвечай кратко, дерзко, как бро.";
     let sashaMesh, isSpeaking = false;
 
     function speak(text) {
       window.speechSynthesis.cancel();
       const ut = new SpeechSynthesisUtterance(text);
       ut.lang = 'ru-RU';
-      
-      const voices = window.speechSynthesis.getVoices();
-      // Пробуем найти мужской голос, если нет - любой русский
-      const sashaVoice = voices.find(v => v.lang.includes('ru') && v.name.includes('Microsoft Pavel')) || voices.find(v => v.lang.includes('ru'));
-      if (sashaVoice) ut.voice = sashaVoice;
-
-      ut.pitch = 0.9;
+      ut.pitch = 0.8;
       ut.onstart = () => { isSpeaking = true; };
       ut.onend = () => { isSpeaking = false; };
       window.speechSynthesis.speak(ut);
@@ -128,7 +83,7 @@
       const API_KEY = keyInput.value.trim();
       const text = msgInput.value.trim();
 
-      if (!API_KEY) { alert("Вставь API ключ!"); return; }
+      if (!API_KEY) { alert("Ключ забыл, бро!"); return; }
       if (!text) return;
 
       const container = document.getElementById('messages');
@@ -141,45 +96,42 @@
       container.appendChild(loading);
       container.scrollTop = container.scrollHeight;
 
-      // Используем v1beta/models/gemini-1.5-flash-latest - самая пробивная ссылка
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+      // ПЕРЕБОР ВЕРСИЙ: пробуем v1beta, если не катит - v1
+      const endpoints = [
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`
+      ];
 
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: BRAINS + "\n" + text }] }]
-          })
-        });
+      let success = false;
+      for (let url of endpoints) {
+        if (success) break;
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: BRAINS + "\n" + text }] }] })
+          });
+          const data = await response.json();
+          if (response.ok && data.candidates) {
+            const reply = data.candidates[0].content.parts[0].text;
+            loading.innerText = "Саша: " + reply;
+            speak(reply);
+            success = true;
+          }
+        } catch (e) { console.error("Путь не подошел:", url); }
+      }
 
-        const data = await response.json();
-
-        if (response.ok && data.candidates) {
-          const reply = data.candidates[0].content.parts[0].text;
-          loading.innerText = "Саша: " + reply;
-          speak(reply);
-        } else {
-          const err = data.error ? data.error.message : "Ошибка";
-          loading.innerText = "Саша: " + err;
-        }
-      } catch (err) {
-        loading.innerText = "Саша: Сеть легла. VPN?";
+      if (!success) {
+        loading.innerText = "Саша: Не могу пробиться. Проверь ключ и VPN!";
       }
       container.scrollTop = container.scrollHeight;
     }
 
     document.getElementById('send-btn').onclick = sendMessage;
     document.getElementById('msg-input').onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
-    window.speechSynthesis.getVoices(); // Прогрев голосов
   </script>
 </body>
 </html>
-
-
-
-
-
 
 
 
