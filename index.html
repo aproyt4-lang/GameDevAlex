@@ -75,7 +75,7 @@
 
   <script>
     // 1. КОНСТАНТЫ
-    const API_KEY = "AIzaSyDFv9SG0NzDnzofWLorOsZcrYgYX9Y34Es"; 
+    const API_KEY = ""; 
     const BRAINS = "Ты Саша, напарник Александра. Эксперт в Unity. Отвечай кратко, как бро.";
     let sashaMesh, isSpeaking = false;
 
@@ -131,7 +131,7 @@
 
       // Правильный URL для версии v1
      const API_KEY = "AIzaSyDFv9SG0NzDnzofWLorOsZcrYgYX9Y34Es"; 
-     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${"AIzaSyDFv9SG0NzDnzofWLorOsZcrYgYX9Y34Es"}`;
+     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${}`;
 
       try {
         const response = await fetch(url, {
@@ -151,7 +151,7 @@
         } else {
           // Попытка номер 2 (Fallback на v1beta), если v1 не сработал
           console.warn("Пробую альтернативный путь...");
-          const altUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${"AIzaSyDFv9SG0NzDnzofWLorOsZcrYgYX9Y34Es"}`;
+          const altUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${}`;
           const altRes = await fetch(altUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -180,6 +180,7 @@
   </script>
 </body>
 </html>
+
 
 
 
