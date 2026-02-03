@@ -30,7 +30,13 @@
     .card:hover { border-color: #00d8ff; transform: translateY(-12px); box-shadow: 0 15px 35px rgba(0, 216, 255, 0.25); }
     .card h3 { color: #00d8ff; margin: 0 0 10px 0; }
 
-    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 500px; background: rgba(10,10,10,0.98); border: 2px solid #00d8ff; border-radius: 20px; display: flex; flex-direction: column; z-index: 2000; }
+    /* ЧАТ */
+    #chat-box { position: fixed; bottom: 20px; right: 20px; width: 350px; height: 550px; background: rgba(10,10,10,0.98); border: 2px solid #00d8ff; border-radius: 20px; display: flex; flex-direction: column; z-index: 2000; }
+    
+    /* ПОЛЕ ДЛЯ КЛЮЧА (ЧТОБЫ ГИТХАБ НЕ ВИДЕЛ) */
+    #key-wrapper { padding: 10px; border-bottom: 1px solid #333; }
+    #api-key-input { width: 90%; background: #222; border: 1px solid #00d8ff; color: #00d8ff; padding: 5px; border-radius: 5px; font-size: 10px; outline: none; }
+
     #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
     .msg { padding: 12px; border-radius: 12px; font-size: 14px; max-width: 85%; word-wrap: break-word; }
     .ai-msg { background: #222; color: #00d8ff; align-self: flex-start; border-left: 4px solid #00d8ff; }
@@ -57,7 +63,10 @@
   </section>
 
   <div id="chat-box">
-    <div id="messages"><div class="msg ai-msg">Саша: Бро, я на связи! Код исправлен, жду твой месседж.</div></div>
+    <div id="key-wrapper">
+      <input type="password" id="api-key-input" placeholder="Вставь API Key сюда (Гитхаб его не увидит)">
+    </div>
+    <div id="messages"><div class="msg ai-msg">Саша: Бро, вставь ключ сверху, включи VPN и пиши мне!</div></div>
     <div class="input-row">
       <input type="text" id="msg-input" placeholder="Напиши Саше...">
       <button id="send-btn">SEND</button>
@@ -74,22 +83,26 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script>
-    // 1. КОНСТАНТЫ
-    const API_KEY = ""; 
-    const BRAINS = "Ты Саша, напарник Александра. Эксперт в Unity. Отвечай кратко, как бро.";
+    const BRAINS = "Ты Саша, напарник Александра. Эксперт в Unity. Отвечай кратко, дерзко, как бро.";
     let sashaMesh, isSpeaking = false;
 
-    // 2. ГОЛОС
+    // ИСПРАВЛЕННЫЙ ГОЛОС
     function speak(text) {
       window.speechSynthesis.cancel();
+      const voices = window.speechSynthesis.getVoices();
       const ut = new SpeechSynthesisUtterance(text);
+      
+      // Ищем мужской голос или просто ставим русский
       ut.lang = 'ru-RU';
+      ut.pitch = 0.9; 
+      ut.rate = 1.0;
+
       ut.onstart = () => { isSpeaking = true; };
       ut.onend = () => { isSpeaking = false; };
       window.speechSynthesis.speak(ut);
     }
 
-    // 3. 3D МОДЕЛЬ
+    // 3D МОДЕЛЬ
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 500, 0.1, 1000);
     camera.position.z = 4;
@@ -113,15 +126,20 @@
       animate();
     });
 
-    // 4. ЛОГИКА ЧАТА (ФИКС СИНТАКСИСА)
+    // ЛОГИКА ЧАТА ЧЕРЕЗ ИНПУТ КЛЮЧА
     async function sendMessage() {
-      const input = document.getElementById('msg-input');
-      const text = input.value.trim();
+      const keyInput = document.getElementById('api-key-input');
+      const msgInput = document.getElementById('msg-input');
+      
+      const API_KEY = keyInput.value.trim();
+      const text = msgInput.value.trim();
+
+      if (!API_KEY) { alert("Вставь API ключ в верхнее поле!"); return; }
       if (!text) return;
       
       const container = document.getElementById('messages');
       container.innerHTML += `<div class="msg user-msg">${text}</div>`;
-      input.value = '';
+      msgInput.value = '';
       
       const loading = document.createElement('div');
       loading.className = 'msg ai-msg';
@@ -129,9 +147,7 @@
       container.appendChild(loading);
       container.scrollTop = container.scrollHeight;
 
-      // Правильный URL для версии v1
-     const API_KEY = "AIzaSyDFv9SG0NzDnzofWLorOsZcrYgYX9Y34Es"; 
-     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${}`;
+      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
       try {
         const response = await fetch(url, {
@@ -147,36 +163,21 @@
         if (response.ok && data.candidates) {
           const reply = data.candidates[0].content.parts[0].text;
           loading.innerText = "Саша: " + reply;
-          speak(reply);
+          speak(reply); // Теперь голос сработает на клик
         } else {
-          // Попытка номер 2 (Fallback на v1beta), если v1 не сработал
-          console.warn("Пробую альтернативный путь...");
-          const altUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${}`;
-          const altRes = await fetch(altUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: BRAINS + "\n" + text }] }] })
-          });
-          const altData = await altRes.json();
-          
-          if (altRes.ok) {
-            const altReply = altData.candidates[0].content.parts[0].text;
-            loading.innerText = "Саша: " + altReply;
-            speak(altReply);
-          } else {
-            loading.innerText = "Саша: Ошибка API (" + (altData.error ? altData.error.message : "Not Found") + ")";
-          }
+          loading.innerText = "Саша: Ошибка API (" + (data.error ? data.error.message : "Неверный ключ") + ")";
         }
       } catch (err) {
         loading.innerText = "Саша: Ошибка сети! Проверь VPN.";
-        console.error(err);
       }
       container.scrollTop = container.scrollHeight;
     }
 
-    // ОБРАБОТЧИКИ
     document.getElementById('send-btn').onclick = sendMessage;
     document.getElementById('msg-input').onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+    
+    // Подгрузка голосов (фиксит баг некоторых браузеров)
+    window.speechSynthesis.getVoices();
   </script>
 </body>
 </html>
