@@ -2,247 +2,89 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Sasha AI</title>
-
+<title>Саша AI</title>
 <style>
-:root { --neon:#00d8ff; --dark:#050505; }
-html,body{
-  margin:0;padding:0;
-  background:var(--dark);
-  color:#fff;
-  font-family:Segoe UI;
-  height:100%;
-  overflow:hidden
-}
-
-#sasha-viewport{
-  position:fixed;
-  inset:0;
-  z-index:1;
-  pointer-events:none
-}
-
-#chat-container{
-  position:fixed;
-  bottom:30px;
-  left:30px;
-  width:420px;
-  height:480px;
-  background:rgba(10,10,10,.9);
-  border-radius:10px;
-  border:1px solid var(--neon);
-  display:flex;
-  flex-direction:column;
-  z-index:10
-}
-
-#messages{
-  flex:1;
-  padding:15px;
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-  gap:10px
-}
-
-.msg{
-  padding:10px;
-  border-radius:6px;
-  max-width:85%;
-  font-size:14px;
-  white-space:pre-wrap
-}
-
-.ai{
-  background:rgba(0,216,255,.1);
-  color:var(--neon);
-  align-self:flex-start
-}
-
-.user{
-  background:#222;
-  align-self:flex-end
-}
-
-.input-row{
-  display:flex;
-  gap:8px;
-  padding:10px;
-  border-top:1px solid #333
-}
-
-input{
-  flex:1;
-  background:#000;
-  border:1px solid #444;
-  color:#fff;
-  padding:10px;
-  border-radius:5px
-}
-
-button{
-  background:#000;
-  border:1px solid var(--neon);
-  color:var(--neon);
-  padding:10px 18px;
-  cursor:pointer
-}
+body { background:#0e0e0e; color:#00ff88; font-family:monospace; }
+input { width:80%; padding:10px; background:#111; color:#0f0; }
+button { padding:10px; }
+#log { margin-top:20px; white-space:pre-wrap; }
 </style>
 </head>
-
 <body>
 
-<div id="sasha-viewport"></div>
+<h2>Саша AI (обучаемый)</h2>
 
-<div id="chat-container">
-  <div id="messages">
-    <div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
-  </div>
-  <div class="input-row">
-    <input id="user-in" placeholder="Напиши сообщение..."
-      onkeydown="if(event.key==='Enter')askSasha()">
-    <button onclick="askSasha()">SEND</button>
-  </div>
-</div>
+<input id="input" placeholder="Введи текст, код или запрос">
+<button onclick="send()">▶</button>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
+<div id="log"></div>
 
 <script>
-let sasha,isSpeaking=false,activated=false;
-const clock=new THREE.Clock();
+const memory = [];
 
-/* ===== МОЗГ (НАСТОЯЩЕЕ ОБУЧЕНИЕ) ===== */
-const SashaBrain={
-  memory: JSON.parse(localStorage.getItem("sasha_memory")) || {
-    knowledge: [],
-    mode: "normal"
-  },
+// простейший анализ
+function analyze(text) {
+  const t = text.toLowerCase();
+  const tags = [];
 
-  save(){
-    localStorage.setItem("sasha_memory", JSON.stringify(this.memory));
-  },
+  if (t.includes("class") || t.includes("{") || t.includes(";")) tags.push("code");
+  if (t.includes("player")) tags.push("player");
+  if (t.includes("move") || t.includes("walk")) tags.push("movement");
+  if (t.includes("transform")) tags.push("unity");
+  if (t.includes("input")) tags.push("control");
+  if (t.includes("c#")) tags.push("csharp");
+  if (t.includes("javascript")) tags.push("js");
 
-  extractTags(text){
-    return text
-      .toLowerCase()
-      .replace(/[^a-zа-я0-9+#]/gi," ")
-      .split(/\s+/)
-      .filter(w=>w.length>2);
-  },
-
-  process(input){
-    const text=input.trim();
-
-    /* АКТИВАЦИЯ ОБУЧЕНИЯ */
-    if(/^запомни$/i.test(text)){
-      this.memory.mode="learning";
-      this.save();
-      return "Ок. Отправь код или информацию — я сохраню.";
-    }
-
-    /* СОХРАНЕНИЕ ЗНАНИЯ */
-    if(this.memory.mode==="learning"){
-      this.memory.knowledge.push({
-        id:Date.now(),
-        text,
-        tags:this.extractTags(text),
-        date:new Date().toISOString()
-      });
-      this.memory.mode="normal";
-      this.save();
-      return "Запомнил. Могу использовать это по запросу.";
-    }
-
-    /* ЗАПРОС ДАННЫХ */
-    if(/^(дай|покажи|выведи)/i.test(text)){
-      const q=this.extractTags(text);
-      const res=this.memory.knowledge.filter(k =>
-        q.some(t=>k.tags.includes(t))
-      );
-      if(!res.length)
-        return "У меня нет такого знания. Обучи меня.";
-      return res.map((k,i)=>`📌 ${i+1}:\n${k.text}`).join("\n\n");
-    }
-
-    /* ПАМЯТЬ */
-    if(/что ты знаешь|память/i.test(text)){
-      return `В памяти ${this.memory.knowledge.length} элементов.`;
-    }
-
-    return "Готов обучаться или выдавать знания.";
-  }
-};
-
-/* ===== ГОЛОС ===== */
-function speak(text){
-  speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.rate=1;
-  u.pitch=.9;
-  speechSynthesis.speak(u);
+  return tags;
 }
 
-/* ===== ЧАТ ===== */
-function addMsg(w,t,c){
-  messages.innerHTML+=`<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
-  messages.scrollTop=messages.scrollHeight;
+function remember(text) {
+  const tags = analyze(text);
+  memory.push({ text, tags });
+  return "Запомнил. Тегов: " + tags.join(", ");
 }
 
-function askSasha(){
-  const i=document.getElementById("user-in");
-  if(!i.value.trim())return;
-  addMsg("Вы",i.value,"user");
-  const r=SashaBrain.process(i.value);
-  setTimeout(()=>{addMsg("Саша",r,"ai");speak(r)},150);
-  i.value="";
+function search(query) {
+  const q = query.toLowerCase();
+  const matches = memory.filter(item =>
+    item.tags.some(tag => q.includes(tag)) ||
+    q.includes("код") && item.tags.includes("code")
+  );
+
+  if (matches.length === 0) return "Ничего подходящего не нашёл";
+
+  // рандомный ответ
+  const pick = matches[Math.floor(Math.random() * matches.length)];
+  return pick.text;
 }
 
-/* ===== АКТИВАЦИЯ ===== */
-document.body.addEventListener("click",()=>{
-  if(activated)return;
-  activated=true;
-  const hi="Привет. Я Саша. Готов к обучению.";
-  addMsg("Саша",hi,"ai");
-  speak(hi);
-},{once:true});
-
-/* ===== 3D ===== */
-const scene=new THREE.Scene();
-const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,1000);
-cam.position.z=5;
-
-const r=new THREE.WebGLRenderer({alpha:true,antialias:true});
-r.setSize(innerWidth,innerHeight);
-document.getElementById("sasha-viewport").appendChild(r.domElement);
-
-scene.add(new THREE.AmbientLight(0xffffff,2.5));
-
-new THREE.GLTFLoader().load(
-  "https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
-  g=>{
-    sasha=g.scene;
-    sasha.position.y=-1.2;
-    sasha.scale.set(1.8,1.8,1.8);
-    sasha.rotation.set(0,Math.PI,0);
-    scene.add(sasha);
-    animate();
+function think(text) {
+  if (text.length > 40 || text.includes("{")) {
+    return remember(text);
   }
-);
 
-function animate(){
-  requestAnimationFrame(animate);
-  const t=clock.getElapsedTime();
-  if(sasha){
-    sasha.position.y=-1.2+Math.sin(t*1.5)*.02;
-    sasha.lookAt(cam.position);
+  if (text.startsWith("дай") || text.startsWith("покажи")) {
+    return search(text);
   }
-  r.render(scene,cam);
+
+  return "Я принял информацию. Можешь продолжать обучение.";
+}
+
+function log(text) {
+  document.getElementById("log").innerHTML += text + "\n\n";
+}
+
+function send() {
+  const input = document.getElementById("input");
+  const t = input.value;
+  log("Ты:\n" + t);
+  log("Саша:\n" + think(t));
+  input.value = "";
 }
 </script>
+
 </body>
 </html>
-
 
 
 
