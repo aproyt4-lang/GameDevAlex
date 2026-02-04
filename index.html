@@ -1,3 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Sasha AI</title>
+
+<style>
+:root { --neon:#00d8ff; --dark:#050505; }
+html,body{margin:0;padding:0;background:var(--dark);color:#fff;font-family:Segoe UI;height:100%;overflow:hidden}
+
+#sasha-viewport{position:fixed;inset:0;z-index:1;pointer-events:none}
+
+#chat-container{
+position:fixed;bottom:30px;left:30px;width:420px;height:480px;
+background:rgba(10,10,10,.9);border-radius:10px;
+display:flex;flex-direction:column;z-index:10
+}
+
+#messages{flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.msg{padding:10px;border-radius:6px;max-width:85%;font-size:14px}
+.ai{background:rgba(0,216,255,.1);color:var(--neon);align-self:flex-start}
+.user{background:#222;align-self:flex-end}
+
+.input-row{display:flex;gap:8px;padding:10px;border-top:1px solid #333}
+input{flex:1;background:#000;border:1px solid #444;color:#fff;padding:10px;border-radius:5px}
+button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10px 18px;cursor:pointer}
+</style>
+</head>
+
+<body>
+
+<div id="sasha-viewport"></div>
+
+<div id="chat-container">
+<div id="messages">
+<div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
+</div>
+<div class="input-row">
+<input id="user-in" placeholder="Напиши сообщение..." onkeydown="if(event.key==='Enter')askSasha()">
+<button onclick="askSasha()">SEND</button>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+let sasha,isSpeaking=false,activated=false;
+const clock=new THREE.Clock();
+
+/* ===== МОЗГ ===== */
+const SashaBrain={
+memory:JSON.parse(localStorage.getItem("sasha_memory"))||{facts:{}},
+
+save(){localStorage.setItem("sasha_memory",JSON.stringify(this.memory))},
+
+process(text){
+const t=text.toLowerCase().trim();
+
+if(t.startsWith("запомни")){
+const m=text.match(/(.+?)—\s*это\s*(.+)/i);
+if(!m)return"Скажи: запомни X — это Y";
+this.memory.facts[m[1].trim().toLowerCase()]=m[2].trim();
+this.save();
+return`Запомнил. ${m[1].trim()} — это ${m[2].trim()}`;
+}
+
+if(t.startsWith("что такое")||t.startsWith("кто такой")){
+const key=t.replace(/что такое|кто такой|\?/gi,"").trim();
+return this.memory.facts[key]?
+`${key.toUpperCase()} — это ${this.memory.facts[key]}`:
+"Я этого ещё не знаю. Можешь меня научить.";
+}
+
+if(["привет","здравствуй","хай"].includes(t))
+return"Привет. Я здесь.";
+
+return"Я понял. Продолжай.";
+}
+};
+
+/* ===== ГОЛОС ===== */
+function speak(text){
+speechSynthesis.cancel();
+const u=new SpeechSynthesisUtterance(text);
+u.rate=1;u.pitch=.9;
+u.onstart=()=>isSpeaking=true;
+u.onend=()=>isSpeaking=false;
+speechSynthesis.speak(u);
+}
+
+/* ===== ЧАТ ===== */
+function addMsg(w,t,c){
+messages.innerHTML+=`<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
+messages.scrollTop=messages.scrollHeight;
+}
+
+function askSasha(){
+const i=document.getElementById("user-in");
+if(!i.value.trim())return;
+addMsg("Вы",i.value,"user");
+const r=SashaBrain.process(i.value);
+setTimeout(()=>{addMsg("Саша",r,"ai");speak(r)},200);
+i.value="";
+}
+
+/* ===== АКТИВАЦИЯ ===== */
+document.body.addEventListener("click",()=>{
+if(activated)return;
+activated=true;
+const hi="Привет. Я Саша. Я готов к диалогу и обучению.";
+addMsg("Саша",hi,"ai");
+speak(hi);
+},{once:true});
+
+/* ===== 3D ===== */
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,1000);
+cam.position.z=5;
+const r=new THREE.WebGLRenderer({alpha:true,antialias:true});
+r.setSize(innerWidth,innerHeight);
+document.getElementById("sasha-viewport").appendChild(r.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,2.5));
+
+new THREE.GLTFLoader().load(
+"https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
+g=>{
+sasha=g.scene;
+sasha.position.y=-1.2;
+sasha.scale.set(1.8,1.8,1.8);
+sasha.rotation.y=Math.PI; // 🔥 ФИКС СПИНЫ
+scene.add(sasha);
+animate();
+});
+
+function animate(){
+requestAnimationFrame(animate);
+const t=clock.getElapsedTime();
+if(sasha){
+sasha.position.y=-1.2+Math.sin(t*1.5)*.02;
+sasha.lookAt(cam.position);
+}
+r.render(scene,cam);
+}
+</script>
+</body>
+</html>
+
 
 
 
