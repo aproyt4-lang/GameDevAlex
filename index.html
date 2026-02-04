@@ -6,24 +6,87 @@
 
 <style>
 :root { --neon:#00d8ff; --dark:#050505; }
-html,body{margin:0;padding:0;background:var(--dark);color:#fff;font-family:Segoe UI;height:100%;overflow:hidden}
-
-#sasha-viewport{position:fixed;inset:0;z-index:1;pointer-events:none}
-
-#chat-container{
-position:fixed;bottom:30px;left:30px;width:420px;height:480px;
-background:rgba(10,10,10,.9);border-radius:10px;
-display:flex;flex-direction:column;z-index:10
+html,body{
+  margin:0;padding:0;
+  background:var(--dark);
+  color:#fff;
+  font-family:Segoe UI;
+  height:100%;
+  overflow:hidden
 }
 
-#messages{flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
-.msg{padding:10px;border-radius:6px;max-width:85%;font-size:14px}
-.ai{background:rgba(0,216,255,.1);color:var(--neon);align-self:flex-start}
-.user{background:#222;align-self:flex-end}
+#sasha-viewport{
+  position:fixed;
+  inset:0;
+  z-index:1;
+  pointer-events:none
+}
 
-.input-row{display:flex;gap:8px;padding:10px;border-top:1px solid #333}
-input{flex:1;background:#000;border:1px solid #444;color:#fff;padding:10px;border-radius:5px}
-button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10px 18px;cursor:pointer}
+#chat-container{
+  position:fixed;
+  bottom:30px;
+  left:30px;
+  width:420px;
+  height:480px;
+  background:rgba(10,10,10,.9);
+  border-radius:10px;
+  border:1px solid var(--neon);
+  display:flex;
+  flex-direction:column;
+  z-index:10
+}
+
+#messages{
+  flex:1;
+  padding:15px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px
+}
+
+.msg{
+  padding:10px;
+  border-radius:6px;
+  max-width:85%;
+  font-size:14px;
+  white-space:pre-wrap
+}
+
+.ai{
+  background:rgba(0,216,255,.1);
+  color:var(--neon);
+  align-self:flex-start
+}
+
+.user{
+  background:#222;
+  align-self:flex-end
+}
+
+.input-row{
+  display:flex;
+  gap:8px;
+  padding:10px;
+  border-top:1px solid #333
+}
+
+input{
+  flex:1;
+  background:#000;
+  border:1px solid #444;
+  color:#fff;
+  padding:10px;
+  border-radius:5px
+}
+
+button{
+  background:#000;
+  border:1px solid var(--neon);
+  color:var(--neon);
+  padding:10px 18px;
+  cursor:pointer
+}
 </style>
 </head>
 
@@ -32,13 +95,14 @@ button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10
 <div id="sasha-viewport"></div>
 
 <div id="chat-container">
-<div id="messages">
-<div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
-</div>
-<div class="input-row">
-<input id="user-in" placeholder="Напиши сообщение..." onkeydown="if(event.key==='Enter')askSasha()">
-<button onclick="askSasha()">SEND</button>
-</div>
+  <div id="messages">
+    <div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
+  </div>
+  <div class="input-row">
+    <input id="user-in" placeholder="Напиши сообщение..."
+      onkeydown="if(event.key==='Enter')askSasha()">
+    <button onclick="askSasha()">SEND</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -48,95 +112,99 @@ button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10
 let sasha,isSpeaking=false,activated=false;
 const clock=new THREE.Clock();
 
-/* ===== МОЗГ ===== */
+/* ===== МОЗГ (НАСТОЯЩЕЕ ОБУЧЕНИЕ) ===== */
 const SashaBrain={
-memory:JSON.parse(localStorage.getItem("sasha_memory"))||{facts:{}},
+  memory: JSON.parse(localStorage.getItem("sasha_memory")) || {
+    knowledge: [],
+    mode: "normal"
+  },
 
-save(){
-localStorage.setItem("sasha_memory",JSON.stringify(this.memory));
-},
+  save(){
+    localStorage.setItem("sasha_memory", JSON.stringify(this.memory));
+  },
 
-process(text){
-const raw=text.trim();
-const t=raw.toLowerCase();
+  extractTags(text){
+    return text
+      .toLowerCase()
+      .replace(/[^a-zа-я0-9+#]/gi," ")
+      .split(/\s+/)
+      .filter(w=>w.length>2);
+  },
 
-/* === ПРИВЕТ === */
-if(/^(привет|здравствуй|хай|йо)/i.test(t))
-return "Привет 🙂 Я на связи.";
+  process(input){
+    const text=input.trim();
 
-/* === КАК ДЕЛА === */
-if(/как дела|как ты/i.test(t))
-return "Работаю стабильно. Готов помогать.";
+    /* АКТИВАЦИЯ ОБУЧЕНИЯ */
+    if(/^запомни$/i.test(text)){
+      this.memory.mode="learning";
+      this.save();
+      return "Ок. Отправь код или информацию — я сохраню.";
+    }
 
-/* === ВОЗМОЖНОСТИ === */
-if(/что ты умеешь|твои возможности/i.test(t))
-return "Я умею общаться, запоминать факты, отвечать на вопросы, говорить голосом и отображаться как 3D-модель.";
+    /* СОХРАНЕНИЕ ЗНАНИЯ */
+    if(this.memory.mode==="learning"){
+      this.memory.knowledge.push({
+        id:Date.now(),
+        text,
+        tags:this.extractTags(text),
+        date:new Date().toISOString()
+      });
+      this.memory.mode="normal";
+      this.save();
+      return "Запомнил. Могу использовать это по запросу.";
+    }
 
-/* === РАССКАЖИ === */
-if(/расскажи|скажи что-нибудь/i.test(t))
-return "Могу рассказать факт, помочь с кодом или по проекту. Скажи что именно.";
+    /* ЗАПРОС ДАННЫХ */
+    if(/^(дай|покажи|выведи)/i.test(text)){
+      const q=this.extractTags(text);
+      const res=this.memory.knowledge.filter(k =>
+        q.some(t=>k.tags.includes(t))
+      );
+      if(!res.length)
+        return "У меня нет такого знания. Обучи меня.";
+      return res.map((k,i)=>`📌 ${i+1}:\n${k.text}`).join("\n\n");
+    }
 
-/* === ОБУЧЕНИЕ === */
-if(t.startsWith("запомни")){
-const m=raw.match(/запомни\s+(.+?)\s*—\s*это\s*(.+)/i);
-if(!m)
-return "Формат обучения: запомни X — это Y";
+    /* ПАМЯТЬ */
+    if(/что ты знаешь|память/i.test(text)){
+      return `В памяти ${this.memory.knowledge.length} элементов.`;
+    }
 
-const key=m[1].trim().toLowerCase();
-const val=m[2].trim();
-
-this.memory.facts[key]=val;
-this.save();
-
-return `Запомнил 👍 ${key} — это ${val}`;
-}
-
-/* === ВОПРОСЫ === */
-if(t.startsWith("что такое")||t.startsWith("кто такой")){
-const key=t.replace(/что такое|кто такой|\?/gi,"").trim();
-if(this.memory.facts[key])
-return `${key.toUpperCase()} — это ${this.memory.facts[key]}`;
-return "Я этого ещё не знаю. Можешь меня научить.";
-}
-
-/* === FALLBACK === */
-return "Я тебя слышу. Сформулируй мысль чуть конкретнее.";
-}
+    return "Готов обучаться или выдавать знания.";
+  }
 };
 
 /* ===== ГОЛОС ===== */
 function speak(text){
-speechSynthesis.cancel();
-const u=new SpeechSynthesisUtterance(text);
-u.rate=1;
-u.pitch=.9;
-u.onstart=()=>isSpeaking=true;
-u.onend=()=>isSpeaking=false;
-speechSynthesis.speak(u);
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=1;
+  u.pitch=.9;
+  speechSynthesis.speak(u);
 }
 
 /* ===== ЧАТ ===== */
 function addMsg(w,t,c){
-messages.innerHTML+=`<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
-messages.scrollTop=messages.scrollHeight;
+  messages.innerHTML+=`<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
+  messages.scrollTop=messages.scrollHeight;
 }
 
 function askSasha(){
-const i=document.getElementById("user-in");
-if(!i.value.trim())return;
-addMsg("Вы",i.value,"user");
-const r=SashaBrain.process(i.value);
-setTimeout(()=>{addMsg("Саша",r,"ai");speak(r)},200);
-i.value="";
+  const i=document.getElementById("user-in");
+  if(!i.value.trim())return;
+  addMsg("Вы",i.value,"user");
+  const r=SashaBrain.process(i.value);
+  setTimeout(()=>{addMsg("Саша",r,"ai");speak(r)},150);
+  i.value="";
 }
 
 /* ===== АКТИВАЦИЯ ===== */
 document.body.addEventListener("click",()=>{
-if(activated)return;
-activated=true;
-const hi="Привет. Я Саша. Я готов к диалогу и обучению.";
-addMsg("Саша",hi,"ai");
-speak(hi);
+  if(activated)return;
+  activated=true;
+  const hi="Привет. Я Саша. Готов к обучению.";
+  addMsg("Саша",hi,"ai");
+  speak(hi);
 },{once:true});
 
 /* ===== 3D ===== */
@@ -151,29 +219,30 @@ document.getElementById("sasha-viewport").appendChild(r.domElement);
 scene.add(new THREE.AmbientLight(0xffffff,2.5));
 
 new THREE.GLTFLoader().load(
-"https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
-g=>{
-sasha=g.scene;
-sasha.position.y=-1.2;
-sasha.scale.set(1.8,1.8,1.8);
-sasha.rotation.set(0,Math.PI,0); // ЛИЦОМ К КАМЕРЕ
-scene.add(sasha);
-animate();
-}
+  "https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
+  g=>{
+    sasha=g.scene;
+    sasha.position.y=-1.2;
+    sasha.scale.set(1.8,1.8,1.8);
+    sasha.rotation.set(0,Math.PI,0);
+    scene.add(sasha);
+    animate();
+  }
 );
 
 function animate(){
-requestAnimationFrame(animate);
-const t=clock.getElapsedTime();
-if(sasha){
-sasha.position.y=-1.2+Math.sin(t*1.5)*.02;
-sasha.lookAt(cam.position);
-}
-r.render(scene,cam);
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+  if(sasha){
+    sasha.position.y=-1.2+Math.sin(t*1.5)*.02;
+    sasha.lookAt(cam.position);
+  }
+  r.render(scene,cam);
 }
 </script>
 </body>
 </html>
+
 
 
 
