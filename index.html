@@ -54,160 +54,165 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-    <script>
-        let sasha, isSpeaking = false, lastResponse = "";
-        let clock = new THREE.Clock();
-        
-        // --- ПРОДВИНУТЫЙ ЛОКАЛЬНЫЙ ИНТЕЛЛЕКТ ---
-        const SashaBrain = {
-            memory: JSON.parse(localStorage.getItem('sasha_knowledge')) || { 
-                learned: {}, 
-                userName: "",
-                history: [] 
-            },
+  <script>
+let sasha, isSpeaking = false, lastResponse = "";
+let clock = new THREE.Clock();
 
-            process: function(text) {
-                const raw = text.toLowerCase().trim();
-                this.memory.history.push(raw);
-                
-                // 1. ОБУЧЕНИЕ (Команда "запомни")
-                if (raw.includes("запомни что") || raw.includes("запомни")) {
-                    const parts = text.split(/запомни(?: что)?/i);
-                    if (parts[1]) {
-                        const content = parts[1].trim();
-                        // Выделяем ключ (например "я люблю танки")
-                        this.memory.learned[content] = true;
-                        this.save();
-                        return `Принято. Я занес это в свои когнитивные узлы. Теперь я знаю: ${content}`;
-                    }
-                }
+/* ================== МОЗГ САШИ (GPT-LITE) ================== */
+const SashaBrain = {
+    memory: JSON.parse(localStorage.getItem('sasha_knowledge')) || {
+        facts: [],
+        dialog: [],
+        userName: ""
+    },
 
-                // 2. ИНТЕРПРЕТАЦИЯ И ОТВЕТЫ
-                if (raw.includes("повтори")) {
-                    return lastResponse ? `Повторяю: ${lastResponse}` : "Мой буфер памяти пуст, я еще ничего не говорил.";
-                }
+    save() {
+        localStorage.setItem('sasha_knowledge', JSON.stringify(this.memory));
+    },
 
-                if (raw.includes("кто ты") || raw.includes("себе")) {
-                    return "Я — Саша, автономный интеллект AlexanderDev. Я не просто скрипт, я аналитическая система, способная обучаться на наших диалогах. Я помогаю управлять проектами и интерпретировать данные.";
-                }
+    detectIntent(text) {
+        text = text.toLowerCase();
+        if (text.startsWith("запомни")) return "learn";
+        if (text.includes("кто ты") || text.includes("о себе")) return "identity";
+        if (text.includes("привет") || text.includes("здравств")) return "greeting";
+        if (text.includes("?") || text.startsWith("что") || text.startsWith("почему")) return "question";
+        if (text.length < 4) return "unclear";
+        return "chat";
+    },
 
-                if (raw.includes("знаеш") || raw.includes("знаешь")) {
-                    const facts = Object.keys(this.memory.learned);
-                    let response = "Я знаю о проектах AlexanderDev, таких как War of Tanks. ";
-                    if (facts.length > 0) {
-                        response += "Также из общения с тобой я узнал: " + facts.join(", ") + ".";
-                    } else {
-                        response += "Пока что мой список локальных фактов пуст, но ты можешь меня научить чему угодно.";
-                    }
-                    return response;
-                }
+    similarity(a, b) {
+        const wa = new Set(a.split(" "));
+        const wb = new Set(b.split(" "));
+        let common = 0;
+        wa.forEach(w => wb.has(w) && common++);
+        return common / Math.max(wa.size, wb.size);
+    },
 
-                if (raw.includes("привет") || raw.includes("здравствуй")) {
-                    return "Приветствую! Анализатор систем запущен. Чем могу помочь сегодня?";
-                }
-
-                // 3. ПОИСК В ВЫУЧЕННОМ (Если вопрос совпадает с тем, что учили)
-                for (let fact in this.memory.learned) {
-                    if (raw.includes(fact.split(' ')[0])) { // Поиск по первому слову факта
-                        return `На основе того, что я выучил ранее: ${fact}`;
-                    }
-                }
-
-                return `Я проанализировал фразу "${text}". Пока у меня нет конкретной интерпретации для этого, но я запомнил этот контекст для самообучения. Что ты имел в виду?`;
-            },
-
-            save: function() {
-                localStorage.setItem('sasha_knowledge', JSON.stringify(this.memory));
-            }
-        };
-
-        function welcome() {
-            if(window.isLive) return;
-            window.isLive = true;
-            const intro = "Добро пожаловать. Я — Саша. Я умею анализировать задачи и обучаться. Всё, что ты мне скажешь, поможет мне стать умнее. Давай начнем?";
-            lastResponse = intro;
-            addMsg("Саша", intro, "ai");
-            speak(intro);
-        }
-
-        function speak(text) {
-            window.speechSynthesis.cancel();
-            const ut = new SpeechSynthesisUtterance(text);
-            ut.pitch = 0.85; ut.rate = 1.0;
-            ut.onstart = () => isSpeaking = true;
-            ut.onend = () => isSpeaking = false;
-            window.speechSynthesis.speak(ut);
-        }
-
-        function askSasha() {
-            const input = document.getElementById('user-in');
-            const val = input.value.trim();
-            if(!val) return;
-            addMsg("Вы", val, "user");
-            input.value = '';
-            
-            setTimeout(() => {
-                const response = SashaBrain.process(val);
-                lastResponse = response;
-                addMsg("Саша", response, "ai");
-                speak(response);
-            }, 400);
-        }
-
-        function addMsg(author, text, type) {
-            const box = document.getElementById('messages');
-            box.innerHTML += `<div class="msg ${type}"><b>${author}:</b> ${text}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }
-
-        // --- 3D САША (ЛИЦОМ К ТЕБЕ) ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('sasha-viewport').appendChild(renderer.domElement);
-        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-        camera.position.z = 5;
-
-        new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
-            sasha = gltf.scene;
-            sasha.position.y = -1.2;
-            sasha.scale.set(1.8, 1.8, 1.8);
-            
-            // ПОВОРОТ: Исправляем "боковую" стойку.
-            // Если он все еще боком, измени 1.57 на -1.57 или 3.14
-            sasha.rotation.y = Math.PI / 2; 
-            
-            scene.add(sasha);
-            animate();
+    learn(text) {
+        const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
+        chunks.forEach(c => {
+            if (c.length > 10) this.memory.facts.push(c.trim());
         });
+        this.save();
+        return "Знания сохранены. Теперь я могу использовать их в диалоге.";
+    },
 
-        function animate() {
-            requestAnimationFrame(animate);
-            let t = clock.getElapsedTime();
-            if (sasha) {
-                sasha.position.y = -1.2 + Math.sin(t * 1.5) * 0.02;
-                let targetMouth = isSpeaking ? (1.8 + Math.abs(Math.sin(t * 12)) * 0.15) : 1.8;
-                sasha.scale.y += (targetMouth - sasha.scale.y) * 0.2; 
-                sasha.rotation.z = Math.sin(t * 0.5) * 0.02; // Живое покачивание
-            }
-            renderer.render(scene, camera);
+    search(question) {
+        let best = { score: 0, text: null };
+        this.memory.facts.forEach(f => {
+            const s = this.similarity(question.toLowerCase(), f.toLowerCase());
+            if (s > best.score) best = { score: s, text: f };
+        });
+        return best.score > 0.2 ? best.text : null;
+    },
+
+    process(text) {
+        const intent = this.detectIntent(text);
+        this.memory.dialog.push(text);
+        if (this.memory.dialog.length > 10) this.memory.dialog.shift();
+        this.save();
+
+        if (intent === "greeting")
+            return "Привет. Я на связи. Чем займёмся?";
+
+        if (intent === "identity")
+            return "Я — Саша. Локальный интеллект AlexanderDev. Я обучаюсь на твоих данных и помогаю думать, создавать и анализировать.";
+
+        if (intent === "learn") {
+            const data = text.replace(/запомни/i, "").trim();
+            return data ? this.learn(data) : "Скажи, что именно нужно запомнить.";
         }
 
-        function register() {
-            const n = prompt("Твое имя, Босс?");
-            if(n) {
-                SashaBrain.memory.userName = n;
-                SashaBrain.save();
-                document.getElementById('login').disabled = false;
-                speak(`Распознавание завершено. Приветствую, ${n}.`);
-            }
+        if (intent === "question") {
+            const found = this.search(text);
+            return found ? found : "У меня пока нет точного ответа. Можешь дать мне знания — и я буду отвечать лучше.";
         }
 
-        window.addEventListener('click', welcome);
-    </script>
+        if (intent === "unclear")
+            return "Уточни мысль. Я хочу понять тебя правильно.";
+
+        return "Интересная мысль. Продолжай, я внимательно слушаю.";
+    }
+};
+
+/* ================== ГОЛОС И ЧАТ ================== */
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.pitch = 0.85;
+    u.rate = 1;
+    u.onstart = () => isSpeaking = true;
+    u.onend = () => isSpeaking = false;
+    window.speechSynthesis.speak(u);
+}
+
+function askSasha() {
+    const input = document.getElementById('user-in');
+    const val = input.value.trim();
+    if (!val) return;
+
+    addMsg("Вы", val, "user");
+    input.value = "";
+
+    setTimeout(() => {
+        const res = SashaBrain.process(val);
+        lastResponse = res;
+        addMsg("Саша", res, "ai");
+        speak(res);
+    }, 300);
+}
+
+function addMsg(author, text, type) {
+    const box = document.getElementById('messages');
+    box.innerHTML += `<div class="msg ${type}"><b>${author}:</b> ${text}</div>`;
+    box.scrollTop = box.scrollHeight;
+}
+
+function welcome() {
+    if (window.started) return;
+    window.started = true;
+    const msg = "Система активна. Я готов к обучению и диалогу.";
+    addMsg("Саша", msg, "ai");
+    speak(msg);
+}
+
+window.addEventListener("click", welcome);
+
+/* ================== 3D ================== */
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.getElementById("sasha-viewport").appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+camera.position.z = 5;
+
+new THREE.GLTFLoader().load(
+    "https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
+    gltf => {
+        sasha = gltf.scene;
+        sasha.position.y = -1.2;
+        sasha.scale.set(1.8, 1.8, 1.8);
+        sasha.rotation.y = Math.PI / 2;
+        scene.add(sasha);
+        animate();
+    }
+);
+
+function animate() {
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+    if (sasha) {
+        sasha.position.y = -1.2 + Math.sin(t * 1.5) * 0.02;
+        sasha.scale.y += ((isSpeaking ? 1.95 : 1.8) - sasha.scale.y) * 0.2;
+        sasha.rotation.z = Math.sin(t * 0.5) * 0.02;
+    }
+    renderer.render(scene, camera);
+}
+</script>
 </body>
 </html>
+
 
 
 
