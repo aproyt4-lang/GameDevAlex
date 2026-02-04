@@ -20,71 +20,66 @@ button { padding:10px; }
 <div id="log"></div>
 
 <script>
-const memory = [];
+const SashaBrain = {
+  memory: JSON.parse(localStorage.getItem("sasha_memory")) || {
+    knowledge: []
+  },
 
-// простейший анализ
-function analyze(text) {
-  const t = text.toLowerCase();
-  const tags = [];
+  save(){
+    localStorage.setItem("sasha_memory", JSON.stringify(this.memory));
+  },
 
-  if (t.includes("class") || t.includes("{") || t.includes(";")) tags.push("code");
-  if (t.includes("player")) tags.push("player");
-  if (t.includes("move") || t.includes("walk")) tags.push("movement");
-  if (t.includes("transform")) tags.push("unity");
-  if (t.includes("input")) tags.push("control");
-  if (t.includes("c#")) tags.push("csharp");
-  if (t.includes("javascript")) tags.push("js");
+  looksLikeKnowledge(text){
+    return (
+      text.length > 80 ||
+      /using\s+UnityEngine|class\s+\w+|public\s+class|function\s+\w+|#include|void\s+\w+/i.test(text)
+    );
+  },
 
-  return tags;
-}
+  tags(text){
+    return text
+      .toLowerCase()
+      .replace(/[^a-zа-я0-9+#]/gi," ")
+      .split(/\s+/)
+      .filter(w => w.length > 3);
+  },
 
-function remember(text) {
-  const tags = analyze(text);
-  memory.push({ text, tags });
-  return "Запомнил. Тегов: " + tags.join(", ");
-}
+  process(input){
+    const text = input.trim();
+    const lower = text.toLowerCase();
 
-function search(query) {
-  const q = query.toLowerCase();
-  const matches = memory.filter(item =>
-    item.tags.some(tag => q.includes(tag)) ||
-    q.includes("код") && item.tags.includes("code")
-  );
+    /* ===== АВТО-ОБУЧЕНИЕ ===== */
+    if (this.looksLikeKnowledge(text)) {
+      this.memory.knowledge.push({
+        id: Date.now(),
+        text,
+        tags: this.tags(text)
+      });
+      this.save();
+      return "Я это понял и сохранил. Можешь потом попросить.";
+    }
 
-  if (matches.length === 0) return "Ничего подходящего не нашёл";
+    /* ===== ПОИСК ПО СМЫСЛУ ===== */
+    const qTags = this.tags(text);
+    const found = this.memory.knowledge.filter(k =>
+      qTags.some(t => k.tags.includes(t))
+    );
 
-  // рандомный ответ
-  const pick = matches[Math.floor(Math.random() * matches.length)];
-  return pick.text;
-}
+    if (found.length) {
+      return found
+        .sort(()=>0.5 - Math.random())
+        .slice(0,2)
+        .map(k => k.text)
+        .join("\n\n");
+    }
 
-function think(text) {
-  if (text.length > 40 || text.includes("{")) {
-    return remember(text);
+    return "Дай мне код или информацию — я это сохраню. Либо спроси, что выдать.";
   }
-
-  if (text.startsWith("дай") || text.startsWith("покажи")) {
-    return search(text);
-  }
-
-  return "Я принял информацию. Можешь продолжать обучение.";
-}
-
-function log(text) {
-  document.getElementById("log").innerHTML += text + "\n\n";
-}
-
-function send() {
-  const input = document.getElementById("input");
-  const t = input.value;
-  log("Ты:\n" + t);
-  log("Саша:\n" + think(t));
-  input.value = "";
-}
+};
 </script>
-
 </body>
 </html>
+
 
 
 
