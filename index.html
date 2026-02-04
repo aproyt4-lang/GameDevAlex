@@ -2,192 +2,185 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>AlexanderDev - Smart Sasha AI</title>
+    <title>Sasha AI - Local Intelligence</title>
     <style>
-        :root { --neon: #00d8ff; --accent: #ff00ea; }
-        body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; height: 100%; overflow: hidden; }
+        :root { --neon: #00d8ff; --accent: #ff00ea; --bg: #050505; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; height: 100%; overflow: hidden; }
 
-        /* ФОН С МОДЕЛЬЮ */
-        #three-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        /* КНОПКИ СЛЕВА ВВЕРХУ */
+        .top-nav { position: fixed; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 15px; }
+        .btn-ui { 
+            padding: 10px 25px; border: 1px solid var(--neon); background: rgba(0,0,0,0.8); 
+            color: var(--neon); border-radius: 4px; cursor: pointer; font-weight: bold; 
+            text-transform: uppercase; transition: 0.3s;
+        }
+        .btn-ui:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
+        .btn-ui:disabled { border-color: #333; color: #333; cursor: not-allowed; }
 
-        /* ВЕРХНЯЯ ПАНЕЛЬ (КНОПКИ) */
-        .top-nav { 
-            position: fixed; top: 20px; left: 20px; z-index: 100; 
-            display: flex; gap: 15px; 
-        }
-        .nav-btn { 
-            padding: 10px 20px; border: 1px solid var(--neon); background: rgba(0,0,0,0.6); 
-            color: var(--neon); border-radius: 5px; cursor: pointer; font-weight: bold; 
-            transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .nav-btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 15px var(--neon); }
-        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #444; color: #444; }
+        /* МОДЕЛЬ */
+        #canvas-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-        /* УМНЫЙ ЧАТ (СЛЕВА ВНИЗУ) */
-        #chat-container { 
-            position: fixed; bottom: 30px; left: 30px; width: 380px; height: 450px; 
-            background: rgba(10,10,10,0.9); border: 1px solid var(--neon); 
-            border-radius: 15px; z-index: 100; display: flex; flex-direction: column;
-            backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,216,255,0.1);
+        /* ЧАТ СЛЕВА ВНИЗУ */
+        #chat-interface { 
+            position: fixed; bottom: 20px; left: 20px; width: 380px; height: 400px; 
+            background: rgba(10,10,10,0.9); border: 1px solid #333; border-radius: 12px;
+            z-index: 1000; display: flex; flex-direction: column; backdrop-filter: blur(10px);
         }
-        #chat-header { padding: 12px; border-bottom: 1px solid #333; font-size: 12px; color: var(--neon); letter-spacing: 1px; }
-        #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
-        .msg { padding: 10px 14px; border-radius: 10px; font-size: 14px; max-width: 80%; line-height: 1.4; }
+        #chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+        .msg { padding: 10px; border-radius: 8px; max-width: 85%; line-height: 1.4; }
         .ai-msg { background: rgba(0, 216, 255, 0.1); color: var(--neon); align-self: flex-start; border-left: 3px solid var(--neon); }
-        .user-msg { background: var(--neon); color: #000; align-self: flex-end; font-weight: 600; }
+        .user-msg { background: #222; color: #fff; align-self: flex-end; }
 
-        .input-row { padding: 15px; border-top: 1px solid #333; display: flex; gap: 8px; }
-        #user-input { flex: 1; background: #000; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 5px; outline: none; }
-        #send-btn { background: var(--neon); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .input-box { display: flex; padding: 10px; border-top: 1px solid #222; gap: 5px; }
+        #user-text { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 4px; outline: none; }
+        #send-btn { background: var(--neon); border: none; padding: 0 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-        /* МОДАЛКА РЕГИСТРАЦИИ (УСЛОВНАЯ) */
-        #reg-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.8); z-index: 1000; display: none;
-            justify-content: center; align-items: center;
+        /* ОКНО РЕГИСТРАЦИИ */
+        #reg-panel { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #111; padding: 30px; border: 2px solid var(--neon); border-radius: 15px;
+            z-index: 2000; display: none; text-align: center;
         }
-        .modal-box { background: #111; padding: 30px; border: 1px solid var(--accent); border-radius: 20px; width: 300px; text-align: center; }
-
-        #api-key-wrapper { position: fixed; top: 20px; right: 20px; z-index: 100; }
-        #api-key { background: #111; border: 1px solid #333; color: #555; padding: 5px; border-radius: 5px; font-size: 10px; width: 150px; }
     </style>
 </head>
 <body>
 
-    <div id="api-key-wrapper">
-        <input type="password" id="api-key" placeholder="Gemini API Key">
-    </div>
-
     <div class="top-nav">
-        <button class="nav-btn" onclick="openReg()">Регистрация</button>
-        <button class="nav-btn" id="login-btn" disabled onclick="alert('Вход выполнен!')">Вход</button>
+        <button class="btn-ui" onclick="showReg()">Регистрация</button>
+        <button class="btn-ui" id="login-btn" disabled onclick="tryLogin()">Вход</button>
     </div>
 
-    <canvas id="three-canvas"></canvas>
+    <div id="canvas-wrap"></div>
 
-    <div id="chat-container">
-        <div id="chat-header">САША АИ // АНАЛИТИЧЕСКИЙ МОДУЛЬ</div>
-        <div id="messages">
-            <div class="msg ai-msg">Саша: Привет! Я Саша. Я помню всё, что мы обсуждаем. Вставь API ключ сверху справа, и начнем глубокий анализ.</div>
+    <div id="chat-interface">
+        <div id="chat-messages">
+            <div class="msg ai-msg">Саша: Система онлайн. Я тебя слушаю, Босс. Можешь писать сюда любые вопросы.</div>
         </div>
-        <div class="input-row">
-            <input type="text" id="user-input" placeholder="Введите запрос...">
-            <button id="send-btn" onclick="askSasha()">SEND</button>
+        <div class="input-box">
+            <input type="text" id="user-text" placeholder="Напиши Саше...">
+            <button id="send-btn" onclick="handleChat()">SEND</button>
         </div>
     </div>
 
-    <div id="reg-modal">
-        <div class="modal-box">
-            <h3 style="color:var(--accent)">РЕГИСТРАЦИЯ</h3>
-            <input type="text" id="reg-name" placeholder="Придумай ник" style="width:90%; padding:10px; margin-bottom:10px; background:#000; border:1px solid #444; color:#fff;">
-            <button class="nav-btn" onclick="confirmReg()">ПОДТВЕРДИТЬ</button>
-        </div>
+    <div id="reg-panel">
+        <h2 style="color:var(--neon)">НОВЫЙ ПОЛЬЗОВАТЕЛЬ</h2>
+        <input type="text" id="reg-input-name" placeholder="Введите ваше имя" style="width:100%; padding:10px; background:#000; border:1px solid #444; color:#fff; margin-bottom:15px;">
+        <button class="btn-ui" onclick="completeReg()">АКТИВИРОВАТЬ</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <script>
-        let sashaMesh, isTalking = false;
-        let chatHistory = []; // ПАМЯТЬ ЧАТА
+        // --- ЛОКАЛЬНАЯ ПАМЯТЬ ---
+        let SASHA_MEMORY = {
+            userName: localStorage.getItem('sasha_user') || "",
+            lastTopic: "",
+            isRegistered: localStorage.getItem('sasha_reg') === 'true'
+        };
+
+        if (SASHA_MEMORY.isRegistered) document.getElementById('login-btn').disabled = false;
+
+        // --- ЛОКАЛЬНЫЙ ИНТЕЛЛЕКТ (БЕЗ КЛЮЧЕЙ) ---
+        function analyzeText(input) {
+            const text = input.toLowerCase();
+            
+            // Логика памяти
+            if (text.includes("как меня зовут") || text.includes("кто я")) {
+                return SASHA_MEMORY.userName ? `Тебя зовут ${SASHA_MEMORY.userName}. Я это запомнил.` : "Я пока не знаю твоего имени, бро. Зарегистрируйся!";
+            }
+            if (text.includes("что ты умеешь")) return "Я управляю сайтом AlexanderDev, помню наши разговоры и могу помочь с регистрацией.";
+            if (text.includes("war of tanks")) return "Это наш флагманский шутер на Unity. Хочешь узнать подробности?";
+            if (text.includes("привет")) return "Привет! Я в строю. Чем помогу?";
+            
+            return "Я зафиксировал твой запрос. Мой локальный модуль анализирует это. Скажи конкретнее: проекты, регистрация или помощь?";
+        }
 
         // --- ГОЛОС ---
-        function speak(text) {
+        let isSpeaking = false;
+        function sashaSpeak(text) {
             window.speechSynthesis.cancel();
             const ut = new SpeechSynthesisUtterance(text);
             ut.pitch = 0.85; ut.rate = 1.0;
-            ut.onstart = () => { isTalking = true; };
-            ut.onend = () => { isTalking = false; };
+            ut.onstart = () => isSpeaking = true;
+            ut.onend = () => isSpeaking = false;
             window.speechSynthesis.speak(ut);
         }
 
-        // --- УМНЫЙ ЧАТ С ПАМЯТЬЮ ---
-        async function askSasha() {
-            const input = document.getElementById('user-input');
-            const key = document.getElementById('api-key').value.trim();
-            const text = input.value.trim();
-            if (!text) return;
+        // --- ЧАТ ---
+        function handleChat() {
+            const inp = document.getElementById('user-text');
+            const msg = inp.value.trim();
+            if(!msg) return;
 
-            addMsg("Вы", text);
-            input.value = '';
-
-            if (!key) {
-                const r = "Босс, без API ключа я не могу подключить свои нейронные связи. Вставь его в углу!";
-                addMsg("Саша", r);
-                speak(r);
-                return;
-            }
-
-            // Добавляем сообщение в историю для "памяти"
-            chatHistory.push({ role: "user", parts: [{ text: text }] });
-
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        contents: chatHistory,
-                        systemInstruction: { parts: [{ text: "Ты Саша, дерзкий и умный ИИ. Ты помнишь контекст беседы. Отвечай кратко, помогай пользователю с сайтом AlexanderDev." }] }
-                    })
-                });
-                const data = await res.json();
-                const reply = data.candidates[0].content.parts[0].text;
-
-                // Сохраняем ответ Саши в память
-                chatHistory.push({ role: "model", parts: [{ text: reply }] });
-                
-                addMsg("Саша", reply);
-                speak(reply);
-            } catch (e) {
-                addMsg("Саша", "Ошибка сети. Возможно, нужен VPN для API.");
-            }
+            addMessage("Вы", msg);
+            const answer = analyzeText(msg);
+            
+            setTimeout(() => {
+                addMessage("Саша", answer);
+                sashaSpeak(answer);
+            }, 500);
+            
+            inp.value = "";
         }
 
-        function addMsg(who, text) {
-            const box = document.getElementById('messages');
-            const cls = who === "Саша" ? "ai-msg" : "user-msg";
-            box.innerHTML += `<div class="msg ${cls}"><b>${who}:</b> ${text}</div>`;
-            box.scrollTop = box.scrollHeight;
+        function addMessage(author, text) {
+            const container = document.getElementById('chat-messages');
+            const type = author === "Саша" ? "ai-msg" : "user-msg";
+            container.innerHTML += `<div class="msg ${type}"><b>${author}:</b> ${text}</div>`;
+            container.scrollTop = container.scrollHeight;
         }
 
-        // --- ЛОГИКА КНОПОК ---
-        function openReg() { document.getElementById('reg-modal').style.display = 'flex'; }
-        function confirmReg() {
-            const name = document.getElementById('reg-name').value || "Аноним";
-            document.getElementById('reg-modal').style.display = 'none';
+        // --- РЕГИСТРАЦИЯ ---
+        function showReg() { document.getElementById('reg-panel').style.display = 'block'; }
+        function completeReg() {
+            const name = document.getElementById('reg-input-name').value;
+            if(!name) return;
+            localStorage.setItem('sasha_user', name);
+            localStorage.setItem('sasha_reg', 'true');
+            SASHA_MEMORY.userName = name;
+            SASHA_MEMORY.isRegistered = true;
+            
+            document.getElementById('reg-panel').style.display = 'none';
             document.getElementById('login-btn').disabled = false;
-            const greet = `Регистрация завершена. Привет, ${name}! Теперь кнопка входа активна. Я запомнил тебя.`;
-            addMsg("Саша", greet);
-            speak(greet);
+            
+            const txt = `Регистрация завершена. Привет, ${name}. Теперь ты можешь войти.`;
+            addMessage("Саша", txt);
+            sashaSpeak(txt);
         }
 
-        // --- 3D САША ---
+        function tryLogin() {
+            sashaSpeak("Доступ разрешен. Добро пожаловать домой, " + SASHA_MEMORY.userName);
+        }
+
+        // --- 3D ГРАФИКА ---
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true, antialias: true });
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-wrap').appendChild(renderer.domElement);
         scene.add(new THREE.AmbientLight(0xffffff, 2.5));
         camera.position.z = 5;
 
+        let sashaMesh;
         new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
             sashaMesh = gltf.scene;
             sashaMesh.position.y = -1.2;
             sashaMesh.scale.set(1.7, 1.7, 1.7);
             scene.add(sashaMesh);
-            
-            function animate() {
-                requestAnimationFrame(animate);
-                if(sashaMesh) {
-                    sashaMesh.rotation.y += 0.005;
-                    if(isTalking) sashaMesh.scale.y = 1.7 + Math.sin(Date.now() * 0.1) * 0.05;
-                }
-                renderer.render(scene, camera);
-            }
-            animate();
         });
 
-        // Энтер в чате
-        document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') askSasha(); });
+        function animate() {
+            requestAnimationFrame(animate);
+            if(sashaMesh) {
+                sashaMesh.rotation.y += 0.005;
+                if(isSpeaking) sashaMesh.scale.y = 1.7 + Math.sin(Date.now() * 0.1) * 0.05;
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        document.getElementById('user-text').onkeypress = (e) => { if(e.key === 'Enter') handleChat(); };
     </script>
 </body>
 </html>
