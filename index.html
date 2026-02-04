@@ -1,216 +1,146 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Sasha AI - True Intelligence</title>
-    <style>
-        :root { --neon: #00d8ff; --dark: #050505; }
-        body, html { margin: 0; padding: 0; background: var(--dark); color: #fff; font-family: 'Segoe UI', sans-serif; height: 100%; overflow: hidden; }
+<meta charset="UTF-8">
+<title>Sasha AI</title>
 
-        .top-nav { position: fixed; top: 25px; left: 25px; z-index: 1001; display: flex; gap: 15px; }
-        .cyber-btn { 
-            padding: 12px 25px; border: 1px solid var(--neon); background: rgba(0,0,0,0.8); 
-            color: var(--neon); cursor: pointer; font-weight: bold; border-radius: 2px;
-            text-transform: uppercase; transition: 0.3s;
-        }
-        .cyber-btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
+<style>
+:root { --neon:#00d8ff; --dark:#050505; }
+html,body{margin:0;padding:0;background:var(--dark);color:#fff;font-family:Segoe UI;height:100%;overflow:hidden}
 
-        #sasha-viewport { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+#sasha-viewport{position:fixed;inset:0;z-index:1;pointer-events:none}
 
-        #chat-container { 
-            position: fixed; bottom: 30px; left: 30px; width: 420px; height: 480px; 
-            background: rgba(10,10,10,0.9); border: 1px solid #222; border-radius: 10px;
-            z-index: 1001; display: flex; flex-direction: column; backdrop-filter: blur(15px);
-        }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .msg { padding: 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; max-width: 85%; }
-        .ai { background: rgba(0, 216, 255, 0.1); color: var(--neon); align-self: flex-start; border-left: 4px solid var(--neon); }
-        .user { background: #222; align-self: flex-end; border: 1px solid #444; }
+#chat-container{
+position:fixed;bottom:30px;left:30px;width:420px;height:480px;
+background:rgba(10,10,10,.9);border-radius:10px;
+display:flex;flex-direction:column;z-index:10
+}
 
-        .input-row { padding: 15px; display: flex; gap: 10px; border-top: 1px solid #333; }
-        input { flex: 1; background: #000; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 5px; outline: none; }
-        input:focus { border-color: var(--neon); }
-    </style>
+#messages{flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.msg{padding:10px;border-radius:6px;max-width:85%;font-size:14px}
+.ai{background:rgba(0,216,255,.1);color:var(--neon);align-self:flex-start}
+.user{background:#222;align-self:flex-end}
+
+.input-row{display:flex;gap:8px;padding:10px;border-top:1px solid #333}
+input{flex:1;background:#000;border:1px solid #444;color:#fff;padding:10px;border-radius:5px}
+button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10px 18px;cursor:pointer}
+</style>
 </head>
+
 <body>
 
-    <div class="top-nav">
-        <button class="cyber-btn" onclick="register()">Регистрация</button>
-        <button class="cyber-btn" id="login" disabled>Вход</button>
-    </div>
+<div id="sasha-viewport"></div>
 
-    <div id="sasha-viewport"></div>
+<div id="chat-container">
+<div id="messages">
+<div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
+</div>
+<div class="input-row">
+<input id="user-in" placeholder="Напиши сообщение..." onkeydown="if(event.key==='Enter')askSasha()">
+<button onclick="askSasha()">SEND</button>
+</div>
+</div>
 
-    <div id="chat-container">
-        <div id="messages">
-            <div class="msg ai"><b>СИСТЕМА:</b> Саша в режиме ожидания. Кликни для активации.</div>
-        </div>
-        <div class="input-row">
-            <input type="text" id="user-in" placeholder="Напиши Саше (например: расскажи о себе)..." onkeypress="if(event.key==='Enter') askSasha()">
-            <button class="cyber-btn" onclick="askSasha()">SEND</button>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-let sasha, isSpeaking = false, lastResponse = "";
-let clock = new THREE.Clock();
+let sasha,isSpeaking=false,activated=false;
+const clock=new THREE.Clock();
 
-/* ================== МОЗГ САШИ (GPT-LITE v2) ================== */
-const SashaBrain = {
-    memory: JSON.parse(localStorage.getItem('sasha_knowledge')) || {
-        facts: {},   // КЛЮЧ → ЗНАЧЕНИЕ
-        dialog: [],
-        userName: ""
-    },
+/* ===== МОЗГ ===== */
+const SashaBrain={
+memory:JSON.parse(localStorage.getItem("sasha_memory"))||{facts:{}},
 
-    save() {
-        localStorage.setItem('sasha_knowledge', JSON.stringify(this.memory));
-    },
+save(){localStorage.setItem("sasha_memory",JSON.stringify(this.memory))},
 
-    detectIntent(text) {
-        text = text.toLowerCase();
-        if (text.startsWith("запомни")) return "learn";
-        if (text.includes("кто ты") || text.includes("о себе")) return "identity";
-        if (text.includes("привет") || text.includes("здравств")) return "greeting";
-        if (text.startsWith("что такое") || text.startsWith("кто такой")) return "definition";
-        if (text.includes("?")) return "question";
-        if (text.length < 4) return "unclear";
-        return "chat";
-    },
+process(text){
+const t=text.toLowerCase().trim();
 
-    learn(text) {
-        // формат: JARVIS — это ....
-        const match = text.match(/(.+?)\s*—\s*это\s*(.+)/i);
-        if (!match) return "Формат обучения: «запомни X — это Y»";
+if(t.startsWith("запомни")){
+const m=text.match(/(.+?)—\s*это\s*(.+)/i);
+if(!m)return"Скажи: запомни X — это Y";
+this.memory.facts[m[1].trim().toLowerCase()]=m[2].trim();
+this.save();
+return`Запомнил. ${m[1].trim()} — это ${m[2].trim()}`;
+}
 
-        const key = match[1].trim().toLowerCase();
-        const value = match[2].trim();
+if(t.startsWith("что такое")||t.startsWith("кто такой")){
+const key=t.replace(/что такое|кто такой|\?/gi,"").trim();
+return this.memory.facts[key]?
+`${key.toUpperCase()} — это ${this.memory.facts[key]}`:
+"Я этого ещё не знаю. Можешь меня научить.";
+}
 
-        this.memory.facts[key] = value;
-        this.save();
+if(["привет","здравствуй","хай"].includes(t))
+return"Привет. Я здесь.";
 
-        return `Принято. Я запомнил: ${key.toUpperCase()} — это ${value}`;
-    },
-
-    answerDefinition(text) {
-        const key = text
-            .replace(/что такое|кто такой|\?/gi, "")
-            .trim()
-            .toLowerCase();
-
-        if (this.memory.facts[key]) {
-            return `${key.toUpperCase()} — это ${this.memory.facts[key]}`;
-        }
-
-        return "Я пока не знаю. Скажи: «запомни … — это …»";
-    },
-
-    process(text) {
-        const intent = this.detectIntent(text);
-        this.memory.dialog.push(text);
-        if (this.memory.dialog.length > 10) this.memory.dialog.shift();
-        this.save();
-
-        if (intent === "greeting")
-            return "Привет. Я на связи. Чем займёмся?";
-
-        if (intent === "identity")
-            return "Я — Саша. Локальный интеллект AlexanderDev. Я обучаюсь, запоминаю и отвечаю осознанно.";
-
-        if (intent === "learn") {
-            const data = text.replace(/запомни/i, "").trim();
-            return data ? this.learn(data) : "Скажи, что именно запомнить.";
-        }
-
-        if (intent === "definition")
-            return this.answerDefinition(text);
-
-        if (intent === "unclear")
-            return "Уточни мысль. Я хочу понять тебя правильно.";
-
-        return "Интересно. Продолжай.";
-    }
+return"Я понял. Продолжай.";
+}
 };
 
-/* ================== ГОЛОС ================== */
-function speak(text) {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.pitch = 0.9;
-    u.rate = 1;
-    u.onstart = () => isSpeaking = true;
-    u.onend = () => isSpeaking = false;
-    window.speechSynthesis.speak(u);
+/* ===== ГОЛОС ===== */
+function speak(text){
+speechSynthesis.cancel();
+const u=new SpeechSynthesisUtterance(text);
+u.rate=1;u.pitch=.9;
+u.onstart=()=>isSpeaking=true;
+u.onend=()=>isSpeaking=false;
+speechSynthesis.speak(u);
 }
 
-/* ================== ЧАТ ================== */
-function askSasha() {
-    const input = document.getElementById('user-in');
-    const val = input.value.trim();
-    if (!val) return;
-
-    addMsg("Вы", val, "user");
-    input.value = "";
-
-    setTimeout(() => {
-        const res = SashaBrain.process(val);
-        lastResponse = res;
-        addMsg("Саша", res, "ai");
-        speak(res);
-    }, 300);
+/* ===== ЧАТ ===== */
+function addMsg(w,t,c){
+messages.innerHTML+=`<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
+messages.scrollTop=messages.scrollHeight;
 }
 
-function addMsg(author, text, type) {
-    const box = document.getElementById('messages');
-    box.innerHTML += `<div class="msg ${type}"><b>${author}:</b> ${text}</div>`;
-    box.scrollTop = box.scrollHeight;
+function askSasha(){
+const i=document.getElementById("user-in");
+if(!i.value.trim())return;
+addMsg("Вы",i.value,"user");
+const r=SashaBrain.process(i.value);
+setTimeout(()=>{addMsg("Саша",r,"ai");speak(r)},200);
+i.value="";
 }
 
-function welcome() {
-    if (window.started) return;
-    window.started = true;
-    const msg = "Система активна. Я готов к обучению и диалогу.";
-    addMsg("Саша", msg, "ai");
-    speak(msg);
-}
+/* ===== АКТИВАЦИЯ ===== */
+document.body.addEventListener("click",()=>{
+if(activated)return;
+activated=true;
+const hi="Привет. Я Саша. Я готов к диалогу и обучению.";
+addMsg("Саша",hi,"ai");
+speak(hi);
+},{once:true});
 
-window.addEventListener("click", welcome);
-
-/* ================== 3D ================== */
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setSize(innerWidth, innerHeight);
-document.getElementById("sasha-viewport").appendChild(renderer.domElement);
-
-scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-camera.position.z = 5;
+/* ===== 3D ===== */
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,1000);
+cam.position.z=5;
+const r=new THREE.WebGLRenderer({alpha:true,antialias:true});
+r.setSize(innerWidth,innerHeight);
+document.getElementById("sasha-viewport").appendChild(r.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,2.5));
 
 new THREE.GLTFLoader().load(
-    "https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
-    gltf => {
-        sasha = gltf.scene;
-        sasha.position.y = -1.2;
-        sasha.scale.set(1.8, 1.8, 1.8);
-        scene.add(sasha);
-        animate();
-    }
-);
+"https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
+g=>{
+sasha=g.scene;
+sasha.position.y=-1.2;
+sasha.scale.set(1.8,1.8,1.8);
+sasha.rotation.y=Math.PI; // 🔥 ФИКС СПИНЫ
+scene.add(sasha);
+animate();
+});
 
-function animate() {
-    requestAnimationFrame(animate);
-    const t = clock.getElapsedTime();
-
-    if (sasha) {
-        sasha.position.y = -1.2 + Math.sin(t * 1.5) * 0.02;
-        sasha.scale.y += ((isSpeaking ? 1.95 : 1.8) - sasha.scale.y) * 0.2;
-        sasha.lookAt(camera.position); // 🔥 СМОТРИТ НА ТЕБЯ
-    }
-
-    renderer.render(scene, camera);
+function animate(){
+requestAnimationFrame(animate);
+const t=clock.getElapsedTime();
+if(sasha){
+sasha.position.y=-1.2+Math.sin(t*1.5)*.02;
+sasha.lookAt(cam.position);
+}
+r.render(scene,cam);
 }
 </script>
 </body>
