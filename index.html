@@ -52,30 +52,55 @@ const clock=new THREE.Clock();
 const SashaBrain={
 memory:JSON.parse(localStorage.getItem("sasha_memory"))||{facts:{}},
 
-save(){localStorage.setItem("sasha_memory",JSON.stringify(this.memory))},
+save(){
+localStorage.setItem("sasha_memory",JSON.stringify(this.memory));
+},
 
 process(text){
-const t=text.toLowerCase().trim();
+const raw=text.trim();
+const t=raw.toLowerCase();
 
+/* === ПРИВЕТ === */
+if(/^(привет|здравствуй|хай|йо)/i.test(t))
+return "Привет 🙂 Я на связи.";
+
+/* === КАК ДЕЛА === */
+if(/как дела|как ты/i.test(t))
+return "Работаю стабильно. Готов помогать.";
+
+/* === ВОЗМОЖНОСТИ === */
+if(/что ты умеешь|твои возможности/i.test(t))
+return "Я умею общаться, запоминать факты, отвечать на вопросы, говорить голосом и отображаться как 3D-модель.";
+
+/* === РАССКАЖИ === */
+if(/расскажи|скажи что-нибудь/i.test(t))
+return "Могу рассказать факт, помочь с кодом или по проекту. Скажи что именно.";
+
+/* === ОБУЧЕНИЕ === */
 if(t.startsWith("запомни")){
-const m=text.match(/(.+?)—\s*это\s*(.+)/i);
-if(!m)return"Скажи: запомни X — это Y";
-this.memory.facts[m[1].trim().toLowerCase()]=m[2].trim();
+const m=raw.match(/запомни\s+(.+?)\s*—\s*это\s*(.+)/i);
+if(!m)
+return "Формат обучения: запомни X — это Y";
+
+const key=m[1].trim().toLowerCase();
+const val=m[2].trim();
+
+this.memory.facts[key]=val;
 this.save();
-return`Запомнил. ${m[1].trim()} — это ${m[2].trim()}`;
+
+return `Запомнил 👍 ${key} — это ${val}`;
 }
 
+/* === ВОПРОСЫ === */
 if(t.startsWith("что такое")||t.startsWith("кто такой")){
 const key=t.replace(/что такое|кто такой|\?/gi,"").trim();
-return this.memory.facts[key]?
-`${key.toUpperCase()} — это ${this.memory.facts[key]}`:
-"Я этого ещё не знаю. Можешь меня научить.";
+if(this.memory.facts[key])
+return `${key.toUpperCase()} — это ${this.memory.facts[key]}`;
+return "Я этого ещё не знаю. Можешь меня научить.";
 }
 
-if(["привет","здравствуй","хай"].includes(t))
-return"Привет. Я здесь.";
-
-return"Я понял. Продолжай.";
+/* === FALLBACK === */
+return "Я тебя слышу. Сформулируй мысль чуть конкретнее.";
 }
 };
 
@@ -83,7 +108,8 @@ return"Я понял. Продолжай.";
 function speak(text){
 speechSynthesis.cancel();
 const u=new SpeechSynthesisUtterance(text);
-u.rate=1;u.pitch=.9;
+u.rate=1;
+u.pitch=.9;
 u.onstart=()=>isSpeaking=true;
 u.onend=()=>isSpeaking=false;
 speechSynthesis.speak(u);
@@ -117,9 +143,11 @@ speak(hi);
 const scene=new THREE.Scene();
 const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,1000);
 cam.position.z=5;
+
 const r=new THREE.WebGLRenderer({alpha:true,antialias:true});
 r.setSize(innerWidth,innerHeight);
 document.getElementById("sasha-viewport").appendChild(r.domElement);
+
 scene.add(new THREE.AmbientLight(0xffffff,2.5));
 
 new THREE.GLTFLoader().load(
@@ -128,10 +156,11 @@ g=>{
 sasha=g.scene;
 sasha.position.y=-1.2;
 sasha.scale.set(1.8,1.8,1.8);
-sasha.rotation.y=Math.PI; // 🔥 ФИКС СПИНЫ
+sasha.rotation.set(0,Math.PI,0); // ЛИЦОМ К КАМЕРЕ
 scene.add(sasha);
 animate();
-});
+}
+);
 
 function animate(){
 requestAnimationFrame(animate);
@@ -145,6 +174,7 @@ r.render(scene,cam);
 </script>
 </body>
 </html>
+
 
 
 
