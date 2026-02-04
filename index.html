@@ -1,3 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Sasha AI - The Mastermind</title>
+    <style>
+        :root { --neon: #00d8ff; --danger: #ff0055; }
+        body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100%; }
+        
+        #canvas-box { position: absolute; width: 100%; height: 100%; z-index: 1; }
+
+        /* ИНТЕРФЕЙС */
+        #ui-layer { position: relative; z-index: 10; height: 100vh; display: flex; justify-content: center; align-items: center; pointer-events: none; }
+        .card { 
+            background: rgba(10,10,10,0.8); padding: 40px; border: 1px solid var(--neon); border-radius: 30px; 
+            text-align: center; backdrop-filter: blur(15px); pointer-events: auto; width: 350px;
+        }
+
+        /* КНОПКА ОТКЛЮЧЕНИЯ */
+        #kill-switch {
+            position: fixed; top: 20px; right: 20px; z-index: 1000;
+            padding: 10px 20px; border: 1px solid var(--danger); color: var(--danger);
+            background: transparent; border-radius: 5px; cursor: pointer; transition: 0.3s;
+        }
+        #kill-switch:hover { background: var(--danger); color: #fff; box-shadow: 0 0 20px var(--danger); }
+
+        input { width: 100%; padding: 15px; margin: 10px 0; background: #000; border: 1px solid #333; color: var(--neon); border-radius: 10px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; background: var(--neon); color: #000; border: none; border-radius: 10px; font-weight: 900; cursor: pointer; margin-top: 10px; }
+        
+        /* ЧАТ */
+        #sasha-chat { position: fixed; bottom: 30px; left: 30px; width: 300px; background: rgba(0,0,0,0.7); padding: 15px; border-left: 3px solid var(--neon); border-radius: 10px; font-size: 14px; opacity: 0; transition: 0.5s; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+    <button id="kill-switch" onclick="killSasha()">ВЫКЛЮЧИТЬ ИИ</button>
+    <div id="canvas-box"></div>
+
+    <div id="ui-layer">
+        <div class="card" id="auth-card">
+            <h2 style="color:var(--neon); letter-spacing: 5px;">SASHA AI SYSTEM</h2>
+            <input type="text" id="name-in" placeholder="КАК ТЕБЯ ЗОВУТ?">
+            <button class="btn" onclick="startSasha()">ВОЙТИ В СИСТЕМУ</button>
+            <p style="font-size: 10px; opacity: 0.5; margin-top: 15px;">Кликни "Войти", чтобы Саша ожил</p>
+        </div>
+    </div>
+
+    <div id="sasha-chat"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+        let scene, camera, renderer, sasha, isAlive = true, isTalking = false;
+
+        // --- 1. ГОЛОС И ЛОГИКА ---
+        function sashaSpeak(text) {
+            if (!isAlive) return;
+            window.speechSynthesis.cancel();
+            const ut = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            ut.voice = voices.find(v => v.lang === 'ru-RU' && v.name.includes('Neural')) || voices[0];
+            ut.pitch = 0.85; ut.rate = 0.95;
+            
+            ut.onstart = () => { 
+                isTalking = true; 
+                document.getElementById('sasha-chat').style.opacity = '1';
+                document.getElementById('sasha-chat').innerText = text;
+            };
+            ut.onend = () => { isTalking = false; };
+            window.speechSynthesis.speak(ut);
+        }
+
+        function startSasha() {
+            const name = document.getElementById('name-in').value || "Гость";
+            document.getElementById('auth-card').style.display = 'none';
+            
+            const intro = `Приветствую, ${name}. Я Саша, интеллект платформы Александр Дев. Мы создаем War of Tanks, J.A.R.V.I.S. и инструменты для Blender. Теперь система в твоем распоряжении. Что будем делать дальше?`;
+            sashaSpeak(intro);
+            
+            // Здесь через 5 секунд можно сделать переход на твой DashBoard
+            setTimeout(() => {
+                if(isAlive) console.log("Переход в фирменный стиль...");
+            }, 8000);
+        }
+
+        function killSasha() {
+            isAlive = false;
+            window.speechSynthesis.cancel();
+            document.getElementById('sasha-chat').style.display = 'none';
+            if(sasha) sasha.visible = false;
+            alert("Саша деактивирован. Теперь ты сам по себе, Босс.");
+        }
+
+        // --- 2. 3D МОДЕЛЬ ---
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-box').appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 2));
+            camera.position.z = 5;
+
+            new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
+                sasha = gltf.scene;
+                sasha.position.y = -1.2;
+                sasha.scale.set(1.5, 1.5, 1.5);
+                scene.add(sasha);
+            });
+
+            function anim() {
+                requestAnimationFrame(anim);
+                if (sasha && isAlive) {
+                    sasha.rotation.y += 0.005;
+                    if (isTalking) {
+                        sasha.scale.y = 1.5 + Math.sin(Date.now() * 0.015) * 0.05;
+                    }
+                }
+                renderer.render(scene, camera);
+            }
+            anim();
+        }
+
+        init3D();
+        // Подгружаем голоса для Chrome
+        window.speechSynthesis.onvoiceschanged = () => {};
+    </script>
+</body>
+</html>
+
+
+
 
 
 
