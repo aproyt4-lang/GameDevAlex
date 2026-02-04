@@ -142,7 +142,7 @@ function animate(){
         // Правильная ориентация
         sasha.rotation.x = 0;
         sasha.rotation.z = 0;
-        sasha.rotation.y += THREE.MathUtils.degToRad(-90); // повернуть лицом к камере
+        sasha.rotation.y += THREE.MathUtils.degToRad(90); // повернуть лицом к камере
     }
     renderer.render(scene, cam);
 }
@@ -156,6 +156,7 @@ window.addEventListener("resize", ()=>{
 </script>
 </body>
 </html>
+
 
 
 
