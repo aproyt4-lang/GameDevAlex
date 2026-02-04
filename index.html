@@ -54,14 +54,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-  <script>
+<script>
 let sasha, isSpeaking = false, lastResponse = "";
 let clock = new THREE.Clock();
 
-/* ================== МОЗГ САШИ (GPT-LITE) ================== */
+/* ================== МОЗГ САШИ (GPT-LITE v2) ================== */
 const SashaBrain = {
     memory: JSON.parse(localStorage.getItem('sasha_knowledge')) || {
-        facts: [],
+        facts: {},   // КЛЮЧ → ЗНАЧЕНИЕ
         dialog: [],
         userName: ""
     },
@@ -75,35 +75,37 @@ const SashaBrain = {
         if (text.startsWith("запомни")) return "learn";
         if (text.includes("кто ты") || text.includes("о себе")) return "identity";
         if (text.includes("привет") || text.includes("здравств")) return "greeting";
-        if (text.includes("?") || text.startsWith("что") || text.startsWith("почему")) return "question";
+        if (text.startsWith("что такое") || text.startsWith("кто такой")) return "definition";
+        if (text.includes("?")) return "question";
         if (text.length < 4) return "unclear";
         return "chat";
     },
 
-    similarity(a, b) {
-        const wa = new Set(a.split(" "));
-        const wb = new Set(b.split(" "));
-        let common = 0;
-        wa.forEach(w => wb.has(w) && common++);
-        return common / Math.max(wa.size, wb.size);
-    },
-
     learn(text) {
-        const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
-        chunks.forEach(c => {
-            if (c.length > 10) this.memory.facts.push(c.trim());
-        });
+        // формат: JARVIS — это ....
+        const match = text.match(/(.+?)\s*—\s*это\s*(.+)/i);
+        if (!match) return "Формат обучения: «запомни X — это Y»";
+
+        const key = match[1].trim().toLowerCase();
+        const value = match[2].trim();
+
+        this.memory.facts[key] = value;
         this.save();
-        return "Знания сохранены. Теперь я могу использовать их в диалоге.";
+
+        return `Принято. Я запомнил: ${key.toUpperCase()} — это ${value}`;
     },
 
-    search(question) {
-        let best = { score: 0, text: null };
-        this.memory.facts.forEach(f => {
-            const s = this.similarity(question.toLowerCase(), f.toLowerCase());
-            if (s > best.score) best = { score: s, text: f };
-        });
-        return best.score > 0.2 ? best.text : null;
+    answerDefinition(text) {
+        const key = text
+            .replace(/что такое|кто такой|\?/gi, "")
+            .trim()
+            .toLowerCase();
+
+        if (this.memory.facts[key]) {
+            return `${key.toUpperCase()} — это ${this.memory.facts[key]}`;
+        }
+
+        return "Я пока не знаю. Скажи: «запомни … — это …»";
     },
 
     process(text) {
@@ -116,36 +118,35 @@ const SashaBrain = {
             return "Привет. Я на связи. Чем займёмся?";
 
         if (intent === "identity")
-            return "Я — Саша. Локальный интеллект AlexanderDev. Я обучаюсь на твоих данных и помогаю думать, создавать и анализировать.";
+            return "Я — Саша. Локальный интеллект AlexanderDev. Я обучаюсь, запоминаю и отвечаю осознанно.";
 
         if (intent === "learn") {
             const data = text.replace(/запомни/i, "").trim();
-            return data ? this.learn(data) : "Скажи, что именно нужно запомнить.";
+            return data ? this.learn(data) : "Скажи, что именно запомнить.";
         }
 
-        if (intent === "question") {
-            const found = this.search(text);
-            return found ? found : "У меня пока нет точного ответа. Можешь дать мне знания — и я буду отвечать лучше.";
-        }
+        if (intent === "definition")
+            return this.answerDefinition(text);
 
         if (intent === "unclear")
             return "Уточни мысль. Я хочу понять тебя правильно.";
 
-        return "Интересная мысль. Продолжай, я внимательно слушаю.";
+        return "Интересно. Продолжай.";
     }
 };
 
-/* ================== ГОЛОС И ЧАТ ================== */
+/* ================== ГОЛОС ================== */
 function speak(text) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.pitch = 0.85;
+    u.pitch = 0.9;
     u.rate = 1;
     u.onstart = () => isSpeaking = true;
     u.onend = () => isSpeaking = false;
     window.speechSynthesis.speak(u);
 }
 
+/* ================== ЧАТ ================== */
 function askSasha() {
     const input = document.getElementById('user-in');
     const val = input.value.trim();
@@ -184,6 +185,7 @@ const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 10
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 document.getElementById("sasha-viewport").appendChild(renderer.domElement);
+
 scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 camera.position.z = 5;
 
@@ -193,7 +195,6 @@ new THREE.GLTFLoader().load(
         sasha = gltf.scene;
         sasha.position.y = -1.2;
         sasha.scale.set(1.8, 1.8, 1.8);
-        sasha.rotation.y = Math.PI / 2;
         scene.add(sasha);
         animate();
     }
@@ -202,16 +203,19 @@ new THREE.GLTFLoader().load(
 function animate() {
     requestAnimationFrame(animate);
     const t = clock.getElapsedTime();
+
     if (sasha) {
         sasha.position.y = -1.2 + Math.sin(t * 1.5) * 0.02;
         sasha.scale.y += ((isSpeaking ? 1.95 : 1.8) - sasha.scale.y) * 0.2;
-        sasha.rotation.z = Math.sin(t * 0.5) * 0.02;
+        sasha.lookAt(camera.position); // 🔥 СМОТРИТ НА ТЕБЯ
     }
+
     renderer.render(scene, camera);
 }
 </script>
 </body>
 </html>
+
 
 
 
