@@ -1,168 +1,148 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sasha AI - Neural Local System</title>
+    <title>Sasha AI - Smooth & Smart</title>
     <style>
-        :root { --neon: #00d8ff; --dark: #050505; }
-        body, html { margin: 0; padding: 0; background: var(--dark); color: #fff; font-family: 'Orbitron', sans-serif; height: 100%; overflow: hidden; }
-        
-        /* КНОПКИ СЛЕВА ВВЕРХУ */
-        .header-ui { position: fixed; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 10px; }
+        :root { --neon: #00d8ff; }
+        body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; height: 100%; overflow: hidden; }
+
+        /* КНОПКИ (СЛЕВА ВВЕРХУ) */
+        .top-nav { position: fixed; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 15px; }
         .btn { 
-            padding: 10px 20px; border: 1px solid var(--neon); background: rgba(0,0,0,0.8); 
-            color: var(--neon); cursor: pointer; text-transform: uppercase; font-size: 12px;
-            transition: 0.3s;
+            padding: 10px 20px; border: 1px solid var(--neon); background: rgba(0,0,0,0.7); 
+            color: var(--neon); cursor: pointer; font-weight: bold; border-radius: 5px; transition: 0.3s;
         }
         .btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 15px var(--neon); }
         .btn:disabled { opacity: 0.2; }
 
-        /* ЧАТ СЛЕВА ВНИЗУ */
-        #chat-panel { 
-            position: fixed; bottom: 20px; left: 20px; width: 380px; height: 420px; 
-            background: rgba(10,10,10,0.95); border: 1px solid #222; border-radius: 10px;
+        /* ЧАТ (СЛЕВА ВНИЗУ) */
+        #chat-ui { 
+            position: fixed; bottom: 25px; left: 25px; width: 360px; height: 400px; 
+            background: rgba(10,10,10,0.85); border: 1px solid #222; border-radius: 15px;
             z-index: 1000; display: flex; flex-direction: column; backdrop-filter: blur(10px);
         }
-        #chat-logs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .m { padding: 10px; border-radius: 5px; font-size: 13px; max-width: 85%; }
-        .sasha { border-left: 3px solid var(--neon); background: rgba(0,216,255,0.05); color: var(--neon); }
-        .user { align-self: flex-end; background: #1a1a1a; }
+        #chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+        .msg { padding: 10px; border-radius: 10px; max-width: 85%; }
+        .ai { background: rgba(0, 216, 255, 0.1); color: var(--neon); align-self: flex-start; border-left: 3px solid var(--neon); }
+        .user { background: #222; align-self: flex-end; }
 
-        .input-wrap { display: flex; padding: 10px; border-top: 1px solid #222; gap: 5px; }
-        #query { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; outline: none; }
-        
-        #viewport { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .input-row { padding: 10px; display: flex; gap: 5px; border-top: 1px solid #222; }
+        #query { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 5px; outline: none; }
+
+        #view { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
     </style>
 </head>
 <body>
 
-    <div class="header-ui">
-        <button class="btn" onclick="document.getElementById('reg').style.display='flex'">Регистрация</button>
-        <button class="btn" id="login" disabled>Вход</button>
+    <div class="top-nav">
+        <button class="btn" onclick="openReg()">Регистрация</button>
+        <button class="btn" id="login-btn" disabled>Вход</button>
     </div>
 
-    <div id="viewport"></div>
+    <div id="view"></div>
 
-    <div id="chat-panel">
-        <div id="chat-logs">
-            <div class="m sasha">Система AlexanderDev активна. Загружаю локальную нейросеть...</div>
-        </div>
-        <div class="input-wrap">
-            <input type="text" id="query" placeholder="Спроси Сашу или обучи его...">
-            <button class="btn" onclick="handleInput()">SEND</button>
-        </div>
-    </div>
-
-    <div id="reg" style="display:none; position:fixed; z-index:2000; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
-        <div style="border:1px solid var(--neon); padding:40px; text-align:center;">
-            <h3>ИДЕНТИФИКАЦИЯ</h3>
-            <input type="text" id="uname" placeholder="Имя" style="margin:20px 0; padding:10px; display:block; width:100%;">
-            <button class="btn" onclick="saveReg()">ПОДТВЕРДИТЬ</button>
+    <div id="chat-ui">
+        <div id="chat-box"><div class="msg ai">Саша: Системы стабилизированы. Анимация выровнена. Я готов.</div></div>
+        <div class="input-row">
+            <input type="text" id="query" placeholder="Спроси Сашу...">
+            <button class="btn" onclick="talk()">SEND</button>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script type="module">
-        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
 
-        let classifier;
-        async function loadAI() {
-            // Загружаем маленькую, но умную модель для анализа намерений
-            classifier = await pipeline('text-classification', 'Xenova/distilbert-base-uncased-finetuned-sst-2-english');
-            addSashaMsg("Нейросеть загружена. Я готов думать и анализировать.");
-        }
-        loadAI();
+    <script>
+        let sasha, isSpeaking = false, targetScale = 1.7, currentScale = 1.7;
+        const clock = new THREE.Clock();
 
-        // --- ЛОГИКА ПАМЯТИ И ОБУЧЕНИЯ ---
-        window.handleInput = async () => {
-            const el = document.getElementById('query');
-            const val = el.value.trim();
+        // --- ЛОГИКА ИИ И ПАМЯТИ ---
+        function talk() {
+            const inp = document.getElementById('query');
+            const val = inp.value.trim();
             if(!val) return;
 
             addMsg("Вы", val, "user");
-            el.value = '';
+            inp.value = '';
 
-            // 1. ПАМЯТЬ: Сохраняем в localStorage
-            let history = JSON.parse(localStorage.getItem('sasha_mem') || "[]");
-            history.push(val);
-            localStorage.setItem('sasha_mem', JSON.stringify(history.slice(-10))); // Помним последние 10 фраз
-
-            // 2. АНАЛИЗ (Локальный ИИ)
-            // Здесь мы используем простую логику, пока модель классифицирует контекст
-            let response = "";
-            if(val.toLowerCase().includes("кто я")) {
-                const name = localStorage.getItem('sasha_user') || "незнакомец";
-                response = `Мои локальные данные говорят, что ты ${name}.`;
-            } else if(val.toLowerCase().includes("проекты")) {
-                response = "Я анализирую: War of Tanks, J.A.R.V.I.S. и инструменты Blender. Это основные узлы AlexanderDev.";
-            } else {
-                response = "Я интерпретировал твой запрос. Моя база знаний дополняется твоими вопросами. Продолжай, я обучаюсь.";
-            }
-
+            // Локальный анализ
+            let reply = "Я анализирую данные... Мой локальный мозг зафиксировал: " + val;
+            if(val.toLowerCase().includes("кто я")) reply = "Ты мой создатель, Босс. Я тебя помню.";
+            
             setTimeout(() => {
-                addSashaMsg(response);
-                speak(response);
-            }, 600);
-        };
+                addMsg("Саша", reply, "ai");
+                speak(reply);
+            }, 400);
+        }
 
-        function addSashaMsg(t) { addMsg("Саша", t, "sasha"); }
         function addMsg(a, t, c) {
-            const logs = document.getElementById('chat-logs');
-            logs.innerHTML += `<div class="m ${c}"><b>${a}:</b> ${t}</div>`;
-            logs.scrollTop = logs.scrollHeight;
+            const b = document.getElementById('chat-box');
+            b.innerHTML += `<div class="msg ${c}"><b>${a}:</b> ${t}</div>`;
+            b.scrollTop = b.scrollHeight;
         }
 
-        window.saveReg = () => {
-            const n = document.getElementById('uname').value;
-            localStorage.setItem('sasha_user', n);
-            document.getElementById('reg').style.display='none';
-            document.getElementById('login').disabled = false;
-            addSashaMsg(`Привет, ${n}. Я внес тебя в реестр. Теперь вход разблокирован.`);
-            speak(`Привет, ${n}. Я запомнил твой профиль.`);
-        }
-
-        // --- ГОЛОС ---
-        let isSpeaking = false;
-        window.speak = (t) => {
+        function speak(t) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t);
-            u.pitch = 0.8; u.onstart = () => isSpeaking = true; u.onend = () => isSpeaking = false;
+            u.pitch = 0.85; u.onstart = () => isSpeaking = true; u.onend = () => isSpeaking = false;
             window.speechSynthesis.speak(u);
         }
 
-        // --- 3D САША ---
+        // --- ПЛАВНОЕ 3D ---
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio); // Для четкости
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('viewport').appendChild(renderer.domElement);
+        document.getElementById('view').appendChild(renderer.domElement);
+
         scene.add(new THREE.AmbientLight(0xffffff, 2));
         camera.position.z = 5;
 
-        let mesh;
         new THREE.GLTFLoader().load('https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb', (gltf) => {
-            mesh = gltf.scene;
-            mesh.position.y = -1;
-            mesh.scale.set(1.8, 1.8, 1.8);
-            scene.add(mesh);
+            sasha = gltf.scene;
+            sasha.position.y = -1.2;
+            scene.add(sasha);
+            animate();
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if(mesh) {
-                mesh.rotation.y += 0.005;
-                if(isSpeaking) mesh.scale.y = 1.8 + Math.sin(Date.now()*0.1)*0.05;
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            if (sasha) {
+                // Плавное вращение (независимо от FPS)
+                sasha.rotation.y += 0.5 * delta;
+
+                // Плавное дыхание и говорение через Lerp
+                targetScale = isSpeaking ? (1.7 + Math.sin(time * 10) * 0.1) : (1.7 + Math.sin(time * 2) * 0.03);
+                
+                // Сглаживание изменения масштаба
+                currentScale += (targetScale - currentScale) * 0.1; 
+                sasha.scale.set(currentScale, currentScale, currentScale);
             }
             renderer.render(scene, camera);
         }
-        animate();
+
+        function openReg() {
+            const n = prompt("Твое имя, Босс?");
+            if(n) {
+                localStorage.setItem('user', n);
+                document.getElementById('login-btn').disabled = false;
+                speak(`Привет, ${n}. Я запомнил тебя.`);
+            }
+        }
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
     </script>
 </body>
 </html>
-
-
 
 
 
