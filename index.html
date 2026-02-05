@@ -88,31 +88,27 @@ padding:10px 18px;
 cursor:pointer;
 }
 </style>
-
 </head>
+
 <body>
 
 <div id="sasha-viewport"></div>
 
 <div id="chat-container">
+  <div id="messages">
+    <div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
+  </div>
 
-<div id="messages">
-<div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
-</div>
-
-<div class="input-row">
-<input id="user-in" placeholder="Напиши сообщение...">
-<button onclick="askSasha()">SEND</button>
-</div>
-
+  <div class="input-row">
+    <input id="user-in" placeholder="Напиши сообщение...">
+    <button onclick="askSasha()">SEND</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-
-/* ENTER = отправка */
 document.getElementById("user-in").addEventListener("keydown", e=>{
 if(e.key==="Enter") askSasha();
 });
@@ -120,8 +116,6 @@ if(e.key==="Enter") askSasha();
 let sasha;
 let isSpeaking=false;
 let activated=false;
-
-/* ===== ОБУЧАЕМЫЙ МОЗГ ===== */
 
 const SashaBrain = {
 
@@ -136,8 +130,6 @@ process(text){
 const raw=text.trim();
 const t=raw.toLowerCase();
 
-/* ===== БАЗА ===== */
-
 if(/^(привет|здравствуй|хай|йо)/i.test(t))
 return "Привет 🙂 Я на связи.";
 
@@ -147,143 +139,76 @@ return "Работаю стабильно. Готова помогать.";
 if(/что ты умеешь|твои возможности/i.test(t))
 return "Я умею запоминать знания, код и выдавать их по запросу.";
 
-/* ===== ЗАПРОС КОДА ===== */
-
 if(/дай|покажи|напиши/.test(t) && /код/.test(t)){
-
-// ищем код
-let found=this.memory.find(
-m=>m.type==="code" && t.includes(m.topic)
-);
-
+let found=this.memory.find(m=>m.type==="code" && t.includes(m.topic));
 if(found) return found.content;
-
 return "У меня пока нет такого кода. Можешь меня обучить 🙂";
 }
 
-/* ===== ЗАПРОС ЗНАНИЙ ===== */
-
 if(/дай.*знания|что ты знаешь/i.test(t)){
-
 if(this.memory.length===0)
 return "Пока у меня нет сохранённых знаний.";
-
-return "Я знаю:\n" +
-this.memory.map(m=>"• "+m.topic).join("\n");
+return "Я знаю:\n" + this.memory.map(m=>"• "+m.topic).join("\n");
 }
 
-/* ===== ОБУЧЕНИЕ КОДУ ===== */
-
 if(/код/i.test(t) && /{|using|class|void|public|private/.test(raw)){
-
-this.memory.push({
-type:"code",
-topic:"c#",
-content:raw
-});
-
+this.memory.push({ type:"code", topic:"c#", content:raw });
 this.save();
-
 return "Код сохранён 🧠";
 }
 
-/* ===== ОБУЧЕНИЕ ФАКТУ ===== */
-
 if(/это|значит|есть/i.test(t)){
-
 this.memory.push({
 type:"fact",
 topic:t.split(" ").slice(0,3).join(" "),
 content:raw
 });
-
 this.save();
-
 return "Знание сохранено 🧠";
 }
 
-/* ===== ПОИСК ПО ПАМЯТИ ===== */
-
 let found=this.memory.find(m=>t.includes(m.topic));
-
 if(found) return found.content;
 
-/* ===== ИНАЧЕ ===== */
-
 return "Я тебя слышу. Можешь либо задать вопрос, либо обучить меня.";
-
 }
-
 };
-/* ===== ГОЛОС ===== */
 
 function speak(text){
-
 speechSynthesis.cancel();
-
 const u=new SpeechSynthesisUtterance(text);
-
 u.rate=1;
 u.pitch=0.9;
-
 u.onstart=()=>isSpeaking=true;
 u.onend=()=>isSpeaking=false;
-
 speechSynthesis.speak(u);
-
 }
-
-/* ===== ЧАТ ===== */
 
 function addMsg(w,t,c){
-
 const messages=document.getElementById("messages");
-
-messages.innerHTML+=
-`<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
-
+messages.innerHTML+=`<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
 messages.scrollTop=messages.scrollHeight;
-
 }
 
-/* ===== ВВОД ===== */
-
 function askSasha(){
-
 const input=document.getElementById("user-in");
-
 if(!input.value.trim()) return;
-
 addMsg("Вы",input.value,"user");
-
 const r=SashaBrain.process(input.value);
-
 setTimeout(()=>{
 addMsg("Саша",r,"ai");
 speak(r);
 },100);
-
 input.value="";
-
 }
 
-/* ===== АКТИВАЦИЯ ===== */
-
 document.body.addEventListener("click",()=>{
-
 if(activated) return;
-
 activated=true;
-
 const hi="Привет. Я Саша. Готова обучаться и отвечать на вопросы.";
-
 addMsg("Саша",hi,"ai");
-
 speak(hi);
-
 },{once:true});
-
-/* ===== 3D СЦЕНА ===== */
 
 const scene=new THREE.Scene();
 
@@ -300,68 +225,43 @@ antialias:true
 });
 
 renderer.setSize(innerWidth,innerHeight);
-
-document
-.getElementById("sasha-viewport")
-.appendChild(renderer.domElement);
+document.getElementById("sasha-viewport").appendChild(renderer.domElement);
 
 scene.add(new THREE.AmbientLight(0xffffff,2.5));
 
 new THREE.GLTFLoader().load(
-
-"SashaAI.glb", // модель рядом с html
-
+"SashaAI.glb",
 g=>{
-
 sasha=g.scene;
-
 sasha.scale.set(1.8,1.8,1.8);
-
 scene.add(sasha);
-
 cam.position.set(0,1.5,5);
-
 animate();
-
 }
-
 );
 
-/* ===== АНИМАЦИЯ ===== */
-
 function animate(){
-
 requestAnimationFrame(animate);
 
 if(sasha){
-
-sasha.rotation.x=0;
-sasha.rotation.z=0;
-
-/* фикс rotation */
-
-sasha.rotation.y=Math.PI/2;
-
+sasha.rotation.x = 0;
+sasha.rotation.z = 0;
+sasha.rotation.y = THREE.MathUtils.degToRad(90); // ← ВОТ ТУТ 90°
 }
 
 renderer.render(scene,cam);
-
 }
 
-/* ===== RESIZE ===== */
-
 window.addEventListener("resize",()=>{
-
 cam.aspect=innerWidth/innerHeight;
 cam.updateProjectionMatrix();
 renderer.setSize(innerWidth,innerHeight);
-
 });
-
 </script>
 
 </body>
 </html>
+
 
 
 
