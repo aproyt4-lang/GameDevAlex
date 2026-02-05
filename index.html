@@ -3,28 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <title>Sasha AI</title>
+
 <style>
 :root { --neon:#00d8ff; --dark:#050505; }
-html,body{margin:0;padding:0;background:var(--dark);color:#fff;font-family:Segoe UI;height:100%;overflow:hidden}
 
-#sasha-viewport{position:fixed;inset:0;z-index:1;pointer-events:none}
-
-#chat-container{
-position:fixed;bottom:30px;left:30px;width:420px;height:480px;
-background:rgba(10,10,10,.9);border-radius:10px;
-display:flex;flex-direction:column;z-index:10
+html,body{
+margin:0;
+padding:0;
+background:var(--dark);
+color:#fff;
+font-family:Segoe UI;
+height:100%;
+overflow:hidden;
 }
 
-#messages{flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
-.msg{padding:10px;border-radius:6px;max-width:85%;font-size:14px}
-.ai{background:rgba(0,216,255,.1);color:var(--neon);align-self:flex-start}
-.user{background:#222;align-self:flex-end}
+#sasha-viewport{
+position:fixed;
+inset:0;
+z-index:1;
+pointer-events:none;
+}
 
-.input-row{display:flex;gap:8px;padding:10px;border-top:1px solid #333}
-input{flex:1;background:#000;border:1px solid #444;color:#fff;padding:10px;border-radius:5px}
-button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10px 18px;cursor:pointer}
+#chat-container{
+position:fixed;
+bottom:30px;
+left:30px;
+width:420px;
+height:480px;
+background:rgba(10,10,10,.9);
+border-radius:10px;
+display:flex;
+flex-direction:column;
+z-index:10;
+}
+
+#messages{
+flex:1;
+padding:15px;
+overflow-y:auto;
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.msg{
+padding:10px;
+border-radius:6px;
+max-width:85%;
+font-size:14px;
+}
+
+.ai{
+background:rgba(0,216,255,.1);
+color:var(--neon);
+align-self:flex-start;
+}
+
+.user{
+background:#222;
+align-self:flex-end;
+}
+
+.input-row{
+display:flex;
+gap:8px;
+padding:10px;
+border-top:1px solid #333;
+}
+
+input{
+flex:1;
+background:#000;
+border:1px solid #444;
+color:#fff;
+padding:10px;
+border-radius:5px;
+}
+
+button{
+background:#000;
+border:1px solid var(--neon);
+color:var(--neon);
+padding:10px 18px;
+cursor:pointer;
+}
 </style>
 </head>
+
 <body>
 
 <div id="sasha-viewport"></div>
@@ -33,6 +98,7 @@ button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10
 <div id="messages">
 <div class="msg ai"><b>СИСТЕМА:</b> Кликни для активации</div>
 </div>
+
 <div class="input-row">
 <input id="user-in" placeholder="Напиши сообщение..." onkeydown="if(event.key==='Enter')askSasha()">
 <button onclick="askSasha()">SEND</button>
@@ -43,128 +109,150 @@ button{background:#000;border:1px solid var(--neon);color:var(--neon);padding:10
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-let sasha,isSpeaking=false,activated=false;
-const clock=new THREE.Clock();
 
-/* ===== ОБУЧАЕМЫЙ МОЗГ ИИ ===== */
+/* ===== МОЗГ ===== */
+
 const SashaBrain = {
-    memory: JSON.parse(localStorage.getItem("sasha_memory")) || [], // массив знаний
+memory: JSON.parse(localStorage.getItem("sasha_memory")) || [],
 
-    save(){
-        localStorage.setItem("sasha_memory", JSON.stringify(this.memory));
-    },
+save(){
+localStorage.setItem("sasha_memory", JSON.stringify(this.memory));
+},
 
-    process(text){
-        const raw = text.trim();
-        const t = raw.toLowerCase();
+process(text){
+const raw = text.trim();
+const t = raw.toLowerCase();
 
-        // Привет
-        if(/^(привет|здравствуй|хай|йо)/i.test(t))
-            return "Привет 🙂 Я на связи.";
+if (/^(привет|здравствуй|хай|йо)/i.test(t))
+return "Привет 🙂 Я на связи.";
 
-        // Как дела
-        if(/как дела|как ты/i.test(t))
-            return "Работаю стабильно. Готова помогать.";
+if (/как дела|как ты/i.test(t))
+return "Работаю стабильно. Готова помогать.";
 
-        // Возможности
-        if(/что ты умеешь|твои возможности/i.test(t))
-            return "Я умею общаться, запоминать факты и обучаться прямо в браузере без сервера.";
-         }
-        
-        // Поиск по памяти (простое совпадение по ключевым словам)
-        let found = this.memory.find(item => t.includes(item.key));
-        if(found) return found.text;
+if (/что ты умеешь|твои возможности/i.test(t))
+return "Я умею запоминать знания и обучаться прямо в браузере.";
 
-        // Если текст не найден в памяти — сохраняем автоматически
-        const words = t.split(/\s+/).slice(0,3).join(" "); // ключевые слова: первые 3 слова
-        this.memory.push({key: words, text: raw});
-        this.save();
+let found = this.memory.find(item => t.includes(item.key));
+if(found) return found.text;
 
-        return "Запомнил 👍";
-    }
+const key = t.split(/\s+/).slice(0,3).join(" ");
+
+this.memory.push({ key:key, text:raw });
+this.save();
+
+return "Запомнил 👍";
+}
 };
 
+/* ===== БАЗОВЫЕ ЗНАНИЯ ===== */
+
+const baseKnowledge = [
+{key:"программирование", text:"Программирование — это создание логики и поведения с помощью кода."},
+{key:"unity", text:"Unity — игровой движок для 2D и 3D игр."},
+{key:"ии", text:"ИИ — это система анализа данных и принятия решений."}
+];
+
+baseKnowledge.forEach(k=>{
+if(!SashaBrain.memory.find(m=>m.key===k.key)){
+SashaBrain.memory.push(k);
+}
+});
+SashaBrain.save();
+
 /* ===== ГОЛОС ===== */
+
 function speak(text){
-    speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);
-    u.rate=1;
-    u.pitch=0.9;
-    u.onstart=()=>isSpeaking=true;
-    u.onend=()=>isSpeaking=false;
-    speechSynthesis.speak(u);
+speechSynthesis.cancel();
+const u = new SpeechSynthesisUtterance(text);
+u.rate = 1;
+u.pitch = 0.9;
+speechSynthesis.speak(u);
 }
 
 /* ===== ЧАТ ===== */
+
 function addMsg(w,t,c){
-    const messages = document.getElementById("messages");
-    messages.innerHTML += `<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
-    messages.scrollTop = messages.scrollHeight;
+const messages = document.getElementById("messages");
+messages.innerHTML += `<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
+messages.scrollTop = messages.scrollHeight;
 }
 
-/* ===== ВВОД ПОЛЬЗОВАТЕЛЯ ===== */
+/* ===== ВВОД ===== */
+
 function askSasha(){
-    const input = document.getElementById("user-in");
-    if(!input.value.trim()) return;
+const input = document.getElementById("user-in");
+if(!input.value.trim()) return;
 
-    addMsg("Вы", input.value, "user");
+addMsg("Вы", input.value, "user");
 
-    const r = SashaBrain.process(input.value);
-    setTimeout(()=>{addMsg("Саша", r, "ai"); speak(r);}, 100);
-    input.value = "";
+const r = SashaBrain.process(input.value);
+
+setTimeout(()=>{
+addMsg("Саша", r, "ai");
+speak(r);
+},100);
+
+input.value="";
 }
 
 /* ===== АКТИВАЦИЯ ===== */
-document.body.addEventListener("click", ()=>{
-    if(activated) return;
-    activated=true;
-    const hi="Привет. Я Саша. Готов обучаться и отвечать на вопросы.";
-    addMsg("Саша", hi, "ai");
-    speak(hi);
+
+let activated=false;
+
+document.body.addEventListener("click",()=>{
+if(activated) return;
+activated=true;
+
+const hi="Привет. Я Саша. Готова обучаться и отвечать.";
+addMsg("Саша",hi,"ai");
+speak(hi);
+
 },{once:true});
 
-/* ===== 3D МОДЕЛЬ ===== */
-const scene=new THREE.Scene();
-const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,1000);
+/* ===== 3D ===== */
 
-const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,1000);
+
+const renderer = new THREE.WebGLRenderer({alpha:true,antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 document.getElementById("sasha-viewport").appendChild(renderer.domElement);
 
 scene.add(new THREE.AmbientLight(0xffffff,2.5));
 
+let sasha=null;
+
 new THREE.GLTFLoader().load(
 "https://raw.githubusercontent.com/aproyt4-lang/GameDevAlex/main/SashaAI.glb",
 g=>{
-  sasha=g.scene;
-  sasha.position.set(0,0,0);
-  sasha.scale.set(1.8,1.8,1.8);
-  scene.add(sasha);
+sasha=g.scene;
+sasha.scale.set(1.8,1.8,1.8);
+scene.add(sasha);
 
-  cam.position.set(0,1.5,5);
-  cam.lookAt(sasha.position);
+cam.position.set(0,1.5,5);
 
-  animate();
+animate();
 }
 );
 
 function animate(){
-    requestAnimationFrame(animate);
-    if(sasha){
-        sasha.position.y = 0;
-        sasha.rotation.x = 0;
-        sasha.rotation.z = 0;
-        sasha.rotation.y = THREE.MathUtils.degToRad(-90); // ровно 90°
-    }
-    renderer.render(scene, cam);
+requestAnimationFrame(animate);
+
+if(sasha){
+sasha.rotation.x = 0;
+sasha.rotation.z = 0;
+sasha.rotation.y = THREE.MathUtils.degToRad(-90);
 }
 
-/* ===== РЕЗАЙЗ ===== */
-window.addEventListener("resize", ()=>{
-    cam.aspect = innerWidth/innerHeight;
-    cam.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
+renderer.render(scene,cam);
+}
+
+window.addEventListener("resize",()=>{
+cam.aspect = innerWidth/innerHeight;
+cam.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
 });
+
 </script>
 </body>
 </html>
