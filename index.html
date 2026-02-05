@@ -125,7 +125,7 @@ new THREE.GLTFLoader().load("SashaAI.glb", g => {
     sasha.scale.set(1.8, 1.8, 1.8);
     sasha.position.y = -1.2;
     // Разворот лицом (подбери под свою модель)
-    sasha.rotation.y = Math.PI / 2; 
+    sasha.rotation.y = -Math.PI / 2; 
     scene.add(sasha);
     cam.position.set(0, 0, 5);
     animate();
@@ -167,6 +167,7 @@ document.getElementById("user-in").onkeydown = e => { if(e.key==="Enter") askSas
 </script>
 </body>
 </html>
+
 
 
 
