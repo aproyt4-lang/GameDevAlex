@@ -69,42 +69,7 @@ const SashaBrain = {
         // Возможности
         if(/что ты умеешь|твои возможности/i.test(t))
             return "Я умею общаться, запоминать факты и обучаться прямо в браузере без сервера.";
-        
-        if(/дай мне код любого формата|твои возможности/i.test(t))
-        {
-           using UnityEngine;
-
-          public class PlayerMove : MonoBehaviour
-         {
-         public float speed = 5f;
-         public float gravity = -9.81f;
-
-         private CharacterController controller;
-         private Vector3 velocity;
-
-        void Start()
-        {
-        controller = GetComponent<CharacterController>();
-       }
-
-        void Update()
-        {
-        float x = Input.GetAxis("Horizontal"); // A / D
-        float z = Input.GetAxis("Vertical");   // W / S
-
-        Vector3 move = transform.right * x + transform.forward * z;
-        controller.Move(move * speed * Time.deltaTime);
-
-        // Гравитация
-        if (controller.isGrounded && velocity.y < 0)
-            velocity.y = -2f;
-
-        velocity.y += gravity * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
-       }
-      }
-            
-        }
+         }
         
         // Поиск по памяти (простое совпадение по ключевым словам)
         let found = this.memory.find(item => t.includes(item.key));
@@ -203,6 +168,7 @@ window.addEventListener("resize", ()=>{
 </script>
 </body>
 </html>
+
 
 
 
