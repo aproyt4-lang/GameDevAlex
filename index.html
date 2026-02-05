@@ -246,7 +246,7 @@ requestAnimationFrame(animate);
 if(sasha){
 sasha.rotation.x = 0;
 sasha.rotation.z = 0;
-sasha.rotation.y = THREE.MathUtils.degToRad(90); // ← ВОТ ТУТ 90°
+sasha.rotation.y = THREE.MathUtils.degToRad(-90); // ← ВОТ ТУТ 90°
 }
 
 renderer.render(scene,cam);
@@ -261,6 +261,7 @@ renderer.setSize(innerWidth,innerHeight);
 
 </body>
 </html>
+
 
 
 
