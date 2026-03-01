@@ -2,54 +2,52 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sasha AI - Jarvis Engine v3.0 Professional</title>
+    <title>SASHA AI - GENERATIVE LLM INTERFACE</title>
     <style>
-        :root { --neon: #00f2ff; --bg: #050505; --code-bg: #0d0d0d; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        :root { --neon: #00f2ff; --bg: #050505; --panel: #0a0a0a; }
+        body { margin: 0; background: var(--bg); color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
 
-        /* ИНТЕРФЕЙС ЧАТА */
-        #ui-panel { width: 500px; border-right: 1px solid #222; display: flex; flex-direction: column; background: #080808; z-index: 10; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
-        #chat-log { flex: 1; overflow-y: auto; padding: 25px; scrollbar-width: thin; scrollbar-color: var(--neon) transparent; }
+        /* ИНТЕРФЕЙС КАК У ЧАТ ГПТ */
+        #side-panel { width: 450px; background: var(--panel); border-right: 1px solid #222; display: flex; flex-direction: column; z-index: 20; box-shadow: 10px 0 30px rgba(0,0,0,0.8); }
+        #chat-flow { flex: 1; overflow-y: auto; padding: 25px; scrollbar-width: thin; scrollbar-color: #333 transparent; }
         
-        .msg-block { margin-bottom: 30px; animation: fadeIn 0.4s ease-out; }
-        .author { font-size: 11px; font-weight: 900; letter-spacing: 1.5px; margin-bottom: 8px; text-transform: uppercase; }
-        .author.user { color: #555; }
-        .author.ai { color: var(--neon); text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
+        .message { margin-bottom: 30px; animation: fadeIn 0.4s ease; border-bottom: 1px solid #1a1a1a; padding-bottom: 15px; }
+        .label { font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+        .label.ai { color: var(--neon); }
+        .label.user { color: #777; }
 
-        /* КОД */
-        .code-wrap { background: var(--code-bg); border: 1px solid #1a1a1a; border-radius: 6px; margin-top: 12px; overflow: hidden; }
-        .code-header { background: #151515; padding: 6px 15px; font-size: 10px; color: #555; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; }
-        .code-header span:first-child { color: var(--neon); }
-        .code-body { padding: 15px; overflow-x: auto; color: #b0b0b0; white-space: pre; font-size: 13px; line-height: 1.6; font-family: 'Consolas', monospace; }
+        /* БЛОКИ КОДА */
+        .code-container { background: #000; border: 1px solid #333; border-radius: 8px; margin-top: 15px; overflow: hidden; font-family: 'Consolas', monospace; }
+        .code-header { background: #1a1a1a; padding: 8px 15px; font-size: 11px; color: var(--neon); display: flex; justify-content: space-between; border-bottom: 1px solid #222; }
+        .code-body { padding: 15px; overflow-x: auto; color: #adbac7; white-space: pre; font-size: 13px; line-height: 1.5; }
 
         /* ВВОД */
-        #input-area { padding: 25px; border-top: 1px solid #1a1a1a; background: #070707; }
-        input { width: 100%; background: #000; border: 1px solid #333; color: var(--neon); padding: 14px; outline: none; border-radius: 4px; box-sizing: border-box; }
+        #input-wrap { padding: 20px; border-top: 1px solid #222; background: #0d0d0d; }
+        input { width: 100%; background: #111; border: 1px solid #333; color: var(--neon); padding: 15px; outline: none; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+        input:focus { border-color: var(--neon); }
 
-        /* ЭКРАН */
-        #render-viewport { flex: 1; position: relative; background: radial-gradient(circle at center, #111 0%, #000 100%); }
-        #exec-btn { 
-            position: absolute; bottom: 40px; right: 40px; 
-            padding: 18px 35px; background: var(--neon); color: #000; 
-            border: none; font-weight: 900; cursor: pointer; border-radius: 4px; 
-            display: none; box-shadow: 0 0 30px var(--neon);
-            text-transform: uppercase; z-index: 100;
+        /* ВЬЮПОРТ (САША ПО ЦЕНТРУ) */
+        #viewport { flex: 1; position: relative; background: #000; }
+        #run-button { 
+            position: absolute; bottom: 30px; right: 30px; 
+            padding: 15px 35px; background: var(--neon); color: #000; 
+            border: none; font-weight: bold; cursor: pointer; border-radius: 8px; 
+            display: none; box-shadow: 0 0 25px var(--neon); z-index: 100;
         }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div id="ui-panel">
-    <div id="chat-log"></div>
-    <div id="input-area">
-        <input type="text" id="userInput" placeholder="Приказ (напр: 'красный куб на c#', 'код полета на с++')..." autocomplete="off">
+<div id="side-panel">
+    <div id="chat-flow"></div>
+    <div id="input-wrap">
+        <input type="text" id="userInput" placeholder="Спроси Сашу о чем угодно..." autocomplete="off">
     </div>
 </div>
 
-<div id="render-viewport">
-    <button id="exec-btn" onclick="runGeneratedJS()">Исполнить JS</button>
+<div id="viewport">
+    <button id="run-button" onclick="executeJS()">ЗАПУСТИТЬ ВИЗУАЛИЗАЦИЮ</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -58,166 +56,149 @@
 <script>
     let scene, camera, renderer, sasha, currentJS = "";
     let isSpeaking = false, clock = new THREE.Clock();
-    let mouthScale = 1.0;
+    let mouthLevel = 1.0;
     const synth = window.speechSynthesis;
 
-    // --- 1. СИСТЕМА САШИ (3D + МОДЕЛЬ) ---
-    function init() {
+    function init3D() {
         scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(45, (window.innerWidth - 500) / window.innerHeight, 0.1, 1000);
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth - 500, window.innerHeight);
-        document.getElementById('render-viewport').appendChild(renderer.domElement);
+        // Камера настроена для вида "в лицо"
+        camera = new THREE.PerspectiveCamera(40, (window.innerWidth - 450) / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 4.5); 
+        camera.lookAt(0, 0, 0);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-        const pLight = new THREE.PointLight(0x00d8ff, 1);
-        pLight.position.set(5, 5, 5);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth - 450, window.innerHeight);
+        document.getElementById('viewport').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const pLight = new THREE.PointLight(var(--neon), 1);
+        pLight.position.set(2, 2, 5);
         scene.add(pLight);
 
-        camera.position.set(0, 0, 5);
-
-        // Загрузка модели Саши
+        // Загрузка Саши
         new THREE.GLTFLoader().load("SashaAI.glb", (gltf) => {
             sasha = gltf.scene;
-            sasha.scale.set(1.5, 1.5, 1.5);
-            sasha.position.y = -1.5;
+            sasha.scale.set(1.6, 1.6, 1.6);
+            sasha.position.set(0, -1.3, 0); // Позиция по центру
+            sasha.rotation.y = 0; // Лицом к камере
             scene.add(sasha);
-            console.log("Sasha Model: Loaded");
-        }, undefined, (err) => console.error("Sasha Model: Not found. Place SashaAI.glb in folder."));
+        }, undefined, (e) => console.log("Файл SashaAI.glb не найден. Ожидание подключения модели."));
 
-        update();
+        renderLoop();
     }
 
-    function update() {
-        requestAnimationFrame(update);
-        const time = clock.getElapsedTime();
-
+    function renderLoop() {
+        requestAnimationFrame(renderLoop);
+        const dt = clock.getElapsedTime();
         if (sasha) {
-            // Анимация качания
-            let bob = Math.sin(time * 1.5) * 0.05;
+            // Реалистичное качание
+            let bob = Math.sin(dt * 1.2) * 0.04;
             if (isSpeaking) {
-                bob = Math.sin(time * 5) * 0.1;
-                mouthScale = 1.0 + Math.abs(Math.sin(time * 10)) * 0.3;
+                bob = Math.sin(dt * 6) * 0.08;
+                mouthLevel = 1.0 + Math.abs(Math.sin(dt * 12)) * 0.35;
             } else {
-                mouthScale += (1.0 - mouthScale) * 0.1;
+                mouthLevel += (1.0 - mouthLevel) * 0.1;
             }
-            sasha.position.y = -1.5 + bob;
-            sasha.scale.y = 1.5 * mouthScale;
+            sasha.position.y = -1.3 + bob;
+            sasha.scale.y = 1.6 * mouthLevel;
         }
         renderer.render(scene, camera);
     }
 
-    // --- 2. ГОЛОС ---
-    function speak(text) {
+    function speak(txt) {
         if (synth.speaking) synth.cancel();
-        const msg = new SpeechSynthesisUtterance(text);
+        const msg = new SpeechSynthesisUtterance(txt);
         msg.lang = 'ru-RU';
-        msg.pitch = 0.8;
-        msg.rate = 1.0;
+        msg.pitch = 0.85;
         msg.onstart = () => isSpeaking = true;
         msg.onend = () => isSpeaking = false;
         synth.speak(msg);
     }
 
-    // --- 3. ПРОДВИНУТЫЙ МОЗГ ГЕНЕРАЦИИ ---
-    function aiBrain(query) {
+    // --- МОЗГ LLM (Логика ChatGPT) ---
+    function processAI(query) {
         const q = query.toLowerCase();
         let lang = "javascript";
         let code = "";
-        let speech = "Да. Запрос принят. Обработка параметров... Готов.";
+        let response = "";
 
-        // Определение цвета для генерации
-        const colorHex = q.includes("красн") ? "0xff0000" : q.includes("син") ? "0x0000ff" : q.includes("зелен") ? "0x00ff00" : "0x00f2ff";
-        const colorName = q.includes("красн") ? "Red" : q.includes("син") ? "Blue" : "Cyan";
-
-        if (q.includes("c#") || q.includes("си шарп") || q.includes("unity")) {
-            lang = "csharp";
-            if (q.includes("враг") || q.includes("ии")) {
-                code = `using UnityEngine;\n\npublic class EnemyAI : MonoBehaviour {\n    public Transform target;\n    void Update() {\n        if(target) transform.LookAt(target);\n        transform.Translate(Vector3.forward * 2f * Time.deltaTime);\n    }\n}`;
-            } else if (q.includes("движ") || q.includes("ход")) {
-                code = `using UnityEngine;\n\npublic class PlayerMove : MonoBehaviour {\n    void Update() {\n        float h = Input.GetAxis("Horizontal");\n        float v = Input.GetAxis("Vertical");\n        transform.Translate(new Vector3(h, 0, v) * 5f * Time.deltaTime);\n    }\n}`;
-            } else {
-                code = `using UnityEngine;\n\npublic class SashaModule : MonoBehaviour {\n    void Start() {\n        GetComponent<Renderer>().material.color = Color.${colorName.toLowerCase()};\n    }\n}`;
-            }
+        // Имитация "умного" ответа
+        if (q.includes("привет") || q.includes("кто ты")) {
+            response = "Приветствую. Я Саша, твой персональный ИИ-узел. Я могу генерировать сложную геометрию, писать код на разных языках и помогать в обучении.";
+            lang = "system";
+            code = "// Статус: Онлайн\n// Модули: Активны";
         } 
+        else if (q.includes("c#") || q.includes("си шарп")) {
+            lang = "csharp";
+            response = "Конечно. Для реализации объемной логики в Unity я подготовила структуру класса с поддержкой трансформаций.";
+            code = `using UnityEngine;\n\npublic class SashaCore : MonoBehaviour {\n    [SerializeField] private float amplitude = 1.5f;\n    void Update() {\n        float y = Mathf.Sin(Time.time) * amplitude;\n        transform.position = new Vector3(0, y, 0);\n    }\n}`;
+        }
         else if (q.includes("c++") || q.includes("плюс")) {
             lang = "cpp";
-            code = `#include <iostream>\n#include <SashaCore.h>\n\nclass Generator {\npublic:\n    void Init() {\n        std::cout << "Sasha Engine: ${query} initialized" << std::endl;\n    }\n};\n\nint main() {\n    Generator gen;\n    gen.Init();\n    return 0;\n}`;
-        } 
+            response = "Запрос на C++ принят. Генерирую оптимизированный код для обработки данных в реальном времени.";
+            code = `#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<std::string> log = {"Sasha", "AI", "Active"};\n    for(const auto& s : log) std::cout << s << " ";\n    return 0;\n}`;
+        }
         else {
+            // Генерация КРАСИВОГО JS кода (Объем и Красота)
             lang = "javascript";
-            // Генерация JS по описанию
-            if (q.includes("куб") || q.includes("квадрат")) {
-                code = `const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);\nconst mat = new THREE.MeshPhongMaterial({ color: ${colorHex} });\nconst mesh = new THREE.Mesh(geo, mat);\nmesh.position.set(Math.random()*4-2, 0, Math.random()*4-2);\nscene.add(mesh);`;
-            } else if (q.includes("сфер") || q.includes("шар")) {
-                code = `const geo = new THREE.SphereGeometry(1, 32, 32);\nconst mat = new THREE.MeshPhongMaterial({ color: ${colorHex}, wireframe: true });\nconst mesh = new THREE.Mesh(geo, mat);\nscene.add(mesh);`;
-            } else {
-                code = `const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);\nconst mat = new THREE.MeshPhongMaterial({ color: ${colorHex} });\nconst mesh = new THREE.Mesh(geo, mat);\nmesh.rotation.y = Math.random() * Math.PI;\nscene.add(mesh);`;
-            }
+            response = "Хорошо, я создаю сложную объемную структуру с неоновым материалом и динамическим вращением.";
+            
+            // Разные объекты для разнообразия
+            const shapes = [
+                `new THREE.TorusKnotGeometry(1, 0.3, 128, 32)`,
+                `new THREE.IcosahedronGeometry(1.5, 0)`,
+                `new THREE.OctahedronGeometry(1.5, 5)`
+            ];
+            const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+            const color = q.includes("красн") ? "0xff4444" : "0x00f2ff";
+
+            code = `const geometry = ${randomShape};\nconst material = new THREE.MeshPhongMaterial({ \n    color: ${color}, \n    shininess: 100, \n    emissive: 0x111111 \n});\nconst mesh = new THREE.Mesh(geometry, material);\nmesh.position.set(Math.random()*4-2, 1, Math.random()*2-4);\nscene.add(mesh);\n\n// Добавляем вращение\nfunction animateObj() {\n    mesh.rotation.x += 0.01;\n    mesh.rotation.y += 0.01;\n    requestAnimationFrame(animateObj);\n}\nanimateObj();`;
+            
             currentJS = code;
-            document.getElementById('exec-btn').style.display = 'block';
+            document.getElementById('run-button').style.display = 'block';
         }
 
-        speak(speech);
-        setTimeout(() => addMessage('ai', speech, code, lang), 400);
+        speak(response);
+        addMessage('ai', response, code, lang);
     }
 
-    // --- 4. ИНТЕРФЕЙСНЫЕ ФУНКЦИИ ---
     function addMessage(sender, text, code = null, lang = "") {
-        const log = document.getElementById('chat-log');
-        const wrap = document.createElement('div');
-        wrap.className = 'msg-block';
-        
-        const label = `<div class="author ${sender}">${sender === 'user' ? 'User' : 'Jarvis / Sasha'}</div>`;
-        let codeSection = "";
-
+        const flow = document.getElementById('chat-flow');
+        const div = document.createElement('div');
+        div.className = 'message';
+        const label = `<div class="label ${sender}">${sender === 'user' ? 'Вы' : 'Саша'}</div>`;
+        let codeBlock = "";
         if (code) {
-            codeSection = `
-                <div class="code-wrap">
-                    <div class="code-header"><span>${lang.toUpperCase()}</span><span>COPY</span></div>
-                    <div class="code-body">${escapeHtml(code)}</div>
-                </div>
-            `;
+            codeBlock = `<div class="code-container"><div class="code-header"><span>${lang.toUpperCase()}</span><span>COPY</span></div><div class="code-body">${escape(code)}</div></div>`;
         }
-
-        wrap.innerHTML = `${label}<div>${text}</div>${codeSection}`;
-        log.appendChild(wrap);
-        log.scrollTop = log.scrollHeight;
+        div.innerHTML = `${label}<div>${text}</div>${codeBlock}`;
+        flow.appendChild(div);
+        flow.scrollTop = flow.scrollHeight;
     }
 
-    function escapeHtml(s) {
-        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+    function escape(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-    function runGeneratedJS() {
+    function executeJS() {
         try {
-            const runner = new Function('scene', 'THREE', currentJS);
-            runner(scene, THREE);
-            document.getElementById('exec-btn').style.display = 'none';
-        } catch (err) { console.error("Execution Error:", err); }
+            const f = new Function('scene', 'THREE', currentJS);
+            f(scene, THREE);
+            document.getElementById('run-button').style.display = 'none';
+        } catch(e) { console.error(e); }
     }
 
-    const chatInput = document.getElementById('userInput');
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && chatInput.value.trim()) {
-            const p = chatInput.value;
+    document.getElementById('userInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && e.target.value) {
+            const p = e.target.value;
             addMessage('user', p);
-            aiBrain(p);
-            chatInput.value = '';
+            processAI(p);
+            e.target.value = '';
         }
     });
 
-    window.onload = init;
-    window.onresize = () => {
-        camera.aspect = (window.innerWidth - 500) / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth - 500, window.innerHeight);
-    };
+    window.onload = init3D;
 </script>
 </body>
 </html>
-
-
 
 
 
