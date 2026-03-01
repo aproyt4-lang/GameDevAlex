@@ -59,20 +59,18 @@ load("SashaAI.glb")
       this.model.position.set(0,-1.2,0);
       this.model.rotation.y = -Math.PI/2;
 
-      if(gltf.animations.length){
+      if(gltf.animations.length)
+      {
         this.mixer = new THREE.AnimationMixer(this.model);
         const action = this.mixer.clipAction(gltf.animations[0]);
         action.play();
-    }
-    
+      }
+  }
     undefined, err=>{
       console.error("Ошибка загрузки модели:", err);
-  });
-
-
-  update(dt){ if(this.mixer) this.mixer.update(dt); }
-
-  setEmotion(color){
+    }
+update(dt){ if(this.mixer) this.mixer.update(dt); }
+setEmotion(color){
     if(!this.model) return;
     this.model.traverse(o=>{
       if(o.isMesh && o.material?.color){
@@ -320,6 +318,7 @@ document.getElementById('runBtn').onclick=()=>{
 </script>
 </body>
 </html>
+
 
 
 
