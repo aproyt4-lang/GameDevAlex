@@ -51,7 +51,7 @@ class Model {
     this.mixer = null;
   }
 
-  load(url = 'SashaAI.glb'){
+  load('SashaAI.glb'){
     const loader = new GLTFLoader();
     loader.load(url, gltf=>{
       this.model = gltf.scene;
@@ -234,6 +234,7 @@ document.getElementById('prompt').addEventListener('keydown', e=>{
 </script>
 </body>
 </html>
+
 
 
 
