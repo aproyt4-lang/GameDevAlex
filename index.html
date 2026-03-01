@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>SASHA ENGINE v8.0</title>
+<title>SASHA ENGINE v7.1</title>
 <style>
 :root { --neon:#00f2ff; --bg:#020202; --panel:#080808; }
 
@@ -67,187 +67,194 @@ box-shadow:0 0 20px var(--neon);
 <body>
 
 <div id="ai-core">
-  <div id="log-stream"></div>
-  <div id="input-container">
-    <input type="text" id="prompt" placeholder="Напиши: Саша, создай персонажа по типу GTA">
-    <textarea id="code" placeholder="Сгенерированный код..."></textarea>
-  </div>
+<div id="log-stream"></div>
+<div id="input-container">
+<input type="text" id="prompt" placeholder="Напиши описание задачи или команду">
+<textarea id="code" placeholder="Сгенерированный код..."></textarea>
+</div>
 </div>
 
 <div id="viewport">
-  <button id="runBtn">ИСПОЛНИТЬ КОД</button>
+<button id="runBtn">ИСПОЛНИТЬ КОД</button>
 </div>
 
 <script type="module">
+
 import * as THREE from 'https://cdn.skypack.dev/three@0.128.0';
 import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
 
 /* ================= MODEL ================= */
-class Model{
-  constructor(scene){
-    this.scene=scene;
-    this.model=null;
-    this.mixer=null;
-  }
+class Model {
+    constructor(scene){
+        this.scene = scene;
+        this.model = null;
+        this.mixer = null;
+    }
 
-  load(){
-    const loader = new GLTFLoader();
-    loader.load(
-      "SashaAI.glb",
-      gltf=>{
-        this.model=gltf.scene;
-        this.scene.add(this.model);
-        this.model.scale.set(1.5,1.5,1.5);
-        this.model.position.set(0,-1.2,0);
-        this.model.rotation.y=-Math.PI/2;
-        if(gltf.animations.length>0){
-          this.mixer=new THREE.AnimationMixer(this.model);
-          this.mixer.clipAction(gltf.animations[0]).play();
-        }
-      },
-      undefined,
-      err=>{ console.error("Ошибка загрузки:",err); }
-    );
-  }
+    load(){
+        const loader = new GLTFLoader();
+        loader.load("SashaAI.glb",
+            (gltf) => {
+                this.model = gltf.scene;
+                this.scene.add(this.model);
+                this.model.scale.set(1.5,1.5,1.5);
+                this.model.position.set(0,-1.2,0);
+                this.model.rotation.y=-Math.PI/2;
+                if(gltf.animations.length>0){
+                    this.mixer = new THREE.AnimationMixer(this.model);
+                    this.mixer.clipAction(gltf.animations[0]).play();
+                }
+            },
+            undefined,
+            (err) => { console.error("Ошибка загрузки:",err); }
+        );
+    }
 
-  update(dt){
-    if(this.mixer) this.mixer.update(dt);
-  }
+    update(dt){ if(this.mixer) this.mixer.update(dt); }
 
-  setEmotion(color){
-    if(!this.model) return;
-    this.model.traverse(o=>{
-      if(o.isMesh && o.material?.color){
-        o.material.color.set(color);
-      }
-    });
-  }
+    setEmotion(color){
+        if(!this.model) return;
+        this.model.traverse(o=>{
+            if(o.isMesh && o.material?.color){
+                o.material.color.set(color);
+            }
+        });
+    }
 }
 
 /* ================= ENGINE ================= */
-const Engine={
-  scene:null,
-  camera:null,
-  renderer:null,
-  Model:null,
+const Engine = {
+    scene: null,
+    camera: null,
+    renderer: null,
+    Model: null,
 
-  init(){
-    this.scene=new THREE.Scene();
-    this.camera=new THREE.PerspectiveCamera(30,(window.innerWidth-550)/window.innerHeight,0.1,1000);
-    this.camera.position.set(0,0,4);
+    init(){
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(30,(window.innerWidth-550)/window.innerHeight,0.1,1000);
+        this.camera.position.set(0,0,4);
 
-    this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
-    this.renderer.setSize(window.innerWidth-550,window.innerHeight);
-    document.getElementById('viewport').appendChild(this.renderer.domElement);
+        this.renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+        this.renderer.setSize(window.innerWidth-550,window.innerHeight);
+        document.getElementById('viewport').appendChild(this.renderer.domElement);
 
-    this.scene.add(new THREE.AmbientLight(0xffffff,1.2));
+        this.scene.add(new THREE.AmbientLight(0xffffff,1.2));
 
-    this.Model=new Model(this.scene);
-    this.Model.load();
+        this.Model = new Model(this.scene);
+        this.Model.load();
 
-    this.loop();
-  },
+        this.loop();
+    },
 
-  loop(){
-    this.Model.update(0.016);
-    this.renderer.render(this.scene,this.camera);
-    requestAnimationFrame(()=>this.loop());
-  },
+    loop(){
+        this.Model.update(0.016);
+        this.renderer.render(this.scene,this.camera);
+        requestAnimationFrame(()=>this.loop());
+    },
 
-  say(text){
-    const log=document.getElementById("log-stream");
-    log.innerHTML+=`<div class="entry ai"><div class="tag">Sasha Engine</div>${text}</div>`;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang="ru-RU";
-    speechSynthesis.speak(u);
-  },
+    say(text){
+        const log=document.getElementById("log-stream");
+        log.innerHTML+=`<div class="entry ai"><div class="tag">Sasha Engine</div>${text}</div>`;
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang="ru-RU";
+        speechSynthesis.speak(u);
+    },
 
-  executeJS(code){
-    try{
-      new Function("scene","THREE",code)(this.scene,THREE);
-      this.say("JS выполнен.");
-    }catch(e){
-      this.say("Ошибка: "+e.message);
+    executeJS(code){
+        try{
+            new Function("scene","THREE",code)(this.scene,THREE);
+            this.say("JS выполнен.");
+        }catch(e){
+            this.say("Ошибка: "+e.message);
+        }
     }
-  }
 };
 
 Engine.init();
 
 /* ================= AI ================= */
-class AI{
-  constructor(engine){
-    this.engine=engine;
-  }
-
-  process(input){
-    if(!input) return;
-    const text=input.toLowerCase();
-
-    // обычный чат
-    if(["привет","как дела","здорово","хай"].some(w=>text.includes(w))){
-      this.engine.Model.setEmotion(0x00ffcc);
-      this.engine.say("Я активен и слышу тебя.");
-      return;
+class AI {
+    constructor(engine){
+        this.engine = engine;
     }
 
-    // генерация кода
-    if(text.includes("создай") || text.includes("сделай") || text.includes("добавь")){
-      this.generateAllCodes(text);
-      return;
+    process(input){
+        if(!input) return;
+        const text = input.toLowerCase();
+
+        // Голосовые ответы
+        if(text.includes("привет") || text.includes("как дела")){
+            this.engine.Model.setEmotion(0x00ffcc);
+            this.engine.say("Я активен и слышу тебя.");
+            return;
+        }
+
+        // Если в сообщении есть описание задачи
+        if(text.includes("создай") || text.includes("добавь") || text.includes("сделай")){
+            this.generateJSCode(text);
+            this.generateCPPCode(text);
+            this.generateCSCode(text);
+            this.engine.say("JS, C++ и C# код сгенерирован. JS можно выполнить кнопкой ИСПОЛНИТЬ.");
+            return;
+        }
+
+        this.engine.say("Я тебя понял, но это не кодовая задача.");
     }
 
-    this.engine.say("Я тебя понял, но это не кодовая задача.");
-  }
+    // JS генерирует реальные объекты
+    generateJSCode(task){
+        const code =
+`// JS: ${task}
+let obj = null;
+if("${task}".includes("куб")) obj = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
+else if("${task}".includes("сфера")) obj = new THREE.Mesh(new THREE.SphereGeometry(0.7,32,32), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
+else obj = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
 
-  generateAllCodes(desc){
-    // JS код
-    const jsCode = `// JS модуль по описанию: ${desc}
-const obj = new THREE.Mesh(
-  new THREE.BoxGeometry(1,1,1),
-  new THREE.MeshStandardMaterial({color:Math.random()*0xffffff})
-);
-obj.position.set(0,1,0);
+obj.position.set(0,0,0);
 scene.add(obj);`;
 
-    // C++ шаблон
-    const cppCode = `// C++ код по описанию: ${desc}
-#include <iostream>
-using namespace std;
+        document.getElementById("code").value = code;
+    }
 
+    // C++ просто текстовое описание
+    generateCPPCode(task){
+        const code =
+`// C++: ${task}
+#include <iostream>
 int main(){
-    cout << "Sasha Engine - ${desc}" << endl;
+    std::cout << "Задача: ${task}" << std::endl;
     return 0;
 }`;
+        console.log("C++ code:",code);
+    }
 
-    // C# шаблон
-    const csCode = `// C# код по описанию: ${desc}
+    // C# просто текстовое описание
+    generateCSCode(task){
+        const code =
+`// C#: ${task}
 using System;
-
 class Program{
     static void Main(){
-        Console.WriteLine("Sasha Engine - ${desc}");
+        Console.WriteLine("Задача: ${task}");
     }
 }`;
-
-    document.getElementById("code").value = jsCode;
-    this.engine.say("JS, C++ и C# код сгенерирован. JS можно выполнить кнопкой ИСПОЛНИТЬ.");
-  }
+        console.log("C# code:",code);
+    }
 }
 
 const AIcore = new AI(Engine);
 
 /* ================= INPUT ================= */
-document.getElementById("prompt").addEventListener("keydown",e=>{
-  if(e.key==="Enter"){
-    AIcore.process(e.target.value);
-    e.target.value="";
-  }
+document.getElementById("prompt").addEventListener("keydown", e=>{
+    if(e.key==="Enter"){
+        AIcore.process(e.target.value);
+        e.target.value="";
+    }
 });
 
 /* ================= SANDBOX BUTTON ================= */
-document.getElementById("runBtn").onclick=()=>{
-  Engine.executeJS(document.getElementById("code").value);
+document.getElementById("runBtn").onclick = ()=>{
+    Engine.executeJS(document.getElementById("code").value);
 };
 
 </script>
