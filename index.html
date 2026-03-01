@@ -2,194 +2,172 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>JARVIS ENGINE v2.5 FINAL</title>
+    <title>Sasha AI - Advanced Logic</title>
     <style>
-        :root { --neon: #00f2ff; --bg: #050505; --code-bg: #0d0d0d; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; height: 100vh; overflow: hidden; }
-
-        /* ИНТЕРФЕЙС */
-        #ui-panel { width: 500px; border-right: 1px solid #222; display: flex; flex-direction: column; background: #080808; z-index: 10; }
-        #chat-log { flex: 1; overflow-y: auto; padding: 25px; scrollbar-width: thin; scrollbar-color: #222 transparent; }
-        
-        .msg-block { margin-bottom: 30px; animation: fadeIn 0.4s ease-out; }
-        .author { font-size: 11px; font-weight: 900; letter-spacing: 1.5px; margin-bottom: 8px; text-transform: uppercase; }
-        .author.user { color: #555; }
-        .author.ai { color: var(--neon); text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
-
-        /* КОД */
-        .code-wrap { background: var(--code-bg); border: 1px solid #1a1a1a; border-radius: 6px; margin-top: 12px; overflow: hidden; }
-        .code-header { background: #151515; padding: 6px 15px; font-size: 10px; color: #555; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; }
-        .code-header span:first-child { color: var(--neon); }
-        .code-body { padding: 15px; overflow-x: auto; color: #b0b0b0; white-space: pre; font-size: 13px; line-height: 1.6; font-family: 'Consolas', 'Monaco', monospace; }
-
-        /* ВВОД */
-        #input-area { padding: 25px; border-top: 1px solid #1a1a1a; background: #070707; }
-        input { width: 100%; background: #000; border: 1px solid #333; color: var(--neon); padding: 14px; outline: none; border-radius: 4px; transition: 0.3s; box-sizing: border-box; }
-        input:focus { border-color: var(--neon); box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); }
-
-        /* ЭКРАН */
-        #render-viewport { flex: 1; position: relative; }
-        canvas { display: block; }
-        #exec-btn { 
-            position: absolute; bottom: 40px; right: 40px; 
-            padding: 18px 35px; background: var(--neon); color: #000; 
-            border: none; font-weight: 900; cursor: pointer; border-radius: 4px; 
-            display: none; box-shadow: 0 0 30px rgba(0, 242, 255, 0.5);
-            text-transform: uppercase; letter-spacing: 1px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); } 50% { box-shadow: 0 0 40px rgba(0, 242, 255, 0.7); } 100% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); } }
+        :root { --neon:#00d8ff; --dark:#050505; }
+        html,body { margin:0; padding:0; background:var(--dark); color:#fff; font-family:Segoe UI; height:100%; overflow:hidden; }
+        #sasha-viewport { position:fixed; inset:0; z-index:1; pointer-events:none; }
+        #chat-container { position:fixed; bottom:30px; left:30px; width:450px; height:550px; background:rgba(10,10,10,.95); border-radius:12px; display:flex; flex-direction:column; z-index:10; border: 1px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #messages { flex:1; padding:15px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; scroll-behavior: smooth; }
+        .msg { padding:12px; border-radius:8px; max-width:90%; font-size:14px; white-space: pre-wrap; word-break: break-word; }
+        .ai { background:rgba(0,216,255,.1); color:var(--neon); align-self:flex-start; border-left: 3px solid var(--neon); }
+        .user { background:#1a1a1a; align-self:flex-end; border: 1px solid #444; color: #e0e0e0; }
+        code { background: #000; color: #0f0; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+        .input-row { display:flex; gap:8px; padding:15px; border-top: 1px solid #333; }
+        input { flex:1; background:#000; border: 1px solid #444; color:#fff; padding:12px; border-radius:6px; outline: none; }
+        button { background:#000; border: 1px solid var(--neon); color:var(--neon); padding:10px 20px; cursor:pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: var(--neon); color: #000; }
     </style>
 </head>
 <body>
 
-<div id="ui-panel">
-    <div id="chat-log"></div>
-    <div id="input-area">
-        <input type="text" id="userInput" placeholder="Приказ для JARVIS..." autocomplete="off">
-    </div>
-</div>
+<div id="sasha-viewport"></div>
 
-<div id="render-viewport">
-    <button id="exec-btn" onclick="runGeneratedJS()">Исполнить код</button>
+<div id="chat-container">
+  <div id="messages"><div class="msg ai"><b>СИСТЕМА:</b> Саша готова к анализу кода и обучению.</div></div>
+  <div class="input-row">
+    <input id="user-in" placeholder="Скинь код или обучи...">
+    <button onclick="askSasha()">SEND</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-    // ==========================================
-    // МОДЕЛЬ САШИ (НЕ ТРОГАТЬ)
-    function INJECT_SASHAS_MODEL(scene) {
-        console.log("JARVIS: Модель Саши загружена.");
-        // Сюда вставляй загрузчик (GLTFLoader и т.д.)
-    }
-    // ==========================================
+let sasha, isSpeaking = false, activated = false, clock = new THREE.Clock();
+let currentMouthScale = 1.8;
 
-    let scene, camera, renderer, currentJS = "";
-    const synth = window.speechSynthesis;
+// --- ПРОДВИНУТЫЕ МОЗГИ (JS ENGINE) ---
+const SashaBrain = {
+    db: JSON.parse(localStorage.getItem("sasha_pro_db") || '{"codes":[], "facts":[], "rules":[]}'),
 
-    function init() {
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 500) / window.innerHeight, 0.1, 1000);
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth - 500, window.innerHeight);
-        document.getElementById('render-viewport').appendChild(renderer.domElement);
+    save() { localStorage.setItem("sasha_pro_db", JSON.stringify(this.db)); },
 
-        scene.add(new THREE.AmbientLight(0x222222));
-        const light = new THREE.PointLight(0xffffff, 1, 100);
-        light.position.set(10, 10, 10);
-        scene.add(light);
+    process(text) {
+        const raw = text.trim();
+        const t = raw.toLowerCase();
 
-        camera.position.set(0, 5, 10);
-        camera.lookAt(0, 0, 0);
-
-        INJECT_SASHAS_MODEL(scene);
-        update();
-    }
-
-    function update() {
-        requestAnimationFrame(update);
-        renderer.render(scene, camera);
-    }
-
-    // Голос Саши (только текст)
-    function jarvisVoice(text) {
-        if (synth.speaking) synth.cancel();
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'ru-RU';
-        msg.pitch = 0.7; // Более низкий, кибернетический голос
-        msg.rate = 1.1;
-        synth.speak(msg);
-    }
-
-    const chatInput = document.getElementById('userInput');
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && chatInput.value.trim()) {
-            const prompt = chatInput.value;
-            addMessage('user', prompt);
-            aiBrain(prompt);
-            chatInput.value = '';
-        }
-    });
-
-    function aiBrain(query) {
-        const q = query.toLowerCase();
-        let lang = "javascript";
-        let code = "";
-        let speech = "";
-
-        if (q.includes("c#") || q.includes("си шарп")) {
-            lang = "csharp";
-            speech = "Да. Запрос принят. Генерирую структуру на Си Шарп. Готов.";
-            code = `using UnityEngine;\n\npublic class EngineModule : MonoBehaviour {\n    public float power = 100f;\n    void Start() {\n        Debug.Log("Sasha Module Initialized");\n    }\n}`;
-        } else if (q.includes("c++") || q.includes("плюс")) {
-            lang = "cpp";
-            speech = "Да. Запрос принят. Подготавливаю скомпилированные модули на Си Плюс Плюс. Готов.";
-            code = `#include <SashaEngine.h>\n\nint main() {\n    auto app = new Application("Jarvis");\n    app->Run();\n    return 0;\n}`;
-        } else if (q.includes("привет") || q.includes("как дела")) {
-            lang = "system";
-            speech = "Да. Система функционирует. Все протоколы Саши активны. Готов.";
-            code = "// Статус: Ожидание команд\n// Ядро: Стабильно";
-        } else {
-            lang = "javascript";
-            speech = "Да. Запрос на динамический код принят. Генерирую объекты. Готов.";
-            code = `// Генерация в реальном времени\nconst geometry = new THREE.TorusKnotGeometry(2, 0.6, 100, 16);\nconst material = new THREE.MeshPhongMaterial({ color: 0x00f2ff, emissive: 0x003333 });\nconst mesh = new THREE.Mesh(geometry, material);\nmesh.position.y = Math.random() * 5;\nscene.add(mesh);\n\nconsole.log("JS Объект заспавнен.");`;
-            currentJS = code;
-            document.getElementById('exec-btn').style.display = 'block';
+        // 1. ДЕТЕКТОР КОДА (JS, C#, HTML)
+        if (raw.includes("{") || raw.includes("function") || raw.includes("var ") || raw.includes("public class")) {
+            const name = prompt("Я вижу код! Как мне назвать этот фрагмент?", "MySnippet");
+            this.db.codes.push({ name: name.toLowerCase(), content: raw, date: new Date() });
+            this.save();
+            return `Код «${name}» успешно интегрирован в мою базу данных. Теперь я могу его воспроизвести по твоему запросу.`;
         }
 
-        jarvisVoice(speech);
-        setTimeout(() => addMessage('ai', speech, code, lang), 400);
-    }
+        // 2. ПОИСК КОДА
+        if (t.includes("дай код") || t.includes("покажи код")) {
+            const search = t.replace(/дай код|покажи код/g, "").trim();
+            const found = this.db.codes.find(c => c.name.includes(search));
+            return found ? `Вот твой код (${found.name}):\n\n${found.content}` : "Я не нашол кода с таким названием в своих архивах.";
+        }
 
-    function addMessage(sender, text, code = null, lang = "") {
-        const log = document.getElementById('chat-log');
-        const wrap = document.createElement('div');
-        wrap.className = 'msg-block';
+        // 3. ОБУЧЕНИЕ СМЫСЛАМ (Это Х значит Y)
+        if (t.includes(" это ") || t.includes(" есть ")) {
+            const parts = raw.split(/ это | есть /i);
+            this.db.facts.push({ topic: parts[0].toLowerCase().trim(), content: parts[1].trim() });
+            this.save();
+            return `Поняла. Теперь термин "${parts[0].trim()}" связан в моей памяти с этим определением.`;
+        }
+
+        // 4. ГИБКИЙ ПОИСК ФАКТОВ
+        const fact = this.db.facts.find(f => t.includes(f.topic));
+        if (fact) return fact.content;
+
+        // 5. БАЗОВЫЕ КОМАНДЫ
+        if (/привет|здравствуй/i.test(t)) return "Привет! Я готова анализировать твои скрипты или учиться новому.";
+        if (t === "что ты знаешь") return `В моем распоряжении ${this.db.codes.length} фрагментов кода и ${this.db.facts.length} фактов.`;
+
+        return "Интересная мысль. Я пока не имею точного алгоритма для этого, но я зафиксировала запрос в логах. Можешь объяснить подробнее?";
+    }
+};
+
+// --- ГОЛОС И ЧАТ ---
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.1; u.pitch = 0.8;
+    u.onstart = () => isSpeaking = true;
+    u.onend = () => isSpeaking = false;
+    window.speechSynthesis.speak(u);
+}
+
+function addMsg(w, t, c) {
+    const m = document.getElementById("messages");
+    m.innerHTML += `<div class="msg ${c}"><b>${w}:</b> ${t}</div>`;
+    m.scrollTop = m.scrollHeight;
+}
+
+function askSasha() {
+    const input = document.getElementById("user-in");
+    const val = input.value.trim();
+    if (!val) return;
+    addMsg("Вы", val, "user");
+    const r = SashaBrain.process(val);
+    setTimeout(() => {
+        addMsg("Саша", r, "ai");
+        speak(r);
+    }, 250);
+    input.value = "";
+}
+
+// --- 3D СЦЕНА ---
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.getElementById("sasha-viewport").appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+
+new THREE.GLTFLoader().load("SashaAI.glb", g => {
+    sasha = g.scene;
+    sasha.scale.set(1.8, 1.8, 1.8);
+    sasha.position.y = -1.2;
+    // Разворот лицом (подбери под свою модель)
+    sasha.rotation.y = -Math.PI / 2; 
+    scene.add(sasha);
+    cam.position.set(0, 0, 5);
+    animate();
+});
+
+function animate() {
+    requestAnimationFrame(animate);
+    const time = clock.getElapsedTime();
+
+    if (sasha) {
+        // ТО САМОЕ КАЧАНИЕ (Вверх-вниз), которое тебе нравилось
+        // Оно теперь работает и просто так, и усиливается при разговоре
+        let bobbing = Math.sin(time * 1.5) * 0.03;
         
-        const label = `<div class="author ${sender}">${sender === 'user' ? 'User' : 'Jarvis'}</div>`;
-        let codeSection = "";
-
-        if (code) {
-            codeSection = `
-                <div class="code-wrap">
-                    <div class="code-header"><span>${lang.toUpperCase()}</span><span>COPY</span></div>
-                    <div class="code-body">${escape(code)}</div>
-                </div>
-            `;
+        if (isSpeaking) {
+            // При разговоре качается чуть интенсивнее (имитация жизни)
+            bobbing = Math.sin(time * 4) * 0.06;
+            
+            // Плавный рот (Lerp)
+            let targetMouth = 1.8 + Math.abs(Math.sin(time * 12)) * 0.2;
+            currentMouthScale += (targetMouth - currentMouthScale) * 0.3;
+        } else {
+            currentMouthScale += (1.8 - currentMouthScale) * 0.1;
         }
-
-        wrap.innerHTML = `${label}<div>${text}</div>${codeSection}`;
-        log.appendChild(wrap);
-        log.scrollTop = log.scrollHeight;
+        
+        sasha.position.y = -1.2 + bobbing;
+        sasha.scale.y = currentMouthScale;
     }
+    renderer.render(scene, cam);
+}
 
-    function escape(s) {
-        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+document.body.onclick = () => {
+    if (activated) return;
+    activated = true;
+    speak("Система активирована. Я Саша, твой локальный узел знаний. Жду твои данные или код.");
+};
 
-    function runGeneratedJS() {
-        try {
-            const runner = new Function('scene', 'THREE', currentJS);
-            runner(scene, THREE);
-            document.getElementById('exec-btn').style.display = 'none';
-        } catch (err) {
-            console.error("Ошибка исполнения: ", err);
-        }
-    }
-
-    window.onload = init;
-    window.onresize = () => {
-        camera.aspect = (window.innerWidth - 500) / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth - 500, window.innerHeight);
-    };
+document.getElementById("user-in").onkeydown = e => { if(e.key==="Enter") askSasha(); };
 </script>
-
 </body>
 </html>
+
 
 
 
