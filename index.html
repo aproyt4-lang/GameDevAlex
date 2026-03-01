@@ -2,113 +2,100 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sasha Engine | 3D Core</title>
+    <title>Sasha Engine | Home Base</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { background: #000; color: #00ff41; font-family: 'Consolas', monospace; margin: 0; overflow: hidden; }
-        #container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        
-        /* Интерфейс поверх 3D */
-        .ui-layer { position: relative; z-index: 10; pointer-events: none; display: flex; flex-direction: column; height: 100vh; padding: 20px; box-sizing: border-box; }
-        .code-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: auto; pointer-events: auto; }
-        .code-block { background: rgba(0,0,0,0.8); border: 1px solid #00ff41; padding: 10px; height: 150px; overflow-y: auto; font-size: 11px; }
-        
-        .input-area { width: 500px; margin: 20px auto; pointer-events: auto; background: rgba(0,0,0,0.9); border: 2px solid #00ff41; padding: 15px; box-shadow: 0 0 20px #00ff41; }
-        input { width: 70%; background: transparent; border: 1px solid #00ff41; color: #00ff41; padding: 8px; outline: none; }
-        button { width: 25%; background: #00ff41; color: #000; border: none; padding: 9px; cursor: pointer; font-weight: bold; }
-        
-        .header { text-align: center; font-size: 24px; text-shadow: 0 0 10px #00ff41; pointer-events: none; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+        #viewport { position: absolute; width: 100%; height: 100%; }
+        .ui-overlay { position: absolute; z-index: 10; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
+        .terminal { background: rgba(0, 20, 0, 0.8); border: 1px solid #00ff41; color: #00ff41; margin: 10px; padding: 10px; pointer-events: auto; }
+        .panels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 10px; }
+        .code-box { background: #050505; border: 1px solid #444; height: 150px; overflow: auto; font-size: 12px; padding: 5px; }
+        .input-line { display: flex; background: #000; padding: 15px; border-top: 2px solid #00ff41; pointer-events: auto; }
+        input { flex: 1; background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; outline: none; }
+        button { background: #00ff41; color: #000; border: none; padding: 10px 30px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="container"></div>
+<div id="viewport"></div>
 
-<div class="ui-layer">
-    <div class="header">SASHA ENGINE: 3D VIZUALIZER</div>
+<div class="ui-overlay">
+    <div class="terminal" style="text-align:center; font-weight:bold;">SASHA ENGINE | ОБЪЕКТ: САША | СТАТУС: НА БАЗЕ</div>
     
-    <div class="input-area">
-        <input type="text" id="cmd" placeholder="Напиши: красный куб / синяя сфера..." onkeypress="if(event.key==='Enter') executeTask()">
-        <button onclick="executeTask()">СОЗДАТЬ</button>
+    <div class="panels">
+        <div class="code-box"><strong>JS EXEC:</strong><pre id="js-out"></pre></div>
+        <div class="code-box"><strong>C++ CORE:</strong><pre id="cpp-out"></pre></div>
+        <div class="code-box"><strong>C# ENGINE:</strong><pre id="cs-out"></pre></div>
     </div>
 
-    <div class="code-grid">
-        <div class="code-block" title="JS Logic"><strong>JS:</strong><div id="js-out"></div></div>
-        <div class="code-block" title="C++ Logic"><strong>C++:</strong><div id="cpp-out"></div></div>
-        <div class="code-block" title="C# Logic"><strong>C#:</strong><div id="cs-out"></div></div>
+    <div class="input-line">
+        <input type="text" id="cmd" placeholder="Приказ для Саши...">
+        <button onclick="sendOrder()">ОТПРАВИТЬ</button>
     </div>
 </div>
 
 <script>
-    // --- 3D ENGINE SETUP ---
+    // 1. Инициализация сцены
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.getElementById('container').appendChild(renderer.domElement);
+    document.getElementById('viewport').appendChild(renderer.domElement);
 
-    const light = new THREE.PointLight(0xffffff, 1, 100);
-    light.position.set(10, 10, 10);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0x404040));
-    camera.position.z = 5;
+    // 2. Свет (чтобы Сашу было видно)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0x00ff41, 1);
+    dirLight.position.set(5, 5, 5);
+    scene.add(dirLight);
 
-    let currentMesh;
+    camera.position.set(0, 1.5, 5); // Позиция "лицом к лицу"
+
+    let sashaModel;
+
+    // 3. ЗАГРУЗКА МОДЕЛИ САШИ
+    const loader = new THREE.GLTFLoader();
+    // ЗАМЕНИ 'sasha_model.glb' на реальное имя твоего файла
+    loader.load('sasha_model.glb', function (gltf) {
+        sashaModel = gltf.scene;
+        scene.add(sashaModel);
+        console.log("Саша на базе.");
+    }, undefined, function (error) {
+        console.error("Файл sasha_model.glb не найден. Использую временный макет.");
+        // Фантом Саши (если файл не найден)
+        const geometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
+        const material = new THREE.MeshStandardMaterial({ color: 0x00ff41, wireframe: true });
+        sashaModel = new THREE.Mesh(geometry, material);
+        scene.add(sashaModel);
+    });
 
     function animate() {
         requestAnimationFrame(animate);
-        if(currentMesh) {
-            currentMesh.rotation.x += 0.01;
-            currentMesh.rotation.y += 0.01;
-        }
+        if(sashaModel) sashaModel.rotation.y += 0.005;
         renderer.render(scene, camera);
     }
     animate();
 
-    // --- LOGIC ---
-    const voices = ["Модель загружена", "Объект на сцене", "Визуализация готова", "Принято, строю геометрию"];
+    // 4. Логика приказов
+    const phrases = ["Сделаю", "Саша слушает", "Приказ принят", "Обновляю протоколы"];
 
-    function executeTask() {
-        const val = document.getElementById('cmd').value.toLowerCase();
+    function sendOrder() {
+        const val = document.getElementById('cmd').value;
         if(!val) return;
 
-        // Удаляем старое
-        if(currentMesh) scene.remove(currentMesh);
-
-        // Параметры
-        let colorStr = val.includes("красн") ? "red" : (val.includes("син") ? "blue" : "green");
-        let colorHex = val.includes("красн") ? 0xff0000 : (val.includes("син") ? 0x0000ff : 0x00ff00);
-        
-        let geometry;
-        let type = "Cube";
-        if(val.includes("сфер")) {
-            geometry = new THREE.SphereGeometry(1.5, 32, 32);
-            type = "Sphere";
-        } else {
-            geometry = new THREE.BoxGeometry(2, 2, 2);
-        }
-
-        const material = new THREE.MeshStandardMaterial({ color: colorHex, wireframe: val.includes("сетка") });
-        currentMesh = new THREE.Mesh(geometry, material);
-        scene.add(currentMesh);
-
-        // Код и Голос
-        updateCode(type, colorStr);
-        speak(voices[Math.floor(Math.random() * voices.length)]);
-        document.getElementById('cmd').value = "";
-    }
-
-    function updateCode(obj, col) {
-        document.getElementById('js-out').innerText = `new THREE.Mesh(\n  new THREE.${obj}Geometry(),\n  new THREE.MeshStandardMaterial({color: '${col}'})\n);`;
-        document.getElementById('cpp-out').innerText = `// C++ / OpenGL\nglColor3f(${col === 'red' ? '1,0,0' : '0,1,0'});\ndraw${obj}();`;
-        document.getElementById('cs-out').innerText = `// C# / Unity\nvar obj = GameObject.CreatePrimitive(PrimitiveType.${obj});\nobj.GetComponent<Renderer>().material.color = Color.${col};`;
-    }
-
-    function speak(text) {
-        window.speechSynthesis.cancel();
-        const msg = new SpeechSynthesisUtterance(text);
+        // Голос
+        const msg = new SpeechSynthesisUtterance(phrases[Math.floor(Math.random()*phrases.length)]);
         msg.lang = 'ru-RU';
         window.speechSynthesis.speak(msg);
+
+        // Генерация кода
+        document.getElementById('js-out').innerText = `sasha.action("${val}");`;
+        document.getElementById('cpp-out').innerText = `void OnCommand() {\n  Sasha->Execute("${val}");\n}`;
+        document.getElementById('cs-out').innerText = `public void Task() {\n  sasha.Do("${val}");\n}`;
+        
+        document.getElementById('cmd').value = "";
     }
 </script>
 </body>
