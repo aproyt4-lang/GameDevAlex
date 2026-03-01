@@ -52,8 +52,7 @@ class Model {
   }
 
   load(){
-    const loader = new GLTFLoader();
-    loader.load("SashaAI.glb", gltf=>{
+      load("SashaAI.glb"){
       this.model = gltf.scene;
       this.scene.add(this.model);
       this.model.scale.set(1.5,1.5,1.5);
@@ -272,6 +271,7 @@ document.getElementById('runBtn').onclick=()=>{
 </script>
 </body>
 </html>
+
 
 
 
