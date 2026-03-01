@@ -2,123 +2,89 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sasha Engine | No-LLM Power</title>
+    <title>Sasha Engine | True AI Interface</title>
     <style>
-        :root { --bg: #0a0a0c; --accent: #00e5ff; --panel: #16161a; --text: #d1d1d1; }
-        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; display: flex; height: 100vh; }
+        body { background: #050505; color: #00ff41; font-family: 'Consolas', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .main-frame { width: 900px; height: 650px; border: 2px solid #00ff41; display: flex; flex-direction: column; box-shadow: 0 0 20px #00ff41; background: #000; }
+        .header { padding: 10px; border-bottom: 1px solid #00ff41; text-align: center; font-weight: bold; letter-spacing: 5px; }
         
-        /* Стили чата и панелей */
-        .sidebar { width: 350px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; }
-        .main-view { flex: 1; display: flex; flex-direction: column; padding: 20px; }
-        .chat-history { flex: 1; overflow-y: auto; padding: 15px; font-size: 14px; border-bottom: 1px solid #333; }
-        .input-box { padding: 15px; }
-        textarea { width: 100%; height: 60px; background: #000; color: var(--accent); border: 1px solid #444; padding: 8px; resize: none; outline: none; }
+        .display-area { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
+        .code-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 20px; flex: 1; }
+        .code-block { border: 1px solid #444; padding: 10px; font-size: 11px; position: relative; background: #0a0a0a; overflow: hidden; }
+        .code-block::before { content: attr(data-lang); position: absolute; top: 0; right: 0; background: #444; color: #fff; padding: 2px 5px; }
+
+        .input-zone { padding: 20px; border-top: 1px solid #00ff41; display: flex; gap: 10px; }
+        input { flex: 1; background: transparent; border: 1px solid #00ff41; color: #00ff41; padding: 10px; outline: none; }
+        button { background: #00ff41; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
         
-        .code-container { flex: 1; background: #000; border: 1px solid var(--accent); position: relative; margin-top: 10px; display: flex; flex-direction: column; }
-        .tabs { display: flex; background: #222; }
-        .tab { padding: 8px 15px; cursor: pointer; border-right: 1px solid #333; font-size: 12px; }
-        .tab.active { background: var(--accent); color: #000; }
-        #codeArea { flex: 1; padding: 15px; white-space: pre; overflow: auto; color: #a6e22e; font-size: 13px; }
-        
-        .btn { background: var(--accent); color: #000; border: none; padding: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
-        .btn:hover { filter: brightness(1.2); box-shadow: 0 0 15px var(--accent); }
-        .msg-ai { color: var(--accent); margin-bottom: 15px; }
-        .msg-user { color: #fff; opacity: 0.7; margin-bottom: 5px; }
+        .status-msg { color: #fff; margin-bottom: 10px; min-height: 20px; border-left: 3px solid #00ff41; padding-left: 10px; }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <div id="history" class="chat-history">
-        <div class="msg-ai">Sasha Engine: СИСТЕМА ГОТОВА. Жду команду...</div>
+<div class="main-frame">
+    <div class="header">SASHA ENGINE v3.0 - ACTIVE</div>
+    
+    <div class="display-area">
+        <div id="status" class="status-msg">Система ожидает прямого приказа...</div>
+        <div class="code-grid">
+            <div class="code-block" data-lang="JavaScript"><div id="js-out">// JS Code</div></div>
+            <div class="code-block" data-lang="C++"><div id="cpp-out">// C++ Instruction</div></div>
+            <div class="code-block" data-lang="C#"><div id="cs-out">// C# Script</div></div>
+        </div>
+        <button id="execBtn" style="display:none; margin-top:10px;" onclick="runJS()">ИСПОЛНИТЬ JAVASCRIPT</button>
     </div>
-    <div class="input-box">
-        <textarea id="userInput" placeholder="Напр: создать красный куб..."></textarea>
-        <button class="btn" onclick="analyzeRequest()">ОБРАБОТАТЬ</button>
-    </div>
-</div>
 
-<div class="main-view">
-    <div class="tabs">
-        <div id="tab-js" class="tab active" onclick="setView('js')">JAVASCRIPT</div>
-        <div id="tab-cpp" class="tab" onclick="setView('cpp')">C++ (SYSTEM)</div>
-        <div id="tab-cs" class="tab" onclick="setView('cs')">C# (ENGINE)</div>
-    </div>
-    <div class="code-container">
-        <div id="codeArea"></div>
-        <button id="runBtn" class="btn" style="display:none;" onclick="runVisual()">ИСПОЛНИТЬ В БРАУЗЕРЕ</button>
+    <div class="input-zone">
+        <input type="text" id="cmd" placeholder="Введи задачу (цвет, объект, действие)..." onkeypress="if(event.key==='Enter') process()">
+        <button onclick="process()">ВЫПОЛНИТЬ</button>
     </div>
 </div>
 
 <script>
-    let currentData = { js: "", cpp: "", cs: "", lang: 'js' };
+    const statusBox = document.getElementById('status');
+    const voices = ["Задача принята, приступаю к кодингу", "Понял тебя. Генерирую решение", "Есть контакт. Код готов", "Сделано. Проверяй вкладки"];
 
-    // База знаний (Шаблоны)
-    const Library = {
-        cube: {
-            js: "document.body.innerHTML += '<div id=\"cube\" style=\"width:100px;height:100px;background:red;margin:50px;transition:2s\"></div>';\nsetTimeout(()=>document.getElementById('cube').style.transform='rotate(45deg)', 100);",
-            cpp: "#include <GL/glut.h>\nvoid draw() { glutSolidCube(1.0); } // Отрисовка куба через OpenGL",
-            cs: "GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);\ncube.GetComponent<Renderer>().material.color = Color.red;"
-        },
-        calc: {
-            js: "let a = prompt('Число 1'); let b = prompt('Число 2'); alert('Сумма: ' + (Number(a)+Number(b)));",
-            cpp: "int a, b; std::cin >> a >> b; std::cout << a + b;",
-            cs: "Console.WriteLine(\"Введите числа:\");\nvar res = int.Parse(Console.ReadLine()) + int.Parse(Console.ReadLine());"
-        },
-        default: {
-            js: "console.log('Задача принята к исполнению...');",
-            cpp: "// Алгоритм: Проанализировать ввод и выделить память.\nint main() { return 0; }",
-            cs: "// Инструкция: Реализовать логику в методе Update()."
-        }
-    };
-
-    function analyzeRequest() {
-        const text = document.getElementById('userInput').value.toLowerCase();
-        if(!text) return;
-
-        addChat('user', text);
-        document.getElementById('userInput').value = "";
-
-        // Голос
-        const speech = new SpeechSynthesisUtterance("Я понял задачу и готов выполнить");
-        speech.lang = 'ru-RU';
-        window.speechSynthesis.speak(speech);
-
-        // Логика выбора шаблона
-        let key = 'default';
-        if (text.includes("куб")) key = 'cube';
-        if (text.includes("кальк") || text.includes("счит")) key = 'calc';
-
-        currentData.js = Library[key].js;
-        currentData.cpp = Library[key].cpp;
-        currentData.cs = Library[key].cs;
-
-        addChat('ai', `Сгенерирован код по теме: ${key.toUpperCase()}. Проверьте вкладки.`);
-        setView(currentData.lang);
+    function speak(text) {
+        window.speechSynthesis.cancel(); // Сброс очереди
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ru-RU';
+        window.speechSynthesis.speak(msg);
     }
 
-    function setView(lang) {
-        currentData.lang = lang;
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + lang).classList.add('active');
-        document.getElementById('codeArea').innerText = currentData[lang];
-        document.getElementById('runBtn').style.display = (lang === 'js') ? 'block' : 'none';
+    function process() {
+        const val = document.getElementById('cmd').value.toLowerCase();
+        if(!val) return;
+
+        // Разные фразы для озвучки
+        const randomVoice = voices[Math.floor(Math.random() * voices.length)];
+        statusBox.innerText = "АНАЛИЗ: " + val.toUpperCase();
+        speak(randomVoice);
+
+        let color = val.includes("красн") ? "red" : (val.includes("син") ? "blue" : "green");
+        let obj = val.includes("куб") ? "Cube" : (val.includes("сфер") ? "Sphere" : "Object");
+
+        // Генерация кода
+        const codes = {
+            js: `// Создание ${obj}\nconst el = document.createElement('div');\nel.style.cssText = 'width:100px;height:100px;background:${color};margin:20px;box-shadow:0 0 20px ${color}';\ndocument.body.appendChild(el);`,
+            cpp: `// C++: Рендер ${obj}\n#include <graphics.h>\nvoid draw() {\n  setcolor(${color.toUpperCase()});\n  rectangle(100, 100, 200, 200);\n}`,
+            cs: `// C#: Unity Script\npublic void Create() {\n  var obj = GameObject.CreatePrimitive(PrimitiveType.${obj});\n  obj.GetComponent<Renderer>().material.color = Color.${color};\n}`
+        };
+
+        document.getElementById('js-out').innerText = codes.js;
+        document.getElementById('cpp-out').innerText = codes.cpp;
+        document.getElementById('cs-out').innerText = codes.cs;
+        document.getElementById('execBtn').style.display = 'block';
+        document.getElementById('cmd').value = "";
     }
 
-    function runVisual() {
-        try { eval(currentData.js); } catch(e) { alert(e); }
-    }
-
-    function addChat(role, msg) {
-        const h = document.getElementById('history');
-        h.innerHTML += `<div class="msg-${role}">${role==='ai'?'Sasha: ':'Вы: '}${msg}</div>`;
-        h.scrollTop = h.scrollHeight;
+    function runJS() {
+        try { eval(document.getElementById('js-out').innerText); } catch(e) { alert(e); }
     }
 </script>
+
 </body>
 </html>
-
-
 
 
 
