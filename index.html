@@ -2,180 +2,195 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>JARVIS ULTIMATE AI TERMINAL</title>
+    <title>JARVIS ENGINE v2.5 FINAL</title>
     <style>
-        :root { --neon: #00f2ff; --bg: #050505; --panel: #0a0a0a; --text: #e0e0e0; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        :root { --neon: #00f2ff; --bg: #050505; --code-bg: #0d0d0d; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; height: 100vh; overflow: hidden; }
 
-        /* Левая панель - ЧАТ */
-        #ai-interface { width: 500px; border-right: 1px solid #222; display: flex; flex-direction: column; background: var(--panel); }
-        #chat-history { flex: 1; overflow-y: auto; padding: 20px; background: radial-gradient(circle at top left, #0d0d0d, #050505); }
+        /* ИНТЕРФЕЙС */
+        #ui-panel { width: 500px; border-right: 1px solid #222; display: flex; flex-direction: column; background: #080808; z-index: 10; }
+        #chat-log { flex: 1; overflow-y: auto; padding: 25px; scrollbar-width: thin; scrollbar-color: #222 transparent; }
         
-        .message { margin-bottom: 25px; line-height: 1.5; font-size: 14px; }
-        .user-label { color: #888; font-weight: bold; margin-bottom: 5px; font-size: 11px; text-transform: uppercase; }
-        .ai-label { color: var(--neon); font-weight: bold; margin-bottom: 5px; font-size: 11px; text-transform: uppercase; }
+        .msg-block { margin-bottom: 30px; animation: fadeIn 0.4s ease-out; }
+        .author { font-size: 11px; font-weight: 900; letter-spacing: 1.5px; margin-bottom: 8px; text-transform: uppercase; }
+        .author.user { color: #555; }
+        .author.ai { color: var(--neon); text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
 
-        /* БЛОК КОДА КАК В LLM */
-        .code-container { 
-            background: #000; 
-            border: 1px solid #333; 
-            border-radius: 6px; 
-            margin-top: 10px; 
-            overflow: hidden; 
-            font-family: 'Consolas', 'Monaco', monospace; 
-        }
-        .code-header { 
-            background: #1a1a1a; 
-            padding: 5px 15px; 
-            font-size: 11px; 
-            color: #aaa; 
-            display: flex; 
-            justify-content: space-between; 
-            border-bottom: 1px solid #333; 
-        }
-        .code-body { padding: 15px; overflow-x: auto; color: #d4d4d4; white-space: pre; font-size: 13px; line-height: 1.4; }
+        /* КОД */
+        .code-wrap { background: var(--code-bg); border: 1px solid #1a1a1a; border-radius: 6px; margin-top: 12px; overflow: hidden; }
+        .code-header { background: #151515; padding: 6px 15px; font-size: 10px; color: #555; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; }
+        .code-header span:first-child { color: var(--neon); }
+        .code-body { padding: 15px; overflow-x: auto; color: #b0b0b0; white-space: pre; font-size: 13px; line-height: 1.6; font-family: 'Consolas', 'Monaco', monospace; }
 
         /* ВВОД */
-        #input-container { padding: 20px; border-top: 1px solid #222; }
-        input { width: 100%; background: #111; border: 1px solid #333; color: var(--neon); padding: 12px; outline: none; border-radius: 4px; }
-        input:focus { border-color: var(--neon); }
+        #input-area { padding: 25px; border-top: 1px solid #1a1a1a; background: #070707; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: var(--neon); padding: 14px; outline: none; border-radius: 4px; transition: 0.3s; box-sizing: border-box; }
+        input:focus { border-color: var(--neon); box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); }
 
-        /* Правая панель - ВИЗУАЛ */
-        #render-zone { flex: 1; position: relative; }
+        /* ЭКРАН */
+        #render-viewport { flex: 1; position: relative; }
         canvas { display: block; }
-        #play-btn { 
-            position: absolute; bottom: 30px; left: 30px; 
-            padding: 15px 30px; background: var(--neon); color: #000; 
-            border: none; cursor: pointer; font-weight: bold; 
-            border-radius: 4px; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
-            display: none;
+        #exec-btn { 
+            position: absolute; bottom: 40px; right: 40px; 
+            padding: 18px 35px; background: var(--neon); color: #000; 
+            border: none; font-weight: 900; cursor: pointer; border-radius: 4px; 
+            display: none; box-shadow: 0 0 30px rgba(0, 242, 255, 0.5);
+            text-transform: uppercase; letter-spacing: 1px;
+            animation: pulse 2s infinite;
         }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); } 50% { box-shadow: 0 0 40px rgba(0, 242, 255, 0.7); } 100% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); } }
     </style>
 </head>
 <body>
 
-    <div id="ai-interface">
-        <div id="chat-history"></div>
-        <div id="input-container">
-            <input type="text" id="prompt" placeholder="Приказ (например: 'враг на c#')..." autocomplete="off">
-        </div>
+<div id="ui-panel">
+    <div id="chat-log"></div>
+    <div id="input-area">
+        <input type="text" id="userInput" placeholder="Приказ для JARVIS..." autocomplete="off">
     </div>
+</div>
 
-    <div id="render-zone">
-        <button id="play-btn" onclick="executeJS()">ЗАПУСТИТЬ JS В СЦЕНЕ</button>
-    </div>
+<div id="render-viewport">
+    <button id="exec-btn" onclick="runGeneratedJS()">Исполнить код</button>
+</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <script>
-        // ==========================================
-        // БЛОК ТВОЕЙ МОДЕЛИ (НЕ ТРОГАЮ)
-        function USER_CUSTOM_MODEL(scene) {
-            console.log("Слот для твоей модели готов.");
+<script>
+    // ==========================================
+    // МОДЕЛЬ САШИ (НЕ ТРОГАТЬ)
+    function INJECT_SASHAS_MODEL(scene) {
+        console.log("JARVIS: Модель Саши загружена.");
+        // Сюда вставляй загрузчик (GLTFLoader и т.д.)
+    }
+    // ==========================================
+
+    let scene, camera, renderer, currentJS = "";
+    const synth = window.speechSynthesis;
+
+    function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 500) / window.innerHeight, 0.1, 1000);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth - 500, window.innerHeight);
+        document.getElementById('render-viewport').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0x222222));
+        const light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(10, 10, 10);
+        scene.add(light);
+
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        INJECT_SASHAS_MODEL(scene);
+        update();
+    }
+
+    function update() {
+        requestAnimationFrame(update);
+        renderer.render(scene, camera);
+    }
+
+    // Голос Саши (только текст)
+    function jarvisVoice(text) {
+        if (synth.speaking) synth.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ru-RU';
+        msg.pitch = 0.7; // Более низкий, кибернетический голос
+        msg.rate = 1.1;
+        synth.speak(msg);
+    }
+
+    const chatInput = document.getElementById('userInput');
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && chatInput.value.trim()) {
+            const prompt = chatInput.value;
+            addMessage('user', prompt);
+            aiBrain(prompt);
+            chatInput.value = '';
         }
-        // ==========================================
+    });
 
-        let scene, camera, renderer, lastJS = "";
+    function aiBrain(query) {
+        const q = query.toLowerCase();
+        let lang = "javascript";
+        let code = "";
+        let speech = "";
 
-        // Инициализация графики
-        function initThree() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 500) / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth - 500, window.innerHeight);
-            document.getElementById('render-zone').appendChild(renderer.domElement);
-            
-            scene.add(new THREE.AmbientLight(0x404040));
-            const sun = new THREE.DirectionalLight(0xffffff, 1);
-            sun.position.set(5, 5, 5);
-            scene.add(sun);
-
-            camera.position.z = 12;
-            USER_CUSTOM_MODEL(scene);
-            animate();
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-
-        // Логика "Джарвиса" (Имитация LLM)
-        const inputField = document.getElementById('prompt');
-        inputField.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const text = inputField.value;
-                if(!text) return;
-                
-                addMessage('user', text);
-                processCommand(text);
-                inputField.value = '';
-            }
-        });
-
-        function processCommand(cmd) {
-            const lowCmd = cmd.toLowerCase();
-            let lang = "javascript";
-            let code = "";
-            let message = "Да. Запрос обработан. Готов.";
-
-            if (lowCmd.includes("c#") || lowCmd.includes("си шарп")) {
-                lang = "csharp";
-                code = `using UnityEngine;\n\npublic class EnemyController : MonoBehaviour {\n    public float speed = 5.0f;\n    void Update() {\n        transform.Translate(Vector3.forward * speed * Time.deltaTime);\n    }\n}`;
-            } else if (lowCmd.includes("c++") || lowCmd.includes("плюс")) {
-                lang = "cpp";
-                code = `#include <iostream>\n#include "Engine.h"\n\nvoid SpawnEnemy() {\n    Entity* enemy = Engine::CreateEntity("Cube");\n    enemy->SetPosition(0, 5, 10);\n    std::cout << "Enemy Spawned" << std::endl;\n}`;
-            } else {
-                lang = "javascript";
-                code = `// Создаем сферу в реальном времени\nconst geo = new THREE.SphereGeometry(2, 32, 32);\nconst mat = new THREE.MeshPhongMaterial({ color: 0x00f2ff, wireframe: true });\nconst sphere = new THREE.Mesh(geo, mat);\nsphere.position.y = 2;\nscene.add(sphere);\n\nconsole.log("JS объект добавлен в сцену");`;
-                lastJS = code;
-                document.getElementById('play-btn').style.display = 'block';
-            }
-
-            // Имитация задержки "раздумий"
-            setTimeout(() => {
-                addMessage('ai', message, code, lang);
-            }, 400);
-        }
-
-        function addMessage(sender, text, code = null, lang = "") {
-            const history = document.getElementById('chat-history');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message';
-            
-            const label = sender === 'user' ? '<div class="user-label">USER</div>' : '<div class="ai-label">JARVIS</div>';
-            let codeHtml = "";
-
-            if (code) {
-                codeHtml = `
-                    <div class="code-container">
-                        <div class="code-header"><span>${lang.toUpperCase()}</span><span>Copy</span></div>
-                        <div class="code-body">${escapeHtml(code)}</div>
-                    </div>
-                `;
-            }
-
-            msgDiv.innerHTML = `${label}<div>${text}</div>${codeHtml}`;
-            history.appendChild(msgDiv);
-            history.scrollTop = history.scrollHeight;
+        if (q.includes("c#") || q.includes("си шарп")) {
+            lang = "csharp";
+            speech = "Да. Запрос принят. Генерирую структуру на Си Шарп. Готов.";
+            code = `using UnityEngine;\n\npublic class EngineModule : MonoBehaviour {\n    public float power = 100f;\n    void Start() {\n        Debug.Log("Sasha Module Initialized");\n    }\n}`;
+        } else if (q.includes("c++") || q.includes("плюс")) {
+            lang = "cpp";
+            speech = "Да. Запрос принят. Подготавливаю скомпилированные модули на Си Плюс Плюс. Готов.";
+            code = `#include <SashaEngine.h>\n\nint main() {\n    auto app = new Application("Jarvis");\n    app->Run();\n    return 0;\n}`;
+        } else if (q.includes("привет") || q.includes("как дела")) {
+            lang = "system";
+            speech = "Да. Система функционирует. Все протоколы Саши активны. Готов.";
+            code = "// Статус: Ожидание команд\n// Ядро: Стабильно";
+        } else {
+            lang = "javascript";
+            speech = "Да. Запрос на динамический код принят. Генерирую объекты. Готов.";
+            code = `// Генерация в реальном времени\nconst geometry = new THREE.TorusKnotGeometry(2, 0.6, 100, 16);\nconst material = new THREE.MeshPhongMaterial({ color: 0x00f2ff, emissive: 0x003333 });\nconst mesh = new THREE.Mesh(geometry, material);\nmesh.position.y = Math.random() * 5;\nscene.add(mesh);\n\nconsole.log("JS Объект заспавнен.");`;
+            currentJS = code;
+            document.getElementById('exec-btn').style.display = 'block';
         }
 
-        function escapeHtml(unsafe) {
-            return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        jarvisVoice(speech);
+        setTimeout(() => addMessage('ai', speech, code, lang), 400);
+    }
+
+    function addMessage(sender, text, code = null, lang = "") {
+        const log = document.getElementById('chat-log');
+        const wrap = document.createElement('div');
+        wrap.className = 'msg-block';
+        
+        const label = `<div class="author ${sender}">${sender === 'user' ? 'User' : 'Jarvis'}</div>`;
+        let codeSection = "";
+
+        if (code) {
+            codeSection = `
+                <div class="code-wrap">
+                    <div class="code-header"><span>${lang.toUpperCase()}</span><span>COPY</span></div>
+                    <div class="code-body">${escape(code)}</div>
+                </div>
+            `;
         }
 
-        function executeJS() {
-            try {
-                const run = new Function('scene', 'THREE', lastJS);
-                run(scene, THREE);
-                document.getElementById('play-btn').style.display = 'none';
-            } catch(e) { alert("Ошибка в коде: " + e); }
-        }
+        wrap.innerHTML = `${label}<div>${text}</div>${codeSection}`;
+        log.appendChild(wrap);
+        log.scrollTop = log.scrollHeight;
+    }
 
-        window.onload = initThree;
-    </script>
+    function escape(s) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function runGeneratedJS() {
+        try {
+            const runner = new Function('scene', 'THREE', currentJS);
+            runner(scene, THREE);
+            document.getElementById('exec-btn').style.display = 'none';
+        } catch (err) {
+            console.error("Ошибка исполнения: ", err);
+        }
+    }
+
+    window.onload = init;
+    window.onresize = () => {
+        camera.aspect = (window.innerWidth - 500) / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth - 500, window.innerHeight);
+    };
+</script>
+
 </body>
 </html>
+
 
 
 
