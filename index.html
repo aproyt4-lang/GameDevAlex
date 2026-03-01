@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>SASHA ENGINE v6.1</title>
+<title>SASHA ENGINE v6.2</title>
 <style>
 :root { --neon:#00f2ff; --bg:#020202; --panel:#080808; }
 body{margin:0;background:var(--bg);color:#fff;font-family:'Courier New',monospace;display:flex;height:100vh;overflow:hidden;}
@@ -32,7 +32,7 @@ iframe#sandbox{width:100%;height:150px;border:1px solid var(--neon);background:#
 </div>
 
 <div id="viewport">
-  <button id="execute-btn" onclick="runLogic()">EXECUTE_MODULE</button>
+  <button id="execute-btn" onclick="Engine.runModule()">EXECUTE_MODULE</button>
   <button id="runBtn">ИСПОЛНИТЬ КОД</button>
   <button id="micBtn">🎤</button>
 </div>
@@ -51,7 +51,7 @@ class Model {
     this.mixer = null;
   }
 
-  load(url = './assets/sasha.glb'){
+  load(url = './sasha.glb'){
     const loader = new GLTFLoader();
     loader.load(url, gltf=>{
       this.model = gltf.scene;
@@ -65,6 +65,8 @@ class Model {
         const action = this.mixer.clipAction(gltf.animations[0]);
         action.play();
       }
+    }, undefined, err=>{
+      console.error("Ошибка загрузки модели:", err);
     });
   }
 
@@ -101,22 +103,38 @@ class AI {
   process(input){
     input=input.toLowerCase();
 
-    // JS / C# / C++ commands
+    // ====================== JS / C# / C++ ======================
     if(input.includes("c++") || input.includes("плюс")){
       this.engine.say("Сгенерирован C++ код модуля.");
-      this.engine.pendingCode = "/* C++ core */";
+      this.engine.pendingCode = `// Пример C++ кода для команды: ${input}\nint main(){return 0;}`;
       this.engine.showRunButton();
     } else if(input.includes("c#") || input.includes("шарп")){
       this.engine.say("Сгенерирован C# код модуля.");
-      this.engine.pendingCode = "/* C# core */";
+      this.engine.pendingCode = `// Пример C# кода для команды: ${input}\nclass Program{ static void Main(){} }`;
       this.engine.showRunButton();
     } else if(input.includes("js") || input.includes("создай")){
       this.engine.say("JS модуль готов к выполнению.");
-      this.engine.pendingCode = `/* JS module для команды: ${input} */`;
-      this.engine.showRunButton();
+      // Парсер: "создай X на Y"
+      const match = input.match(/создай (.+) на (.+)/i);
+      if(match){
+        const objName = match[1];
+        const target = match[2];
+
+        // Простейший объект
+        const geometry = new THREE.SphereGeometry(0.5,32,32);
+        const material = new THREE.MeshStandardMaterial({color:0xffaa00});
+        const mesh = new THREE.Mesh(geometry,material);
+        mesh.name=objName;
+        mesh.position.set(Math.random()*2-1,0,Math.random()*2-1);
+        this.engine.scene.add(mesh);
+
+        this.engine.say(`Объект ${objName} размещён на ${target}`);
+        this.engine.pendingCode = `// JS module: создан объект ${objName} на ${target}`;
+        this.engine.showRunButton();
+      }
     }
 
-    // Emotions
+    // ====================== Эмоции ======================
     if(input.includes("привет")){ this.fsm.set("happy"); this.engine.Model.setEmotion(0x00ffcc); this.engine.say("Привет. Я активна."); }
     else if(input.includes("злой")){ this.fsm.set("angry"); this.engine.Model.setEmotion(0xff0000); this.engine.say("Я сердита."); }
   }
@@ -153,17 +171,15 @@ export const Engine = {
 
   init(scene,camera,renderer){
     this.scene=scene; this.camera=camera; this.renderer=renderer;
-
     this.Model = new Model(scene);
     this.AI = new AI(this);
     this.Voice = new Voice();
-
-    this.Model.load();
+    this.Model.load(); // модель грузится рядом с index.html
     this.loop();
   },
 
   loop(){
-    const dt = 0.016;
+    const dt=0.016;
     this.Model.update(dt);
     this.AI.update();
     this.renderer.render(this.scene,this.camera);
@@ -172,7 +188,7 @@ export const Engine = {
 
   handleInput(text){ this.AI.process(text); },
 
-  say(text){ 
+  say(text){
     const log = document.getElementById('log-stream');
     log.innerHTML+=`<div class="entry ai"><div class="tag">Sasha Engine</div>${text}</div>`;
     this.Voice.speak(text);
@@ -188,30 +204,28 @@ export const Engine = {
 };
 
 // ====================== INIT SCENE ======================
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(30,(window.innerWidth-550)/window.innerHeight,0.1,1000);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(30,(window.innerWidth-550)/window.innerHeight,0.1,1000);
 camera.position.set(0,0,4);
-const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+const renderer=new THREE.WebGLRenderer({antialias:true, alpha:true});
 renderer.setSize(window.innerWidth-550, window.innerHeight);
 document.getElementById('viewport').appendChild(renderer.domElement);
 scene.add(new THREE.AmbientLight(0xffffff,1.2));
 Engine.init(scene,camera,renderer);
 
 // ====================== SANDBOX ======================
-document.getElementById('runBtn').onclick = ()=>{
-  const code = document.getElementById('code').value;
-  const blob = new Blob([`
+document.getElementById('runBtn').onclick=()=>{
+  const code=document.getElementById('code').value;
+  const blob=new Blob([`
     <html><body style="background:black;color:#0ff">
-    <script>
-    try { ${code} } catch(e) { document.body.innerHTML="<pre style='color:red'>"+e+"</pre>"; }
-    <\/script>
+    <script>try{${code}}catch(e){document.body.innerHTML="<pre style='color:red'>"+e+"</pre>";}<\/script>
     </body></html>
   `],{type:"text/html"});
-  document.getElementById('sandbox').src = URL.createObjectURL(blob);
+  document.getElementById('sandbox').src=URL.createObjectURL(blob);
 };
 
 // ====================== MIC ======================
-document.getElementById('micBtn').onclick = ()=> Engine.Voice.listen();
+document.getElementById('micBtn').onclick=()=>Engine.Voice.listen();
 
 // ====================== INPUT ======================
 document.getElementById('prompt').addEventListener('keydown', e=>{
