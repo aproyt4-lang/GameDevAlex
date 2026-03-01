@@ -45,22 +45,32 @@ let scene, camera, renderer, sasha, clock = new THREE.Clock();
 let speaking = false, codeToRun = "";
 const voice = window.speechSynthesis;
 
-// ====================== 3D INIT ======================
-new THREE.GLTFLoader().load("SashaAI.glb", g => {
-    sasha = g.scene;
-    sasha.scale.set(1.8, 1.8, 1.8);
-    sasha.position.y = -1.2;
-    // Разворот лицом (подбери под свою модель)
-    sasha.rotation.y = -Math.PI / 2; 
-    scene.add(sasha);
-    cam.position.set(0, 0, 5);
-    animate();
-});
+// ====================== INIT ======================
+function init(){
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(30, (window.innerWidth-550)/window.innerHeight, 0.1, 1000);
+    camera.position.set(0,0,4);
 
-    loop();
+    renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setSize(window.innerWidth-550, window.innerHeight);
+    document.getElementById('viewport').appendChild(renderer.domElement);
+    scene.add(new THREE.AmbientLight(0xffffff,1.2));
+
+    // Загрузка модели
+    new THREE.GLTFLoader().load("SashaAI.glb", g => {
+        sasha = g.scene;
+        sasha.scale.set(1.8,1.8,1.8);
+        sasha.position.set(0,-1.2,0);
+        sasha.rotation.y = -Math.PI/2;
+        scene.add(sasha);
+    });
+
+    animate();
 }
-function loop(){
-    requestAnimationFrame(loop);
+
+// ====================== ANIMATE ======================
+function animate(){
+    requestAnimationFrame(animate);
     const t = clock.getElapsedTime();
     if(sasha){
         let bob = Math.sin(t*1.2)*0.05;
@@ -77,50 +87,39 @@ function loop(){
 function say(text){
     voice.cancel();
     const m = new SpeechSynthesisUtterance(text);
-    m.lang = 'ru-RU'; m.pitch=0.8;
-    m.onstart = ()=> speaking=true;
-    m.onend = ()=> speaking=false;
+    m.lang='ru-RU'; m.pitch=0.8;
+    m.onstart=()=>speaking=true;
+    m.onend=()=>speaking=false;
     voice.speak(m);
 }
 function startListening(){
     const rec = new(window.SpeechRecognition||window.webkitSpeechRecognition)();
     rec.lang="ru-RU"; rec.start();
-    rec.onresult = e=> process(e.results[0][0].transcript);
+    rec.onresult = e => process(e.results[0][0].transcript);
 }
 
 // ====================== STATES & AI ======================
 const States = { idle(){}, thinking(){}, speaking(){}, happy(){}, angry(){}, sad(){}, curious(){}, excited(){}, sleepy(){}, defensive(){}, analyzing(){}, observing(){}, listening(){}, processing(){}, confused(){}, confident(){}, alert(){}, standby(){}, autonomous(){}, patrol(){}, protect(){}, debug(){}, creative(){}, logical(){}, focus(){}, relax(){}, threat(){}, shutdown(){}, reboot(){}, learning(){} };
-
-class StateMachine{
-    constructor(owner){ this.owner=owner; this.current="idle"; }
-    set(state){ this.current=state; }
-    update(){ States[this.current]?.(); }
+class StateMachine{constructor(owner){this.owner=owner;this.current="idle";}
+    set(state){this.current=state;}
+    update(){States[this.current]?.();}
 }
-
 class SashaAI{
-    constructor(){ this.fsm=new StateMachine(this); setInterval(()=>this.autonomous(),5000); }
+    constructor(){this.fsm=new StateMachine(this); setInterval(()=>this.autonomous(),5000);}
     process(input){
         input=input.toLowerCase();
-        if(input.includes("привет")){
-            this.fsm.set("happy"); setEmotion(0x00ffcc); say("Привет. Я активна.");
-        } else if(input.includes("злой")){
-            this.fsm.set("angry"); setEmotion(0xff0000); say("Я сердита.");
-        }
+        if(input.includes("привет")){ this.fsm.set("happy"); setEmotion(0x00ffcc); say("Привет. Я активна."); }
+        else if(input.includes("злой")){ this.fsm.set("angry"); setEmotion(0xff0000); say("Я сердита."); }
     }
-    autonomous(){
-        const moods=["idle","observing","thinking","analyzing"];
-        this.fsm.set(moods[Math.floor(Math.random()*moods.length)]);
-    }
-    update(){ this.fsm.update(); }
+    autonomous(){ const moods=["idle","observing","thinking","analyzing"]; this.fsm.set(moods[Math.floor(Math.random()*moods.length)]);}
+    update(){ this.fsm.update();}
 }
 const ai = new SashaAI();
 
 // ====================== EMOTION ======================
 function setEmotion(color){
     if(!sasha) return;
-    sasha.traverse(o=>{
-        if(o.isMesh) o.material.color.set(color);
-    });
+    sasha.traverse(o=>{ if(o.isMesh) o.material.color.set(color); });
 }
 
 // ====================== LOG ======================
@@ -178,8 +177,6 @@ setInterval(()=>ai.update(),16);
 <iframe id="sandbox" sandbox="allow-scripts"></iframe>
 </body>
 </html>
-
-
 
 
 
