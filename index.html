@@ -91,117 +91,165 @@ class StateMachine{
 class AI {
   constructor(engine){
     this.engine = engine;
-    this.fsm = new StateMachine();
     this.memory = [];
-    setInterval(()=>this.autonomous(),4000);
+    this.lastIntent = null;
   }
 
   process(input){
     if(!input || !input.trim()) return;
 
-    const raw=input;
-    input=input.toLowerCase().trim();
+    const raw = input;
+    const text = input.toLowerCase().trim();
     this.memory.push(raw);
 
-    // ЭМОЦИИ
-    if(input.includes("привет")){
-      this.fsm.set("happy");
+    // === ЭМОЦИИ ===
+    if(this.has(text, ["привет","здравств","хай"])){
       this.engine.Model.setEmotion(0x00ffcc);
       this.engine.say("Я активен.");
       return;
     }
 
-    if(input.includes("злой")){
-      this.fsm.set("angry");
+    if(this.has(text, ["злой","гнев","агресс"])){
       this.engine.Model.setEmotion(0xff0000);
-      this.engine.say("Я в режиме гнева.");
+      this.engine.say("Режим агрессии активирован.");
       return;
     }
 
-    // СОЗДАНИЕ ОБЪЕКТОВ
-    if(input.includes("создай") || input.includes("добавь")){
-      this.generateObject(input);
+    // === СОЗДАНИЕ ОБЪЕКТОВ ===
+    if(this.has(text, ["создай","добав","постав","сделай"])){
+      this.createFromText(text);
       return;
     }
 
-    // ОЧИСТКА
-    if(input.includes("очисти сцену")){
-      this.engine.scene.children
-        .filter(o=>o.isMesh)
-        .forEach(o=>this.engine.scene.remove(o));
-      this.engine.say("Сцена очищена.");
+    // === УПРАВЛЕНИЕ СЦЕНОЙ ===
+    if(this.has(text, ["очист","удали всё","сброс"])){
+      this.clearScene();
       return;
     }
 
-    // ГЕНЕРАЦИЯ КОДА
-    if(input.includes("c++")){
-      document.getElementById("code").value =
-`#include <iostream>
+    if(this.has(text, ["поверн","вращай"])){
+      this.engine.scene.rotation.y += 0.5;
+      this.engine.say("Сцена повернута.");
+      return;
+    }
+
+    // === ГЕНЕРАЦИЯ КОДА ===
+    if(this.has(text, ["c++","плюс плюс"])){
+      this.generateCPP(raw);
+      return;
+    }
+
+    if(this.has(text, ["c#","шарп"])){
+      this.generateCS(raw);
+      return;
+    }
+
+    if(this.has(text, ["js","javascript","код"])){
+      this.generateJS(raw);
+      return;
+    }
+
+    // === ЕСЛИ НИЧЕГО НЕ НАШЛО ===
+    this.engine.say("Запрос принят. Анализирую.");
+  }
+
+  has(text, variants){
+    return variants.some(v => text.includes(v));
+  }
+
+  clearScene(){
+    this.engine.scene.children
+      .filter(o=>o.isMesh)
+      .forEach(o=>this.engine.scene.remove(o));
+    this.engine.say("Сцена очищена.");
+  }
+
+  createFromText(text){
+    const shapes = {
+      "куб": ()=> new THREE.BoxGeometry(1,1,1),
+      "сфера": ()=> new THREE.SphereGeometry(0.7,32,32),
+      "конус": ()=> new THREE.ConeGeometry(0.5,1,32),
+      "цилиндр": ()=> new THREE.CylinderGeometry(0.5,0.5,1,32),
+      "тор": ()=> new THREE.TorusGeometry(0.5,0.2,16,100),
+      "плоск": ()=> new THREE.PlaneGeometry(3,3)
+    };
+
+    let geometry = null;
+
+    for(const key in shapes){
+      if(text.includes(key)){
+        geometry = shapes[key]();
+        break;
+      }
+    }
+
+    if(!geometry){
+      geometry = new THREE.BoxGeometry(1,1,1);
+    }
+
+    const material = new THREE.MeshStandardMaterial({
+      color: Math.random()*0xffffff
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(
+      Math.random()*4-2,
+      0,
+      Math.random()*4-2
+    );
+
+    this.engine.scene.add(mesh);
+    this.engine.say("Объект создан.");
+  }
+
+  generateJS(task){
+    const code =
+`// Сгенерировано по запросу: ${task}
+
+const obj = new THREE.Mesh(
+  new THREE.BoxGeometry(1,1,1),
+  new THREE.MeshStandardMaterial({color: Math.random()*0xffffff})
+);
+
+obj.position.y = 1;
+scene.add(obj);`;
+
+    document.getElementById("code").value = code;
+    this.engine.say("JS код создан. Нажми ИСПОЛНИТЬ КОД.");
+  }
+
+  generateCPP(task){
+    const code =
+`// C++ по запросу: ${task}
+
+#include <iostream>
+using namespace std;
+
 int main(){
-    std::cout<<"Sasha Engine"<<std::endl;
-    return 0;
+  cout << "Sasha Engine" << endl;
+  return 0;
 }`;
-      this.engine.say("C++ код создан.");
-      return;
-    }
 
-    if(input.includes("c#")){
-      document.getElementById("code").value =
-`using System;
+    document.getElementById("code").value = code;
+    this.engine.say("C++ код создан.");
+  }
+
+  generateCS(task){
+    const code =
+`// C# по запросу: ${task}
+
+using System;
+
 class Program{
   static void Main(){
     Console.WriteLine("Sasha Engine");
   }
 }`;
-      this.engine.say("C# код создан.");
-      return;
-    }
 
-    if(input.includes("js")){
-      document.getElementById("code").value =
-`const box=new THREE.Mesh(
-  new THREE.BoxGeometry(1,1,1),
-  new THREE.MeshStandardMaterial({color:0xff0000})
-);
-scene.add(box);`;
-      this.engine.say("JS код создан.");
-      return;
-    }
-
-    this.engine.say("Команда не распознана.");
-  }
-
-  generateObject(text){
-    const map={
-      "куб":()=>new THREE.BoxGeometry(1,1,1),
-      "сфера":()=>new THREE.SphereGeometry(0.7,32,32),
-      "конус":()=>new THREE.ConeGeometry(0.5,1,32),
-      "цилиндр":()=>new THREE.CylinderGeometry(0.5,0.5,1,32)
-    };
-
-    let geo=null;
-    for(const key in map){
-      if(text.includes(key)){ geo=map[key](); break; }
-    }
-
-    if(!geo) geo=new THREE.BoxGeometry(1,1,1);
-
-    const mesh=new THREE.Mesh(
-      geo,
-      new THREE.MeshStandardMaterial({color:Math.random()*0xffffff})
-    );
-
-    mesh.position.set(Math.random()*3-1.5,0,Math.random()*3-1.5);
-    this.engine.scene.add(mesh);
-    this.engine.say("Объект создан.");
-  }
-
-  autonomous(){
-    const moods=["idle","thinking","observing","alert"];
-    this.fsm.set(moods[Math.floor(Math.random()*moods.length)]);
+    document.getElementById("code").value = code;
+    this.engine.say("C# код создан.");
   }
 }
-
 /* ================= ENGINE ================= */
 const Engine={
   scene:null,
@@ -271,6 +319,7 @@ document.getElementById('runBtn').onclick=()=>{
 </script>
 </body>
 </html>
+
 
 
 
