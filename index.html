@@ -64,7 +64,8 @@ class Model {
         this.mixer = new THREE.AnimationMixer(this.model);
         const action = this.mixer.clipAction(gltf.animations[0]);
         action.play();
-      }};
+      }
+    
     undefined, err=>{
       console.error("Ошибка загрузки модели:", err);
     });
@@ -320,6 +321,7 @@ document.getElementById('runBtn').onclick=()=>{
 </script>
 </body>
 </html>
+
 
 
 
