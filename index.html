@@ -6,16 +6,62 @@
 <style>
 :root { --neon:#00f2ff; --bg:#020202; --panel:#080808; }
 
-body{margin:0;background:var(--bg);color:#fff;font-family:'Courier New',monospace;display:flex;height:100vh;overflow:hidden;}
-#ai-core{width:550px;background:var(--panel);border-right:2px solid #1a1a1a;display:flex;flex-direction:column;}
-#log-stream{flex:1;overflow-y:auto;padding:20px;font-size:13px;}
+body{
+margin:0;
+background:var(--bg);
+color:#fff;
+font-family:'Courier New',monospace;
+display:flex;
+height:100vh;
+overflow:hidden;
+}
+
+#ai-core{
+width:550px;
+background:var(--panel);
+border-right:2px solid #1a1a1a;
+display:flex;
+flex-direction:column;
+}
+
+#log-stream{
+flex:1;
+overflow-y:auto;
+padding:20px;
+font-size:13px;
+}
+
 .entry{margin-bottom:20px;border-left:3px solid #222;padding-left:15px;}
 .entry.ai{border-left-color:var(--neon);}
 .tag{font-size:10px;color:var(--neon);margin-bottom:5px;text-transform:uppercase;}
+
 #input-container{padding:20px;background:#050505;border-top:1px solid #222;}
-#prompt,#code{width:100%;background:#000;border:1px solid #444;color:var(--neon);padding:10px;outline:none;border-radius:4px;margin-bottom:8px;}
+
+#prompt,#code{
+width:100%;
+background:#000;
+border:1px solid #444;
+color:var(--neon);
+padding:10px;
+outline:none;
+border-radius:4px;
+margin-bottom:8px;
+}
+
 #viewport{flex:1;position:relative;}
-#runBtn{position:absolute;bottom:30px;left:30px;padding:10px 20px;background:var(--neon);color:#000;border:none;font-weight:900;cursor:pointer;box-shadow:0 0 20px var(--neon);}
+
+#runBtn{
+position:absolute;
+bottom:30px;
+left:30px;
+padding:10px 20px;
+background:var(--neon);
+color:#000;
+border:none;
+font-weight:900;
+cursor:pointer;
+box-shadow:0 0 20px var(--neon);
+}
 </style>
 </head>
 <body>
@@ -23,7 +69,7 @@ body{margin:0;background:var(--bg);color:#fff;font-family:'Courier New',monospac
 <div id="ai-core">
   <div id="log-stream"></div>
   <div id="input-container">
-    <input type="text" id="prompt" placeholder="Напиши описание задачи...">
+    <input type="text" id="prompt" placeholder="Напиши: Саша, создай персонажа по типу GTA">
     <textarea id="code" placeholder="Сгенерированный код..."></textarea>
   </div>
 </div>
@@ -45,9 +91,10 @@ class Model{
   }
 
   load(){
-    const loader=new GLTFLoader();
-    loader.load("SashaAI.glb",
-      (gltf)=>{
+    const loader = new GLTFLoader();
+    loader.load(
+      "SashaAI.glb",
+      gltf=>{
         this.model=gltf.scene;
         this.scene.add(this.model);
         this.model.scale.set(1.5,1.5,1.5);
@@ -59,11 +106,13 @@ class Model{
         }
       },
       undefined,
-      (err)=>console.error("Ошибка загрузки модели:",err)
+      err=>{ console.error("Ошибка загрузки:",err); }
     );
   }
 
-  update(dt){ if(this.mixer) this.mixer.update(dt); }
+  update(dt){
+    if(this.mixer) this.mixer.update(dt);
+  }
 
   setEmotion(color){
     if(!this.model) return;
@@ -77,7 +126,10 @@ class Model{
 
 /* ================= ENGINE ================= */
 const Engine={
-  scene:null, camera:null, renderer:null, Model:null,
+  scene:null,
+  camera:null,
+  renderer:null,
+  Model:null,
 
   init(){
     this.scene=new THREE.Scene();
@@ -105,7 +157,7 @@ const Engine={
   say(text){
     const log=document.getElementById("log-stream");
     log.innerHTML+=`<div class="entry ai"><div class="tag">Sasha Engine</div>${text}</div>`;
-    const u=new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(text);
     u.lang="ru-RU";
     speechSynthesis.speak(u);
   },
@@ -119,52 +171,71 @@ const Engine={
     }
   }
 };
+
 Engine.init();
 
 /* ================= AI ================= */
 class AI{
-  constructor(engine){ this.engine=engine; }
+  constructor(engine){
+    this.engine=engine;
+  }
 
   process(input){
     if(!input) return;
-    const text=input.trim();
-    this.engine.say("Обрабатываю: "+text);
+    const text=input.toLowerCase();
 
-    // Генерация кода сразу для всех языков
-    this.generateJS(text);
-    this.generateCPP(text);
-    this.generateCS(text);
+    // обычный чат
+    if(["привет","как дела","здорово","хай"].some(w=>text.includes(w))){
+      this.engine.Model.setEmotion(0x00ffcc);
+      this.engine.say("Я активен и слышу тебя.");
+      return;
+    }
+
+    // генерация кода
+    if(text.includes("создай") || text.includes("сделай") || text.includes("добавь")){
+      this.generateAllCodes(text);
+      return;
+    }
+
+    this.engine.say("Я тебя понял, но это не кодовая задача.");
   }
 
-  generateJS(task){
-    const code=`// JS: ${task}
-const obj=new THREE.Mesh(
+  generateAllCodes(desc){
+    // JS код
+    const jsCode = `// JS модуль по описанию: ${desc}
+const obj = new THREE.Mesh(
   new THREE.BoxGeometry(1,1,1),
   new THREE.MeshStandardMaterial({color:Math.random()*0xffffff})
 );
-obj.position.y=1;
+obj.position.set(0,1,0);
 scene.add(obj);`;
-    document.getElementById("code").value=code;
-    this.engine.say("JS, C++ и C# код сгенерирован. JS можно выполнить кнопкой ИСПОЛНИТЬ.");
-  }
 
-  generateCPP(task){
-    const code=`// C++: ${task}
+    // C++ шаблон
+    const cppCode = `// C++ код по описанию: ${desc}
 #include <iostream>
 using namespace std;
-int main(){ cout<<"Sasha Engine"<<endl; return 0; }`;
-    // Тут код только выводится в textarea для примера
-  }
 
-  generateCS(task){
-    const code=`// C#: ${task}
+int main(){
+    cout << "Sasha Engine - ${desc}" << endl;
+    return 0;
+}`;
+
+    // C# шаблон
+    const csCode = `// C# код по описанию: ${desc}
 using System;
-class Program{ static void Main(){ Console.WriteLine("Sasha Engine"); } }`;
-    // Тут код только выводится в textarea для примера
+
+class Program{
+    static void Main(){
+        Console.WriteLine("Sasha Engine - ${desc}");
+    }
+}`;
+
+    document.getElementById("code").value = jsCode;
+    this.engine.say("JS, C++ и C# код сгенерирован. JS можно выполнить кнопкой ИСПОЛНИТЬ.");
   }
 }
 
-const AIcore=new AI(Engine);
+const AIcore = new AI(Engine);
 
 /* ================= INPUT ================= */
 document.getElementById("prompt").addEventListener("keydown",e=>{
@@ -178,6 +249,7 @@ document.getElementById("prompt").addEventListener("keydown",e=>{
 document.getElementById("runBtn").onclick=()=>{
   Engine.executeJS(document.getElementById("code").value);
 };
+
 </script>
 </body>
 </html>
