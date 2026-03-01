@@ -43,95 +43,184 @@ iframe#sandbox{width:100%;height:150px;border:1px solid var(--neon);background:#
 import * as THREE from 'https://cdn.skypack.dev/three@0.128.0';
 import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
 
-let scene, camera, renderer, sasha, clock=new THREE.Clock();
-let speaking=false, codeToRun="";
-const voice=window.speechSynthesis;
+// ====================== MODEL ======================
+class Model {
+  constructor(scene){
+    this.scene = scene;
+    this.model = null;
+    this.mixer = null;
+  }
 
-// ====================== INIT ======================
-function init(){
-    scene=new THREE.Scene();
-    camera=new THREE.PerspectiveCamera(30,(window.innerWidth-550)/window.innerHeight,0.1,1000);
-    camera.position.set(0,0,4);
-    renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
-    renderer.setSize(window.innerWidth-550,window.innerHeight);
-    document.getElementById('viewport').appendChild(renderer.domElement);
-    scene.add(new THREE.AmbientLight(0xffffff,1.2));
+  load(url = './assets/sasha.glb'){
+    const loader = new GLTFLoader();
+    loader.load(url, gltf=>{
+      this.model = gltf.scene;
+      this.scene.add(this.model);
+      this.model.scale.set(1.5,1.5,1.5);
+      this.model.position.set(0,-1.2,0);
+      this.model.rotation.y = -Math.PI/2;
 
-    // Загрузка модели
-    new GLTFLoader().load("assets/sasha.glb", g=>{
-        sasha=g.scene;
-        sasha.scale.set(1.8,1.8,1.8);
-        sasha.position.set(0,-1.2,0);
-        sasha.rotation.y=-Math.PI/2;
-        scene.add(sasha);
+      if(gltf.animations.length){
+        this.mixer = new THREE.AnimationMixer(this.model);
+        const action = this.mixer.clipAction(gltf.animations[0]);
+        action.play();
+      }
     });
+  }
 
-    animate();
+  update(dt){ if(this.mixer) this.mixer.update(dt); }
+
+  setEmotion(color){
+    if(!this.model) return;
+    this.model.traverse(o=>{ if(o.isMesh) o.material.color.set(color); });
+  }
 }
 
-// ====================== ANIMATE ======================
-function animate(){
-    requestAnimationFrame(animate);
-    const t=clock.getElapsedTime();
-    if(sasha){
-        let bob=Math.sin(t*1.2)*0.05;
-        if(speaking){ bob=Math.sin(t*8)*0.1; sasha.scale.y=1.6+Math.abs(Math.sin(t*15))*0.3; }
-        else sasha.scale.y=1.6;
-        sasha.position.y=-1.3+bob;
-    }
-    renderer.render(scene,camera);
+// ====================== STATES ======================
+const States = {
+ idle(){}, thinking(){}, speaking(){}, happy(){}, angry(){}, sad(){}, curious(){}, excited(){},
+ sleepy(){}, defensive(){}, analyzing(){}, observing(){}, listening(){}, processing(){}, confused(){},
+ confident(){}, alert(){}, standby(){}, autonomous(){}, patrol(){}, protect(){}, debug(){}, creative(){},
+ logical(){}, focus(){}, relax(){}, threat(){}, shutdown(){}, reboot(){}, learning(){}
+};
+
+class StateMachine {
+  constructor(owner){ this.owner = owner; this.current = 'idle'; }
+  set(state){ this.current = state; }
+  update(){ States[this.current]?.(); }
 }
 
 // ====================== AI ======================
-const States={idle(){},thinking(){},speaking(){},happy(){},angry(){},sad(){},curious(){},excited(){},sleepy(){},defensive(){},analyzing(){},observing(){},listening(){},processing(){},confused(){},confident(){},alert(){},standby(){},autonomous(){},patrol(){},protect(){},debug(){},creative(){},logical(){},focus(){},relax(){},threat(){},shutdown(){},reboot(){},learning(){}};
-class StateMachine{constructor(owner){this.owner=owner;this.current="idle";} set(state){this.current=state;} update(){States[this.current]?.();}}
-class SashaAI{constructor(){this.fsm=new StateMachine(this);setInterval(()=>this.autonomous(),5000);}
-process(input){input=input.toLowerCase();
-if(input.includes("привет")){this.fsm.set("happy");setEmotion(0x00ffcc);say("Привет. Я активна.");}
-else if(input.includes("злой")){this.fsm.set("angry");setEmotion(0xff0000);say("Я сердита.");}}
-autonomous(){const moods=["idle","observing","thinking","analyzing"];this.fsm.set(moods[Math.floor(Math.random()*moods.length)]);}
-update(){this.fsm.update();}}
-const ai=new SashaAI();
+class AI {
+  constructor(engine){
+    this.engine = engine;
+    this.fsm = new StateMachine(this);
+    setInterval(()=>this.autonomous(),5000);
+  }
 
-// ====================== EMOTION ======================
-function setEmotion(color){if(!sasha)return;sasha.traverse(o=>{if(o.isMesh)o.material.color.set(color);});}
+  process(input){
+    input=input.toLowerCase();
 
-// ====================== LOG ======================
-function addEntry(type,text,code=""){const log=document.getElementById('log-stream');const div=document.createElement('div');div.className=`entry ${type==='user'?'user':'ai'}`;let codeHtml="";if(code)codeHtml=`<div style="background:#000;color:#88c6ff;padding:5px;margin-top:3px;white-space:pre;">${code}</div>`;div.innerHTML=`<div class="tag">${type==='user'?'Input':'Sasha Engine'}</div><div>${text}</div>${codeHtml}`;log.appendChild(div);log.scrollTop=log.scrollHeight;}
+    // JS / C# / C++ commands
+    if(input.includes("c++") || input.includes("плюс")){
+      this.engine.say("Сгенерирован C++ код модуля.");
+      this.engine.pendingCode = "/* C++ core */";
+      this.engine.showRunButton();
+    } else if(input.includes("c#") || input.includes("шарп")){
+      this.engine.say("Сгенерирован C# код модуля.");
+      this.engine.pendingCode = "/* C# core */";
+      this.engine.showRunButton();
+    } else if(input.includes("js") || input.includes("создай")){
+      this.engine.say("JS модуль готов к выполнению.");
+      this.engine.pendingCode = `/* JS module для команды: ${input} */`;
+      this.engine.showRunButton();
+    }
 
-// ====================== PROCESS INPUT ======================
-function process(val){
-    addEntry('user',val); ai.process(val);
-    let res={l:"javascript",t:"Модуль обработан.",code:""};
-    if(val.toLowerCase().includes("c++")||val.toLowerCase().includes("плюс")){res.l="cpp";res.t="Развертывание C++ ядра";res.code="/* C++ core */";}
-    else if(val.toLowerCase().includes("c#")||val.toLowerCase().includes("шарп")){res.l="csharp";res.t="Генерация C#";res.code="/* C# core */";}
-    else{res.l="javascript";res.t="JS модуль";res.code="/* JS module */"; codeToRun=res.code; document.getElementById('execute-btn').style.display='block';}
-    say(res.t); addEntry('ai',res.t,res.code);
+    // Emotions
+    if(input.includes("привет")){ this.fsm.set("happy"); this.engine.Model.setEmotion(0x00ffcc); this.engine.say("Привет. Я активна."); }
+    else if(input.includes("злой")){ this.fsm.set("angry"); this.engine.Model.setEmotion(0xff0000); this.engine.say("Я сердита."); }
+  }
+
+  autonomous(){
+    const moods = ["idle","observing","thinking","analyzing"];
+    this.fsm.set(moods[Math.floor(Math.random()*moods.length)]);
+  }
+
+  update(){ this.fsm.update(); }
 }
 
-// ====================== SANDBOX ======================
-document.getElementById('runBtn').onclick=()=>{
-    const code=document.getElementById('code').value;
-    const blob=new Blob([`<html><body style="background:black;color:#0ff"><script>try{${code}}catch(e){document.body.innerHTML="<pre style='color:red'>"+e+"</pre>";}<\/script></body></html>`],{type:"text/html"});
-    document.getElementById('sandbox').src=URL.createObjectURL(blob);
+// ====================== VOICE ======================
+class Voice {
+  speak(text){
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang='ru-RU'; u.pitch=0.8;
+    window.speechSynthesis.speak(u);
+  }
+
+  listen(){
+    const rec = new (window.SpeechRecognition||window.webkitSpeechRecognition)();
+    rec.lang="ru-RU"; rec.start();
+    rec.onresult = e => document.getElementById('prompt').value = e.results[0][0].transcript;
+  }
+}
+
+// ====================== ENGINE ======================
+export const Engine = {
+  scene:null,
+  camera:null,
+  renderer:null,
+  pendingCode:"",
+
+  init(scene,camera,renderer){
+    this.scene=scene; this.camera=camera; this.renderer=renderer;
+
+    this.Model = new Model(scene);
+    this.AI = new AI(this);
+    this.Voice = new Voice();
+
+    this.Model.load();
+    this.loop();
+  },
+
+  loop(){
+    const dt = 0.016;
+    this.Model.update(dt);
+    this.AI.update();
+    this.renderer.render(this.scene,this.camera);
+    requestAnimationFrame(()=>this.loop());
+  },
+
+  handleInput(text){ this.AI.process(text); },
+
+  say(text){ 
+    const log = document.getElementById('log-stream');
+    log.innerHTML+=`<div class="entry ai"><div class="tag">Sasha Engine</div>${text}</div>`;
+    this.Voice.speak(text);
+  },
+
+  showRunButton(){ document.getElementById('execute-btn').style.display='block'; },
+
+  runModule(){
+    try{ new Function('scene','THREE',this.pendingCode)(this.scene,THREE); }
+    catch(e){ console.error(e); }
+    document.getElementById('execute-btn').style.display='none';
+  }
 };
 
-// ====================== EXECUTE MODULE ======================
-function runLogic(){try{new Function('scene','THREE',codeToRun)(scene,THREE);}catch(e){};document.getElementById('execute-btn').style.display='none';}
+// ====================== INIT SCENE ======================
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30,(window.innerWidth-550)/window.innerHeight,0.1,1000);
+camera.position.set(0,0,4);
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setSize(window.innerWidth-550, window.innerHeight);
+document.getElementById('viewport').appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,1.2));
+Engine.init(scene,camera,renderer);
 
-// ====================== EVENTS ======================
-document.getElementById('prompt').addEventListener('keypress',(e)=>{if(e.key==='Enter'&&e.target.value.trim()){process(e.target.value);e.target.value='';}});
-document.getElementById('micBtn').onclick=startListening;
+// ====================== SANDBOX ======================
+document.getElementById('runBtn').onclick = ()=>{
+  const code = document.getElementById('code').value;
+  const blob = new Blob([`
+    <html><body style="background:black;color:#0ff">
+    <script>
+    try { ${code} } catch(e) { document.body.innerHTML="<pre style='color:red'>"+e+"</pre>"; }
+    <\/script>
+    </body></html>
+  `],{type:"text/html"});
+  document.getElementById('sandbox').src = URL.createObjectURL(blob);
+};
 
-// ====================== VOICE ======================
-function say(text){voice.cancel();const m=new SpeechSynthesisUtterance(text);m.lang='ru-RU';m.pitch=0.8;m.onstart=()=>speaking=true;m.onend=()=>speaking=false;voice.speak(m);}
-function startListening(){const rec=new(window.SpeechRecognition||window.webkitSpeechRecognition)();rec.lang="ru-RU";rec.start();rec.onresult=e=>process(e.results[0][0].transcript);}
+// ====================== MIC ======================
+document.getElementById('micBtn').onclick = ()=> Engine.Voice.listen();
 
-window.onload=init;
-setInterval(()=>ai.update(),16);
+// ====================== INPUT ======================
+document.getElementById('prompt').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && e.target.value.trim()){ Engine.handleInput(e.target.value); e.target.value=''; }
+});
 </script>
 </body>
 </html>
+
 
 
 
