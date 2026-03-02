@@ -1,113 +1,141 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Sasha Engine | AI Training Lab</title>
-    <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: #eee; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        #ai-training-sector { background: #252525; padding: 20px; border-bottom: 2px solid #333; }
-        textarea { width: 100%; height: 80px; background: #333; color: #fff; border: 1px solid #444; padding: 10px; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #0056b3; }
-        #chat-window { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 10px; border-radius: 5px; max-width: 80%; }
-        .user { background: #004a99; align-self: flex-end; }
-        .ai { background: #333; align-self: flex-start; border-left: 4px solid #007bff; }
-        .controls { padding: 20px; background: #252525; display: flex; gap: 10px; }
-        #user-input { flex-grow: 1; padding: 10px; background: #333; border: 1px solid #444; color: white; }
-    </style>
+<meta charset="UTF-8">
+<title>Sasha Logic Core v6 | Full Expert System</title>
+<style>
+body { background:#0a0a0a; color:#00ff41; font-family:monospace; margin:0; display:flex; height:100vh; overflow:hidden; }
+#knowledge-base { width:400px; background:#141414; border-right:2px solid #222; display:flex; flex-direction:column; padding:20px; box-sizing:border-box; }
+#core-output { flex-grow:1; display:flex; flex-direction:column; background:#000; }
+#terminal { flex-grow:1; overflow-y:auto; padding:20px; font-size:13px; line-height:1.5; border-bottom:2px solid #222; }
+.input-area { padding:20px; background:#141414; display:flex; gap:10px; }
+input, select, textarea { background:#000; border:1px solid #333; color:#00ff41; padding:10px; font-family:inherit; width:100%; }
+button { background:#00ff41; color:#000; border:none; padding:10px 20px; cursor:pointer; font-weight:bold; text-transform:uppercase; }
+button:hover { background:#fff; }
+.log-entry { margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #1a1a1a; }
+.token-info { color:#888; font-size:11px; }
+.code-block { background:#111; color:#fff; padding:10px; margin-top:5px; border-left:3px solid #00ff41; }
+</style>
 </head>
 <body>
 
-<div id="ai-training-sector">
-    <h3>Панель обучения Sasha Engine</h3>
-    <textarea id="knowledge-input" placeholder="Вставь сюда специфику кода, мануалы или правила стилистики..."></textarea>
-    <button onclick="saveKnowledge()">Загрузить знания в мозг ИИ</button>
-    <div id="knowledge-status">Знаний в базе: 0</div>
+<div id="knowledge-base">
+<h3>CORE KNOWLEDGE BASE</h3>
+<div style="flex-grow:1; overflow-y:auto; margin-bottom:20px;" id="lib-display"></div>
+<hr style="border:0; border-top:1px dashed #333; margin:10px 0;">
+<label>ТОКЕН:</label><input type="text" id="k-token" placeholder="например: красн">
+<label>КАТЕГОРИЯ:</label>
+<select id="k-cat">
+<option value="entity">Entity (Объект)</option>
+<option value="property">Property (Свойство/Цвет)</option>
+<option value="modifier">Modifier (Размер/Вес)</option>
+<option value="action">Action (Действие)</option>
+<option value="negation">Negation (отрицание)</option>
+</select>
+<label>ЗНАЧЕНИЕ:</label><input type="text" id="k-val" placeholder="например: 0xFF0000">
+<label>ВЕС:</label><input type="number" id="k-weight" value="10">
+<button onclick="SashaCore.learn()">ВШИТЬ В ПАМЯТЬ</button>
 </div>
 
-<div id="chat-window">
-    <div class="msg ai">Система готова. Обучи меня или задай вопрос по Sasha Engine.</div>
+<div id="core-output">
+<div id="terminal"></div>
+<div class="input-area">
+<input type="text" id="user-input" placeholder="Введите сложный семантический запрос..." onkeypress="if(event.key==='Enter') SashaCore.process()">
+<button onclick="SashaCore.process()">EXECUTE</button>
 </div>
-
-<div class="controls">
-    <input type="text" id="user-input" placeholder="Введите запрос...">
-    <button onclick="handleSend()">Отправить</button>
 </div>
 
 <script>
-    // --- 1. ПАМЯТЬ И ОБУЧЕНИЕ ---
-    let sashaKnowledgeBase = JSON.parse(localStorage.getItem('sasha_ai_data')) || [];
-    let chatHistory = [];
+const MIN_CONFIDENCE = 0.2;
 
-    function updateKnowledgeStatus() {
-        document.getElementById('knowledge-status').innerText = `Знаний в базе: ${sashaKnowledgeBase.length}`;
-    }
-    updateKnowledgeStatus();
+const SashaCore = {
+    db: JSON.parse(localStorage.getItem('sasha_core_db')) || {
+        "куб": { cat:"entity", val:"BoxGeometry", w:10 },
+        "сфер": { cat:"entity", val:"SphereGeometry", w:10 },
+        "красн": { cat:"property", val:"0xFF0000", w:10 },
+        "син": { cat:"property", val:"0x0000FF", w:50 },
+        "огромн": { cat:"modifier", val:"5.0", w:100 },
+        "маленьк": { cat:"modifier", val:"0.2", w:10 },
+        "созда": { cat:"action", val:"CREATE", w:1 },
+        "не": { cat:"negation", val:true, w:5 }
+    },
+    contextMemory: {},
+    rules:[
+        {condition:(s)=>s.entity=="BoxGeometry" && parseFloat(s.modifier)>3, apply:(s)=>{s.property="0x00FF00"; return s;}}
+    ],
+    generators:{
+        cpp:(s)=>`auto obj = Sasha::${s.action||'Spawn'}(${s.entities.join(',')||'Primitive'});\nobj->setColor(${s.property||'0xFFFFFF'});\nobj->setScale(${s.modifier||'1.0f'});`,
+        js:(s)=>`const m = new Sasha.Mesh(${s.entities.join(',')||'Box'});\nm.color=${s.property||'0xeee'};\nm.scale.set(${s.modifier||'1'});`
+    },
 
-    function saveKnowledge() {
-        const input = document.getElementById('knowledge-input');
-        const text = input.value.trim();
-        if (text) {
-            sashaKnowledgeBase.push(text);
-            localStorage.setItem('sasha_ai_data', JSON.stringify(sashaKnowledgeBase));
-            input.value = "";
-            updateKnowledgeStatus();
-            addMessageToChat("system", "База знаний обновлена успешно.");
-        }
-    }
+    learn(){
+        const t=document.getElementById('k-token').value.trim().toLowerCase().replace(/(ый|ая|ое|ий|ые|ать|ай)\b/g,'');
+        const c=document.getElementById('k-cat').value;
+        const v=document.getElementById('k-val').value.trim();
+        const w=parseInt(document.getElementById('k-weight').value);
+        if(t && v){this.db[t]={cat:c,val:v,w:w};localStorage.setItem('sasha_core_db',JSON.stringify(this.db));this.updateLibDisplay();this.printSystem(`Токен [${t}] интегрирован в [${c}] с весом ${w}.`);}
+    },
 
-    // --- 2. ЛОГИКА ЧАТА ---
-    async function handleSend() {
-        const input = document.getElementById('user-input');
-        const prompt = input.value.trim();
-        if (!prompt) return;
+    process(){
+        const input=document.getElementById('user-input'); const raw=input.value.trim().toLowerCase();
+        if(!raw) return;
+        const words=raw.replace(/(ый|ая|ое|ий|ые|ишь|ит|ать|ай)\b/g,'').split(/\s+/);
+        let state={entities:[], property:null, modifier:null, action:null, negations:[]};
+        let metadata={}; let totalWeight=0;
 
-        addMessageToChat("user", prompt);
-        input.value = "";
+        // Multi-entity + Negation + Prefix
+        words.forEach(word=>{
+            let entry=null;
+            for(let k in this.db){if(word===k || word.startsWith(k)){entry=this.db[k]; break;}}
+            if(entry){
+                if(entry.cat==="negation"){state.negations.push(entry.val); return;}
+                if(entry.cat==="entity"){state.entities.push(entry.val);}
+                else if(!state[entry.cat] || entry.w>(metadata[entry.cat]?.weight||0)){state[entry.cat]=entry.val; metadata[entry.cat]={weight:entry.w,source:word};}
+                totalWeight+=entry.w;
+            }
+        });
 
-        // Подготовка контекста обучения
-        const knowledgeContext = sashaKnowledgeBase.join("\n---\n");
-        
-        // Формирование сообщения для ИИ
-        const messages = [
-            { 
-                role: "system", 
-                content: `Ты — Sasha Engine AI. Твои правила и база знаний:\n${knowledgeContext}\n
-                Всегда придерживайся этих правил. Если ответа нет в базе, используй логику C++20 и Three.js.` 
-            },
-            ...chatHistory,
-            { role: "user", content: prompt }
-        ];
+        // Confidence
+        const confidence=totalWeight/500;
+        if(confidence<MIN_CONFIDENCE){this.printSystem("Сигнал слабый, генерация отменена."); return;}
+        // Empty-state protection
+        if(state.entities.length===0 && !state.property && !state.modifier && !state.action){this.printSystem("Состояние пустое, нет данных для генерации."); return;}
 
-        // Заглушка вызова ИИ (замени на свой engine.chat.completions.create)
-        addMessageToChat("ai", "Генерирую ответ с учетом обучения...");
-        
-        /* 
-        Пример вызова:
-        const reply = await engine.chat.completions.create({ messages });
-        const aiText = reply.choices[0].message.content;
-        */
-        
-        // Для теста просто выведем структуру в консоль
-        console.log("Отправка в ИИ с контекстом:", messages);
-    }
+        // Context memory
+        if(this.contextMemory.property && !state.property) state.property=this.contextMemory.property;
+        if(this.contextMemory.modifier && !state.modifier) state.modifier=this.contextMemory.modifier;
+        this.contextMemory=Object.assign({},state);
 
-    function addMessageToChat(role, text) {
-        const win = document.getElementById('chat-window');
-        const div = document.createElement('div');
-        div.className = `msg ${role === 'user' ? 'user' : 'ai'}`;
-        div.innerText = text;
-        win.appendChild(div);
-        win.scrollTop = win.scrollHeight;
-        
-        if (role !== 'system') {
-            chatHistory.push({ role, content: text });
-            if (chatHistory.length > 10) chatHistory.shift(); // Лимит памяти диалога
-        }
-    }
+        // 2 уровень inference rules
+        this.rules.forEach(r=>{if(r.condition(state)) state=r.apply(state);});
+
+        // Logical compatibility
+        if(state.modifier && parseFloat(state.modifier)<=0){state.modifier="1.0";}
+
+        this.renderOutput(raw,state,metadata,confidence);
+        input.value="";
+    },
+
+    renderOutput(raw,state,meta,conf){
+        const term=document.getElementById('terminal');
+        let analysis=Object.keys(meta).map(cat=>`[${cat.toUpperCase()}]: ${state[cat]} (via '${meta[cat].source}' w:${meta[cat].weight})`).join('<br>');
+        const entry=document.createElement('div');
+        entry.className='log-entry';
+        entry.innerHTML=`<span style="color:#fff;">> ЗАПРОС: ${raw}</span><br>
+        <span class="token-info">Confidence:${conf.toFixed(2)} | Анализ:</span><br>
+        <span style="font-size:11px;">${analysis}</span>
+        <div class="code-block">${this.generators.cpp(state)}</div>
+        <div class="code-block" style="border-color:#00afff;">${this.generators.js(state)}</div>`;
+        term.appendChild(entry); term.scrollTop=term.scrollHeight;
+    },
+
+    printSystem(msg){const term=document.getElementById('terminal');term.innerHTML+=`<div class="log-entry" style="color:#888;">[SYSTEM]: ${msg}</div>`; term.scrollTop=term.scrollHeight;},
+
+    updateLibDisplay(){const display=document.getElementById('lib-display');display.innerHTML=Object.keys(this.db).map(k=>`<div style="font-size:11px; border-bottom:1px solid #222;"><b>${k}</b> -> ${this.db[k].cat} (w:${this.db[k].w})</div>`).join('');}
+};
+
+SashaCore.updateLibDisplay();
 </script>
-
 </body>
 </html>
 
