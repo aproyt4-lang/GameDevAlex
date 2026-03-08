@@ -1,144 +1,626 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Sasha Logic Core v6 | Full Expert System</title>
-<style>
-body { background:#0a0a0a; color:#00ff41; font-family:monospace; margin:0; display:flex; height:100vh; overflow:hidden; }
-#knowledge-base { width:400px; background:#141414; border-right:2px solid #222; display:flex; flex-direction:column; padding:20px; box-sizing:border-box; }
-#core-output { flex-grow:1; display:flex; flex-direction:column; background:#000; }
-#terminal { flex-grow:1; overflow-y:auto; padding:20px; font-size:13px; line-height:1.5; border-bottom:2px solid #222; }
-.input-area { padding:20px; background:#141414; display:flex; gap:10px; }
-input, select, textarea { background:#000; border:1px solid #333; color:#00ff41; padding:10px; font-family:inherit; width:100%; }
-button { background:#00ff41; color:#000; border:none; padding:10px 20px; cursor:pointer; font-weight:bold; text-transform:uppercase; }
-button:hover { background:#fff; }
-.log-entry { margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #1a1a1a; }
-.token-info { color:#888; font-size:11px; }
-.code-block { background:#111; color:#fff; padding:10px; margin-top:5px; border-left:3px solid #00ff41; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Космическая Эволюция</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        #main-orb {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #60a5fa, #3b82f6, #1d4ed8);
+            box-shadow: 
+                0 0 60px rgba(59, 130, 246, 0.6),
+                inset -10px -10px 20px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.1s ease;
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            user-select: none;
+        }
+
+        #main-orb:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 0 80px rgba(59, 130, 246, 0.8),
+                inset -10px -10px 20px rgba(0,0,0,0.3);
+        }
+
+        #main-orb:active {
+            transform: scale(0.95);
+        }
+
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #60a5fa;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float-up 1s ease-out forwards;
+        }
+
+        @keyframes float-up {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .click-text {
+            position: absolute;
+            color: #60a5fa;
+            font-weight: bold;
+            font-size: 20px;
+            pointer-events: none;
+            animation: float-text 1s ease-out forwards;
+            text-shadow: 0 0 10px rgba(96, 165, 250, 0.8);
+        }
+
+        @keyframes float-text {
+            0% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-80px);
+                opacity: 0;
+            }
+        }
+
+        #ui-panel {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            z-index: 100;
+        }
+
+        #score {
+            font-size: 36px;
+            font-weight: bold;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        #per-second {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        #level {
+            font-size: 18px;
+            color: #c084fc;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        #shop {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90%;
+        }
+
+        .shop-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .shop-item:hover:not(.disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .shop-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .shop-item .name {
+            font-weight: bold;
+            color: #e0e7ff;
+            margin-bottom: 5px;
+        }
+
+        .shop-item .cost {
+            color: #fbbf24;
+            font-size: 14px;
+        }
+
+        .shop-item .effect {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        #evolution-bar {
+            position: fixed;
+            top: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        #evolution-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
+        }
+
+        .evolution-names {
+            position: fixed;
+            top: 155px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: space-between;
+            width: 300px;
+            font-size: 12px;
+            color: #64748b;
+            z-index: 100;
+        }
+
+        .evolution-names span.active {
+            color: #c084fc;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+        }
+
+        .floating-emoji {
+            position: absolute;
+            font-size: 30px;
+            pointer-events: none;
+            animation: float-around 3s ease-in-out infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes float-around {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(20px, -20px) rotate(90deg); }
+            50% { transform: translate(0, -40px) rotate(180deg); }
+            75% { transform: translate(-20px, -20px) rotate(270deg); }
+        }
+
+        #achievement {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(255, 255, 255, 0.95);
+            color: #1e1b4b;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        #achievement.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #achievement h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #7c3aed, #db2777);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .close-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            background: linear-gradient(90deg, #7c3aed, #db2777);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+        .close-btn:hover {
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 600px) {
+            #main-orb {
+                width: 150px;
+                height: 150px;
+                font-size: 40px;
+            }
+            
+            #shop {
+                bottom: 10px;
+            }
+            
+            .shop-item {
+                min-width: 120px;
+                padding: 10px 15px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div id="stars"></div>
+    
+    <div id="game-container">
+        <div id="ui-panel">
+            <div id="score">0</div>
+            <div id="per-second">0/сек</div>
+            <div id="level">Энергетическая сфера</div>
+        </div>
 
-<div id="knowledge-base">
-<h3>CORE KNOWLEDGE BASE</h3>
-<div style="flex-grow:1; overflow-y:auto; margin-bottom:20px;" id="lib-display"></div>
-<hr style="border:0; border-top:1px dashed #333; margin:10px 0;">
-<label>ТОКЕН:</label><input type="text" id="k-token" placeholder="например: красн">
-<label>КАТЕГОРИЯ:</label>
-<select id="k-cat">
-<option value="entity">Entity (Объект)</option>
-<option value="property">Property (Свойство/Цвет)</option>
-<option value="modifier">Modifier (Размер/Вес)</option>
-<option value="action">Action (Действие)</option>
-<option value="negation">Negation (отрицание)</option>
-</select>
-<label>ЗНАЧЕНИЕ:</label><input type="text" id="k-val" placeholder="например: 0xFF0000">
-<label>ВЕС:</label><input type="number" id="k-weight" value="10">
-<button onclick="SashaCore.learn()">ВШИТЬ В ПАМЯТЬ</button>
-</div>
+        <div id="evolution-bar">
+            <div id="evolution-progress"></div>
+        </div>
+        <div class="evolution-names">
+            <span class="active">⚡ Энергия</span>
+            <span>🌟 Звезда</span>
+            <span>🌌 Галактика</span>
+            <span>🔮 Вселенная</span>
+        </div>
 
-<div id="core-output">
-<div id="terminal"></div>
-<div class="input-area">
-<input type="text" id="user-input" placeholder="Введите сложный семантический запрос..." onkeypress="if(event.key==='Enter') SashaCore.process()">
-<button onclick="SashaCore.process()">EXECUTE</button>
-</div>
-</div>
+        <div id="main-orb">⚡</div>
 
-<script>
-const MIN_CONFIDENCE = 0.2;
+        <div id="shop">
+            <div class="shop-item" id="auto-clicker" onclick="buyUpgrade('auto')">
+                <div class="name">Авто-кликер</div>
+                <div class="cost">💰 50</div>
+                <div class="effect">+1/сек</div>
+            </div>
+            <div class="shop-item" id="multiplier" onclick="buyUpgrade('multiplier')">
+                <div class="name">Усилитель</div>
+                <div class="cost">💰 200</div>
+                <div class="effect">×2 клики</div>
+            </div>
+            <div class="shop-item" id="super-charge" onclick="buyUpgrade('super')">
+                <div class="name">Супер-заряд</div>
+                <div class="cost">💰 1000</div>
+                <div class="effect">+10/сек</div>
+            </div>
+            <div class="shop-item" id="quantum" onclick="buyUpgrade('quantum')">
+                <div class="name">Квантовый скачок</div>
+                <div class="cost">💰 5000</div>
+                <div class="effect">×5 всего</div>
+            </div>
+        </div>
+    </div>
 
-const SashaCore = {
-    db: JSON.parse(localStorage.getItem('sasha_core_db')) || {
-        "куб": { cat:"entity", val:"BoxGeometry", w:10 },
-        "сфер": { cat:"entity", val:"SphereGeometry", w:10 },
-        "красн": { cat:"property", val:"0xFF0000", w:10 },
-        "син": { cat:"property", val:"0x0000FF", w:50 },
-        "огромн": { cat:"modifier", val:"5.0", w:100 },
-        "маленьк": { cat:"modifier", val:"0.2", w:10 },
-        "созда": { cat:"action", val:"CREATE", w:1 },
-        "не": { cat:"negation", val:true, w:5 }
-    },
-    contextMemory: {},
-    rules:[
-        {condition:(s)=>s.entity=="BoxGeometry" && parseFloat(s.modifier)>3, apply:(s)=>{s.property="0x00FF00"; return s;}}
-    ],
-    generators:{
-        cpp:(s)=>`auto obj = Sasha::${s.action||'Spawn'}(${s.entities.join(',')||'Primitive'});\nobj->setColor(${s.property||'0xFFFFFF'});\nobj->setScale(${s.modifier||'1.0f'});`,
-        js:(s)=>`const m = new Sasha.Mesh(${s.entities.join(',')||'Box'});\nm.color=${s.property||'0xeee'};\nm.scale.set(${s.modifier||'1'});`
-    },
+    <div id="achievement">
+        <h2>🎉 Эволюция!</h2>
+        <p id="achievement-text">Ваша сфера эволюционировала!</p>
+        <button class="close-btn" onclick="closeAchievement()">Продолжить</button>
+    </div>
 
-    learn(){
-        const t=document.getElementById('k-token').value.trim().toLowerCase().replace(/(ый|ая|ое|ий|ые|ать|ай)\b/g,'');
-        const c=document.getElementById('k-cat').value;
-        const v=document.getElementById('k-val').value.trim();
-        const w=parseInt(document.getElementById('k-weight').value);
-        if(t && v){this.db[t]={cat:c,val:v,w:w};localStorage.setItem('sasha_core_db',JSON.stringify(this.db));this.updateLibDisplay();this.printSystem(`Токен [${t}] интегрирован в [${c}] с весом ${w}.`);}
-    },
+    <script>
+        // Игровые переменные
+        let score = 0;
+        let clickPower = 1;
+        let autoClickPower = 0;
+        let multiplier = 1;
+        
+        // Стоимость улучшений
+        const costs = {
+            auto: 50,
+            multiplier: 200,
+            super: 1000,
+            quantum: 5000
+        };
 
-    process(){
-        const input=document.getElementById('user-input'); const raw=input.value.trim().toLowerCase();
-        if(!raw) return;
-        const words=raw.replace(/(ый|ая|ое|ий|ые|ишь|ит|ать|ай)\b/g,'').split(/\s+/);
-        let state={entities:[], property:null, modifier:null, action:null, negations:[]};
-        let metadata={}; let totalWeight=0;
+        // Этапы эволюции
+        const evolutions = [
+            { threshold: 0, name: "⚡ Энергетическая сфера", color: "#3b82f6", emoji: "⚡" },
+            { threshold: 1000, name: "🌟 Плазменная звезда", color: "#f59e0b", emoji: "🌟" },
+            { threshold: 10000, name: "🌌 Спиральная галактика", color: "#8b5cf6", emoji: "🌌" },
+            { threshold: 100000, name: "🔮 Квантовая вселенная", color: "#ec4899", emoji: "🔮" }
+        ];
 
-        // Multi-entity + Negation + Prefix
-        words.forEach(word=>{
-            let entry=null;
-            for(let k in this.db){if(word===k || word.startsWith(k)){entry=this.db[k]; break;}}
-            if(entry){
-                if(entry.cat==="negation"){state.negations.push(entry.val); return;}
-                if(entry.cat==="entity"){state.entities.push(entry.val);}
-                else if(!state[entry.cat] || entry.w>(metadata[entry.cat]?.weight||0)){state[entry.cat]=entry.val; metadata[entry.cat]={weight:entry.w,source:word};}
-                totalWeight+=entry.w;
+        let currentEvolution = 0;
+
+        // Создание звёздного фона
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.width = Math.random() * 3 + 'px';
+                star.style.height = star.style.width;
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starsContainer.appendChild(star);
             }
+        }
+
+        // Создание плавающих эмодзи
+        function createFloatingEmojis() {
+            const container = document.getElementById('game-container');
+            const emojis = ['✨', '⭐', '🌟', '💫'];
+            
+            setInterval(() => {
+                if (document.querySelectorAll('.floating-emoji').length < 10) {
+                    const emoji = document.createElement('div');
+                    emoji.className = 'floating-emoji';
+                    emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    emoji.style.left = Math.random() * 80 + 10 + '%';
+                    emoji.style.top = Math.random() * 60 + 20 + '%';
+                    emoji.style.animationDelay = Math.random() * 2 + 's';
+                    container.appendChild(emoji);
+                    
+                    setTimeout(() => emoji.remove(), 3000);
+                }
+            }, 2000);
+        }
+
+        // Обновление интерфейса
+        function updateUI() {
+            document.getElementById('score').textContent = Math.floor(score).toLocaleString();
+            document.getElementById('per-second').textContent = autoClickPower + '/сек';
+            
+            // Обновление магазина
+            Object.keys(costs).forEach(key => {
+                const item = document.getElementById(key === 'auto' ? 'auto-clicker' : 
+                                                    key === 'multiplier' ? 'multiplier' : 
+                                                    key === 'super' ? 'super-charge' : 'quantum');
+                if (score >= costs[key]) {
+                    item.classList.remove('disabled');
+                } else {
+                    item.classList.add('disabled');
+                }
+            });
+
+            // Проверка эволюции
+            checkEvolution();
+        }
+
+        // Проверка и обновление эволюции
+        function checkEvolution() {
+            let newEvolution = currentEvolution;
+            for (let i = evolutions.length - 1; i >= 0; i--) {
+                if (score >= evolutions[i].threshold) {
+                    newEvolution = i;
+                    break;
+                }
+            }
+
+            if (newEvolution > currentEvolution) {
+                currentEvolution = newEvolution;
+                evolve();
+            }
+
+            // Обновление прогресс-бара
+            const currentThreshold = evolutions[currentEvolution].threshold;
+            const nextThreshold = currentEvolution < evolutions.length - 1 ? 
+                                evolutions[currentEvolution + 1].threshold : 
+                                currentThreshold * 10;
+            const progress = ((score - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
+            document.getElementById('evolution-progress').style.width = Math.min(progress, 100) + '%';
+
+            // Обновление названий эволюций
+            const names = document.querySelectorAll('.evolution-names span');
+            names.forEach((name, index) => {
+                if (index <= currentEvolution) {
+                    name.classList.add('active');
+                } else {
+                    name.classList.remove('active');
+                }
+            });
+        }
+
+        // Эволюция сферы
+        function evolve() {
+            const orb = document.getElementById('main-orb');
+            const evo = evolutions[currentEvolution];
+            
+            orb.style.background = `radial-gradient(circle at 30% 30%, ${evo.color}, ${evo.color}aa, ${evo.color}66)`;
+            orb.style.boxShadow = `0 0 100px ${evo.color}80, inset -10px -10px 20px rgba(0,0,0,0.3)`;
+            orb.textContent = evo.emoji;
+            
+            document.getElementById('level').textContent = evo.name;
+            document.getElementById('level').style.color = evo.color;
+            
+            // Показать достижение
+            document.getElementById('achievement-text').textContent = 
+                `Ваша сфера эволюционировала в "${evo.name}"!`;
+            document.getElementById('achievement').classList.add('show');
+            
+            // Эффект частиц
+            for (let i = 0; i < 20; i++) {
+                createParticle(window.innerWidth / 2, window.innerHeight / 2, true);
+            }
+        }
+
+        function closeAchievement() {
+            document.getElementById('achievement').classList.remove('show');
+        }
+
+        // Клик по сфере
+        document.getElementById('main-orb').addEventListener('click', function(e) {
+            const earned = clickPower * multiplier;
+            score += earned;
+            
+            // Визуальные эффекты
+            createParticle(e.clientX, e.clientY);
+            createClickText(e.clientX, e.clientY, '+' + earned);
+            
+            // Анимация пульсации
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 100);
+            
+            updateUI();
         });
 
-        // Confidence
-        const confidence=totalWeight/500;
-        if(confidence<MIN_CONFIDENCE){this.printSystem("Сигнал слабый, генерация отменена."); return;}
-        // Empty-state protection
-        if(state.entities.length===0 && !state.property && !state.modifier && !state.action){this.printSystem("Состояние пустое, нет данных для генерации."); return;}
+        // Создание частицы
+        function createParticle(x, y, isBig = false) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            if (isBig) {
+                particle.style.width = '20px';
+                particle.style.height = '20px';
+            }
+            particle.style.left = x + (Math.random() - 0.5) * 50 + 'px';
+            particle.style.top = y + (Math.random() - 0.5) * 50 + 'px';
+            document.body.appendChild(particle);
+            
+            setTimeout(() => particle.remove(), 1000);
+        }
 
-        // Context memory
-        if(this.contextMemory.property && !state.property) state.property=this.contextMemory.property;
-        if(this.contextMemory.modifier && !state.modifier) state.modifier=this.contextMemory.modifier;
-        this.contextMemory=Object.assign({},state);
+        // Создание текста клика
+        function createClickText(x, y, text) {
+            const el = document.createElement('div');
+            el.className = 'click-text';
+            el.textContent = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+            
+            setTimeout(() => el.remove(), 1000);
+        }
 
-        // 2 уровень inference rules
-        this.rules.forEach(r=>{if(r.condition(state)) state=r.apply(state);});
+        // Покупка улучшения
+        function buyUpgrade(type) {
+            if (score >= costs[type]) {
+                score -= costs[type];
+                costs[type] = Math.floor(costs[type] * 1.5);
+                
+                const item = document.getElementById(type === 'auto' ? 'auto-clicker' : 
+                                                    type === 'multiplier' ? 'multiplier' : 
+                                                    type === 'super' ? 'super-charge' : 'quantum');
+                item.querySelector('.cost').textContent = '💰 ' + costs[type].toLocaleString();
+                
+                switch(type) {
+                    case 'auto':
+                        autoClickPower += 1;
+                        break;
+                    case 'multiplier':
+                        multiplier *= 2;
+                        item.querySelector('.effect').textContent = '×' + multiplier + ' клики';
+                        break;
+                    case 'super':
+                        autoClickPower += 10;
+                        break;
+                    case 'quantum':
+                        multiplier *= 5;
+                        autoClickPower *= 2;
+                        clickPower *= 2;
+                        break;
+                }
+                
+                updateUI();
+            }
+        }
 
-        // Logical compatibility
-        if(state.modifier && parseFloat(state.modifier)<=0){state.modifier="1.0";}
+        // Авто-кликер
+        setInterval(() => {
+            if (autoClickPower > 0) {
+                score += autoClickPower * multiplier;
+                updateUI();
+                
+                // Визуальный эффект для авто-клика
+                if (Math.random() > 0.7) {
+                    const orb = document.getElementById('main-orb');
+                    const rect = orb.getBoundingClientRect();
+                    createParticle(rect.left + rect.width/2, rect.top + rect.height/2);
+                }
+            }
+        }, 1000);
 
-        this.renderOutput(raw,state,metadata,confidence);
-        input.value="";
-    },
-
-    renderOutput(raw,state,meta,conf){
-        const term=document.getElementById('terminal');
-        let analysis=Object.keys(meta).map(cat=>`[${cat.toUpperCase()}]: ${state[cat]} (via '${meta[cat].source}' w:${meta[cat].weight})`).join('<br>');
-        const entry=document.createElement('div');
-        entry.className='log-entry';
-        entry.innerHTML=`<span style="color:#fff;">> ЗАПРОС: ${raw}</span><br>
-        <span class="token-info">Confidence:${conf.toFixed(2)} | Анализ:</span><br>
-        <span style="font-size:11px;">${analysis}</span>
-        <div class="code-block">${this.generators.cpp(state)}</div>
-        <div class="code-block" style="border-color:#00afff;">${this.generators.js(state)}</div>`;
-        term.appendChild(entry); term.scrollTop=term.scrollHeight;
-    },
-
-    printSystem(msg){const term=document.getElementById('terminal');term.innerHTML+=`<div class="log-entry" style="color:#888;">[SYSTEM]: ${msg}</div>`; term.scrollTop=term.scrollHeight;},
-
-    updateLibDisplay(){const display=document.getElementById('lib-display');display.innerHTML=Object.keys(this.db).map(k=>`<div style="font-size:11px; border-bottom:1px solid #222;"><b>${k}</b> -> ${this.db[k].cat} (w:${this.db[k].w})</div>`).join('');}
-};
-
-SashaCore.updateLibDisplay();
-</script>
+        // Инициализация
+        createStars();
+        createFloatingEmojis();
+        updateUI();
+    </script>
 </body>
 </html>
-
 
 
 
