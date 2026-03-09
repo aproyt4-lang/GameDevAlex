@@ -1782,7 +1782,1321 @@ public class PlayerController : MonoBehaviour
                 }
                 // Add more projects...
             };
+            class SashaAIBrain {
+    constructor() {
+        this.context = [];
+        this.maxContext = 10;
+        this.codeTemplates = this.loadCodeTemplates();
+        this.gamePatterns = this.loadGamePatterns();
+    }
+
+    async generateResponse(input) {
+        const lower = input.toLowerCase();
+        
+        // Определение типа запроса
+        if (this.isGameRequest(lower)) {
+            return await this.generateGame(input);
+        }
+        
+        if (this.isCodeRequest(lower)) {
+            return await this.generateCode(input);
+        }
+        
+        if (this.isLearningRequest(lower)) {
+            return await this.teachProgramming(input);
+        }
+        
+        // Обычный диалог
+        return this.generateChatResponse(input);
+    }
+
+    isGameRequest(text) {
+        const gameKeywords = [
+            'создай игру', 'make game', 'build game', 'game idea',
+            'шутер', 'rpg', 'платформер', 'стратегия', 'хоррор',
+            'shooter', 'platformer', 'strategy', 'horror',
+            'генерация мира', 'процедурно', 'procedural'
+        ];
+        return gameKeywords.some(k => text.includes(k));
+    }
+
+    isCodeRequest(text) {
+        const codeKeywords = [
+            'напиши код', 'code', 'скрипт', 'script', 'функция',
+            'класс', 'class', 'метод', 'method', 'система',
+            'controller', 'manager', 'system', 'ai', 'physics'
+        ];
+        return codeKeywords.some(k => text.includes(k));
+    }
+
+    isLearningRequest(text) {
+        const learnKeywords = [
+            'научи', 'объясни', 'как сделать', 'tutorial', 'learn',
+            'почему', 'зачем', 'как работает', 'explain', 'how to'
+        ];
+        return learnKeywords.some(k => text.includes(k));
+    }
+
+    async generateGame(input) {
+        // Парсинг параметров игры
+        const gameSpec = this.parseGameRequest(input);
+        
+        // Генерация структуры проекта
+        const project = {
+            name: gameSpec.name || this.generateGameName(gameSpec.genre),
+            genre: gameSpec.genre,
+            description: gameSpec.description,
+            scripts: [],
+            scenes: [],
+            assets: []
+        };
+
+        // Генерация основных систем
+        project.scripts.push(this.generateGameManager(project));
+        project.scripts.push(this.generatePlayerController(gameSpec));
+        
+        if (gameSpec.needsAI) {
+            project.scripts.push(this.generateAIController(gameSpec));
+        }
+        
+        if (gameSpec.needsInventory) {
+            project.scripts.push(this.generateInventorySystem());
+        }
+        
+        if (gameSpec.needsQuests) {
+            project.scripts.push(this.generateQuestSystem());
+        }
+
+        // Генерация мира если нужно
+        if (gameSpec.procedural) {
+            project.scripts.push(this.generateProceduralWorld());
+        }
+
+        // Форматирование ответа
+        return {
+            text: `Создаю игру "${project.name}"!\n\n**Жанр:** ${project.genre}\n**Особенности:** ${gameSpec.features.join(', ')}\n\nГенерирую ${project.scripts.length} скриптов...`,
+            code: this.formatProjectCode(project),
+            project: project
+        };
+    }
+
+    parseGameRequest(input) {
+        const genres = {
+            'rpg': { name: 'RPG', needsQuests: true, needsInventory: true },
+            'шутер': { name: 'Shooter', needsAI: true, fastPaced: true },
+            'shooter': { name: 'Shooter', needsAI: true },
+            'платформер': { name: 'Platformer', physics: true },
+            'platformer': { name: 'Platformer', physics: true },
+            'хоррор': { name: 'Horror', atmosphere: true, needsAI: true },
+            'horror': { name: 'Horror', atmosphere: true },
+            'стратегия': { name: 'Strategy', needsAI: true, complexUI: true },
+            'strategy': { name: 'Strategy', needsAI: true }
+        };
+
+        let detectedGenre = 'Action';
+        for (const [key, val] of Object.entries(genres)) {
+            if (input.toLowerCase().includes(key)) {
+                detectedGenre = val.name;
+                break;
+            }
+        }
+
+        return {
+            name: this.extractGameName(input),
+            genre: detectedGenre,
+            description: input,
+            features: this.extractFeatures(input),
+            needsAI: input.includes('ai') || input.includes('враг') || input.includes('npc'),
+            needsInventory: input.includes('инвентарь') || input.includes('предмет'),
+            needsQuests: input.includes('квест') || input.includes('задание'),
+            procedural: input.includes('процедурн') || input.includes('генерация'),
+            multiplayer: input.includes('мультиплеер') || input.includes('сеть'),
+            physics: input.includes('физика') || input.includes('physics')
+        };
+    }
+
+    generateGameManager(project) {
+        return {
+            name: 'GameManager',
+            code: `using UnityEngine;
+using UnityEngine.SceneManagement;
+using System;
+using System.Collections.Generic;
+
+/// <summary>
+/// Central game controller for ${project.name}
+/// Generated by SashaAI
+/// </summary>
+public class GameManager : MonoBehaviour
+{
+    #region Singleton
+    public static GameManager Instance { get; private set; }
+    
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        Initialize();
+    }
+    #endregion
+
+    #region Game State
+    public enum GameState { MainMenu, Playing, Paused, GameOver, Loading }
+    
+    [SerializeField] private GameState _currentState = GameState.MainMenu;
+    public GameState CurrentState 
+    { 
+        get => _currentState;
+        private set
+        {
+            if (_currentState != value)
+            {
+                _currentState = value;
+                OnGameStateChanged?.Invoke(_currentState);
+                HandleStateChange(_currentState);
+            }
+        }
+    }
+    
+    public event Action<GameState> OnGameStateChanged;
+    #endregion
+
+    #region Systems
+    [Header("Game Systems")]
+    public PlayerController Player;
+    public UIManager UI;
+    public AudioManager Audio;
+    public SaveSystem SaveSystem;
+    
+    [Header("Game Settings")]
+    [SerializeField] private bool _autoSave = true;
+    [SerializeField] private float _autoSaveInterval = 300f;
+    
+    private float _lastAutoSave;
+    private Dictionary<string, object> _gameData = new Dictionary<string, object>();
+    #endregion
+
+    void Initialize()
+    {
+        // Initialize all systems
+        LoadSettings();
+        
+        if (_autoSave)
+            _lastAutoSave = Time.time;
             
+        Debug.Log("[GameManager] Initialized successfully");
+    }
+
+    void Update()
+    {
+        HandleAutoSave();
+        HandleInput();
+    }
+
+    void HandleStateChange(GameState newState)
+    {
+        switch (newState)
+        {
+            case GameState.Playing:
+                Time.timeScale = 1f;
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+                break;
+                
+            case GameState.Paused:
+                Time.timeScale = 0f;
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                ShowPauseMenu();
+                break;
+                
+            case GameState.GameOver:
+                Time.timeScale = 0.5f;
+                ShowGameOver();
+                break;
+                
+            case GameState.Loading:
+                Time.timeScale = 1f;
+                break;
+        }
+    }
+
+    void HandleAutoSave()
+    {
+        if (!_autoSave || CurrentState != GameState.Playing) return;
+        
+        if (Time.time - _lastAutoSave > _autoSaveInterval)
+        {
+            SaveGame();
+            _lastAutoSave = Time.time;
+        }
+    }
+
+    void HandleInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            TogglePause();
+        }
+        
+        // Quick save
+        if (Input.GetKeyDown(KeyCode.F5))
+        {
+            SaveGame();
+            ShowNotification("Game Saved!");
+        }
+    }
+
+    #region Public Methods
+    
+    public void SetGameState(GameState newState) => CurrentState = newState;
+    
+    public void TogglePause()
+    {
+        if (CurrentState == GameState.Playing)
+            SetGameState(GameState.Paused);
+        else if (CurrentState == GameState.Paused)
+            SetGameState(GameState.Playing);
+    }
+
+    public void LoadScene(string sceneName)
+    {
+        StartCoroutine(LoadSceneAsync(sceneName));
+    }
+
+    System.Collections.IEnumerator LoadSceneAsync(string sceneName)
+    {
+        var previousState = CurrentState;
+        SetGameState(GameState.Loading);
+        
+        // Show loading screen
+        UI?.ShowLoadingScreen(true);
+        
+        var operation = SceneManager.LoadSceneAsync(sceneName);
+        
+        while (!operation.isDone)
+        {
+            var progress = Mathf.Clamp01(operation.progress / 0.9f);
+            UI?.UpdateLoadingProgress(progress);
+            yield return null;
+        }
+        
+        // Initialize scene
+        yield return new WaitForSeconds(0.5f);
+        
+        UI?.ShowLoadingScreen(false);
+        SetGameState(previousState == GameState.MainMenu ? 
+            GameState.Playing : previousState);
+    }
+
+    public void SaveGame(int slot = 0)
+    {
+        var saveData = new SaveData
+        {
+            timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+            currentScene = SceneManager.GetActiveScene().name,
+            playerPosition = Player?.transform.position ?? Vector3.zero,
+            playerRotation = Player?.transform.rotation ?? Quaternion.identity,
+            gameData = _gameData
+        };
+        
+        SaveSystem?.Save(slot, saveData);
+        OnGameSaved?.Invoke();
+    }
+
+    public void LoadGame(int slot = 0)
+    {
+        var saveData = SaveSystem?.Load(slot);
+        if (saveData == null) return;
+        
+        StartCoroutine(LoadSaveData(saveData));
+    }
+
+    System.Collections.IEnumerator LoadSaveData(SaveData data)
+    {
+        if (data.currentScene != SceneManager.GetActiveScene().name)
+        {
+            yield return LoadSceneAsync(data.currentScene);
+        }
+        
+        // Restore player state
+        if (Player != null)
+        {
+            Player.transform.position = data.playerPosition;
+            Player.transform.rotation = data.playerRotation;
+        }
+        
+        _gameData = data.gameData ?? new Dictionary<string, object>();
+        OnGameLoaded?.Invoke();
+    }
+
+    public void SetGameData(string key, object value)
+    {
+        _gameData[key] = value;
+    }
+
+    public T GetGameData<T>(string key, T defaultValue = default)
+    {
+        if (_gameData.TryGetValue(key, out var value) && value is T typed)
+            return typed;
+        return defaultValue;
+    }
+
+    public void ShowNotification(string message, float duration = 3f)
+    {
+        UI?.ShowNotification(message, duration);
+    }
+
+    public void QuitGame()
+    {
+        #if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+        #else
+        Application.Quit();
+        #endif
+    }
+    #endregion
+
+    #region Events
+    public event Action OnGameSaved;
+    public event Action OnGameLoaded;
+    #endregion
+
+    void LoadSettings()
+    {
+        // Load from PlayerPrefs or config
+        _autoSave = PlayerPrefs.GetInt("AutoSave", 1) == 1;
+    }
+
+    void ShowPauseMenu() => UI?.ShowPauseMenu(true);
+    void ShowGameOver() => UI?.ShowGameOver();
+}
+
+[System.Serializable]
+public class SaveData
+{
+    public string version = "1.0";
+    public string timestamp;
+    public string currentScene;
+    public Vector3 playerPosition;
+    public Quaternion playerRotation;
+    public Dictionary<string, object> gameData;
+}`,
+            description: "Main game controller with save/load, state management and scene transitions"
+        };
+    }
+
+    generatePlayerController(spec) {
+        const movementType = spec.physics ? 'Rigidbody' : 'CharacterController';
+        
+        return {
+            name: 'PlayerController',
+            code: `using UnityEngine;
+using System;
+
+/// <summary>
+/// Player controller for ${spec.genre} game
+/// Generated by SashaAI
+/// </summary>
+[RequireComponent(typeof(${movementType}))]
+public class PlayerController : MonoBehaviour
+{
+    #region Components
+    [Header("References")]
+    public Camera playerCamera;
+    public Transform cameraHolder;
+    public Animator animator;
+    public AudioSource audioSource;
+    
+    private ${movementType} _controller;
+    #endregion
+
+    #region Movement Settings
+    [Header("Movement")]
+    [SerializeField] private float walkSpeed = 5f;
+    [SerializeField] private float sprintSpeed = 10f;
+    [SerializeField] private float crouchSpeed = 2.5f;
+    [SerializeField] private float acceleration = 10f;
+    [SerializeField] private float deceleration = 15f;
+    
+    [Header("Jumping")]
+    [SerializeField] private float jumpForce = 8f;
+    [SerializeField] private int maxJumps = 1;
+    [SerializeField] private float coyoteTime = 0.1f;
+    [SerializeField] private float jumpBuffer = 0.1f;
+    
+    [Header("Ground Check")]
+    [SerializeField] private Transform groundCheck;
+    [SerializeField] private float groundDistance = 0.4f;
+    [SerializeField] private LayerMask groundMask;
+    #endregion
+
+    #region Camera Settings
+    [Header("Camera")]
+    [SerializeField] private float mouseSensitivity = 100f;
+    [SerializeField] private float maxLookAngle = 80f;
+    [SerializeField] private float cameraSmooth = 10f;
+    [SerializeField] private Vector3 cameraOffset = new Vector3(0, 1.6f, 0);
+    #endregion
+
+    #region State
+    private Vector3 _moveInput;
+    private Vector2 _lookInput;
+    private Vector3 _currentVelocity;
+    private float _verticalVelocity;
+    private float _xRotation;
+    private float _yRotation;
+    
+    private bool _isGrounded;
+    private bool _isSprinting;
+    private bool _isCrouching;
+    private int _jumpsRemaining;
+    private float _coyoteTimer;
+    private float _jumpBufferTimer;
+    
+    private Vector3 _targetDirection;
+    private float _targetSpeed;
+    #endregion
+
+    #region Events
+    public event Action OnJump;
+    public event Action OnLand;
+    public event Action<bool> OnSprintChanged;
+    public event Action<bool> OnCrouchChanged;
+    #endregion
+
+    void Start()
+    {
+        _controller = GetComponent<${movementType}>();
+        InitializeCamera();
+        LockCursor();
+    }
+
+    void Update()
+    {
+        GatherInput();
+        HandleGroundCheck();
+        HandleJump();
+        HandleMovement();
+        HandleLook();
+        HandleCrouch();
+        ApplyGravity();
+        UpdateAnimator();
+    }
+
+    void LateUpdate()
+    {
+        UpdateCamera();
+    }
+
+    void GatherInput()
+    {
+        // Movement
+        _moveInput = new Vector3(
+            Input.GetAxisRaw("Horizontal"),
+            0,
+            Input.GetAxisRaw("Vertical")
+        ).normalized;
+
+        // Look
+        _lookInput = new Vector2(
+            Input.GetAxis("Mouse X"),
+            Input.GetAxis("Mouse Y")
+        ) * mouseSensitivity * Time.deltaTime;
+
+        // Actions
+        _isSprinting = Input.GetKey(KeyCode.LeftShift) && CanSprint();
+        _isCrouching = Input.GetKey(KeyCode.LeftControl);
+        
+        // Jump buffering
+        if (Input.GetButtonDown("Jump"))
+            _jumpBufferTimer = jumpBuffer;
+        else
+            _jumpBufferTimer -= Time.deltaTime;
+    }
+
+    void HandleGroundCheck()
+    {
+        var wasGrounded = _isGrounded;
+        
+        _isGrounded = Physics.CheckSphere(
+            groundCheck.position, 
+            groundDistance, 
+            groundMask
+        );
+
+        if (_isGrounded)
+        {
+            _coyoteTimer = coyoteTime;
+            _jumpsRemaining = maxJumps;
+            
+            if (!wasGrounded)
+                OnLand?.Invoke();
+        }
+        else
+        {
+            _coyoteTimer -= Time.deltaTime;
+        }
+    }
+
+    void HandleJump()
+    {
+        if (_jumpBufferTimer > 0 && CanJump())
+        {
+            ExecuteJump();
+            _jumpBufferTimer = 0;
+        }
+    }
+
+    bool CanJump()
+    {
+        return _coyoteTimer > 0 || _jumpsRemaining > 0;
+    }
+
+    void ExecuteJump()
+    {
+        _verticalVelocity = jumpForce;
+        
+        if (!_isGrounded)
+            _jumpsRemaining--;
+        else
+            _coyoteTimer = 0;
+
+        OnJump?.Invoke();
+        PlaySound("Jump");
+    }
+
+    void HandleMovement()
+    {
+        // Calculate target direction relative to camera
+        var cameraForward = Vector3.ProjectOnPlane(playerCamera.transform.forward, Vector3.up).normalized;
+        var cameraRight = Vector3.ProjectOnPlane(playerCamera.transform.right, Vector3.up).normalized;
+        
+        _targetDirection = (cameraForward * _moveInput.z + cameraRight * _moveInput.x).normalized;
+
+        // Determine speed
+        _targetSpeed = _isCrouching ? crouchSpeed : 
+                      _isSprinting ? sprintSpeed : walkSpeed;
+
+        // Smooth velocity change
+        var targetVelocity = _targetDirection * _targetSpeed;
+        _currentVelocity = Vector3.Lerp(
+            _currentVelocity, 
+            targetVelocity, 
+            acceleration * Time.deltaTime
+        );
+
+        // Apply movement
+        ${movementType === 'Rigidbody' ? 
+            '_controller.velocity = new Vector3(_currentVelocity.x, _controller.velocity.y, _currentVelocity.z);' :
+            '_controller.Move(_currentVelocity * Time.deltaTime + Vector3.up * _verticalVelocity * Time.deltaTime);'
+        }
+    }
+
+    void HandleLook()
+    {
+        _xRotation -= _lookInput.y;
+        _xRotation = Mathf.Clamp(_xRotation, -maxLookAngle, maxLookAngle);
+        
+        _yRotation += _lookInput.x;
+        
+        transform.rotation = Quaternion.Euler(0, _yRotation, 0);
+    }
+
+    void HandleCrouch()
+    {
+        var targetHeight = _isCrouching ? 1f : 2f;
+        var currentHeight = _controller is CharacterController cc ? cc.height : 1f;
+        
+        // Smooth crouch transition would go here
+    }
+
+    void ApplyGravity()
+    {
+        if (_isGrounded && _verticalVelocity < 0)
+        {
+            _verticalVelocity = -0.5f; // Stick to ground
+        }
+        else
+        {
+            _verticalVelocity += Physics.gravity.y * Time.deltaTime;
+        }
+    }
+
+    void UpdateCamera()
+    {
+        if (cameraHolder == null) return;
+        
+        var targetRotation = Quaternion.Euler(_xRotation, _yRotation, 0);
+        cameraHolder.rotation = Quaternion.Slerp(
+            cameraHolder.rotation, 
+            targetRotation, 
+            cameraSmooth * Time.deltaTime
+        );
+        
+        cameraHolder.position = transform.position + cameraOffset;
+    }
+
+    void UpdateAnimator()
+    {
+        if (animator == null) return;
+        
+        var speed = _currentVelocity.magnitude / sprintSpeed;
+        animator.SetFloat("Speed", speed);
+        animator.SetBool("IsGrounded", _isGrounded);
+        animator.SetBool("IsSprinting", _isSprinting);
+        animator.SetBool("IsCrouching", _isCrouching);
+    }
+
+    #region Public Methods
+    
+    public void Teleport(Vector3 position, Quaternion? rotation = null)
+    {
+        transform.position = position;
+        if (rotation.HasValue)
+            transform.rotation = rotation.Value;
+            
+        _verticalVelocity = 0;
+        _currentVelocity = Vector3.zero;
+    }
+
+    public void ApplyForce(Vector3 force, ForceMode mode = ForceMode.Impulse)
+    {
+        ${movementType === 'Rigidbody' ? 
+            '_controller.AddForce(force, mode);' :
+            '_currentVelocity += force;'
+        }
+    }
+
+    public void DisableControl(float duration)
+    {
+        enabled = false;
+        Invoke(nameof(EnableControl), duration);
+    }
+
+    void EnableControl() => enabled = true;
+
+    public void LockCursor()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    public void UnlockCursor()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+    #endregion
+
+    #region Utility
+    
+    bool CanSprint()
+    {
+        return _isGrounded && _moveInput.magnitude > 0.1f;
+    }
+
+    void PlaySound(string soundName)
+    {
+        // Implement sound playing
+    }
+
+    void InitializeCamera()
+    {
+        if (playerCamera == null)
+            playerCamera = Camera.main;
+            
+        if (cameraHolder == null)
+            cameraHolder = transform;
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        if (groundCheck != null)
+        {
+            Gizmos.color = _isGrounded ? Color.green : Color.red;
+            Gizmos.DrawWireSphere(groundCheck.position, groundDistance);
+        }
+        
+        Gizmos.color = Color.blue;
+        Gizmos.DrawRay(transform.position, _targetDirection * 2);
+    }
+    #endregion
+}`,
+            description: "Advanced player controller with smooth movement, jumping mechanics and camera control"
+        };
+    }
+
+    generateAIController(spec) {
+        return {
+            name: 'AIController',
+            code: `using UnityEngine;
+using UnityEngine.AI;
+using System;
+using System.Collections.Generic;
+
+/// <summary>
+/// Advanced AI controller with state machine and behavior trees
+/// Generated by SashaAI
+/// </summary>
+[RequireComponent(typeof(NavMeshAgent))]
+[RequireComponent(typeof(SphereCollider))]
+public class AIController : MonoBehaviour
+{
+    #region Components
+    private NavMeshAgent _agent;
+    private Animator _animator;
+    private SphereCollider _detectionCollider;
+    #endregion
+
+    #region AI Settings
+    [Header("Detection")]
+    [SerializeField] private float detectionRange = 15f;
+    [SerializeField] private float attackRange = 2f;
+    [SerializeField] private float fieldOfView = 120f;
+    [SerializeField] private LayerMask playerLayer;
+    [SerializeField] private LayerMask obstacleLayer;
+
+    [Header("Movement")]
+    [SerializeField] private float patrolSpeed = 2f;
+    [SerializeField] private float chaseSpeed = 5f;
+    [SerializeField] private float rotationSpeed = 10f;
+
+    [Header("Combat")]
+    [SerializeField] private float attackCooldown = 1.5f;
+    [SerializeField] private int damage = 10;
+    [SerializeField] private float health = 100f;
+
+    [Header("Patrol")]
+    [SerializeField] private Transform[] patrolPoints;
+    [SerializeField] private float waitTimeAtPoint = 3f;
+    [SerializeField] private bool randomPatrol = false;
+    #endregion
+
+    #region State Machine
+    public enum AIState { Idle, Patrol, Chase, Attack, Search, Flee, Dead }
+    
+    [SerializeField] private AIState _currentState = AIState.Idle;
+    public AIState CurrentState 
+    { 
+        get => _currentState;
+        private set
+        {
+            if (_currentState != value)
+            {
+                ExitState(_currentState);
+                _currentState = value;
+                EnterState(_currentState);
+            }
+        }
+    }
+
+    private Dictionary<AIState, Action> _stateUpdates;
+    #endregion
+
+    #region Memory
+    private Transform _player;
+    private Vector3 _lastKnownPlayerPosition;
+    private float _timeSinceLastSeen;
+    private List<Vector3> _investigationPoints = new List<Vector3>();
+    #endregion
+
+    #region Timers
+    private float _attackTimer;
+    private float _waitTimer;
+    private float _searchTimer;
+    #endregion
+
+    #region Events
+    public event Action<AIState> OnStateChanged;
+    public event Action OnPlayerDetected;
+    public event Action OnPlayerLost;
+    public event Action OnAttack;
+    public event Action OnDeath;
+    #endregion
+
+    void Awake()
+    {
+        InitializeComponents();
+        InitializeStateMachine();
+    }
+
+    void InitializeComponents()
+    {
+        _agent = GetComponent<NavMeshAgent>();
+        _animator = GetComponent<Animator>();
+        _detectionCollider = GetComponent<SphereCollider>();
+        _detectionCollider.radius = detectionRange;
+        _detectionCollider.isTrigger = true;
+    }
+
+    void InitializeStateMachine()
+    {
+        _stateUpdates = new Dictionary<AIState, Action>
+        {
+            { AIState.Idle, UpdateIdle },
+            { AIState.Patrol, UpdatePatrol },
+            { AIState.Chase, UpdateChase },
+            { AIState.Attack, UpdateAttack },
+            { AIState.Search, UpdateSearch },
+            { AIState.Flee, UpdateFlee },
+            { AIState.Dead, UpdateDead }
+        };
+    }
+
+    void Update()
+    {
+        if (CurrentState == AIState.Dead) return;
+        
+        UpdateTimers();
+        UpdateDetection();
+        
+        if (_stateUpdates.TryGetValue(CurrentState, out var update))
+            update();
+        
+        UpdateAnimation();
+    }
+
+    #region State Updates
+    
+    void UpdateIdle()
+    {
+        if (_waitTimer <= 0)
+        {
+            CurrentState = AIState.Patrol;
+        }
+    }
+
+    void UpdatePatrol()
+    {
+        if (!_agent.pathPending && _agent.remainingDistance < 0.5f)
+        {
+            _waitTimer = waitTimeAtPoint;
+            CurrentState = AIState.Idle;
+            return;
+        }
+
+        // Check for player during patrol
+        if (CanSeePlayer())
+        {
+            CurrentState = AIState.Chase;
+        }
+    }
+
+    void UpdateChase()
+    {
+        if (_player == null)
+        {
+            CurrentState = AIState.Search;
+            return;
+        }
+
+        float distanceToPlayer = Vector3.Distance(transform.position, _player.position);
+        
+        if (distanceToPlayer <= attackRange)
+        {
+            CurrentState = AIState.Attack;
+            return;
+        }
+
+        if (!CanSeePlayer() && _timeSinceLastSeen > 3f)
+        {
+            _lastKnownPlayerPosition = _player.position;
+            CurrentState = AIState.Search;
+            return;
+        }
+
+        _agent.SetDestination(_player.position);
+        _agent.speed = chaseSpeed;
+    }
+
+    void UpdateAttack()
+    {
+        if (_player == null)
+        {
+            CurrentState = AIState.Search;
+            return;
+        }
+
+        float distance = Vector3.Distance(transform.position, _player.position);
+        
+        if (distance > attackRange * 1.2f)
+        {
+            CurrentState = AIState.Chase;
+            return;
+        }
+
+        // Face player
+        FaceTarget(_player.position);
+
+        // Attack
+        if (_attackTimer <= 0)
+        {
+            PerformAttack();
+            _attackTimer = attackCooldown;
+        }
+    }
+
+    void UpdateSearch()
+    {
+        _searchTimer += Time.deltaTime;
+        
+        if (_searchTimer > 10f)
+        {
+            CurrentState = AIState.Patrol;
+            return;
+        }
+
+        // Search last known position
+        if (_agent.remainingDistance < 0.5f)
+        {
+            // Look around
+            transform.Rotate(0, 90 * Time.deltaTime, 0);
+        }
+        else
+        {
+            _agent.SetDestination(_lastKnownPlayerPosition);
+        }
+
+        // Check if player found again
+        if (CanSeePlayer())
+        {
+            CurrentState = AIState.Chase;
+        }
+    }
+
+    void UpdateFlee()
+    {
+        if (_player == null) return;
+        
+        Vector3 fleeDirection = (transform.position - _player.position).normalized;
+        Vector3 fleePosition = transform.position + fleeDirection * 10f;
+        
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(fleePosition, out hit, 10f, NavMesh.AllAreas))
+        {
+            _agent.SetDestination(hit.position);
+        }
+
+        if (Vector3.Distance(transform.position, _player.position) > detectionRange * 1.5f)
+        {
+            CurrentState = AIState.Patrol;
+        }
+    }
+
+    void UpdateDead()
+    {
+        _agent.isStopped = true;
+    }
+    #endregion
+
+    #region State Transitions
+    
+    void EnterState(AIState state)
+    {
+        switch (state)
+        {
+            case AIState.Idle:
+                _agent.isStopped = true;
+                break;
+                
+            case AIState.Patrol:
+                _agent.isStopped = false;
+                _agent.speed = patrolSpeed;
+                GoToNextPatrolPoint();
+                break;
+                
+            case AIState.Chase:
+                _agent.isStopped = false;
+                _agent.speed = chaseSpeed;
+                OnPlayerDetected?.Invoke();
+                break;
+                
+            case AIState.Attack:
+                _agent.isStopped = true;
+                break;
+                
+            case AIState.Search:
+                _searchTimer = 0;
+                _agent.isStopped = false;
+                break;
+        }
+        
+        OnStateChanged?.Invoke(state);
+    }
+
+    void ExitState(AIState state)
+    {
+        switch (state)
+        {
+            case AIState.Chase:
+                OnPlayerLost?.Invoke();
+                break;
+        }
+    }
+    #endregion
+
+    #region Detection
+    
+    void UpdateDetection()
+    {
+        if (_player != null)
+        {
+            _timeSinceLastSeen += Time.deltaTime;
+        }
+    }
+
+    bool CanSeePlayer()
+    {
+        if (_player == null) return false;
+
+        Vector3 directionToPlayer = (_player.position - transform.position).normalized;
+        float angle = Vector3.Angle(transform.forward, directionToPlayer);
+        
+        if (angle > fieldOfView / 2) return false;
+
+        float distance = Vector3.Distance(transform.position, _player.position);
+        if (distance > detectionRange) return false;
+
+        // Raycast check
+        if (Physics.Raycast(transform.position + Vector3.up, directionToPlayer, 
+            out RaycastHit hit, detectionRange, obstacleLayer))
+        {
+            return hit.transform == _player;
+        }
+
+        return true;
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            _player = other.transform;
+            _timeSinceLastSeen = 0;
+        }
+    }
+
+    void OnTriggerExit(Collider other)
+    {
+        if (other.transform == _player)
+        {
+            _lastKnownPlayerPosition = _player.position;
+            _timeSinceLastSeen = 0;
+        }
+    }
+    #endregion
+
+    #region Actions
+    
+    void GoToNextPatrolPoint()
+    {
+        if (patrolPoints.Length == 0) return;
+
+        if (randomPatrol)
+        {
+            _agent.SetDestination(patrolPoints[UnityEngine.Random.Range(0, patrolPoints.Length)].position);
+        }
+        else
+        {
+            // Sequential patrol logic
+        }
+    }
+
+    void FaceTarget(Vector3 target)
+    {
+        Vector3 direction = (target - transform.position).normalized;
+        Quaternion lookRotation = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
+        transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, 
+            Time.deltaTime * rotationSpeed);
+    }
+
+    void PerformAttack()
+    {
+        OnAttack?.Invoke();
+        
+        // Damage player
+        var playerHealth = _player.GetComponent<Health>();
+        playerHealth?.TakeDamage(damage);
+        
+        // Animation trigger
+        _animator?.SetTrigger("Attack");
+    }
+
+    public void TakeDamage(float damage)
+    {
+        health -= damage;
+        
+        if (health <= 0)
+        {
+            Die();
+        }
+        else if (health < 30f)
+        {
+            CurrentState = AIState.Flee;
+        }
+    }
+
+    void Die()
+    {
+        CurrentState = AIState.Dead;
+        OnDeath?.Invoke();
+        
+        // Ragdoll or death animation
+        _animator?.SetTrigger("Death");
+        
+        // Disable collider
+        GetComponent<Collider>().enabled = false;
+        
+        // Destroy after delay
+        Destroy(gameObject, 5f);
+    }
+    #endregion
+
+    #region Utility
+    
+    void UpdateTimers()
+    {
+        if (_attackTimer > 0) _attackTimer -= Time.deltaTime;
+        if (_waitTimer > 0) _waitTimer -= Time.deltaTime;
+    }
+
+    void UpdateAnimation()
+    {
+        if (_animator == null) return;
+        
+        _animator.SetFloat("Speed", _agent.velocity.magnitude);
+        _animator.SetBool("IsMoving", _agent.velocity.magnitude > 0.1f);
+    }
+
+    public void SetPatrolPoints(Transform[] points)
+    {
+        patrolPoints = points;
+    }
+    #endregion
+
+    void OnDrawGizmosSelected()
+    {
+        // Detection range
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, detectionRange);
+        
+        // Attack range
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, attackRange);
+        
+        // FOV
+        Gizmos.color = Color.cyan;
+        Vector3 leftBoundary = Quaternion.Euler(0, -fieldOfView/2, 0) * transform.forward;
+        Vector3 rightBoundary = Quaternion.Euler(0, fieldOfView/2, 0) * transform.forward;
+        Gizmos.DrawRay(transform.position, leftBoundary * detectionRange);
+        Gizmos.DrawRay(transform.position, rightBoundary * detectionRange);
+        
+        // Last known position
+        if (_lastKnownPlayerPosition != Vector3.zero)
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawSphere(_lastKnownPlayerPosition, 0.5f);
+            Gizmos.DrawLine(transform.position, _lastKnownPlayerPosition);
+        }
+    }
+}`,
+            description: "Advanced AI with state machine, detection system and combat"
+        };
+    }
+
+    generateInventorySystem() {
+        return {
+            name: 'InventorySystem',
+            code: `// Полная система инвентаря с UI
+using UnityEngine;
+using System.Collections.Generic;
+
+[CreateAssetMenu(fileName = "NewItem", menuName = "Inventory/Item")]
+public class Item : ScriptableObject
+{
+    public string itemName;
+    public string description;
+    public Sprite icon;
+    public int maxStackSize = 1;
+    public float weight;
+    public int value;
+    public ItemType type;
+    public bool isConsumable;
+    public bool isEquipable;
+    
+    public enum ItemType { Weapon, Armor, Consumable, Material, Quest, Misc }
+    
+    public virtual void Use() { }
+    public virtual void Equip() { }
+    public virtual void Unequip() { }
+}
+
+public class Inventory : MonoBehaviour
+{
+    [SerializeField] private int capacity = 20;
+    [SerializeField] private float maxWeight = 50f;
+    
+    private List<InventorySlot> slots = new List<InventorySlot>();
+    private float currentWeight;
+    
+    public event System.Action OnInventoryChanged;
+    public event System.Action<Item> OnItemAdded;
+    public event System.Action<Item> OnItemRemoved;
+    
+    [System.Serializable]
+    public class InventorySlot
+    {
+        public Item item;
+        public int quantity;
+        public bool IsEmpty => item == null;
+    }
+    
+    void Awake()
+    {
+        for (int i = 0; i < capacity; i++)
+            slots.Add(new InventorySlot());
+    }
+    
+    public bool AddItem(Item item, int quantity = 1)
+    {
+        // Check weight
+        if (currentWeight + item.weight * quantity > maxWeight)
+        {
+            Debug.Log("Inventory full (weight limit)");
+            return false;
+        }
+        
+        // Try stack
+        if (item.maxStackSize > 1)
+        {
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if (!slots[i].IsEmpty && slots[i].item == item && 
+                    slots[i].quantity < item.maxStackSize)
+                {
+                    int canAdd = Mathf.Min(item.maxStackSize - slots[i].quantity, quantity);
+                    slots[i].quantity += canAdd;
+                    quantity -= canAdd;
+                    currentWeight += item.weight * canAdd;
+                    
+                    if (quantity <= 0)
+                    {
+                        OnInventoryChanged?.Invoke();
+                        OnItemAdded?.Invoke(item);
+                        return true;
+                    }
+                }
+            }
+        }
+        
+     
+       
             const project = projects[projectId] || { title: 'Project', content: 'Details coming soon...' };
             title.textContent = project.title;
             body.innerHTML = project.content;
@@ -1803,6 +3117,7 @@ public class PlayerController : MonoBehaviour
     </script>
 </body>
 </html>
+
 
 
 
