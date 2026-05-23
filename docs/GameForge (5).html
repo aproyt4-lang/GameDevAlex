@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GameForge — Игровая платформа</title>
+<style>
+:root{--bg:#09090b;--bg2:#18181b;--bg3:#27272a;--text:#fafafa;--text2:#a1a1aa;--accent:#10b981;--accent2:#059669;--border:#27272a;--shadow:rgba(0,0,0,.5);--card:#18181b;--overlay:rgba(0,0,0,.85);--toast:#18181b;--danger:#ef4444;--danger2:#dc2626}
+[data-theme="light"]{--bg:#fafafa;--bg2:#ffffff;--bg3:#f4f4f5;--text:#09090b;--text2:#71717a;--accent:#059669;--accent2:#047857;--border:#e4e4e7;--shadow:rgba(0,0,0,.08);--card:#ffffff;--overlay:rgba(0,0,0,.6);--toast:#ffffff;--danger:#ef4444;--danger2:#dc2626}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;overflow-x:hidden}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
+header{position:sticky;top:0;z-index:100;background:var(--bg);padding:16px 24px;transition:box-shadow .3s,background .3s;display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+header.scrolled{box-shadow:0 4px 20px var(--shadow);background:var(--bg2)}
+.logo{font-size:24px;font-weight:800;letter-spacing:-1px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo span{color:var(--accent)}
+.search-box{flex:1;min-width:200px;max-width:400px;position:relative}
+.search-box input{width:100%;padding:10px 16px 10px 40px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .2s}
+.search-box input:focus{border-color:var(--accent)}
+.search-box svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2)}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filter-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:13px;transition:all .2s}
+.filter-btn:hover,.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.actions{display:flex;gap:8px;margin-left:auto}
+.icon-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.icon-btn:hover{background:var(--bg3);border-color:var(--accent);color:var(--accent)}
+.stats-bar{padding:12px 24px;display:flex;gap:24px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border)}
+.stats-bar strong{color:var(--accent)}
+main{padding:24px;max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.card{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--border);transition:transform .25s,box-shadow .25s;cursor:pointer;position:relative}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 32px var(--shadow)}
+.card-cover{height:160px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-cover .play-icon{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s;position:absolute}
+.card:hover .play-icon{opacity:1}
+.card-cover .type-badge{position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(0,0,0,.5);color:#fff;text-transform:uppercase;backdrop-filter:blur(4px)}
+.card-body{padding:16px}
+.card-body h3{font-size:16px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-body .author{font-size:13px;color:var(--text2);margin-bottom:6px}
+.card-body .desc{font-size:12px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:10px;min-height:36px}
+.card-body .tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
+.card-body .tags span{padding:3px 8px;border-radius:6px;font-size:11px;background:var(--bg3);color:var(--text2)}
+.card-footer{display:flex;align-items:center;justify-content:space-between;padding:0 16px 14px}
+.card-footer .counters{display:flex;gap:12px;font-size:13px;color:var(--text2)}
+.card-footer .counters span{display:flex;align-items:center;gap:4px}
+.like-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all .2s}
+.like-btn:hover,.like-btn.liked{color:#ef4444}
+.like-btn.liked svg{fill:#ef4444}
+.delete-btn{position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:8px;border:none;background:rgba(0,0,0,.5);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s;backdrop-filter:blur(4px);font-size:16px}
+.card:hover .delete-btn{opacity:1}
+.delete-btn:hover{background:var(--danger)}
+.empty-state{text-align:center;padding:80px 20px;color:var(--text2)}
+.empty-state svg{margin-bottom:20px;opacity:.4}
+.empty-state h2{margin-bottom:8px;color:var(--text);font-size:22px}
+.empty-state p{margin-bottom:24px;font-size:14px;max-width:400px;margin-left:auto;margin-right:auto}
+.upload-btn{padding:12px 28px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
+.upload-btn:hover{background:var(--accent2)}
+.overlay{position:fixed;inset:0;z-index:200;background:var(--overlay);display:none;align-items:center;justify-content:center;animation:fadeIn .2s}
+.overlay.open{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.player-wrap{width:95vw;height:90vh;background:#000;border-radius:12px;overflow:hidden;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.player-wrap iframe{width:100%;height:100%;border:none}
+.player-close{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:10px;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background .2s;z-index:10}
+.player-close:hover{background:var(--danger)}
+.sheet-overlay{position:fixed;inset:0;z-index:200;background:var(--overlay);display:none;align-items:flex-end;justify-content:center;animation:fadeIn .2s}
+.sheet-overlay.open{display:flex}
+.sheet{background:var(--bg2);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:28px;animation:slideUp .3s}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.sheet-header h2{font-size:20px;font-weight:700}
+.sheet-close{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.sheet-close:hover{background:var(--bg3);border-color:var(--danger);color:var(--danger)}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .2s;font-family:inherit}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:120px;font-family:'Courier New',monospace;font-size:13px}
+.mode-tabs{display:flex;gap:8px;margin-bottom:20px}
+.mode-tab{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:14px;font-weight:500;text-align:center;transition:all .2s}
+.mode-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center;color:var(--text2);cursor:pointer;transition:all .2s;margin-bottom:16px}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(16,185,129,.05)}
+.drop-zone p{margin-bottom:8px;font-size:14px}
+.drop-zone small{font-size:12px;opacity:.7}
+.drop-zone input{display:none}
+.submit-btn{width:100%;padding:14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
+.submit-btn:hover{background:var(--accent2)}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:10px;background:var(--toast);border:1px solid var(--border);color:var(--text);font-size:14px;box-shadow:0 8px 24px var(--shadow);animation:toastIn .3s;display:flex;align-items:center;gap:8px}
+.toast.success{border-left:3px solid var(--accent)}.toast.error{border-left:3px solid var(--danger)}.toast.info{border-left:3px solid #3b82f6}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:640px){header{padding:12px 16px}.search-box{min-width:100%;order:5}.filters{width:100%;order:6}.stats-bar{padding:10px 16px;gap:16px}main{padding:16px}.grid{grid-template-columns:1fr}.sheet{padding:20px}.player-wrap{width:100vw;height:100vh;border-radius:0}}
+</style>
+</head>
+<body data-theme="dark">
+
+<header id="header">
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Game<span>Forge</span>
+  </div>
+  <div class="search-box">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="Поиск по названию, автору, тегам...">
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" data-platform="all">Все</button>
+    <button class="filter-btn" data-platform="pc">PC</button>
+    <button class="filter-btn" data-platform="mobile">Мобильные</button>
+  </div>
+  <div class="actions">
+    <button class="icon-btn" id="uploadBtn" title="Загрузить игру">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="icon-btn" id="themeBtn" title="Сменить тему">
+      <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="stats-bar" id="statsBar">
+  <div>Игр: <strong id="statGames">0</strong></div>
+  <div>Запусков: <strong id="statPlays">0</strong></div>
+</div>
+
+<main>
+  <div class="grid" id="catalog"></div>
+  <div class="empty-state" id="emptyState" style="display:none">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    <h2>Игр пока нет</h2>
+    <p>Начните коллекцию — загрузите свою первую игру прямо сейчас</p>
+    <button class="upload-btn" onclick="openUpload()">Загрузить игру</button>
+  </div>
+</main>
+
+<div class="overlay" id="playerOverlay">
+  <div class="player-wrap">
+    <button class="player-close" id="playerClose">&times;</button>
+    <iframe id="playerFrame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-pointer-lock"></iframe>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="uploadSheet">
+  <div class="sheet">
+    <div class="sheet-header">
+      <h2>Загрузить игру</h2>
+      <button class="sheet-close" id="uploadClose">&times;</button>
+    </div>
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="code">HTML-код</button>
+      <button class="mode-tab" data-mode="file">Файл</button>
+    </div>
+    <form id="uploadForm" onsubmit="return false">
+      <div class="form-group">
+        <label>Название *</label>
+        <input type="text" id="fTitle" placeholder="Моя крутая игра" required>
+      </div>
+      <div class="form-group">
+        <label>Автор *</label>
+        <input type="text" id="fAuthor" placeholder="Имя автора" required>
+      </div>
+      <div class="form-group">
+        <label>Описание</label>
+        <input type="text" id="fDesc" placeholder="Краткое описание игры">
+      </div>
+      <div class="form-group">
+        <label>Теги (через запятую)</label>
+        <input type="text" id="fTags" placeholder="аркада, пазл, мультиплеер">
+      </div>
+      <div class="form-group">
+        <label>Платформа</label>
+        <select id="fPlatform">
+          <option value="all">Все</option>
+          <option value="pc">PC</option>
+          <option value="mobile">Мобильные</option>
+        </select>
+      </div>
+      <div id="codeMode">
+        <div class="form-group">
+          <label>HTML-код *</label>
+          <textarea id="fCode" placeholder="<!DOCTYPE html>&#10;<html>..."></textarea>
+        </div>
+      </div>
+      <div id="fileMode" style="display:none">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fFile">
+          <p>Перетащите файл сюда или нажмите для выбора</p>
+          <small>HTML, EXE, APK, AAB, ZIP, RAR и другие</small>
+        </div>
+        <div id="fileInfo" style="display:none;padding:8px 0;font-size:13px;color:var(--text2)"></div>
+      </div>
+      <button type="button" class="submit-btn" id="submitBtn">Загрузить</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+(function(){
+"use strict";
+
+var db=null;
+var games=[];
+var liked=[];
+var currentPlatform="all";
+var currentSearch="";
+var uploadMode="code";
+var selectedFile=null;
+var currentBlobUrl=null;
+
+/* ── Utilities ── */
+function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return Math.abs(h)}
+
+function gradientFromTitle(title){
+  var h=hashStr(title||"game");
+  var h1=h%360;var h2=(h1+40+((h>>8)%60))%360;
+  return"linear-gradient(135deg,hsl("+h1+",70%,40%),hsl("+h2+",60%,30%))";
+}
+
+function formatSize(bytes){
+  if(!bytes||bytes===0)return"0 Б";
+  if(bytes<1024)return bytes+" Б";
+  if(bytes<1048576)return(bytes/1024).toFixed(1)+" КБ";
+  return(bytes/1048576).toFixed(1)+" МБ";
+}
+
+function genId(){return"gf_"+Date.now().toString(36)+"_"+Math.random().toString(36).substr(2,6)}
+
+function escapeHtml(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
+
+/* ── Toast ── */
+function showToast(msg,type){
+  type=type||"info";
+  var c=document.getElementById("toastContainer");
+  var t=document.createElement("div");
+  t.className="toast "+type;t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(function(){t.style.opacity="0";t.style.transition="opacity .3s";setTimeout(function(){t.remove()},300)},3000);
+}
+
+/* ── IndexedDB ── */
+function openDB(){
+  return new Promise(function(resolve,reject){
+    if(db){resolve(db);return}
+    var req=indexedDB.open("GameForgeFiles",1);
+    req.onupgradeneeded=function(e){var d=e.target.result;if(!d.objectStoreNames.contains("files"))d.createObjectStore("files",{keyPath:"id"})};
+    req.onsuccess=function(e){db=e.target.result;resolve(db)};
+    req.onerror=function(e){reject(e.target.error)};
+  });
+}
+
+function saveFileToDB(id,blob){
+  return openDB().then(function(d){
+    return new Promise(function(resolve,reject){
+      var tx=d.transaction("files","readwrite");
+      tx.objectStore("files").put({id:id,data:blob});
+      tx.oncomplete=function(){resolve()};
+      tx.onerror=function(e){reject(e.target.error)};
+    });
+  });
+}
+
+function getFileFromDB(id){
+  return openDB().then(function(d){
+    return new Promise(function(resolve,reject){
+      var tx=d.transaction("files","readonly");
+      var req=tx.objectStore("files").get(id);
+      req.onsuccess=function(){resolve(req.result?req.result.data:null)};
+      req.onerror=function(e){reject(e.target.error)};
+    });
+  });
+}
+
+function deleteFileFromDB(id){
+  return openDB().then(function(d){
+    return new Promise(function(resolve,reject){
+      var tx=d.transaction("files","readwrite");
+      tx.objectStore("files").delete(id);
+      tx.oncomplete=function(){resolve()};
+      tx.onerror=function(e){reject(e.target.error)};
+    });
+  });
+}
+
+/* ── localStorage ── */
+function loadGames(){try{var d=localStorage.getItem("gameforge_games");games=d?JSON.parse(d):[]}catch(e){games=[]}}
+function saveGames(){try{localStorage.setItem("gameforge_games",JSON.stringify(games))}catch(e){showToast("Ошибка сохранения: переполнено хранилище","error")}}
+function loadLiked(){try{var d=localStorage.getItem("gameforge_liked");liked=d?JSON.parse(d):[]}catch(e){liked=[]}}
+function saveLiked(){try{localStorage.setItem("gameforge_liked",JSON.stringify(liked))}catch(e){}}
+function loadTheme(){
+  var t=localStorage.getItem("gameforge_theme")||"dark";
+  document.body.setAttribute("data-theme",t);
+  updateThemeIcon(t);
+}
+function saveTheme(t){localStorage.setItem("gameforge_theme",t);document.body.setAttribute("data-theme",t);updateThemeIcon(t)}
+function toggleTheme(){
+  var cur=document.body.getAttribute("data-theme")||"dark";
+  saveTheme(cur==="dark"?"light":"dark");
+}
+function updateThemeIcon(t){
+  var icon=document.getElementById("themeIcon");
+  if(t==="light"){
+    icon.innerHTML='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+  }else{
+    icon.innerHTML='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  }
+}
+
+/* ── Render ── */
+function getFilteredGames(){
+  var q=currentSearch.toLowerCase().trim();
+  return games.filter(function(g){
+    if(currentPlatform!=="all"&&g.platform!==currentPlatform&&g.platform!=="all")return false;
+    if(q){
+      return g.title.toLowerCase().indexOf(q)!==-1||
+             g.authorName.toLowerCase().indexOf(q)!==-1||
+             g.tags.toLowerCase().indexOf(q)!==-1;
+    }
+    return true;
+  });
+}
+
+function renderStats(){
+  var totalPlays=0;for(var i=0;i<games.length;i++)totalPlays+=(games[i].plays||0);
+  document.getElementById("statGames").textContent=games.length;
+  document.getElementById("statPlays").textContent=totalPlays;
+}
+
+function renderCatalog(){
+  var filtered=getFilteredGames();
+  var catalog=document.getElementById("catalog");
+  var empty=document.getElementById("emptyState");
+  if(games.length===0){
+    catalog.innerHTML="";empty.style.display="block";renderStats();return;
+  }
+  empty.style.display="none";
+  if(filtered.length===0){
+    catalog.innerHTML='<div class="empty-state"><h2>Ничего не найдено</h2><p>Попробуйте изменить поисковый запрос или фильтр</p></div>';
+    renderStats();return;
+  }
+  var html="";
+  for(var i=0;i<filtered.length;i++){
+    var g=filtered[i];
+    var isLiked=liked.indexOf(g.id)!==-1;
+    var gradient=gradientFromTitle(g.title);
+    var tagsHtml="";
+    if(g.tags){var tagArr=g.tags.split(",");for(var j=0;j<tagArr.length;j++){if(tagArr[j].trim())tagsHtml+='<span>'+escapeHtml(tagArr[j].trim())+'</span>'}}
+    var typeLabel=g.fileType==="html"?"HTML":g.fileName?g.fileName.split(".").pop().toUpperCase():"BIN";
+    var actionLabel=g.fileType==="html"?"Играть":"Скачать";
+    var actionIcon=g.fileType==="html"?
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>':
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+    html+='<div class="card" data-id="'+g.id+'">'
+      +'<div class="card-cover" style="background:'+gradient+'">'
+      +'<span class="type-badge">'+typeLabel+'</span>'
+      +'<div class="play-icon">'+actionIcon+'</div>'
+      +'</div>'
+      +'<button class="delete-btn" data-del="'+g.id+'" title="Удалить">&times;</button>'
+      +'<div class="card-body">'
+      +'<h3>'+escapeHtml(g.title)+'</h3>'
+      +'<div class="author">'+escapeHtml(g.authorName)+(g.fileSize?' &middot; '+formatSize(g.fileSize):"")+'</div>'
+      +'<div class="desc">'+escapeHtml(g.description||"Без описания")+'</div>'
+      +(tagsHtml?'<div class="tags">'+tagsHtml+'</div>':"")
+      +'</div>'
+      +'<div class="card-footer">'
+      +'<div class="counters">'
+      +'<span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> '+(g.plays||0)+'</span>'
+      +'</div>'
+      +'<button class="like-btn'+(isLiked?" liked":"")+'" data-like="'+g.id+'">'
+      +'<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(isLiked?"#ef4444":"none")+'" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+      +(g.likes||0)
+      +'</button>'
+      +'</div></div>';
+  }
+  catalog.innerHTML=html;
+  renderStats();
+}
+
+/* ── Player ── */
+function openPlayer(gameId){
+  var g=null;for(var i=0;i<games.length;i++){if(games[i].id===gameId){g=games[i];break}}
+  if(!g){showToast("Игра не найдена","error");return}
+  g.plays=(g.plays||0)+1;saveGames();
+  if(g.fileType==="binary"){downloadBinary(g);return}
+  var code=g.htmlContent||"";
+  var frame=document.getElementById("playerFrame");
+  frame.srcdoc=code;
+  document.getElementById("playerOverlay").classList.add("open");
+  document.body.style.overflow="hidden";
+  renderCatalog();
+}
+
+function closePlayer(){
+  var frame=document.getElementById("playerFrame");
+  frame.srcdoc="";
+  document.getElementById("playerOverlay").classList.remove("open");
+  document.body.style.overflow="";
+}
+
+function downloadBinary(g){
+  getFileFromDB(g.id).then(function(blob){
+    if(!blob){showToast("Файл не найден в хранилище","error");return}
+    if(currentBlobUrl)URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.href=currentBlobUrl;
+    a.download=g.fileName||"game";
+    document.body.appendChild(a);a.click();a.remove();
+    renderCatalog();
+  }).catch(function(e){showToast("Ошибка загрузки файла","error");console.error(e)});
+}
+
+/* ── Upload ── */
+function openUpload(){
+  resetUploadForm();
+  document.getElementById("uploadSheet").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function closeUpload(){
+  document.getElementById("uploadSheet").classList.remove("open");
+  document.body.style.overflow="hidden";
+  resetUploadForm();
+}
+
+function resetUploadForm(){
+  document.getElementById("fTitle").value="";
+  document.getElementById("fAuthor").value="";
+  document.getElementById("fDesc").value="";
+  document.getElementById("fTags").value="";
+  document.getElementById("fPlatform").value="all";
+  document.getElementById("fCode").value="";
+  document.getElementById("fFile").value="";
+  selectedFile=null;
+  document.getElementById("fileInfo").style.display="none";
+  setUploadMode("code");
+}
+
+function setUploadMode(mode){
+  uploadMode=mode;
+  var tabs=document.querySelectorAll(".mode-tab");
+  for(var i=0;i<tabs.length;i++){
+    tabs[i].classList.toggle("active",tabs[i].getAttribute("data-mode")===mode);
+  }
+  document.getElementById("codeMode").style.display=mode==="code"?"block":"none";
+  document.getElementById("fileMode").style.display=mode==="file"?"block":"none";
+}
+
+function submitUpload(){
+  var title=document.getElementById("fTitle").value.trim();
+  var author=document.getElementById("fAuthor").value.trim();
+  var desc=document.getElementById("fDesc").value.trim();
+  var tags=document.getElementById("fTags").value.trim();
+  var platform=document.getElementById("fPlatform").value;
+  if(!title){showToast("Введите название игры","error");return}
+  if(!author){showToast("Введите имя автора","error");return}
+
+  if(uploadMode==="code"){
+    var code=document.getElementById("fCode").value;
+    if(!code.trim()){showToast("Введите HTML-код","error");return}
+    var game={
+      id:genId(),title:title,authorName:author,description:desc,tags:tags,
+      platform:platform,htmlContent:code,fileType:"html",fileName:null,
+      fileSize:0,plays:0,likes:0,createdAt:new Date().toISOString()
+    };
+    games.unshift(game);saveGames();renderCatalog();closeUpload();
+    showToast("Игра «"+title+"» загружена!","success");
+  }else{
+    if(!selectedFile){showToast("Выберите файл","error");return}
+    var reader=new FileReader();
+    var fileExt=selectedFile.name.split(".").pop().toLowerCase();
+    if(fileExt==="html"||fileExt==="htm"){
+      reader.onload=function(e){
+        var game={
+          id:genId(),title:title,authorName:author,description:desc,tags:tags,
+          platform:platform,htmlContent:e.target.result,fileType:"html",
+          fileName:selectedFile.name,fileSize:selectedFile.size,
+          plays:0,likes:0,createdAt:new Date().toISOString()
+        };
+        games.unshift(game);saveGames();renderCatalog();closeUpload();
+        showToast("Игра «"+title+"» загружена!","success");
+      };
+      reader.onerror=function(){showToast("Ошибка чтения файла","error")};
+      reader.readAsText(selectedFile);
+    }else{
+      reader.onload=function(e){
+        var game={
+          id:genId(),title:title,authorName:author,description:desc,tags:tags,
+          platform:platform,htmlContent:"",fileType:"binary",
+          fileName:selectedFile.name,fileSize:selectedFile.size,
+          plays:0,likes:0,createdAt:new Date().toISOString()
+        };
+        saveFileToDB(game.id,e.target.result).then(function(){
+          games.unshift(game);saveGames();renderCatalog();closeUpload();
+          showToast("Игра «"+title+"» загружена!","success");
+        }).catch(function(err){
+          showToast("Ошибка сохранения файла в IndexedDB","error");console.error(err);
+        });
+      };
+      reader.onerror=function(){showToast("Ошибка чтения файла","error")};
+      reader.readAsArrayBuffer(selectedFile);
+    }
+  }
+}
+
+/* ── Delete ── */
+function deleteGame(id){
+  var g=null;for(var i=0;i<games.length;i++){if(games[i].id===id){g=games[i];break}}
+  if(!g)return;
+  var name=g.title;
+  if(!confirm('Удалить игру «'+name+'»?'))return;
+  if(g.fileType==="binary"){
+    deleteFileFromDB(id).catch(function(e){console.warn("DB delete error",e)});
+  }
+  var idx=liked.indexOf(id);if(idx!==-1){liked.splice(idx,1);saveLiked()}
+  for(var i=0;i<games.length;i++){if(games[i].id===id){games.splice(i,1);break}}
+  saveGames();renderCatalog();showToast("Игра «"+name+"» удалена","info");
+}
+
+/* ── Likes ── */
+function toggleLike(id){
+  var idx=liked.indexOf(id);
+  var g=null;for(var i=0;i<games.length;i++){if(games[i].id===id){g=games[i];break}}
+  if(!g)return;
+  if(idx===-1){liked.push(id);g.likes=(g.likes||0)+1}else{liked.splice(idx,1);g.likes=Math.max(0,(g.likes||0)-1)}
+  saveLiked();saveGames();renderCatalog();
+}
+
+/* ── Drag and drop ── */
+function setupDropZone(){
+  var zone=document.getElementById("dropZone");
+  var fileInput=document.getElementById("fFile");
+  zone.addEventListener("click",function(){fileInput.click()});
+  fileInput.addEventListener("change",function(){handleFileSelect(this.files)});
+  zone.addEventListener("dragover",function(e){e.preventDefault();e.stopPropagation();zone.classList.add("dragover")});
+  zone.addEventListener("dragleave",function(e){e.preventDefault();e.stopPropagation();zone.classList.remove("dragover")});
+  zone.addEventListener("drop",function(e){
+    e.preventDefault();e.stopPropagation();zone.classList.remove("dragover");
+    if(e.dataTransfer.files.length>0)handleFileSelect(e.dataTransfer.files);
+  });
+}
+
+function handleFileSelect(files){
+  if(files.length>0){
+    selectedFile=files[0];
+    var info=document.getElementById("fileInfo");
+    info.style.display="block";
+    info.textContent=selectedFile.name+" ("+formatSize(selectedFile.size)+")";
+  }
+}
+
+/* ── Event delegation ── */
+function setupEvents(){
+  document.getElementById("uploadBtn").addEventListener("click",openUpload);
+  document.getElementById("uploadClose").addEventListener("click",closeUpload);
+  document.getElementById("playerClose").addEventListener("click",closePlayer);
+  document.getElementById("themeBtn").addEventListener("click",toggleTheme);
+  document.getElementById("submitBtn").addEventListener("click",submitUpload);
+
+  document.getElementById("searchInput").addEventListener("input",function(){
+    currentSearch=this.value;renderCatalog();
+  });
+
+  var filterBtns=document.querySelectorAll(".filter-btn");
+  for(var i=0;i<filterBtns.length;i++){
+    filterBtns[i].addEventListener("click",function(){
+      for(var j=0;j<filterBtns.length;j++)filterBtns[j].classList.remove("active");
+      this.classList.add("active");
+      currentPlatform=this.getAttribute("data-platform");
+      renderCatalog();
+    });
+  }
+
+  var modeTabs=document.querySelectorAll(".mode-tab");
+  for(var i=0;i<modeTabs.length;i++){
+    modeTabs[i].addEventListener("click",function(){setUploadMode(this.getAttribute("data-mode"))});
+  }
+
+  document.addEventListener("click",function(e){
+    var likeBtn=e.target.closest(".like-btn");
+    if(likeBtn){e.stopPropagation();toggleLike(likeBtn.getAttribute("data-like"));return}
+    var delBtn=e.target.closest(".delete-btn");
+    if(delBtn){e.stopPropagation();deleteGame(delBtn.getAttribute("data-del"));return}
+    var card=e.target.closest(".card");
+    if(card&&!e.target.closest(".like-btn")&&!e.target.closest(".delete-btn")){
+      openPlayer(card.getAttribute("data-id"));
+    }
+  });
+
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"){
+      if(document.getElementById("playerOverlay").classList.contains("open"))closePlayer();
+      else if(document.getElementById("uploadSheet").classList.contains("open"))closeUpload();
+    }
+  });
+
+  document.getElementById("uploadSheet").addEventListener("click",function(e){
+    if(e.target===this)closeUpload();
+  });
+  document.getElementById("playerOverlay").addEventListener("click",function(e){
+    if(e.target===this)closePlayer();
+  });
+
+  window.addEventListener("scroll",function(){
+    document.getElementById("header").classList.toggle("scrolled",window.scrollY>10);
+  });
+}
+
+/* ── Init ── */
+function init(){
+  loadTheme();
+  loadGames();
+  loadLiked();
+  setupDropZone();
+  setupEvents();
+  renderCatalog();
+}
+
+if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init)}else{init()}
+
+})();
+</script>
+</body>
+</html>
