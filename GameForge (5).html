@@ -89,8 +89,45 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 .toast-container{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;flex-direction:column;gap:8px}
 .toast{padding:12px 20px;border-radius:10px;background:var(--toast);border:1px solid var(--border);color:var(--text);font-size:14px;box-shadow:0 8px 24px var(--shadow);animation:toastIn .3s;display:flex;align-items:center;gap:8px}
 .toast.success{border-left:3px solid var(--accent)}.toast.error{border-left:3px solid var(--danger)}.toast.info{border-left:3px solid #3b82f6}
+.data-actions{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.data-btn{flex:1;padding:10px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:13px;font-weight:500;transition:all .2s;text-align:center}
+.data-btn:hover{border-color:var(--accent);color:var(--accent)}
+.data-btn.danger{color:var(--danger)}.data-btn.danger:hover{border-color:var(--danger);background:rgba(239,68,68,.1)}
+.version-info{font-size:11px;color:var(--text2);margin-top:12px;text-align:center}
+.version-info span{color:var(--accent);font-weight:600}
+.sync-badge{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;vertical-align:middle;margin-left:6px}
+.sync-badge.synced{background:rgba(16,185,129,.15);color:#10b981}
+.sync-badge.syncing{background:rgba(59,130,246,.15);color:#3b82f6}
+.sync-badge.error{background:rgba(239,68,68,.15);color:#ef4444}
+.sync-badge.off{background:var(--bg3);color:var(--text2)}
+.sync-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.sync-badge.synced .sync-dot{background:#10b981}
+.sync-badge.syncing .sync-dot{background:#3b82f6;animation:pulse 1s infinite}
+.sync-badge.error .sync-dot{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
-@media(max-width:640px){header{padding:12px 16px}.search-box{min-width:100%;order:5}.filters{width:100%;order:6}.stats-bar{padding:10px 16px;gap:16px}main{padding:16px}.grid{grid-template-columns:1fr}.sheet{padding:20px}.player-wrap{width:100vw;height:100vh;border-radius:0}}
+.analytics-panel{background:var(--bg2);border-radius:16px;width:95%;max-width:700px;max-height:90vh;overflow-y:auto;padding:24px;animation:slideUp .3s}
+.analytics-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.analytics-header h2{font-size:20px;font-weight:700}
+.analytics-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:24px}
+.a-card{background:var(--bg3);border-radius:12px;padding:16px;border:1px solid var(--border)}
+.a-card .a-val{font-size:28px;font-weight:800;color:var(--accent);line-height:1.2}
+.a-card .a-label{font-size:12px;color:var(--text2);margin-top:4px}
+.analytics-section{margin-bottom:24px}
+.analytics-section h3{font-size:15px;font-weight:700;margin-bottom:12px}
+.chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px 0}
+.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
+.chart-bar-wrap .bar{width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px;transition:height .3s;opacity:.8}
+.chart-bar-wrap .bar:hover{opacity:1}
+.chart-bar-wrap .bar-plays{width:100%;background:#3b82f6;border-radius:4px 4px 0 0;min-height:2px;transition:height .3s;opacity:.8}
+.chart-bar-wrap .bar-plays:hover{opacity:1}
+.chart-bar-wrap .bar-label{font-size:9px;color:var(--text2);white-space:nowrap}
+.top-game-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:var(--bg3);margin-bottom:8px;border:1px solid var(--border)}
+.top-game-item .tg-rank{width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.top-game-item .tg-info{flex:1;min-width:0}
+.top-game-item .tg-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-game-item .tg-plays{font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0}
+@media(max-width:640px){header{padding:12px 16px}.search-box{min-width:100%;order:5}.filters{width:100%;order:6}.stats-bar{padding:10px 16px;gap:16px}main{padding:16px}.grid{grid-template-columns:1fr}.sheet{padding:20px}.player-wrap{width:100vw;height:100vh;border-radius:0}.analytics-cards{grid-template-columns:1fr 1fr}.analytics-panel{padding:16px;width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:100vh}}
 </style>
 </head>
 <body data-theme="dark">
@@ -113,7 +150,13 @@ main{padding:24px;max-width:1200px;margin:0 auto}
     <button class="icon-btn" id="uploadBtn" title="Загрузить игру">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
-    <button class="icon-btn" id="themeBtn" title="Сменить тему">
+    <button class="icon-btn" id="syncBtn" title="Синхронизация">      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>    </button>    <button class="icon-btn" id="dataBtn" title="Управление данными">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+    </button>
+    <button class="icon-btn" id="analyticsBtn" title="Аналитика">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+    </button>
+    <button class="icon-btn" id="themeBtn" title="Сменить тема">
       <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
   </div>
@@ -122,6 +165,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 <div class="stats-bar" id="statsBar">
   <div>Игр: <strong id="statGames">0</strong></div>
   <div>Запусков: <strong id="statPlays">0</strong></div>
+  <div id="syncStatus"></div>
 </div>
 
 <main>
@@ -195,6 +239,28 @@ main{padding:24px;max-width:1200px;margin:0 auto}
   </div>
 </div>
 
+<div class="overlay" id="analyticsOverlay">
+  <div class="analytics-panel">
+    <div class="analytics-header">
+      <h2>Аналитика</h2>
+      <button class="sheet-close" id="analyticsClose">&times;</button>
+    </div>
+    <div class="analytics-cards" id="analyticsCards"></div>
+    <div class="analytics-section">
+      <h3>Посещения за 14 дней</h3>
+      <div class="chart" id="visitChart"></div>
+    </div>
+    <div class="analytics-section">
+      <h3>Запуски игр за 14 дней</h3>
+      <div class="chart" id="playsChart"></div>
+    </div>
+    <div class="analytics-section">
+      <h3>Популярные игры (Топ 5)</h3>
+      <div id="topGames"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -209,6 +275,8 @@ var currentSearch="";
 var uploadMode="code";
 var selectedFile=null;
 var currentBlobUrl=null;
+var DATA_VERSION=2;
+var IDB_VERSION=2;
 
 /* ── Utilities ── */
 function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return Math.abs(h)}
@@ -244,10 +312,45 @@ function showToast(msg,type){
 function openDB(){
   return new Promise(function(resolve,reject){
     if(db){resolve(db);return}
-    var req=indexedDB.open("GameForgeFiles",1);
-    req.onupgradeneeded=function(e){var d=e.target.result;if(!d.objectStoreNames.contains("files"))d.createObjectStore("files",{keyPath:"id"})};
-    req.onsuccess=function(e){db=e.target.result;resolve(db)};
+    var req=indexedDB.open("GameForgeFiles",IDB_VERSION);
+    req.onupgradeneeded=function(e){
+      var d=e.target.result;
+      var oldVer=e.oldVersion;
+      if(oldVer<1){
+        if(!d.objectStoreNames.contains("files"))d.createObjectStore("files",{keyPath:"id"});
+      }
+      if(oldVer<2){
+        if(!d.objectStoreNames.contains("meta"))d.createObjectStore("meta",{keyPath:"key"});
+      }
+    };
+    req.onsuccess=function(e){
+      db=e.target.result;
+      db.onversionchange=function(){db.close();db=null};
+      resolve(db);
+    };
     req.onerror=function(e){reject(e.target.error)};
+  });
+}
+
+function saveDBMeta(key,value){
+  return openDB().then(function(d){
+    return new Promise(function(resolve,reject){
+      var tx=d.transaction("meta","readwrite");
+      tx.objectStore("meta").put({key:key,value:value});
+      tx.oncomplete=function(){resolve()};
+      tx.onerror=function(e){reject(e.target.error)};
+    });
+  });
+}
+
+function getDBMeta(key){
+  return openDB().then(function(d){
+    return new Promise(function(resolve,reject){
+      var tx=d.transaction("meta","readonly");
+      var req=tx.objectStore("meta").get(key);
+      req.onsuccess=function(){resolve(req.result?req.result.value:null)};
+      req.onerror=function(e){reject(e.target.error)};
+    });
   });
 }
 
@@ -284,9 +387,99 @@ function deleteFileFromDB(id){
   });
 }
 
+/* ── Data Migration ── */
+function migrateData(){
+  var savedVer=parseInt(localStorage.getItem("gameforge_version")||"0");
+  if(savedVer<DATA_VERSION){
+    if(savedVer===0){
+      migrateV0toV1();
+    }
+    if(savedVer<2){
+      migrateV1toV2();
+    }
+    localStorage.setItem("gameforge_version",String(DATA_VERSION));
+    saveDBMeta("dataVersion",DATA_VERSION);
+  }
+}
+
+function migrateV0toV1(){
+  try{
+    var d=localStorage.getItem("gameforge_games");
+    if(d){
+      var arr=JSON.parse(d);
+      for(var i=0;i<arr.length;i++){
+        if(!arr[i].createdAt)arr[i].createdAt=new Date().toISOString();
+        if(arr[i].plays===undefined)arr[i].plays=0;
+        if(arr[i].likes===undefined)arr[i].likes=0;
+        if(!arr[i].platform)arr[i].platform="all";
+      }
+      localStorage.setItem("gameforge_games",JSON.stringify(arr));
+    }
+  }catch(e){console.warn("Migration v0->v1 error",e)}
+}
+
+function migrateV1toV2(){
+  try{
+    var d=localStorage.getItem("gameforge_games");
+    if(d){
+      var arr=JSON.parse(d);
+      for(var i=0;i<arr.length;i++){
+        if(arr[i].fileType===undefined){
+          arr[i].fileType=arr[i].htmlContent?"html":"binary";
+          if(!arr[i].fileName)arr[i].fileName=null;
+          if(!arr[i].fileSize)arr[i].fileSize=0;
+        }
+        if(arr[i].authorName===undefined)arr[i].authorName="Unknown";
+      }
+      localStorage.setItem("gameforge_games",JSON.stringify(arr));
+    }
+  }catch(e){console.warn("Migration v1->v2 error",e)}
+  }
+}
+
 /* ── localStorage ── */
-function loadGames(){try{var d=localStorage.getItem("gameforge_games");games=d?JSON.parse(d):[]}catch(e){games=[]}}
-function saveGames(){try{localStorage.setItem("gameforge_games",JSON.stringify(games))}catch(e){showToast("Ошибка сохранения: переполнено хранилище","error")}}
+function loadGames(){
+  try{
+    var d=localStorage.getItem("gameforge_games");
+    games=d?JSON.parse(d):[];
+    validateGames();
+  }catch(e){
+    console.warn("loadGames error, trying backup...",e);
+    games=tryRecoverGames();
+  }
+}
+
+function validateGames(){
+  var clean=[];
+  for(var i=0;i<games.length;i++){
+    var g=games[i];
+    if(!g||!g.id||!g.title)continue;
+    if(g.fileType!=="html"&&g.fileType!=="binary")g.fileType=g.htmlContent?"html":"binary";
+    if(!g.createdAt)g.createdAt=new Date().toISOString();
+    if(!g.plays)g.plays=0;
+    if(!g.likes)g.likes=0;
+    if(!g.platform)g.platform="all";
+    if(!g.description)g.description="";
+    if(!g.tags)g.tags="";
+    if(!g.authorName)g.authorName="Unknown";
+    clean.push(g);
+  }
+  if(clean.length!==games.length){
+    games=clean;
+    saveGames();
+  }
+}
+
+function tryRecoverGames(){
+  try{
+    var raw=localStorage.getItem("gameforge_games");
+    if(!raw)return[];
+    var fixed=raw.replace(/[\x00-\x1F\x7F]/g,function(c){return"\\u"+("0000"+c.charCodeAt(0).toString(16)).slice(-4)});
+    return JSON.parse(fixed);
+  }catch(e2){return[]}
+}
+
+function saveGames(){try{localStorage.setItem("gameforge_games",JSON.stringify(games));scheduleSync()}catch(e){showToast("Ошибка сохранения: переполнено хранилище","error")}}
 function loadLiked(){try{var d=localStorage.getItem("gameforge_liked");liked=d?JSON.parse(d):[]}catch(e){liked=[]}}
 function saveLiked(){try{localStorage.setItem("gameforge_liked",JSON.stringify(liked))}catch(e){}}
 function loadTheme(){
@@ -382,7 +575,7 @@ function renderCatalog(){
 function openPlayer(gameId){
   var g=null;for(var i=0;i<games.length;i++){if(games[i].id===gameId){g=games[i];break}}
   if(!g){showToast("Игра не найдена","error");return}
-  g.plays=(g.plays||0)+1;saveGames();
+  g.plays=(g.plays||0)+1;saveGames();trackGamePlay(gameId);
   if(g.fileType==="binary"){downloadBinary(g);return}
   var code=g.htmlContent||"";
   var frame=document.getElementById("playerFrame");
@@ -557,6 +750,10 @@ function setupEvents(){
   document.getElementById("playerClose").addEventListener("click",closePlayer);
   document.getElementById("themeBtn").addEventListener("click",toggleTheme);
   document.getElementById("submitBtn").addEventListener("click",submitUpload);
+  document.getElementById("analyticsBtn").addEventListener("click",openAnalytics);
+  document.getElementById("analyticsClose").addEventListener("click",closeAnalytics);
+  document.getElementById("dataBtn").addEventListener("click",openDataPanel);
+  document.getElementById("syncBtn").addEventListener("click",openSyncSettings);
 
   document.getElementById("searchInput").addEventListener("input",function(){
     currentSearch=this.value;renderCatalog();
@@ -592,6 +789,9 @@ function setupEvents(){
     if(e.key==="Escape"){
       if(document.getElementById("playerOverlay").classList.contains("open"))closePlayer();
       else if(document.getElementById("uploadSheet").classList.contains("open"))closeUpload();
+      else if(document.getElementById("analyticsOverlay").classList.contains("open"))closeAnalytics();
+      else if(document.getElementById("dataOverlay"))closeDataPanel();
+      else if(document.getElementById("syncOverlay"))closeSyncSettings();
     }
   });
 
@@ -601,20 +801,647 @@ function setupEvents(){
   document.getElementById("playerOverlay").addEventListener("click",function(e){
     if(e.target===this)closePlayer();
   });
+  document.getElementById("analyticsOverlay").addEventListener("click",function(e){
+    if(e.target===this)closeAnalytics();
+  });
 
   window.addEventListener("scroll",function(){
     document.getElementById("header").classList.toggle("scrolled",window.scrollY>10);
   });
 }
 
+/* ── Analytics ── */
+var analytics={};
+
+function loadAnalytics(){
+  try{
+    var d=localStorage.getItem("gf_analytics");
+    analytics=d?JSON.parse(d):{visits:[],visitorId:genId(),dailyPlays:{}};
+    if(!analytics.visits)analytics.visits=[];
+    if(!analytics.visitorId)analytics.visitorId=genId();
+    if(!analytics.dailyPlays)analytics.dailyPlays={};
+  }catch(e){
+    analytics={visits:[],visitorId:genId(),dailyPlays:{}};
+  }
+}
+
+function saveAnalytics(){
+  try{localStorage.setItem("gf_analytics",JSON.stringify(analytics))}catch(e){}
+}
+
+function trackVisit(){
+  var today=dateKey(new Date());
+  var lastVisit=analytics.visits.length>0?analytics.visits[analytics.visits.length-1]:"";
+  if(lastVisit===today)return;
+  analytics.visits.push(today);
+  if(analytics.visits.length>365)analytics.visits=analytics.visits.slice(-365);
+  saveAnalytics();
+}
+
+function trackGamePlay(gameId){
+  var today=dateKey(new Date());
+  if(!analytics.dailyPlays[today])analytics.dailyPlays[today]={};
+  analytics.dailyPlays[today][gameId]=(analytics.dailyPlays[today][gameId]||0)+1;
+  saveAnalytics();
+}
+
+function dateKey(d){
+  var y=d.getFullYear();
+  var m=String(d.getMonth()+1).padStart(2,"0");
+  var day=String(d.getDate()).padStart(2,"0");
+  return y+"-"+m+"-"+day;
+}
+
+function shortDay(dateStr){
+  var days=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+  var d=new Date(dateStr+"T12:00:00");
+  return days[d.getDay()];
+}
+
+function countTodayVisits(){
+  var today=dateKey(new Date());
+  var c=0;
+  for(var i=0;i<analytics.visits.length;i++){if(analytics.visits[i]===today)c++}
+  return c;
+}
+
+function countTotalPlaysLastNDays(n){
+  var now=new Date();
+  var total=0;
+  for(var i=0;i<n;i++){
+    var d=new Date(now);d.setDate(d.getDate()-i);
+    var key=dateKey(d);
+    if(analytics.dailyPlays[key]){
+      var plays=analytics.dailyPlays[key];
+      for(var gid in plays)total+=plays[gid];
+    }
+  }
+  return total;
+}
+
+function openAnalytics(){
+  renderAnalyticsPanel();
+  document.getElementById("analyticsOverlay").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+
+function closeAnalytics(){
+  document.getElementById("analyticsOverlay").classList.remove("open");
+  document.body.style.overflow="";
+}
+
+function renderAnalyticsPanel(){
+  var today=dateKey(new Date());
+  var todayVisits=countTodayVisits();
+  var totalVisits=analytics.visits.length;
+  var todayPlays=0;
+  if(analytics.dailyPlays[today]){
+    for(var gid in analytics.dailyPlays[today])todayPlays+=analytics.dailyPlays[today][gid];
+  }
+  var totalPlays14=countTotalPlaysLastNDays(14);
+
+  document.getElementById("analyticsCards").innerHTML=
+    '<div class="a-card"><div class="a-val">'+totalVisits+'</div><div class="a-label">Всего посещений</div></div>'+
+    '<div class="a-card"><div class="a-val">'+todayVisits+'</div><div class="a-label">Сегодня посещений</div></div>'+
+    '<div class="a-card"><div class="a-val">'+totalPlays14+'</div><div class="a-label">Запусков игр (14 дн.)</div></div>'+
+    '<div class="a-card"><div class="a-val">'+todayPlays+'</div><div class="a-label">Запусков сегодня</div></div>';
+
+  renderVisitChart();
+  renderPlaysChart();
+  renderTopGames();
+}
+
+function renderVisitChart(){
+  var days=getLast14Days();
+  var counts=[];
+  var maxC=1;
+  for(var i=0;i<days.length;i++){
+    var c=0;
+    for(var j=0;j<analytics.visits.length;j++){if(analytics.visits[j]===days[i])c++}
+    counts.push(c);
+    if(c>maxC)maxC=c;
+  }
+  var html="";
+  for(var i=0;i<days.length;i++){
+    var h=Math.max(4,Math.round((counts[i]/maxC)*100));
+    html+='<div class="chart-bar-wrap"><div class="bar" style="height:'+h+'%"></div><div class="bar-label">'+shortDay(days[i])+'</div></div>';
+  }
+  document.getElementById("visitChart").innerHTML=html;
+}
+
+function renderPlaysChart(){
+  var days=getLast14Days();
+  var counts=[];
+  var maxC=1;
+  for(var i=0;i<days.length;i++){
+    var c=0;
+    if(analytics.dailyPlays[days[i]]){
+      for(var gid in analytics.dailyPlays[days[i]])c+=analytics.dailyPlays[days[i]][gid];
+    }
+    counts.push(c);
+    if(c>maxC)maxC=c;
+  }
+  var html="";
+  for(var i=0;i<days.length;i++){
+    var h=Math.max(4,Math.round((counts[i]/maxC)*100));
+    html+='<div class="chart-bar-wrap"><div class="bar-plays" style="height:'+h+'%"></div><div class="bar-label">'+shortDay(days[i])+'</div></div>';
+  }
+  document.getElementById("playsChart").innerHTML=html;
+}
+
+function renderTopGames(){
+  var totals={};
+  for(var day in analytics.dailyPlays){
+    for(var gid in analytics.dailyPlays[day]){
+      totals[gid]=(totals[gid]||0)+analytics.dailyPlays[day][gid];
+    }
+  }
+  var sorted=[];
+  for(var gid in totals)sorted.push({id:gid,plays:totals[gid]});
+  sorted.sort(function(a,b){return b.plays-a.plays});
+
+  var top5=sorted.slice(0,5);
+  if(top5.length===0){
+    document.getElementById("topGames").innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px">Пока нет данных о запусках</div>';
+    return;
+  }
+  var html="";
+  for(var i=0;i<top5.length;i++){
+    var g=null;for(var j=0;j<games.length;j++){if(games[j].id===top5[i].id){g=games[j];break}}
+    var name=g?g.title:"Удалённая игра";
+    html+='<div class="top-game-item"><div class="tg-rank">'+(i+1)+'</div><div class="tg-info"><div class="tg-name">'+escapeHtml(name)+'</div></div><div class="tg-plays">'+top5[i].plays+' запусков</div></div>';
+  }
+  document.getElementById("topGames").innerHTML=html;
+}
+
+function getLast14Days(){
+  var days=[];var now=new Date();
+  for(var i=13;i>=0;i--){
+    var d=new Date(now);d.setDate(d.getDate()-i);
+    days.push(dateKey(d));
+  }
+  return days;
+}
+
+/* ── Export / Import ── */
+function openDataPanel(){
+  var savedVer=localStorage.getItem("gameforge_version")||"?";
+  var binaryCount=0;
+  for(var i=0;i<games.length;i++){if(games[i].fileType==="binary")binaryCount++}
+  var panel=document.getElementById("dataPanel");
+  if(!panel){
+    panel=document.createElement("div");
+    panel.id="dataPanel";
+    panel.className="analytics-panel";
+    panel.innerHTML=
+      '<div class="analytics-header"><h2>Управление данными</h2><button class="sheet-close" id="dataClose">&times;</button></div>'+
+      '<div class="analytics-section">'+
+        '<h3>Ваши данные безопасны при обновлениях</h3>'+
+        '<p style="font-size:13px;color:var(--text2);line-height:1.6">Данные хранятся в браузере (localStorage + IndexedDB). При обновлении HTML-файла на GitHub все игры, лайки и аналитика сохраняются. Система авто-миграции обеспечивает совместимость.</p>'+
+      '</div>'+
+      '<div class="analytics-cards" id="dataStats"></div>'+
+      '<div class="data-actions">'+
+        '<button class="data-btn" id="exportBtn">Экспорт (бэкап)</button>'+
+        '<button class="data-btn" id="importBtn">Импорт (восстановить)</button>'+
+        '<button class="data-btn danger" id="clearAllBtn">Удалить всё</button>'+
+      '</div>'+
+      '<div class="version-info">Версия данных: <span>v'+DATA_VERSION+'</span> | Игр: <span>'+games.length+'</span> (HTML: '+(games.length-binaryCount)+', бинарных: '+binaryCount+')</div>';
+    document.body.appendChild(panel);
+    var overlay=document.createElement("div");
+    overlay.id="dataOverlay";
+    overlay.className="overlay open";
+    overlay.addEventListener("click",function(e){if(e.target===overlay)closeDataPanel()});
+    document.body.appendChild(overlay);
+    overlay.appendChild(panel);
+    panel.querySelector("#dataClose").addEventListener("click",closeDataPanel);
+    panel.querySelector("#exportBtn").addEventListener("click",exportAllData);
+    panel.querySelector("#importBtn").addEventListener("click",function(){
+      var inp=document.createElement("input");
+      inp.type="file";inp.accept=".json";
+      inp.addEventListener("change",function(){if(this.files.length>0)importAllData(this.files[0])});
+      inp.click();
+    });
+    panel.querySelector("#clearAllBtn").addEventListener("click",function(){
+      if(!confirm('Удалить ВСЕ данные?\nЭто действие нельзя отменить!'))return;
+      clearAllData();
+    });
+  }
+  document.getElementById("dataStats").innerHTML=
+    '<div class="a-card"><div class="a-val">'+games.length+'</div><div class="a-label">Игр сохранено</div></div>'+
+    '<div class="a-card"><div class="a-val">'+binaryCount+'</div><div class="a-label">Бинарных файлов (IndexedDB)</div></div>';
+  document.getElementById("dataOverlay").style.display="flex";
+  document.body.style.overflow="hidden";
+}
+
+function closeDataPanel(){
+  var ov=document.getElementById("dataOverlay");
+  if(ov){ov.remove();}
+  var dp=document.getElementById("dataPanel");
+  if(dp)dp.remove();
+  document.body.style.overflow="";
+}
+
+function exportAllData(){
+  var backup={
+    version:DATA_VERSION,
+    exportedAt:new Date().toISOString(),
+    games:games,
+    liked:liked,
+    analytics:analytics,
+    theme:document.body.getAttribute("data-theme")||"dark"
+  };
+  var json=JSON.stringify(backup,null,2);
+  var blob=new Blob([json],{type:"application/json"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;a.download="gameforge_backup_"+dateKey(new Date())+".json";
+  document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(url);
+  showToast("Бэкап создан! Сохраните файл.","success");
+}
+
+function importAllData(file){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var backup=JSON.parse(e.target.result);
+      if(!backup.games||!Array.isArray(backup.games)){showToast("Неверный формат бэкапа","error");return}
+      var oldCount=games.length;
+      var oldIds={};
+      for(var i=0;i<games.length;i++)oldIds[games[i].id]=true;
+      var added=0;var updated=0;
+      for(var i=0;i<backup.games.length;i++){
+        var bg=backup.games[i];
+        if(!bg||!bg.id||!bg.title)continue;
+        if(oldIds[bg.id]){
+          for(var j=0;j<games.length;j++){
+            if(games[j].id===bg.id){games[j]=bg;updated++;break}
+          }
+        }else{
+          games.push(bg);added++;oldIds[bg.id]=true;
+        }
+      }
+      if(backup.liked&&Array.isArray(backup.liked)){
+        var newLiked=[];
+        for(var i=0;i<backup.liked.length;i++){
+          if(oldIds[backup.liked[i]])newLiked.push(backup.liked[i]);
+        }
+        liked=newLiked;
+        saveLiked();
+      }
+      if(backup.analytics&&backup.analytics.visits){
+        analytics=backup.analytics;
+        if(!analytics.dailyPlays)analytics.dailyPlays={};
+        if(!analytics.visitorId)analytics.visitorId=genId();
+        saveAnalytics();
+      }
+      if(backup.theme){saveTheme(backup.theme)}
+      saveGames();
+      renderCatalog();
+      showToast('Импорт: +'+added+' новых, '+updated+' обновлено','success');
+      closeDataPanel();
+    }catch(err){
+      showToast('Ошибка чтения бэкапа: '+err.message,"error");
+      console.error(err);
+    }
+  };
+  reader.onerror=function(){showToast("Ошибка чтения файла","error")};
+  reader.readAsText(file);
+}
+
+function clearAllData(){
+  localStorage.removeItem("gameforge_games");
+  localStorage.removeItem("gameforge_liked");
+  localStorage.removeItem("gameforge_theme");
+  localStorage.removeItem("gf_analytics");
+  localStorage.removeItem("gameforge_version");
+  games=[];liked=[];analytics={visits:[],visitorId:genId(),dailyPlays:{}};
+  openDB().then(function(d){
+    return new Promise(function(resolve,reject){
+      var tx=d.transaction(["files","meta"],"readwrite");
+      tx.objectStore("files").clear();
+      tx.objectStore("meta").clear();
+      tx.oncomplete=function(){resolve()};
+      tx.onerror=function(e){reject(e.target.error)};
+    });
+  }).then(function(){
+    renderCatalog();
+    showToast('Все данные удалены','info');
+    closeDataPanel();
+  }).catch(function(e){
+    showToast('Ошибка: '+e.message,'error');
+  });
+}
+
+/* ── GitHub Sync ── */
+var gh={token:"",owner:"",repo:"",dataPath:"data/gameforge_games.json",sha:null,lastSync:null,syncing:false};
+var syncTimer=null;
+
+function loadGhConfig(){
+  gh.token=localStorage.getItem("gh_token")||"";
+  gh.owner=localStorage.getItem("gh_owner")||"";
+  gh.repo=localStorage.getItem("gh_repo")||"";
+  gh.lastSync=localStorage.getItem("gh_last_sync")||null;
+}
+function saveGhConfig(){
+  localStorage.setItem("gh_token",gh.token);
+  localStorage.setItem("gh_owner",gh.owner);
+  localStorage.setItem("gh_repo",gh.repo);
+}
+function isGhReady(){return gh.token&&gh.owner&&gh.repo}
+
+function ghApi(method,path,body){
+  return new Promise(function(resolve,reject){
+    var opts={
+      method:method,
+      headers:{
+        "Authorization":"Bearer "+gh.token,
+        "Accept":"application/vnd.github+json",
+        "X-GitHub-Api-Version":"2022-11-28"
+      }
+    };
+    if(body!==undefined){
+      opts.headers["Content-Type"]="application/json";
+      opts.body=JSON.stringify(body);
+    }
+    fetch("https://api.github.com"+path,opts).then(function(r){
+      if(r.status===404){resolve(null);return}
+      if(!r.ok){r.text().then(function(t){reject(new Error(r.status+": "+t))}).catch(function(){reject(new Error("HTTP "+r.status))});return}
+      r.json().then(resolve).catch(reject);
+    }).catch(reject);
+  });
+}
+
+function ghLoadGames(){
+  return ghApi("GET","/repos/"+gh.owner+"/"+gh.repo+"/contents/"+gh.dataPath).then(function(data){
+    if(!data||!data.content)return[];
+    gh.sha=data.sha;
+    var text=decodeURIComponent(escape(atob(data.content.replace(/\n/g,""))));
+    var parsed=JSON.parse(text);
+    return parsed.games||[];
+  });
+}
+
+function ghSaveGames(gamesToSave){
+  var data={version:DATA_VERSION,savedAt:new Date().toISOString(),games:gamesToSave};
+  var content=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  var body={message:"GameForge: auto-sync ("+gamesToSave.length+" games)",content:content};
+  if(gh.sha)body.sha=gh.sha;
+  return ghApi("PUT","/repos/"+gh.owner+"/"+gh.repo+"/contents/"+gh.dataPath,body).then(function(result){
+    if(result&&result.content&&result.content.sha)gh.sha=result.content.sha;
+    gh.lastSync=new Date().toISOString();
+    localStorage.setItem("gh_last_sync",gh.lastSync);
+  });
+}
+
+function scheduleSync(){
+  if(!isGhReady()||gh.syncing)return;
+  if(syncTimer)clearTimeout(syncTimer);
+  syncTimer=setTimeout(function(){doSync()},2000);
+}
+
+function doSync(){
+  if(!isGhReady()||gh.syncing)return;
+  gh.syncing=true;
+  updateSyncUI("syncing");
+  ghSaveGames(games).then(function(){
+    gh.syncing=false;
+    updateSyncUI("synced");
+  }).catch(function(e){
+    gh.syncing=false;
+    updateSyncUI("error");
+    console.warn("[GameForge] sync error",e);
+  });
+}
+
+function pullFromGitHub(){
+  if(!isGhReady())return;
+  gh.syncing=true;
+  updateSyncUI("syncing");
+  ghLoadGames().then(function(remoteGames){
+    if(!remoteGames||remoteGames.length===0){
+      gh.syncing=false;
+      updateSyncUI("synced");
+      showToast("На GitHub пока нет сохранённых игр","info");
+      return;
+    }
+    var localIds={};
+    for(var i=0;i<games.length;i++)localIds[games[i].id]=true;
+    var added=0,updated=0;
+    for(var i=0;i<remoteGames.length;i++){
+      var rg=remoteGames[i];
+      if(!rg||!rg.id||!rg.title)continue;
+      if(rg.fileType==="binary")rg.htmlContent="";
+      if(!localIds[rg.id]){
+        games.unshift(rg);added++;localIds[rg.id]=true;
+      }else{
+        for(var j=0;j<games.length;j++){
+          if(games[j].id===rg.id){
+            var remoteDate=new Date(rg.createdAt||0);
+            var localDate=new Date(games[j].createdAt||0);
+            if(remoteDate>localDate){games[j]=rg;updated++}
+            break;
+          }
+        }
+      }
+    }
+    if(added>0||updated>0){
+      saveGames();renderCatalog();
+      showToast('Загружено с GitHub: +'+added+' новых, '+updated+' обновлено','success');
+    }else{
+      showToast('Данные актуальны','info');
+    }
+    gh.syncing=false;
+    updateSyncUI("synced");
+  }).catch(function(e){
+    gh.syncing=false;
+    updateSyncUI("error");
+    showToast('Ошибка загрузки с GitHub: '+e.message,'error');
+    console.warn(e);
+  });
+}
+
+function updateSyncUI(state){
+  var el=document.getElementById("syncStatus");
+  if(!el)return;
+  if(!isGhReady()){
+    el.innerHTML='<span class="sync-badge off"><span class="sync-dot"></span>Облако выкл</span>';
+    return;
+  }
+  if(state==="syncing"){el.innerHTML='<span class="sync-badge syncing"><span class="sync-dot"></span>Синхронизация...</span>'}
+  else if(state==="synced"){
+    var t=gh.lastSync?new Date(gh.lastSync).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}):"";
+    el.innerHTML='<span class="sync-badge synced"><span class="sync-dot"></span>Облако '+t+'</span>';
+  }
+  else if(state==="error"){el.innerHTML='<span class="sync-badge error"><span class="sync-dot"></span>Ошибка синхр.</span>'}
+}
+
+function requestPersistentStorage(){
+  if(navigator.storage&&navigator.storage.persist){
+    navigator.storage.persist().then(function(granted){
+      if(granted)console.log('[GameForge] persistent storage granted');
+      else console.log('[GameForge] persistent storage denied');
+    }).catch(function(){});
+  }
+}
+
+function openSyncSettings(){
+  var panel=document.getElementById("syncPanel");
+  if(!panel){
+    panel=document.createElement("div");
+    panel.id="syncPanel";
+    panel.className="analytics-panel";
+    panel.innerHTML=
+      '<div class="analytics-header"><h2>Синхронизация с GitHub</h2><button class="sheet-close" id="syncClose">&times;</button></div>'+
+      '<div class="analytics-section">'+
+        '<h3>Почему это нужно?</h3>'+
+        '<p style="font-size:13px;color:var(--text2);line-height:1.6">Данные в браузере могут удалиться при очистке кэша или если долго не заходить. С GitHub синхронизация твои игры сохраняются в облаке и доступны с любого устройства.</p>'+
+      '</div>'+
+      '<div class="analytics-section">'+
+        '<h3>Настройка за 2 минуты</h3>'+
+        '<p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px">'+
+          '1. Зайди на <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent)">github.com/settings/tokens/new</a><br>'+
+          '2. Дай имя токену (например "GameForge")<br>'+
+          '3. Поставь галочку <b>Contents</b> (read and write)<br>'+
+          '4. Нажми Generate token и скопируй его<br>'+
+          '5. Вставь токен и данные репозитория ниже'+
+        '</p>'+
+      '</div>'+
+      '<div class="form-group">'+
+        '<label>GitHub Token *</label>'+
+        '<input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxx">'+
+      '</div>'+
+      '<div class="form-group">'+
+        '<label>Владелец репозитория (username/org) *</label>'+
+        '<input type="text" id="ghOwner" placeholder="my-username">'+
+      '</div>'+
+      '<div class="form-group">'+
+        '<label>Название репозитория *</label>'+
+        '<input type="text" id="ghRepo" placeholder="my-github-pages-repo">'+
+      '</div>'+
+      '<div class="data-actions">'+
+        '<button class="data-btn" id="ghTestBtn">Проверить</button>'+
+        '<button class="data-btn" id="ghPullBtn">Загрузить с GitHub</button>'+
+        '<button class="data-btn" id="ghSaveBtn">Сохранить настройки</button>'+
+      '</div>'+
+      '<div class="version-info" id="ghStatus"></div>';
+    document.body.appendChild(panel);
+    var overlay=document.createElement("div");
+    overlay.id="syncOverlay";
+    overlay.className="overlay open";
+    overlay.addEventListener("click",function(e){if(e.target===overlay)closeSyncSettings()});
+    document.body.appendChild(overlay);
+    overlay.appendChild(panel);
+    panel.querySelector("#syncClose").addEventListener("click",closeSyncSettings);
+    panel.querySelector("#ghTestBtn").addEventListener("click",testGhConnection);
+    panel.querySelector("#ghPullBtn").addEventListener("click",function(){pullFromGitHub();closeSyncSettings()});
+    panel.querySelector("#ghSaveBtn").addEventListener("click",saveGhSettings);
+  }
+  document.getElementById("ghToken").value=gh.token;
+  document.getElementById("ghOwner").value=gh.owner;
+  document.getElementById("ghRepo").value=gh.repo;
+  var st=document.getElementById("ghStatus");
+  if(isGhReady()){
+    var t=gh.lastSync?'Последняя синхр.: '+new Date(gh.lastSync).toLocaleString('uk'):'Не синхронизировано';
+    st.innerHTML='Статус: <span>Подключено</span> | '+t;
+  }else{
+    st.textContent='Статус: Не настроено';
+  }
+  document.getElementById("syncOverlay").style.display="flex";
+  document.body.style.overflow="hidden";
+}
+
+function closeSyncSettings(){
+  var ov=document.getElementById("syncOverlay");
+  if(ov)ov.remove();
+  var dp=document.getElementById("syncPanel");
+  if(dp)dp.remove();
+  document.body.style.overflow="";
+}
+
+function saveGhSettings(){
+  gh.token=document.getElementById("ghToken").value.trim();
+  gh.owner=document.getElementById("ghOwner").value.trim();
+  gh.repo=document.getElementById("ghRepo").value.trim();
+  saveGhConfig();
+  if(isGhReady()){
+    updateSyncUI("synced");
+    doSync();
+    showToast('Настройки сохранены! Синхронизация запущена.','success');
+    closeSyncSettings();
+  }else{
+    updateSyncUI('off');
+    showToast('Заполни все поля','error');
+  }
+}
+
+function testGhConnection(){
+  gh.token=document.getElementById("ghToken").value.trim();
+  gh.owner=document.getElementById("ghOwner").value.trim();
+  gh.repo=document.getElementById("ghRepo").value.trim();
+  var st=document.getElementById("ghStatus");
+  if(!gh.token||!gh.owner||!gh.repo){st.innerHTML='<span style="color:var(--danger)">Заполни все поля</span>';return}
+  st.innerHTML='<span style="color:var(--accent)">Проверяю...</span>';
+  ghApi("GET","/repos/"+gh.owner+"/"+gh.repo).then(function(repo){
+    if(repo&&repo.full_name){
+      st.innerHTML='Репозиторий: <span>'+escapeHtml(repo.full_name)+'</span> — OK!';
+    }else{
+      st.innerHTML='<span style="color:var(--danger)">Репозиторий не найден. Проверь имя.</span>';
+    }
+  }).catch(function(e){
+    st.innerHTML='<span style="color:var(--danger)">Ошибка: '+escapeHtml(e.message)+'</span>';
+  });
+}
+
 /* ── Init ── */
 function init(){
   loadTheme();
+  loadGhConfig();
+  migrateData();
   loadGames();
   loadLiked();
+  loadAnalytics();
+  trackVisit();
   setupDropZone();
   setupEvents();
   renderCatalog();
+  checkDataConsistency();
+  requestPersistentStorage();
+  updateSyncUI(isGhReady()?"synced":"off");
+  if(isGhReady()&&games.length===0){
+    pullFromGitHub();
+  }
+}
+
+function checkDataConsistency(){
+  openDB().then(function(d){
+    return new Promise(function(resolve,reject){
+      var tx=d.transaction("files","readonly");
+      var store=tx.objectStore("files");
+      var req=store.getAll();
+      req.onsuccess=function(){
+        var dbFiles=req.result||[];
+        var dbIds={};
+        for(var i=0;i<dbFiles.length;i++)dbIds[dbFiles[i].id]=true;
+        var gameIds={};
+        for(var i=0;i<games.length;i++){
+          if(games[i].fileType==="binary")gameIds[games[i].id]=true;
+        }
+        var orphanFiles=0;
+        for(var id in dbIds){if(!gameIds[id])orphanFiles++}
+        if(orphanFiles>0){
+          console.log('[GameForge] orphan files in IndexedDB: '+orphanFiles);
+          for(var id in dbIds){
+            if(!gameIds[id]){
+              var delTx=d.transaction("files","readwrite");
+              delTx.objectStore("files").delete(id);
+            }
+          }
+        }
+      };
+      req.onerror=function(){};
+    });
+  }).catch(function(){});
 }
 
 if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init)}else{init()}
