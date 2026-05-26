@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>GameForge — Игровая платформа</title>
 <style>
-:root{--bg:#09090b;--bg2:#18181b;--bg3:#27272a;--text:#fafafa;--text2:#a1a1aa;--accent:#10b981;--accent2:#059669;--border:#27272a;--shadow:rgba(0,0,0,.5);--card:#18181b;--overlay:rgba(0,0,0,.85);--toast:#18181b;--danger:#ef4444;--danger2:#dc2626}
-[data-theme="light"]{--bg:#fafafa;--bg2:#ffffff;--bg3:#f4f4f5;--text:#09090b;--text2:#71717a;--accent:#059669;--accent2:#047857;--border:#e4e4e7;--shadow:rgba(0,0,0,.08);--card:#ffffff;--overlay:rgba(0,0,0,.6);--toast:#ffffff;--danger:#ef4444;--danger2:#dc2626}
+:root{--bg:#09090b;--bg2:#18181b;--bg3:#27272a;--text:#fafafa;--text2:#a1a1aa;--accent:#10b981;--accent2:#059669;--border:#27272a;--shadow:rgba(0,0,0,.5);--card:#18181b;--overlay:rgba(0,0,0,.85);--toast:#18181b;--danger:#ef4444}
+[data-theme="light"]{--bg:#fafafa;--bg2:#fff;--bg3:#f4f4f5;--text:#09090b;--text2:#71717a;--accent:#059669;--accent2:#047857;--border:#e4e4e7;--shadow:rgba(0,0,0,.08);--card:#fff;--overlay:rgba(0,0,0,.6);--toast:#fff;--danger:#ef4444}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;overflow-x:hidden}
 ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
 header{position:sticky;top:0;z-index:100;background:var(--bg);padding:16px 24px;transition:box-shadow .3s,background .3s;display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 header.scrolled{box-shadow:0 4px 20px var(--shadow);background:var(--bg2)}
-.logo{font-size:24px;font-weight:800;letter-spacing:-1px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo{font-size:24px;font-weight:800;letter-spacing:-1px;display:flex;align-items:center;gap:8px;white-space:nowrap;cursor:default;user-select:none}
 .logo span{color:var(--accent)}
 .search-box{flex:1;min-width:200px;max-width:400px;position:relative}
 .search-box input{width:100%;padding:10px 16px 10px 40px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .2s}
@@ -24,16 +24,21 @@ header.scrolled{box-shadow:0 4px 20px var(--shadow);background:var(--bg2)}
 .actions{display:flex;gap:8px;margin-left:auto}
 .icon-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .icon-btn:hover{background:var(--bg3);border-color:var(--accent);color:var(--accent)}
+.icon-btn.hidden{display:none}
 .stats-bar{padding:12px 24px;display:flex;gap:24px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border)}
 .stats-bar strong{color:var(--accent)}
 main{padding:24px;max-width:1200px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
 .card{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--border);transition:transform .25s,box-shadow .25s;cursor:pointer;position:relative}
 .card:hover{transform:translateY(-4px);box-shadow:0 12px 32px var(--shadow)}
-.card-cover{height:160px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-cover{height:160px;position:relative;overflow:hidden;background:var(--bg3)}
+.card-cover img{width:100%;height:100%;object-fit:cover}
 .card-cover .play-icon{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s;position:absolute}
 .card:hover .play-icon{opacity:1}
 .card-cover .type-badge{position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(0,0,0,.5);color:#fff;text-transform:uppercase;backdrop-filter:blur(4px)}
+.card-cover .admin-badge{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:none;background:rgba(239,68,68,.7);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s;font-size:14px;backdrop-filter:blur(4px);z-index:5}
+.card:hover .admin-badge{opacity:1}
+.admin-badge:hover{background:var(--danger)}
 .card-body{padding:16px}
 .card-body h3{font-size:16px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-body .author{font-size:13px;color:var(--text2);margin-bottom:6px}
@@ -41,20 +46,17 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 .card-body .tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
 .card-body .tags span{padding:3px 8px;border-radius:6px;font-size:11px;background:var(--bg3);color:var(--text2)}
 .card-footer{display:flex;align-items:center;justify-content:space-between;padding:0 16px 14px}
-.card-footer .counters{display:flex;gap:12px;font-size:13px;color:var(--text2)}
-.card-footer .counters span{display:flex;align-items:center;gap:4px}
+.card-footer .info{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:4px}
 .like-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all .2s}
 .like-btn:hover,.like-btn.liked{color:#ef4444}
 .like-btn.liked svg{fill:#ef4444}
-.delete-btn{position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:8px;border:none;background:rgba(0,0,0,.5);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s;backdrop-filter:blur(4px);font-size:16px}
-.card:hover .delete-btn{opacity:1}
-.delete-btn:hover{background:var(--danger)}
 .empty-state{text-align:center;padding:80px 20px;color:var(--text2)}
 .empty-state svg{margin-bottom:20px;opacity:.4}
 .empty-state h2{margin-bottom:8px;color:var(--text);font-size:22px}
 .empty-state p{margin-bottom:24px;font-size:14px;max-width:400px;margin-left:auto;margin-right:auto}
-.upload-btn{padding:12px 28px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
-.upload-btn:hover{background:var(--accent2)}
+.loading-state{text-align:center;padding:80px 20px;color:var(--text2)}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--bg3);border-top-color:var(--accent);border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .overlay{position:fixed;inset:0;z-index:200;background:var(--overlay);display:none;align-items:center;justify-content:center;animation:fadeIn .2s}
 .overlay.open{display:flex}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -73,39 +75,20 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 .form-group{margin-bottom:18px}
 .form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)}
 .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .2s;font-family:inherit}
-.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}
-.form-group textarea{resize:vertical;min-height:120px;font-family:'Courier New',monospace;font-size:13px}
-.mode-tabs{display:flex;gap:8px;margin-bottom:20px}
-.mode-tab{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:14px;font-weight:500;text-align:center;transition:all .2s}
-.mode-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center;color:var(--text2);cursor:pointer;transition:all .2s;margin-bottom:16px}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--accent)}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:30px 20px;text-align:center;color:var(--text2);cursor:pointer;transition:all .2s;margin-bottom:16px}
 .drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(16,185,129,.05)}
-.drop-zone p{margin-bottom:8px;font-size:14px}
+.drop-zone p{margin-bottom:4px;font-size:14px}
 .drop-zone small{font-size:12px;opacity:.7}
 .drop-zone input{display:none}
+.drop-zone.has-file{border-color:var(--accent);border-style:solid;background:rgba(16,185,129,.05)}
 .submit-btn{width:100%;padding:14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
 .submit-btn:hover{background:var(--accent2)}
 .submit-btn:disabled{opacity:.5;cursor:not-allowed}
-.toast-container{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;flex-direction:column;gap:8px}
-.toast{padding:12px 20px;border-radius:10px;background:var(--toast);border:1px solid var(--border);color:var(--text);font-size:14px;box-shadow:0 8px 24px var(--shadow);animation:toastIn .3s;display:flex;align-items:center;gap:8px}
-.toast.success{border-left:3px solid var(--accent)}.toast.error{border-left:3px solid var(--danger)}.toast.info{border-left:3px solid #3b82f6}
-.data-actions{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
-.data-btn{flex:1;padding:10px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:13px;font-weight:500;transition:all .2s;text-align:center}
-.data-btn:hover{border-color:var(--accent);color:var(--accent)}
-.data-btn.danger{color:var(--danger)}.data-btn.danger:hover{border-color:var(--danger);background:rgba(239,68,68,.1)}
-.version-info{font-size:11px;color:var(--text2);margin-top:12px;text-align:center}
-.version-info span{color:var(--accent);font-weight:600}
-.sync-badge{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;vertical-align:middle;margin-left:6px}
-.sync-badge.synced{background:rgba(16,185,129,.15);color:#10b981}
-.sync-badge.syncing{background:rgba(59,130,246,.15);color:#3b82f6}
-.sync-badge.error{background:rgba(239,68,68,.15);color:#ef4444}
-.sync-badge.off{background:var(--bg3);color:var(--text2)}
-.sync-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
-.sync-badge.synced .sync-dot{background:#10b981}
-.sync-badge.syncing .sync-dot{background:#3b82f6;animation:pulse 1s infinite}
-.sync-badge.error .sync-dot{background:#ef4444}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.upload-progress{margin-top:12px;padding:10px;border-radius:8px;background:var(--bg3);font-size:13px;color:var(--text2);display:none}
+.upload-progress.active{display:block}
+.upload-progress .bar-bg{height:6px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden}
+.upload-progress .bar-fg{height:100%;background:var(--accent);border-radius:3px;transition:width .3s;width:0}
 .analytics-panel{background:var(--bg2);border-radius:16px;width:95%;max-width:700px;max-height:90vh;overflow-y:auto;padding:24px;animation:slideUp .3s}
 .analytics-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .analytics-header h2{font-size:20px;font-weight:700}
@@ -127,19 +110,23 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 .top-game-item .tg-info{flex:1;min-width:0}
 .top-game-item .tg-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top-game-item .tg-plays{font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0}
-@media(max-width:640px){header{padding:12px 16px}.search-box{min-width:100%;order:5}.filters{width:100%;order:6}.stats-bar{padding:10px 16px;gap:16px}main{padding:16px}.grid{grid-template-columns:1fr}.sheet{padding:20px}.player-wrap{width:100vw;height:100vh;border-radius:0}.analytics-cards{grid-template-columns:1fr 1fr}.analytics-panel{padding:16px;width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:100vh}}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:10px;background:var(--toast);border:1px solid var(--border);color:var(--text);font-size:14px;box-shadow:0 8px 24px var(--shadow);animation:toastIn .3s;display:flex;align-items:center;gap:8px}
+.toast.success{border-left:3px solid var(--accent)}.toast.error{border-left:3px solid var(--danger)}.toast.info{border-left:3px solid #3b82f6}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:640px){header{padding:12px 16px}.search-box{min-width:100%;order:5}.filters{width:100%;order:6}.stats-bar{padding:10px 16px;gap:16px}main{padding:16px}.grid{grid-template-columns:1fr}.sheet{padding:20px}.player-wrap{width:100vw;height:100vh;border-radius:0}.analytics-cards{grid-template-columns:1fr 1fr}.analytics-panel{padding:16px;width:100%;max-width:100%;border-radius:16px 16px 0 0}}
 </style>
 </head>
 <body data-theme="dark">
 
 <header id="header">
-  <div class="logo">
+  <div class="logo" id="logo">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
     Game<span>Forge</span>
   </div>
   <div class="search-box">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="searchInput" placeholder="Поиск по названию, автору, тегам...">
+    <input type="text" id="searchInput" placeholder="Поиск по названию, тегам...">
   </div>
   <div class="filters">
     <button class="filter-btn active" data-platform="all">Все</button>
@@ -147,41 +134,39 @@ main{padding:24px;max-width:1200px;margin:0 auto}
     <button class="filter-btn" data-platform="mobile">Мобильные</button>
   </div>
   <div class="actions">
-    <button class="icon-btn" id="uploadBtn" title="Загрузить игру">
+    <button class="icon-btn hidden" id="uploadBtn" title="Загрузить игру">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-    <button class="icon-btn" id="syncBtn" title="Синхронизация">      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>    </button>    <button class="icon-btn" id="dataBtn" title="Управление данными">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
     </button>
     <button class="icon-btn" id="analyticsBtn" title="Аналитика">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
     </button>
-    <button class="icon-btn" id="themeBtn" title="Сменить тема">
+    <button class="icon-btn" id="themeBtn" title="Сменить тему">
       <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
   </div>
 </header>
 
-<div class="stats-bar" id="statsBar">
+<div class="stats-bar">
   <div>Игр: <strong id="statGames">0</strong></div>
-  <div>Запусков: <strong id="statPlays">0</strong></div>
-  <div id="syncStatus"></div>
 </div>
 
 <main>
   <div class="grid" id="catalog"></div>
+  <div class="loading-state" id="loadingState">
+    <div class="loading-spinner"></div>
+    <p>Загрузка игр...</p>
+  </div>
   <div class="empty-state" id="emptyState" style="display:none">
     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
     <h2>Игр пока нет</h2>
-    <p>Начните коллекцию — загрузите свою первую игру прямо сейчас</p>
-    <button class="upload-btn" onclick="openUpload()">Загрузить игру</button>
+    <p>Игры скоро появятся...</p>
   </div>
 </main>
 
 <div class="overlay" id="playerOverlay">
   <div class="player-wrap">
     <button class="player-close" id="playerClose">&times;</button>
-    <iframe id="playerFrame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-pointer-lock"></iframe>
+    <iframe id="playerFrame" allow="autoplay; fullscreen; pointer-lock"></iframe>
   </div>
 </div>
 
@@ -191,73 +176,74 @@ main{padding:24px;max-width:1200px;margin:0 auto}
       <h2>Загрузить игру</h2>
       <button class="sheet-close" id="uploadClose">&times;</button>
     </div>
-    <div class="mode-tabs">
-      <button class="mode-tab active" data-mode="code">HTML-код</button>
-      <button class="mode-tab" data-mode="file">Файл</button>
-    </div>
     <form id="uploadForm" onsubmit="return false">
-      <div class="form-group">
-        <label>Название *</label>
-        <input type="text" id="fTitle" placeholder="Моя крутая игра" required>
-      </div>
-      <div class="form-group">
-        <label>Автор *</label>
-        <input type="text" id="fAuthor" placeholder="Имя автора" required>
-      </div>
-      <div class="form-group">
-        <label>Описание</label>
-        <input type="text" id="fDesc" placeholder="Краткое описание игры">
-      </div>
-      <div class="form-group">
-        <label>Теги (через запятую)</label>
-        <input type="text" id="fTags" placeholder="аркада, пазл, мультиплеер">
-      </div>
+      <div class="form-group"><label>Название *</label><input type="text" id="fTitle" placeholder="Моя крутая игра" required></div>
+      <div class="form-group"><label>Автор *</label><input type="text" id="fAuthor" placeholder="GameDevAlex" required></div>
+      <div class="form-group"><label>Описание</label><input type="text" id="fDesc" placeholder="Краткое описание игры"></div>
+      <div class="form-group"><label>Теги (через запятую)</label><input type="text" id="fTags" placeholder="шутер, аркада, мультиплеер"></div>
       <div class="form-group">
         <label>Платформа</label>
-        <select id="fPlatform">
-          <option value="all">Все</option>
-          <option value="pc">PC</option>
-          <option value="mobile">Мобильные</option>
-        </select>
+        <select id="fPlatform"><option value="all">Все</option><option value="pc">PC</option><option value="mobile">Мобильные</option></select>
       </div>
-      <div id="codeMode">
-        <div class="form-group">
-          <label>HTML-код *</label>
-          <textarea id="fCode" placeholder="<!DOCTYPE html>&#10;<html>..."></textarea>
-        </div>
-      </div>
-      <div id="fileMode" style="display:none">
+      <div class="form-group">
+        <label>Файл игры (HTML, EXE, APK и др.) *</label>
         <div class="drop-zone" id="dropZone">
-          <input type="file" id="fFile">
-          <p>Перетащите файл сюда или нажмите для выбора</p>
-          <small>HTML, EXE, APK, AAB, ZIP, RAR и другие</small>
+          <input type="file" id="fFile" accept=".html,.htm,.exe,.apk,.aab,.zip,.rar">
+          <p>Перетащите файл сюда или нажмите</p>
+          <small>HTML для браузерных игр, другие для скачивания</small>
         </div>
-        <div id="fileInfo" style="display:none;padding:8px 0;font-size:13px;color:var(--text2)"></div>
+        <div id="fileInfo" style="display:none;padding:4px 0;font-size:13px;color:var(--accent)"></div>
       </div>
-      <button type="button" class="submit-btn" id="submitBtn">Загрузить</button>
+      <div class="form-group">
+        <label>Обложка (картинка, необязательно)</label>
+        <div class="drop-zone" id="coverZone">
+          <input type="file" id="fCover" accept="image/*">
+          <p>Перетащите обложку или нажмите</p>
+          <small>PNG, JPG до 2 МБ</small>
+        </div>
+        <div id="coverInfo" style="display:none;padding:4px 0;font-size:13px;color:var(--accent)"></div>
+      </div>
+      <button type="button" class="submit-btn" id="submitBtn">Загрузить на сайт</button>
+      <div class="upload-progress" id="uploadProgress">
+        <div id="progressText">Загрузка...</div>
+        <div class="bar-bg"><div class="bar-fg" id="progressBar"></div></div>
+      </div>
     </form>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="settingsSheet">
+  <div class="sheet">
+    <div class="sheet-header">
+      <h2>Настройки админа</h2>
+      <button class="sheet-close" id="settingsClose">&times;</button>
+    </div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px">
+      Эти настройки нужны <b>только тебе</b> для загрузки игр. Посетители сайта их не видят и не заполняют.
+    </p>
+    <div class="form-group"><label>GitHub Token *</label><input type="password" id="sToken" placeholder="ghp_xxxxxxxxxx"></div>
+    <div class="form-group">
+      <label>Владелец репозитория</label>
+      <input type="text" id="sOwner" placeholder="auto-detect">
+      <small style="font-size:11px;color:var(--text2)">Автоматически определено из URL: <span id="sAutoDetect"></span></small>
+    </div>
+    <div class="form-group">
+      <label>Название репозитория</label>
+      <input type="text" id="sRepo" placeholder="auto-detect">
+    </div>
+    <button type="button" class="submit-btn" id="saveSettingsBtn" style="margin-bottom:8px">Сохранить</button>
+    <button type="button" class="submit-btn" id="testSettingsBtn" style="background:var(--bg3);color:var(--text)">Проверить подключение</button>
+    <div id="settingsStatus" style="margin-top:12px;font-size:13px;color:var(--text2);text-align:center"></div>
   </div>
 </div>
 
 <div class="overlay" id="analyticsOverlay">
   <div class="analytics-panel">
-    <div class="analytics-header">
-      <h2>Аналитика</h2>
-      <button class="sheet-close" id="analyticsClose">&times;</button>
-    </div>
+    <div class="analytics-header"><h2>Аналитика</h2><button class="sheet-close" id="analyticsClose">&times;</button></div>
     <div class="analytics-cards" id="analyticsCards"></div>
-    <div class="analytics-section">
-      <h3>Посещения за 14 дней</h3>
-      <div class="chart" id="visitChart"></div>
-    </div>
-    <div class="analytics-section">
-      <h3>Запуски игр за 14 дней</h3>
-      <div class="chart" id="playsChart"></div>
-    </div>
-    <div class="analytics-section">
-      <h3>Популярные игры (Топ 5)</h3>
-      <div id="topGames"></div>
-    </div>
+    <div class="analytics-section"><h3>Посещения за 14 дней</h3><div class="chart" id="visitChart"></div></div>
+    <div class="analytics-section"><h3>Запуски игр за 14 дней</h3><div class="chart" id="playsChart"></div></div>
+    <div class="analytics-section"><h3>Популярные игры (Топ 5)</h3><div id="topGames"></div></div>
   </div>
 </div>
 
@@ -267,376 +253,310 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 (function(){
 "use strict";
 
-var db=null;
+/* ── State ── */
 var games=[];
 var liked=[];
 var currentPlatform="all";
 var currentSearch="";
-var uploadMode="code";
 var selectedFile=null;
-var currentBlobUrl=null;
-var DATA_VERSION=2;
-var IDB_VERSION=2;
+var selectedCover=null;
+
+var admin={
+  token:localStorage.getItem("gf_token")||"",
+  owner:localStorage.getItem("gf_owner")||"",
+  repo:localStorage.getItem("gf_repo")||"",
+  isSetup:false
+};
+
+var analytics={};
 
 /* ── Utilities ── */
-function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return Math.abs(h)}
+function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function uid(){return"g"+Date.now().toString(36)+Math.random().toString(36).substr(2,6)}
 
-function gradientFromTitle(title){
-  var h=hashStr(title||"game");
-  var h1=h%360;var h2=(h1+40+((h>>8)%60))%360;
-  return"linear-gradient(135deg,hsl("+h1+",70%,40%),hsl("+h2+",60%,30%))";
+function slugify(text){
+  var map={"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","є":"ye","ж":"zh","з":"z","и":"y","і":"i","ї":"yi","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ь":"","ю":"yu","я":"ya","ё":"yo"};
+  var r="";for(var i=0;i<text.length;i++){var c=text[i].toLowerCase();r+=map[c]||c}
+  r=r.replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").substring(0,40);
+  return r||"game";
 }
 
-function formatSize(bytes){
-  if(!bytes||bytes===0)return"0 Б";
-  if(bytes<1024)return bytes+" Б";
-  if(bytes<1048576)return(bytes/1024).toFixed(1)+" КБ";
-  return(bytes/1048576).toFixed(1)+" МБ";
-}
-
-function genId(){return"gf_"+Date.now().toString(36)+"_"+Math.random().toString(36).substr(2,6)}
-
-function escapeHtml(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
-
-/* ── Toast ── */
 function showToast(msg,type){
   type=type||"info";
   var c=document.getElementById("toastContainer");
-  var t=document.createElement("div");
-  t.className="toast "+type;t.textContent=msg;
+  var t=document.createElement("div");t.className="toast "+type;t.textContent=msg;
   c.appendChild(t);
   setTimeout(function(){t.style.opacity="0";t.style.transition="opacity .3s";setTimeout(function(){t.remove()},300)},3000);
 }
 
-/* ── IndexedDB ── */
-function openDB(){
-  return new Promise(function(resolve,reject){
-    if(db){resolve(db);return}
-    var req=indexedDB.open("GameForgeFiles",IDB_VERSION);
-    req.onupgradeneeded=function(e){
-      var d=e.target.result;
-      var oldVer=e.oldVersion;
-      if(oldVer<1){
-        if(!d.objectStoreNames.contains("files"))d.createObjectStore("files",{keyPath:"id"});
-      }
-      if(oldVer<2){
-        if(!d.objectStoreNames.contains("meta"))d.createObjectStore("meta",{keyPath:"key"});
-      }
-    };
-    req.onsuccess=function(e){
-      db=e.target.result;
-      db.onversionchange=function(){db.close();db=null};
-      resolve(db);
-    };
-    req.onerror=function(e){reject(e.target.error)};
-  });
-}
-
-function saveDBMeta(key,value){
-  return openDB().then(function(d){
-    return new Promise(function(resolve,reject){
-      var tx=d.transaction("meta","readwrite");
-      tx.objectStore("meta").put({key:key,value:value});
-      tx.oncomplete=function(){resolve()};
-      tx.onerror=function(e){reject(e.target.error)};
-    });
-  });
-}
-
-function getDBMeta(key){
-  return openDB().then(function(d){
-    return new Promise(function(resolve,reject){
-      var tx=d.transaction("meta","readonly");
-      var req=tx.objectStore("meta").get(key);
-      req.onsuccess=function(){resolve(req.result?req.result.value:null)};
-      req.onerror=function(e){reject(e.target.error)};
-    });
-  });
-}
-
-function saveFileToDB(id,blob){
-  return openDB().then(function(d){
-    return new Promise(function(resolve,reject){
-      var tx=d.transaction("files","readwrite");
-      tx.objectStore("files").put({id:id,data:blob});
-      tx.oncomplete=function(){resolve()};
-      tx.onerror=function(e){reject(e.target.error)};
-    });
-  });
-}
-
-function getFileFromDB(id){
-  return openDB().then(function(d){
-    return new Promise(function(resolve,reject){
-      var tx=d.transaction("files","readonly");
-      var req=tx.objectStore("files").get(id);
-      req.onsuccess=function(){resolve(req.result?req.result.data:null)};
-      req.onerror=function(e){reject(e.target.error)};
-    });
-  });
-}
-
-function deleteFileFromDB(id){
-  return openDB().then(function(d){
-    return new Promise(function(resolve,reject){
-      var tx=d.transaction("files","readwrite");
-      tx.objectStore("files").delete(id);
-      tx.oncomplete=function(){resolve()};
-      tx.onerror=function(e){reject(e.target.error)};
-    });
-  });
-}
-
-/* ── Data Migration ── */
-function migrateData(){
-  var savedVer=parseInt(localStorage.getItem("gameforge_version")||"0");
-  if(savedVer<DATA_VERSION){
-    if(savedVer===0){
-      migrateV0toV1();
-    }
-    if(savedVer<2){
-      migrateV1toV2();
-    }
-    localStorage.setItem("gameforge_version",String(DATA_VERSION));
-    saveDBMeta("dataVersion",DATA_VERSION);
-  }
-}
-
-function migrateV0toV1(){
-  try{
-    var d=localStorage.getItem("gameforge_games");
-    if(d){
-      var arr=JSON.parse(d);
-      for(var i=0;i<arr.length;i++){
-        if(!arr[i].createdAt)arr[i].createdAt=new Date().toISOString();
-        if(arr[i].plays===undefined)arr[i].plays=0;
-        if(arr[i].likes===undefined)arr[i].likes=0;
-        if(!arr[i].platform)arr[i].platform="all";
-      }
-      localStorage.setItem("gameforge_games",JSON.stringify(arr));
-    }
-  }catch(e){console.warn("Migration v0->v1 error",e)}
-}
-
-function migrateV1toV2(){
-  try{
-    var d=localStorage.getItem("gameforge_games");
-    if(d){
-      var arr=JSON.parse(d);
-      for(var i=0;i<arr.length;i++){
-        if(arr[i].fileType===undefined){
-          arr[i].fileType=arr[i].htmlContent?"html":"binary";
-          if(!arr[i].fileName)arr[i].fileName=null;
-          if(!arr[i].fileSize)arr[i].fileSize=0;
-        }
-        if(arr[i].authorName===undefined)arr[i].authorName="Unknown";
-      }
-      localStorage.setItem("gameforge_games",JSON.stringify(arr));
-    }
-  }catch(e){console.warn("Migration v1->v2 error",e)}
-}
-
-/* ── localStorage ── */
-function loadGames(){
-  try{
-    var d=localStorage.getItem("gameforge_games");
-    games=d?JSON.parse(d):[];
-    validateGames();
-  }catch(e){
-    console.warn("loadGames error, trying backup...",e);
-    games=tryRecoverGames();
-  }
-}
-
-function validateGames(){
-  var clean=[];
-  for(var i=0;i<games.length;i++){
-    var g=games[i];
-    if(!g||!g.id||!g.title)continue;
-    if(g.fileType!=="html"&&g.fileType!=="binary")g.fileType=g.htmlContent?"html":"binary";
-    if(!g.createdAt)g.createdAt=new Date().toISOString();
-    if(!g.plays)g.plays=0;
-    if(!g.likes)g.likes=0;
-    if(!g.platform)g.platform="all";
-    if(!g.description)g.description="";
-    if(!g.tags)g.tags="";
-    if(!g.authorName)g.authorName="Unknown";
-    clean.push(g);
-  }
-  if(clean.length!==games.length){
-    games=clean;
-    saveGames();
-  }
-}
-
-function tryRecoverGames(){
-  try{
-    var raw=localStorage.getItem("gameforge_games");
-    if(!raw)return[];
-    var fixed=raw.replace(/[\x00-\x1F\x7F]/g,function(c){return"\\u"+("0000"+c.charCodeAt(0).toString(16)).slice(-4)});
-    return JSON.parse(fixed);
-  }catch(e2){return[]}
-}
-
-function saveGames(){try{localStorage.setItem("gameforge_games",JSON.stringify(games));scheduleSync()}catch(e){showToast("Ошибка сохранения: переполнено хранилище","error")}}
-function loadLiked(){try{var d=localStorage.getItem("gameforge_liked");liked=d?JSON.parse(d):[]}catch(e){liked=[]}}
-function saveLiked(){try{localStorage.setItem("gameforge_liked",JSON.stringify(liked))}catch(e){}}
+/* ── Theme ── */
 function loadTheme(){
-  var t=localStorage.getItem("gameforge_theme")||"dark";
-  document.body.setAttribute("data-theme",t);
-  updateThemeIcon(t);
+  var t=localStorage.getItem("gf_theme")||"dark";
+  document.body.setAttribute("data-theme",t);updateThemeIcon(t);
 }
-function saveTheme(t){localStorage.setItem("gameforge_theme",t);document.body.setAttribute("data-theme",t);updateThemeIcon(t)}
-function toggleTheme(){
-  var cur=document.body.getAttribute("data-theme")||"dark";
-  saveTheme(cur==="dark"?"light":"dark");
-}
+function saveTheme(t){localStorage.setItem("gf_theme",t);document.body.setAttribute("data-theme",t);updateThemeIcon(t)}
+function toggleTheme(){var c=document.body.getAttribute("data-theme")||"dark";saveTheme(c==="dark"?"light":"dark")}
 function updateThemeIcon(t){
-  var icon=document.getElementById("themeIcon");
-  if(t==="light"){
-    icon.innerHTML='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
-  }else{
-    icon.innerHTML='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  var i=document.getElementById("themeIcon");
+  if(t==="light"){i.innerHTML='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'}
+  else{i.innerHTML='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'}
+}
+
+/* ── GitHub API (admin) ── */
+function ghApi(method,path,body){
+  return new Promise(function(resolve,reject){
+    var o={method:method,headers:{"Authorization":"Bearer "+admin.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}};
+    if(body!==undefined){o.headers["Content-Type"]="application/json";o.body=JSON.stringify(body)}
+    fetch("https://api.github.com"+path,o).then(function(r){
+      if(r.status===404){resolve(null);return}
+      if(!r.ok){r.text().then(function(t){reject(new Error(r.status+": "+t))}).catch(function(){reject(new Error("HTTP "+r.status))});return}
+      r.json().then(resolve).catch(reject);
+    }).catch(reject);
+  });
+}
+
+function ghUploadFile(path,base64Content,msg){
+  return ghApi("GET","/repos/"+admin.owner+"/"+admin.repo+"/contents/"+path).then(function(existing){
+    var body={message:msg,content:base64Content};
+    if(existing&&existing.sha)body.sha=existing.sha;
+    return ghApi("PUT","/repos/"+admin.owner+"/"+admin.repo+"/contents/"+path,body);
+  });
+}
+
+function ghUpdateGamesJson(newEntry){
+  return ghApi("GET","/repos/"+admin.owner+"/"+admin.repo+"/contents/games.json").then(function(data){
+    var current=[];var sha=null;
+    if(data&&data.content){
+      sha=data.sha;
+      current=JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,"")))));
+    }
+    if(!Array.isArray(current))current=[];
+    current.push(newEntry);
+    var content=btoa(unescape(encodeURIComponent(JSON.stringify(current,null,2))));
+    var body={message:"GameForge: add "+newEntry.title,content:content};
+    if(sha)body.sha=sha;
+    return ghApi("PUT","/repos/"+admin.owner+"/"+admin.repo+"/contents/games.json",body);
+  });
+}
+
+function ghDeleteFromGamesJson(gameId){
+  return ghApi("GET","/repos/"+admin.owner+"/"+admin.repo+"/contents/games.json").then(function(data){
+    var current=[];var sha=null;
+    if(data&&data.content){
+      sha=data.sha;
+      current=JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,"")))));
+    }
+    if(!Array.isArray(current))current=[];
+    current=current.filter(function(g){return g.id!==gameId});
+    var content=btoa(unescape(encodeURIComponent(JSON.stringify(current,null,2))));
+    var body={message:"GameForge: remove game",content:content};
+    if(sha)body.sha=sha;
+    return ghApi("PUT","/repos/"+admin.owner+"/"+admin.repo+"/contents/games.json",body);
+  });
+}
+
+function fileToBase64(file){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(e){resolve(e.target.result.split(",")[1])};
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── Admin Config ── */
+function detectRepo(){
+  var h=window.location.hostname;
+  if(h.endsWith(".github.io")){
+    admin.owner=h.split(".")[0];
+    var p=window.location.pathname.replace(/^\/|\/$/g,"");
+    admin.repo=p||admin.owner+".github.io";
+    return true;
   }
+  return false;
+}
+
+function checkAdmin(){
+  admin.isSetup=!!(admin.token&&admin.owner&&admin.repo);
+  var btn=document.getElementById("uploadBtn");
+  if(admin.isSetup){btn.classList.remove("hidden")}else{btn.classList.add("hidden")}
+}
+
+function saveAdminConfig(){
+  admin.token=document.getElementById("sToken").value.trim();
+  var own=document.getElementById("sOwner").value.trim();
+  var rep=document.getElementById("sRepo").value.trim();
+  if(own)admin.owner=own;
+  if(rep)admin.repo=rep;
+  localStorage.setItem("gf_token",admin.token);
+  localStorage.setItem("gf_owner",admin.owner);
+  localStorage.setItem("gf_repo",admin.repo);
+  checkAdmin();
+}
+
+function openSettings(){
+  detectRepo();
+  document.getElementById("sToken").value=admin.token;
+  document.getElementById("sOwner").value=admin.owner;
+  document.getElementById("sRepo").value=admin.repo;
+  document.getElementById("sAutoDetect").textContent=admin.owner+"/"+admin.repo;
+  document.getElementById("settingsStatus").textContent="";
+  document.getElementById("settingsSheet").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function closeSettings(){
+  document.getElementById("settingsSheet").classList.remove("open");
+  document.body.style.overflow="";
+}
+
+/* ── Load Games ── */
+function loadGames(){
+  document.getElementById("loadingState").style.display="block";
+  document.getElementById("emptyState").style.display="none";
+  document.getElementById("catalog").innerHTML="";
+  fetch("games.json",{cache:"no-store"})
+    .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
+    .then(function(data){
+      games=Array.isArray(data)?data:[];
+      document.getElementById("loadingState").style.display="none";
+      renderCatalog();
+    })
+    .catch(function(){
+      document.getElementById("loadingState").style.display="none";
+      games=[];renderCatalog();
+    });
+}
+
+/* ── Likes (per visitor) ── */
+function loadLiked(){try{liked=JSON.parse(localStorage.getItem("gf_liked")||"[]")}catch(e){liked=[]}}
+function saveLiked(){try{localStorage.setItem("gf_liked",JSON.stringify(liked))}catch(e){}}
+function toggleLike(id){
+  var i=liked.indexOf(id);
+  if(i===-1){liked.push(id)}else{liked.splice(i,1)}
+  saveLiked();renderCatalog();
 }
 
 /* ── Render ── */
-function getFilteredGames(){
+function getFiltered(){
   var q=currentSearch.toLowerCase().trim();
   return games.filter(function(g){
     if(currentPlatform!=="all"&&g.platform!==currentPlatform&&g.platform!=="all")return false;
-    if(q){
-      return g.title.toLowerCase().indexOf(q)!==-1||
-             g.authorName.toLowerCase().indexOf(q)!==-1||
-             g.tags.toLowerCase().indexOf(q)!==-1;
-    }
+    if(q){return(g.title||"").toLowerCase().indexOf(q)!==-1||(g.tags||"").toLowerCase().indexOf(q)!==-1}
     return true;
   });
 }
 
-function renderStats(){
-  var totalPlays=0;for(var i=0;i<games.length;i++)totalPlays+=(games[i].plays||0);
-  document.getElementById("statGames").textContent=games.length;
-  document.getElementById("statPlays").textContent=totalPlays;
-}
-
 function renderCatalog(){
-  var filtered=getFilteredGames();
+  var filtered=getFiltered();
   var catalog=document.getElementById("catalog");
   var empty=document.getElementById("emptyState");
-  if(games.length===0){
-    catalog.innerHTML="";empty.style.display="block";renderStats();return;
-  }
+
+  if(games.length===0){catalog.innerHTML="";empty.style.display="block";document.getElementById("statGames").textContent="0";return}
   empty.style.display="none";
-  if(filtered.length===0){
-    catalog.innerHTML='<div class="empty-state"><h2>Ничего не найдено</h2><p>Попробуйте изменить поисковый запрос или фильтр</p></div>';
-    renderStats();return;
-  }
+
+  if(filtered.length===0){catalog.innerHTML='<div class="empty-state"><h2>Ничего не найдено</h2><p>Попробуйте изменить запрос</p></div>';document.getElementById("statGames").textContent="0";return}
+
+  document.getElementById("statGames").textContent=games.length;
   var html="";
-  for(var i=0;i<filtered.length;i++){
-    var g=filtered[i];
+  for(var fi=0;fi<filtered.length;fi++){
+    var g=filtered[fi];
     var isLiked=liked.indexOf(g.id)!==-1;
-    var gradient=gradientFromTitle(g.title);
+
+    var coverHtml="";
+    if(g.cover){coverHtml='<img src="'+esc(g.cover)+'" alt="" loading="lazy">'}
+    else{
+      var h=0;for(var ci=0;ci<(g.title||"").length;ci++){h=((h<<5)-h)+(g.title||"").charCodeAt(ci);h|=0}
+      var h1=Math.abs(h)%360;var h2=(h1+40+(Math.abs(h>>8)%60))%360;
+      coverHtml='<div style="width:100%;height:100%;background:linear-gradient(135deg,hsl('+h1+',70%,40%),hsl('+h2+',60%,30%))"></div>';
+    }
+
     var tagsHtml="";
-    if(g.tags){var tagArr=g.tags.split(",");for(var j=0;j<tagArr.length;j++){if(tagArr[j].trim())tagsHtml+='<span>'+escapeHtml(tagArr[j].trim())+'</span>'}}
-    var typeLabel=g.fileType==="html"?"HTML":g.fileName?g.fileName.split(".").pop().toUpperCase():"BIN";
-    var actionLabel=g.fileType==="html"?"Играть":"Скачать";
-    var actionIcon=g.fileType==="html"?
-      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>':
-      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-    html+='<div class="card" data-id="'+g.id+'">'
-      +'<div class="card-cover" style="background:'+gradient+'">'
-      +'<span class="type-badge">'+typeLabel+'</span>'
-      +'<div class="play-icon">'+actionIcon+'</div>'
+    if(g.tags){var ta=g.tags.split(",");for(var j=0;j<ta.length;j++){if(ta[j].trim())tagsHtml+='<span>'+esc(ta[j].trim())+'</span>'}}
+
+    var typeLabel=g.type||"HTML";
+    var iconHtml='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+
+    var isHTML=(g.type||"").toLowerCase()==="html"||(g.path||"").toLowerCase().endsWith(".html");
+
+    html+='<div class="card" data-gid="'+esc(g.id)+'"'+(isHTML?' data-play="1"':' data-dl="1"')+'>'
+      +'<div class="card-cover">'+coverHtml
+      +'<span class="type-badge">'+esc(typeLabel)+'</span>'
+      +(admin.isSetup?'<button class="admin-badge" data-del="'+esc(g.id)+'" title="Удалить">&times;</button>':'')
+      +'<div class="play-icon">'+iconHtml+'</div>'
       +'</div>'
-      +'<button class="delete-btn" data-del="'+g.id+'" title="Удалить">&times;</button>'
       +'<div class="card-body">'
-      +'<h3>'+escapeHtml(g.title)+'</h3>'
-      +'<div class="author">'+escapeHtml(g.authorName)+(g.fileSize?' &middot; '+formatSize(g.fileSize):"")+'</div>'
-      +'<div class="desc">'+escapeHtml(g.description||"Без описания")+'</div>'
-      +(tagsHtml?'<div class="tags">'+tagsHtml+'</div>':"")
+      +'<h3>'+esc(g.title||"Без названия")+'</h3>'
+      +(g.author?'<div class="author">'+esc(g.author)+'</div>':'')
+      +'<div class="desc">'+esc(g.description||"")+'</div>'
+      +(tagsHtml?'<div class="tags">'+tagsHtml+'</div>':'')
       +'</div>'
       +'<div class="card-footer">'
-      +'<div class="counters">'
-      +'<span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> '+(g.plays||0)+'</span>'
+      +'<div class="info">'
+      +(isHTML?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Играть':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Скачать')
       +'</div>'
-      +'<button class="like-btn'+(isLiked?" liked":"")+'" data-like="'+g.id+'">'
+      +'<button class="like-btn'+(isLiked?" liked":"")+'" data-like="'+esc(g.id)+'">'
       +'<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(isLiked?"#ef4444":"none")+'" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
-      +(g.likes||0)
       +'</button>'
       +'</div></div>';
   }
   catalog.innerHTML=html;
-  renderStats();
 }
 
 /* ── Player ── */
-function openPlayer(gameId){
-  var g=null;for(var i=0;i<games.length;i++){if(games[i].id===gameId){g=games[i];break}}
-  if(!g){showToast("Игра не найдена","error");return}
-  g.plays=(g.plays||0)+1;saveGames();trackGamePlay(gameId);
-  if(g.fileType==="binary"){downloadBinary(g);return}
-  var code=g.htmlContent||"";
-  var frame=document.getElementById("playerFrame");
-  frame.srcdoc=code;
+function openPlayer(id){
+  var g=null;for(var i=0;i<games.length;i++){if(games[i].id===id){g=games[i];break}}
+  if(!g)return;
+  trackPlay(g.title||"game");
+  document.getElementById("playerFrame").src=g.path;
   document.getElementById("playerOverlay").classList.add("open");
   document.body.style.overflow="hidden";
-  renderCatalog();
 }
-
 function closePlayer(){
-  var frame=document.getElementById("playerFrame");
-  frame.srcdoc="";
+  document.getElementById("playerFrame").src="";
   document.getElementById("playerOverlay").classList.remove("open");
   document.body.style.overflow="";
 }
-
-function downloadBinary(g){
-  getFileFromDB(g.id).then(function(blob){
-    if(!blob){showToast("Файл не найден в хранилище","error");return}
-    if(currentBlobUrl)URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl=URL.createObjectURL(blob);
-    var a=document.createElement("a");
-    a.href=currentBlobUrl;
-    a.download=g.fileName||"game";
-    document.body.appendChild(a);a.click();a.remove();
-    renderCatalog();
-  }).catch(function(e){showToast("Ошибка загрузки файла","error");console.error(e)});
+function downloadGame(id){
+  var g=null;for(var i=0;i<games.length;i++){if(games[i].id===id){g=games[i];break}}
+  if(!g)return;
+  trackPlay(g.title||"game");
+  var a=document.createElement("a");a.href=g.path;a.download="";document.body.appendChild(a);a.click();a.remove();
 }
 
-/* ── Upload ── */
+/* ── Admin Upload ── */
 function openUpload(){
-  resetUploadForm();
+  resetForm();
   document.getElementById("uploadSheet").classList.add("open");
   document.body.style.overflow="hidden";
 }
 function closeUpload(){
   document.getElementById("uploadSheet").classList.remove("open");
-  document.body.style.overflow="hidden";
-  resetUploadForm();
+  document.body.style.overflow="";
+  resetForm();
 }
-
-function resetUploadForm(){
+function resetForm(){
   document.getElementById("fTitle").value="";
   document.getElementById("fAuthor").value="";
   document.getElementById("fDesc").value="";
   document.getElementById("fTags").value="";
   document.getElementById("fPlatform").value="all";
-  document.getElementById("fCode").value="";
   document.getElementById("fFile").value="";
-  selectedFile=null;
+  document.getElementById("fCover").value="";
+  selectedFile=null;selectedCover=null;
   document.getElementById("fileInfo").style.display="none";
-  setUploadMode("code");
+  document.getElementById("coverInfo").style.display="none";
+  document.getElementById("dropZone").classList.remove("has-file");
+  document.getElementById("coverZone").classList.remove("has-file");
+  document.getElementById("submitBtn").disabled=false;
+  document.getElementById("submitBtn").textContent="Загрузить на сайт";
+  document.getElementById("uploadProgress").classList.remove("active");
 }
 
-function setUploadMode(mode){
-  uploadMode=mode;
-  var tabs=document.querySelectorAll(".mode-tab");
-  for(var i=0;i<tabs.length;i++){
-    tabs[i].classList.toggle("active",tabs[i].getAttribute("data-mode")===mode);
-  }
-  document.getElementById("codeMode").style.display=mode==="code"?"block":"none";
-  document.getElementById("fileMode").style.display=mode==="file"?"block":"none";
+function setProgress(pct,text){
+  var p=document.getElementById("uploadProgress");
+  p.classList.add("active");
+  document.getElementById("progressText").textContent=text||"";
+  document.getElementById("progressBar").style.width=pct+"%";
 }
 
 function submitUpload(){
@@ -645,802 +565,219 @@ function submitUpload(){
   var desc=document.getElementById("fDesc").value.trim();
   var tags=document.getElementById("fTags").value.trim();
   var platform=document.getElementById("fPlatform").value;
-  if(!title){showToast("Введите название игры","error");return}
-  if(!author){showToast("Введите имя автора","error");return}
 
-  if(uploadMode==="code"){
-    var code=document.getElementById("fCode").value;
-    if(!code.trim()){showToast("Введите HTML-код","error");return}
-    var game={
-      id:genId(),title:title,authorName:author,description:desc,tags:tags,
-      platform:platform,htmlContent:code,fileType:"html",fileName:null,
-      fileSize:0,plays:0,likes:0,createdAt:new Date().toISOString()
-    };
-    games.unshift(game);saveGames();renderCatalog();closeUpload();
-    showToast("Игра «"+title+"» загружена!","success");
+  if(!title){showToast("Введите название","error");return}
+  if(!author){showToast("Введите автора","error");return}
+  if(!selectedFile){showToast("Выберите файл игры","error");return}
+  if(!admin.isSetup){showToast("Настройте GitHub токен (Ctrl+Shift+U)","error");return}
+
+  var ext=selectedFile.name.split(".").pop().toLowerCase();
+  var slug=slugify(title)+"-"+uid().substr(-4);
+  var gamePath="games/"+slug+"/index.html";
+  if(ext!=="html"&&ext!=="htm"){gamePath="games/"+slug+"/"+selectedFile.name}
+  var coverPath="games/"+slug+"/cover.png";
+  var typeLabel=ext==="html"||ext==="htm"?"HTML":ext.toUpperCase();
+
+  document.getElementById("submitBtn").disabled=true;
+  document.getElementById("submitBtn").textContent="Загрузка...";
+
+  var steps=[
+    {pct:30,text:"Загрузка файла игры...",fn:function(){return fileToBase64(selectedFile).then(function(b64){return ghUploadFile(gamePath,b64,"GameForge: "+title+" ("+ext.toUpperCase()+")")})}},
+  ];
+
+  if(selectedCover){
+    steps.push({pct:60,text:"Загрузка обложки...",fn:function(){return fileToBase64(selectedCover).then(function(b64){return ghUploadFile(coverPath,b64,"GameForge: cover for "+title)})}});
   }else{
-    if(!selectedFile){showToast("Выберите файл","error");return}
-    var reader=new FileReader();
-    var fileExt=selectedFile.name.split(".").pop().toLowerCase();
-    if(fileExt==="html"||fileExt==="htm"){
-      reader.onload=function(e){
-        var game={
-          id:genId(),title:title,authorName:author,description:desc,tags:tags,
-          platform:platform,htmlContent:e.target.result,fileType:"html",
-          fileName:selectedFile.name,fileSize:selectedFile.size,
-          plays:0,likes:0,createdAt:new Date().toISOString()
-        };
-        games.unshift(game);saveGames();renderCatalog();closeUpload();
-        showToast("Игра «"+title+"» загружена!","success");
-      };
-      reader.onerror=function(){showToast("Ошибка чтения файла","error")};
-      reader.readAsText(selectedFile);
-    }else{
-      reader.onload=function(e){
-        var game={
-          id:genId(),title:title,authorName:author,description:desc,tags:tags,
-          platform:platform,htmlContent:"",fileType:"binary",
-          fileName:selectedFile.name,fileSize:selectedFile.size,
-          plays:0,likes:0,createdAt:new Date().toISOString()
-        };
-        saveFileToDB(game.id,e.target.result).then(function(){
-          games.unshift(game);saveGames();renderCatalog();closeUpload();
-          showToast("Игра «"+title+"» загружена!","success");
-        }).catch(function(err){
-          showToast("Ошибка сохранения файла в IndexedDB","error");console.error(err);
-        });
-      };
-      reader.onerror=function(){showToast("Ошибка чтения файла","error")};
-      reader.readAsArrayBuffer(selectedFile);
-    }
+    steps.push({pct:60,text:"Обновление списка...",fn:function(){return Promise.resolve()}});
   }
+
+  steps.push({pct:90,text:"Обновление списка игр...",fn:function(){
+    var entry={id:uid(),title:title,author:author,description:desc,tags:tags,platform:platform,path:gamePath,cover:selectedCover?coverPath:null,type:typeLabel,createdAt:new Date().toISOString()};
+    return ghUpdateGamesJson(entry);
+  }});
+
+  steps.reduce(function(chain,step){
+    return chain.then(function(){setProgress(step.pct,step.text);return step.fn()});
+  },Promise.resolve())
+    .then(function(){
+      setProgress(100,"Готово!");
+      setTimeout(function(){closeUpload();loadGames();showToast("Игра «"+title+"» загружена!","success")},500);
+    })
+    .catch(function(e){
+      setProgress(0,"Ошибка");
+      document.getElementById("submitBtn").disabled=false;
+      document.getElementById("submitBtn").textContent="Загрузить на сайт";
+      showToast("Ошибка: "+e.message,"error");
+      console.error(e);
+    });
 }
 
-/* ── Delete ── */
 function deleteGame(id){
   var g=null;for(var i=0;i<games.length;i++){if(games[i].id===id){g=games[i];break}}
   if(!g)return;
-  var name=g.title;
-  if(!confirm('Удалить игру «'+name+'»?'))return;
-  if(g.fileType==="binary"){
-    deleteFileFromDB(id).catch(function(e){console.warn("DB delete error",e)});
-  }
-  var idx=liked.indexOf(id);if(idx!==-1){liked.splice(idx,1);saveLiked()}
-  for(var i=0;i<games.length;i++){if(games[i].id===id){games.splice(i,1);break}}
-  saveGames();renderCatalog();showToast("Игра «"+name+"» удалена","info");
+  if(!confirm("Удалить «"+g.title+"»?"))return;
+  ghDeleteFromGamesJson(id)
+    .then(function(){showToast("Игра удалена","info");loadGames()})
+    .catch(function(e){showToast("Ошибка: "+e.message,"error")});
 }
 
-/* ── Likes ── */
-function toggleLike(id){
-  var idx=liked.indexOf(id);
-  var g=null;for(var i=0;i<games.length;i++){if(games[i].id===id){g=games[i];break}}
-  if(!g)return;
-  if(idx===-1){liked.push(id);g.likes=(g.likes||0)+1}else{liked.splice(idx,1);g.likes=Math.max(0,(g.likes||0)-1)}
-  saveLiked();saveGames();renderCatalog();
+/* ── Drag and Drop ── */
+function setupDrop(zoneId,fileId,infoId,onSelect){
+  var zone=document.getElementById(zoneId);
+  var inp=document.getElementById(fileId);
+  zone.addEventListener("click",function(){inp.click()});
+  inp.addEventListener("change",function(){if(this.files.length>0)onSelect(this.files[0])});
+  zone.addEventListener("dragover",function(e){e.preventDefault();zone.classList.add("dragover")});
+  zone.addEventListener("dragleave",function(e){e.preventDefault();zone.classList.remove("dragover")});
+  zone.addEventListener("drop",function(e){e.preventDefault();zone.classList.remove("dragover");if(e.dataTransfer.files.length>0)onSelect(e.dataTransfer.files[0])});
 }
 
-/* ── Drag and drop ── */
-function setupDropZone(){
-  var zone=document.getElementById("dropZone");
-  var fileInput=document.getElementById("fFile");
-  zone.addEventListener("click",function(){fileInput.click()});
-  fileInput.addEventListener("change",function(){handleFileSelect(this.files)});
-  zone.addEventListener("dragover",function(e){e.preventDefault();e.stopPropagation();zone.classList.add("dragover")});
-  zone.addEventListener("dragleave",function(e){e.preventDefault();e.stopPropagation();zone.classList.remove("dragover")});
-  zone.addEventListener("drop",function(e){
-    e.preventDefault();e.stopPropagation();zone.classList.remove("dragover");
-    if(e.dataTransfer.files.length>0)handleFileSelect(e.dataTransfer.files);
-  });
+function onFileSelect(f){
+  selectedFile=f;
+  var sizeStr=f.size<1048576?(f.size/1024).toFixed(1)+" КБ":(f.size/1048576).toFixed(1)+" МБ";
+  document.getElementById("fileInfo").style.display="block";
+  document.getElementById("fileInfo").textContent=f.name+" ("+sizeStr+")";
+  document.getElementById("dropZone").classList.add("has-file");
 }
-
-function handleFileSelect(files){
-  if(files.length>0){
-    selectedFile=files[0];
-    var info=document.getElementById("fileInfo");
-    info.style.display="block";
-    info.textContent=selectedFile.name+" ("+formatSize(selectedFile.size)+")";
-  }
-}
-
-/* ── Event delegation ── */
-function setupEvents(){
-  document.getElementById("uploadBtn").addEventListener("click",openUpload);
-  document.getElementById("uploadClose").addEventListener("click",closeUpload);
-  document.getElementById("playerClose").addEventListener("click",closePlayer);
-  document.getElementById("themeBtn").addEventListener("click",toggleTheme);
-  document.getElementById("submitBtn").addEventListener("click",submitUpload);
-  document.getElementById("analyticsBtn").addEventListener("click",openAnalytics);
-  document.getElementById("analyticsClose").addEventListener("click",closeAnalytics);
-  document.getElementById("dataBtn").addEventListener("click",openDataPanel);
-  document.getElementById("syncBtn").addEventListener("click",openSyncSettings);
-
-  document.getElementById("searchInput").addEventListener("input",function(){
-    currentSearch=this.value;renderCatalog();
-  });
-
-  var filterBtns=document.querySelectorAll(".filter-btn");
-  for(var i=0;i<filterBtns.length;i++){
-    filterBtns[i].addEventListener("click",function(){
-      for(var j=0;j<filterBtns.length;j++)filterBtns[j].classList.remove("active");
-      this.classList.add("active");
-      currentPlatform=this.getAttribute("data-platform");
-      renderCatalog();
-    });
-  }
-
-  var modeTabs=document.querySelectorAll(".mode-tab");
-  for(var i=0;i<modeTabs.length;i++){
-    modeTabs[i].addEventListener("click",function(){setUploadMode(this.getAttribute("data-mode"))});
-  }
-
-  document.addEventListener("click",function(e){
-    var likeBtn=e.target.closest(".like-btn");
-    if(likeBtn){e.stopPropagation();toggleLike(likeBtn.getAttribute("data-like"));return}
-    var delBtn=e.target.closest(".delete-btn");
-    if(delBtn){e.stopPropagation();deleteGame(delBtn.getAttribute("data-del"));return}
-    var card=e.target.closest(".card");
-    if(card&&!e.target.closest(".like-btn")&&!e.target.closest(".delete-btn")){
-      openPlayer(card.getAttribute("data-id"));
-    }
-  });
-
-  document.addEventListener("keydown",function(e){
-    if(e.key==="Escape"){
-      if(document.getElementById("playerOverlay").classList.contains("open"))closePlayer();
-      else if(document.getElementById("uploadSheet").classList.contains("open"))closeUpload();
-      else if(document.getElementById("analyticsOverlay").classList.contains("open"))closeAnalytics();
-      else if(document.getElementById("dataOverlay"))closeDataPanel();
-      else if(document.getElementById("syncOverlay"))closeSyncSettings();
-    }
-  });
-
-  document.getElementById("uploadSheet").addEventListener("click",function(e){
-    if(e.target===this)closeUpload();
-  });
-  document.getElementById("playerOverlay").addEventListener("click",function(e){
-    if(e.target===this)closePlayer();
-  });
-  document.getElementById("analyticsOverlay").addEventListener("click",function(e){
-    if(e.target===this)closeAnalytics();
-  });
-
-  window.addEventListener("scroll",function(){
-    document.getElementById("header").classList.toggle("scrolled",window.scrollY>10);
-  });
+function onCoverSelect(f){
+  if(f.size>2*1024*1024){showToast("Обложка слишком большая (макс 2 МБ)","error");return}
+  selectedCover=f;
+  document.getElementById("coverInfo").style.display="block";
+  document.getElementById("coverInfo").textContent=f.name;
+  document.getElementById("coverZone").classList.add("has-file");
 }
 
 /* ── Analytics ── */
-var analytics={};
-
 function loadAnalytics(){
-  try{
-    var d=localStorage.getItem("gf_analytics");
-    analytics=d?JSON.parse(d):{visits:[],visitorId:genId(),dailyPlays:{}};
-    if(!analytics.visits)analytics.visits=[];
-    if(!analytics.visitorId)analytics.visitorId=genId();
-    if(!analytics.dailyPlays)analytics.dailyPlays={};
-  }catch(e){
-    analytics={visits:[],visitorId:genId(),dailyPlays:{}};
-  }
+  try{var d=localStorage.getItem("gf_analytics");analytics=d?JSON.parse(d):{visits:[],dailyPlays:{}};if(!analytics.visits)analytics.visits=[];if(!analytics.dailyPlays)analytics.dailyPlays={}}
+  catch(e){analytics={visits:[],dailyPlays:{}}}
 }
-
-function saveAnalytics(){
-  try{localStorage.setItem("gf_analytics",JSON.stringify(analytics))}catch(e){}
-}
-
+function saveAnalytics(){try{localStorage.setItem("gf_analytics",JSON.stringify(analytics))}catch(e){}}
 function trackVisit(){
-  var today=dateKey(new Date());
-  var lastVisit=analytics.visits.length>0?analytics.visits[analytics.visits.length-1]:"";
-  if(lastVisit===today)return;
-  analytics.visits.push(today);
-  if(analytics.visits.length>365)analytics.visits=analytics.visits.slice(-365);
-  saveAnalytics();
+  var t=dk(new Date());var last=analytics.visits.length>0?analytics.visits[analytics.visits.length-1]:"";
+  if(last===t)return;analytics.visits.push(t);if(analytics.visits.length>365)analytics.visits=analytics.visits.slice(-365);saveAnalytics();
 }
+function trackPlay(name){
+  var t=dk(new Date());if(!analytics.dailyPlays[t])analytics.dailyPlays[t]={};
+  analytics.dailyPlays[t][name]=(analytics.dailyPlays[t][name]||0)+1;saveAnalytics();
+}
+function dk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function sd(s){var days=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];return days[new Date(s+"T12:00:00").getDay()]}
+function get14(){var d=[];var n=new Date();for(var i=13;i>=0;i--){var x=new Date(n);x.setDate(x.getDate()-i);d.push(dk(x))}return d}
 
-function trackGamePlay(gameId){
-  var today=dateKey(new Date());
-  if(!analytics.dailyPlays[today])analytics.dailyPlays[today]={};
-  analytics.dailyPlays[today][gameId]=(analytics.dailyPlays[today][gameId]||0)+1;
-  saveAnalytics();
-}
-
-function dateKey(d){
-  var y=d.getFullYear();
-  var m=String(d.getMonth()+1).padStart(2,"0");
-  var day=String(d.getDate()).padStart(2,"0");
-  return y+"-"+m+"-"+day;
-}
-
-function shortDay(dateStr){
-  var days=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
-  var d=new Date(dateStr+"T12:00:00");
-  return days[d.getDay()];
-}
-
-function countTodayVisits(){
-  var today=dateKey(new Date());
-  var c=0;
-  for(var i=0;i<analytics.visits.length;i++){if(analytics.visits[i]===today)c++}
-  return c;
-}
-
-function countTotalPlaysLastNDays(n){
-  var now=new Date();
-  var total=0;
-  for(var i=0;i<n;i++){
-    var d=new Date(now);d.setDate(d.getDate()-i);
-    var key=dateKey(d);
-    if(analytics.dailyPlays[key]){
-      var plays=analytics.dailyPlays[key];
-      for(var gid in plays)total+=plays[gid];
-    }
-  }
-  return total;
-}
-
-function openAnalytics(){
-  renderAnalyticsPanel();
-  document.getElementById("analyticsOverlay").classList.add("open");
-  document.body.style.overflow="hidden";
-}
-
-function closeAnalytics(){
-  document.getElementById("analyticsOverlay").classList.remove("open");
-  document.body.style.overflow="";
-}
+function openAnalytics(){renderAnalyticsPanel();document.getElementById("analyticsOverlay").classList.add("open");document.body.style.overflow="hidden"}
+function closeAnalytics(){document.getElementById("analyticsOverlay").classList.remove("open");document.body.style.overflow=""}
 
 function renderAnalyticsPanel(){
-  var today=dateKey(new Date());
-  var todayVisits=countTodayVisits();
-  var totalVisits=analytics.visits.length;
-  var todayPlays=0;
-  if(analytics.dailyPlays[today]){
-    for(var gid in analytics.dailyPlays[today])todayPlays+=analytics.dailyPlays[today][gid];
-  }
-  var totalPlays14=countTotalPlaysLastNDays(14);
+  var today=dk(new Date());
+  var tv=0;for(var i=0;i<analytics.visits.length;i++){if(analytics.visits[i]===today)tv++}
+  var tp=0;if(analytics.dailyPlays[today]){for(var k in analytics.dailyPlays[today])tp+=analytics.dailyPlays[today][k]}
+  var p14=0;var d14=get14();for(var i=0;i<d14.length;i++){if(analytics.dailyPlays[d14[i]]){for(var k in analytics.dailyPlays[d14[i]])p14+=analytics.dailyPlays[d14[i]][k]}}
 
   document.getElementById("analyticsCards").innerHTML=
-    '<div class="a-card"><div class="a-val">'+totalVisits+'</div><div class="a-label">Всего посещений</div></div>'+
-    '<div class="a-card"><div class="a-val">'+todayVisits+'</div><div class="a-label">Сегодня посещений</div></div>'+
-    '<div class="a-card"><div class="a-val">'+totalPlays14+'</div><div class="a-label">Запусков игр (14 дн.)</div></div>'+
-    '<div class="a-card"><div class="a-val">'+todayPlays+'</div><div class="a-label">Запусков сегодня</div></div>';
+    '<div class="a-card"><div class="a-val">'+analytics.visits.length+'</div><div class="a-label">Всего посещений</div></div>'+
+    '<div class="a-card"><div class="a-val">'+tv+'</div><div class="a-label">Сегодня</div></div>'+
+    '<div class="a-card"><div class="a-val">'+p14+'</div><div class="a-label">Запусков (14 дн.)</div></div>'+
+    '<div class="a-card"><div class="a-val">'+tp+'</div><div class="a-label">Запусков сегодня</div></div>';
 
-  renderVisitChart();
-  renderPlaysChart();
-  renderTopGames();
-}
+  var days=get14();
+  var vc=[];var vm=1;
+  for(var i=0;i<days.length;i++){var c=0;for(var j=0;j<analytics.visits.length;j++){if(analytics.visits[j]===days[i])c++}vc.push(c);if(c>vm)vm=c}
+  var vh="";for(var i=0;i<days.length;i++){var h=Math.max(4,Math.round((vc[i]/vm)*100));vh+='<div class="chart-bar-wrap"><div class="bar" style="height:'+h+'%"></div><div class="bar-label">'+sd(days[i])+'</div></div>'}
+  document.getElementById("visitChart").innerHTML=vh;
 
-function renderVisitChart(){
-  var days=getLast14Days();
-  var counts=[];
-  var maxC=1;
-  for(var i=0;i<days.length;i++){
-    var c=0;
-    for(var j=0;j<analytics.visits.length;j++){if(analytics.visits[j]===days[i])c++}
-    counts.push(c);
-    if(c>maxC)maxC=c;
-  }
-  var html="";
-  for(var i=0;i<days.length;i++){
-    var h=Math.max(4,Math.round((counts[i]/maxC)*100));
-    html+='<div class="chart-bar-wrap"><div class="bar" style="height:'+h+'%"></div><div class="bar-label">'+shortDay(days[i])+'</div></div>';
-  }
-  document.getElementById("visitChart").innerHTML=html;
-}
+  var pc=[];var pm=1;
+  for(var i=0;i<days.length;i++){var c=0;if(analytics.dailyPlays[days[i]]){for(var k in analytics.dailyPlays[days[i]])c+=analytics.dailyPlays[days[i]][k]}pc.push(c);if(c>pm)pm=c}
+  var ph="";for(var i=0;i<days.length;i++){var h=Math.max(4,Math.round((pc[i]/pm)*100));ph+='<div class="chart-bar-wrap"><div class="bar-plays" style="height:'+h+'%"></div><div class="bar-label">'+sd(days[i])+'</div></div>'}
+  document.getElementById("playsChart").innerHTML=ph;
 
-function renderPlaysChart(){
-  var days=getLast14Days();
-  var counts=[];
-  var maxC=1;
-  for(var i=0;i<days.length;i++){
-    var c=0;
-    if(analytics.dailyPlays[days[i]]){
-      for(var gid in analytics.dailyPlays[days[i]])c+=analytics.dailyPlays[days[i]][gid];
-    }
-    counts.push(c);
-    if(c>maxC)maxC=c;
-  }
-  var html="";
-  for(var i=0;i<days.length;i++){
-    var h=Math.max(4,Math.round((counts[i]/maxC)*100));
-    html+='<div class="chart-bar-wrap"><div class="bar-plays" style="height:'+h+'%"></div><div class="bar-label">'+shortDay(days[i])+'</div></div>';
-  }
-  document.getElementById("playsChart").innerHTML=html;
-}
-
-function renderTopGames(){
-  var totals={};
-  for(var day in analytics.dailyPlays){
-    for(var gid in analytics.dailyPlays[day]){
-      totals[gid]=(totals[gid]||0)+analytics.dailyPlays[day][gid];
-    }
-  }
-  var sorted=[];
-  for(var gid in totals)sorted.push({id:gid,plays:totals[gid]});
-  sorted.sort(function(a,b){return b.plays-a.plays});
-
+  var totals={};for(var day in analytics.dailyPlays){for(var k in analytics.dailyPlays[day]){totals[k]=(totals[k]||0)+analytics.dailyPlays[day][k]}}
+  var sorted=[];for(var k in totals)sorted.push({name:k,plays:totals[k]});sorted.sort(function(a,b){return b.plays-a.plays});
   var top5=sorted.slice(0,5);
-  if(top5.length===0){
-    document.getElementById("topGames").innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px">Пока нет данных о запусках</div>';
-    return;
-  }
-  var html="";
-  for(var i=0;i<top5.length;i++){
-    var g=null;for(var j=0;j<games.length;j++){if(games[j].id===top5[i].id){g=games[j];break}}
-    var name=g?g.title:"Удалённая игра";
-    html+='<div class="top-game-item"><div class="tg-rank">'+(i+1)+'</div><div class="tg-info"><div class="tg-name">'+escapeHtml(name)+'</div></div><div class="tg-plays">'+top5[i].plays+' запусков</div></div>';
-  }
-  document.getElementById("topGames").innerHTML=html;
+  if(top5.length===0){document.getElementById("topGames").innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px">Пока нет данных</div>'}
+  else{var th="";for(var i=0;i<top5.length;i++){th+='<div class="top-game-item"><div class="tg-rank">'+(i+1)+'</div><div class="tg-info"><div class="tg-name">'+esc(top5[i].name)+'</div></div><div class="tg-plays">'+top5[i].plays+'</div></div>'}
+  document.getElementById("topGames").innerHTML=th}
 }
 
-function getLast14Days(){
-  var days=[];var now=new Date();
-  for(var i=13;i>=0;i--){
-    var d=new Date(now);d.setDate(d.getDate()-i);
-    days.push(dateKey(d));
-  }
-  return days;
-}
+/* ── Events ── */
+function setupEvents(){
+  document.getElementById("themeBtn").addEventListener("click",toggleTheme);
+  document.getElementById("analyticsBtn").addEventListener("click",openAnalytics);
+  document.getElementById("analyticsClose").addEventListener("click",closeAnalytics);
+  document.getElementById("playerClose").addEventListener("click",closePlayer);
+  document.getElementById("uploadBtn").addEventListener("click",openUpload);
+  document.getElementById("uploadClose").addEventListener("click",closeUpload);
+  document.getElementById("submitBtn").addEventListener("click",submitUpload);
+  document.getElementById("settingsClose").addEventListener("click",closeSettings);
+  document.getElementById("saveSettingsBtn").addEventListener("click",function(){
+    saveAdminConfig();
+    if(admin.isSetup){closeSettings();showToast("Настройки сохранены! Теперь можно загружать игры.","success")}
+    else{showToast("Заполни все поля","error")}
+  });
+  document.getElementById("testSettingsBtn").addEventListener("click",function(){
+    saveAdminConfig();
+    var st=document.getElementById("settingsStatus");
+    if(!admin.isSetup){st.innerHTML='<span style="color:var(--danger)">Заполни все поля</span>';return}
+    st.innerHTML='<span style="color:var(--accent)">Проверяю...</span>';
+    ghApi("GET","/repos/"+admin.owner+"/"+admin.repo).then(function(r){
+      if(r&&r.full_name){st.innerHTML='Подключено к: <span style="color:var(--accent)">'+esc(r.full_name)+'</span>'}
+      else{st.innerHTML='<span style="color:var(--danger)">Репозиторий не найден</span>'}
+    }).catch(function(e){st.innerHTML='<span style="color:var(--danger)">Ошибка: '+esc(e.message)+'</span>'});
+  });
 
-/* ── Export / Import ── */
-function openDataPanel(){
-  var savedVer=localStorage.getItem("gameforge_version")||"?";
-  var binaryCount=0;
-  for(var i=0;i<games.length;i++){if(games[i].fileType==="binary")binaryCount++}
-  var panel=document.getElementById("dataPanel");
-  if(!panel){
-    panel=document.createElement("div");
-    panel.id="dataPanel";
-    panel.className="analytics-panel";
-    panel.innerHTML=
-      '<div class="analytics-header"><h2>Управление данными</h2><button class="sheet-close" id="dataClose">&times;</button></div>'+
-      '<div class="analytics-section">'+
-        '<h3>Ваши данные безопасны при обновлениях</h3>'+
-        '<p style="font-size:13px;color:var(--text2);line-height:1.6">Данные хранятся в браузере (localStorage + IndexedDB). При обновлении HTML-файла на GitHub все игры, лайки и аналитика сохраняются. Система авто-миграции обеспечивает совместимость.</p>'+
-      '</div>'+
-      '<div class="analytics-cards" id="dataStats"></div>'+
-      '<div class="data-actions">'+
-        '<button class="data-btn" id="exportBtn">Экспорт (бэкап)</button>'+
-        '<button class="data-btn" id="importBtn">Импорт (восстановить)</button>'+
-        '<button class="data-btn danger" id="clearAllBtn">Удалить всё</button>'+
-      '</div>'+
-      '<div class="version-info">Версия данных: <span>v'+DATA_VERSION+'</span> | Игр: <span>'+games.length+'</span> (HTML: '+(games.length-binaryCount)+', бинарных: '+binaryCount+')</div>';
-    document.body.appendChild(panel);
-    var overlay=document.createElement("div");
-    overlay.id="dataOverlay";
-    overlay.className="overlay open";
-    overlay.addEventListener("click",function(e){if(e.target===overlay)closeDataPanel()});
-    document.body.appendChild(overlay);
-    overlay.appendChild(panel);
-    panel.querySelector("#dataClose").addEventListener("click",closeDataPanel);
-    panel.querySelector("#exportBtn").addEventListener("click",exportAllData);
-    panel.querySelector("#importBtn").addEventListener("click",function(){
-      var inp=document.createElement("input");
-      inp.type="file";inp.accept=".json";
-      inp.addEventListener("change",function(){if(this.files.length>0)importAllData(this.files[0])});
-      inp.click();
-    });
-    panel.querySelector("#clearAllBtn").addEventListener("click",function(){
-      if(!confirm('Удалить ВСЕ данные?\nЭто действие нельзя отменить!'))return;
-      clearAllData();
+  document.getElementById("searchInput").addEventListener("input",function(){currentSearch=this.value;renderCatalog()});
+
+  var fb=document.querySelectorAll(".filter-btn");
+  for(var i=0;i<fb.length;i++){
+    fb[i].addEventListener("click",function(){
+      for(var j=0;j<fb.length;j++)fb[j].classList.remove("active");
+      this.classList.add("active");currentPlatform=this.getAttribute("data-platform");renderCatalog();
     });
   }
-  document.getElementById("dataStats").innerHTML=
-    '<div class="a-card"><div class="a-val">'+games.length+'</div><div class="a-label">Игр сохранено</div></div>'+
-    '<div class="a-card"><div class="a-val">'+binaryCount+'</div><div class="a-label">Бинарных файлов (IndexedDB)</div></div>';
-  document.getElementById("dataOverlay").style.display="flex";
-  document.body.style.overflow="hidden";
-}
 
-function closeDataPanel(){
-  var ov=document.getElementById("dataOverlay");
-  if(ov){ov.remove();}
-  var dp=document.getElementById("dataPanel");
-  if(dp)dp.remove();
-  document.body.style.overflow="";
-}
+  setupDrop("dropZone","fFile","fileInfo",onFileSelect);
+  setupDrop("coverZone","fCover","coverInfo",onCoverSelect);
 
-function exportAllData(){
-  var backup={
-    version:DATA_VERSION,
-    exportedAt:new Date().toISOString(),
-    games:games,
-    liked:liked,
-    analytics:analytics,
-    theme:document.body.getAttribute("data-theme")||"dark"
-  };
-  var json=JSON.stringify(backup,null,2);
-  var blob=new Blob([json],{type:"application/json"});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");
-  a.href=url;a.download="gameforge_backup_"+dateKey(new Date())+".json";
-  document.body.appendChild(a);a.click();a.remove();
-  URL.revokeObjectURL(url);
-  showToast("Бэкап создан! Сохраните файл.","success");
-}
+  document.addEventListener("click",function(e){
+    var del=e.target.closest("[data-del]");
+    if(del){e.stopPropagation();deleteGame(del.getAttribute("data-del"));return}
+    var like=e.target.closest(".like-btn");
+    if(like){e.stopPropagation();toggleLike(like.getAttribute("data-like"));return}
+    var card=e.target.closest("[data-play]");
+    if(card&&!e.target.closest("[data-del]")){openPlayer(card.getAttribute("data-gid"));return}
+    var dlc=e.target.closest("[data-dl]");
+    if(dlc&&!e.target.closest("[data-del]")){downloadGame(dlc.getAttribute("data-gid"));return}
+  });
 
-function importAllData(file){
-  var reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      var backup=JSON.parse(e.target.result);
-      if(!backup.games||!Array.isArray(backup.games)){showToast("Неверный формат бэкапа","error");return}
-      var oldCount=games.length;
-      var oldIds={};
-      for(var i=0;i<games.length;i++)oldIds[games[i].id]=true;
-      var added=0;var updated=0;
-      for(var i=0;i<backup.games.length;i++){
-        var bg=backup.games[i];
-        if(!bg||!bg.id||!bg.title)continue;
-        if(oldIds[bg.id]){
-          for(var j=0;j<games.length;j++){
-            if(games[j].id===bg.id){games[j]=bg;updated++;break}
-          }
-        }else{
-          games.push(bg);added++;oldIds[bg.id]=true;
-        }
-      }
-      if(backup.liked&&Array.isArray(backup.liked)){
-        var newLiked=[];
-        for(var i=0;i<backup.liked.length;i++){
-          if(oldIds[backup.liked[i]])newLiked.push(backup.liked[i]);
-        }
-        liked=newLiked;
-        saveLiked();
-      }
-      if(backup.analytics&&backup.analytics.visits){
-        analytics=backup.analytics;
-        if(!analytics.dailyPlays)analytics.dailyPlays={};
-        if(!analytics.visitorId)analytics.visitorId=genId();
-        saveAnalytics();
-      }
-      if(backup.theme){saveTheme(backup.theme)}
-      saveGames();
-      renderCatalog();
-      showToast('Импорт: +'+added+' новых, '+updated+' обновлено','success');
-      closeDataPanel();
-    }catch(err){
-      showToast('Ошибка чтения бэкапа: '+err.message,"error");
-      console.error(err);
+  document.addEventListener("keydown",function(e){
+    if(e.ctrlKey&&e.shiftKey&&(e.key==="U"||e.key==="u"||e.key==="Ц"||e.key==="ц")){e.preventDefault();openSettings();return}
+    if(e.key==="Escape"){
+      if(document.getElementById("playerOverlay").classList.contains("open"))closePlayer();
+      else if(document.getElementById("uploadSheet").classList.contains("open"))closeUpload();
+      else if(document.getElementById("settingsSheet").classList.contains("open"))closeSettings();
+      else if(document.getElementById("analyticsOverlay").classList.contains("open"))closeAnalytics();
     }
-  };
-  reader.onerror=function(){showToast("Ошибка чтения файла","error")};
-  reader.readAsText(file);
-}
-
-function clearAllData(){
-  localStorage.removeItem("gameforge_games");
-  localStorage.removeItem("gameforge_liked");
-  localStorage.removeItem("gameforge_theme");
-  localStorage.removeItem("gf_analytics");
-  localStorage.removeItem("gameforge_version");
-  games=[];liked=[];analytics={visits:[],visitorId:genId(),dailyPlays:{}};
-  openDB().then(function(d){
-    return new Promise(function(resolve,reject){
-      var tx=d.transaction(["files","meta"],"readwrite");
-      tx.objectStore("files").clear();
-      tx.objectStore("meta").clear();
-      tx.oncomplete=function(){resolve()};
-      tx.onerror=function(e){reject(e.target.error)};
-    });
-  }).then(function(){
-    renderCatalog();
-    showToast('Все данные удалены','info');
-    closeDataPanel();
-  }).catch(function(e){
-    showToast('Ошибка: '+e.message,'error');
   });
-}
 
-/* ── GitHub Sync ── */
-var gh={token:"",owner:"",repo:"",dataPath:"data/gameforge_games.json",sha:null,lastSync:null,syncing:false};
-var syncTimer=null;
+  document.getElementById("playerOverlay").addEventListener("click",function(e){if(e.target===this)closePlayer()});
+  document.getElementById("analyticsOverlay").addEventListener("click",function(e){if(e.target===this)closeAnalytics()});
+  document.getElementById("uploadSheet").addEventListener("click",function(e){if(e.target===this)closeUpload()});
+  document.getElementById("settingsSheet").addEventListener("click",function(e){if(e.target===this)closeSettings()});
 
-function loadGhConfig(){
-  gh.token=localStorage.getItem("gh_token")||"";
-  gh.owner=localStorage.getItem("gh_owner")||"";
-  gh.repo=localStorage.getItem("gh_repo")||"";
-  gh.lastSync=localStorage.getItem("gh_last_sync")||null;
-}
-function saveGhConfig(){
-  localStorage.setItem("gh_token",gh.token);
-  localStorage.setItem("gh_owner",gh.owner);
-  localStorage.setItem("gh_repo",gh.repo);
-}
-function isGhReady(){return gh.token&&gh.owner&&gh.repo}
-
-function ghApi(method,path,body){
-  return new Promise(function(resolve,reject){
-    var opts={
-      method:method,
-      headers:{
-        "Authorization":"Bearer "+gh.token,
-        "Accept":"application/vnd.github+json",
-        "X-GitHub-Api-Version":"2022-11-28"
-      }
-    };
-    if(body!==undefined){
-      opts.headers["Content-Type"]="application/json";
-      opts.body=JSON.stringify(body);
-    }
-    fetch("https://api.github.com"+path,opts).then(function(r){
-      if(r.status===404){resolve(null);return}
-      if(!r.ok){r.text().then(function(t){reject(new Error(r.status+": "+t))}).catch(function(){reject(new Error("HTTP "+r.status))});return}
-      r.json().then(resolve).catch(reject);
-    }).catch(reject);
-  });
-}
-
-function ghLoadGames(){
-  return ghApi("GET","/repos/"+gh.owner+"/"+gh.repo+"/contents/"+gh.dataPath).then(function(data){
-    if(!data||!data.content)return[];
-    gh.sha=data.sha;
-    var text=decodeURIComponent(escape(atob(data.content.replace(/\n/g,""))));
-    var parsed=JSON.parse(text);
-    return parsed.games||[];
-  });
-}
-
-function ghSaveGames(gamesToSave){
-  var data={version:DATA_VERSION,savedAt:new Date().toISOString(),games:gamesToSave};
-  var content=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-  var body={message:"GameForge: auto-sync ("+gamesToSave.length+" games)",content:content};
-  if(gh.sha)body.sha=gh.sha;
-  return ghApi("PUT","/repos/"+gh.owner+"/"+gh.repo+"/contents/"+gh.dataPath,body).then(function(result){
-    if(result&&result.content&&result.content.sha)gh.sha=result.content.sha;
-    gh.lastSync=new Date().toISOString();
-    localStorage.setItem("gh_last_sync",gh.lastSync);
-  });
-}
-
-function scheduleSync(){
-  if(!isGhReady()||gh.syncing)return;
-  if(syncTimer)clearTimeout(syncTimer);
-  syncTimer=setTimeout(function(){doSync()},2000);
-}
-
-function doSync(){
-  if(!isGhReady()||gh.syncing)return;
-  gh.syncing=true;
-  updateSyncUI("syncing");
-  ghSaveGames(games).then(function(){
-    gh.syncing=false;
-    updateSyncUI("synced");
-  }).catch(function(e){
-    gh.syncing=false;
-    updateSyncUI("error");
-    console.warn("[GameForge] sync error",e);
-  });
-}
-
-function pullFromGitHub(){
-  if(!isGhReady())return;
-  gh.syncing=true;
-  updateSyncUI("syncing");
-  ghLoadGames().then(function(remoteGames){
-    if(!remoteGames||remoteGames.length===0){
-      gh.syncing=false;
-      updateSyncUI("synced");
-      showToast("На GitHub пока нет сохранённых игр","info");
-      return;
-    }
-    var localIds={};
-    for(var i=0;i<games.length;i++)localIds[games[i].id]=true;
-    var added=0,updated=0;
-    for(var i=0;i<remoteGames.length;i++){
-      var rg=remoteGames[i];
-      if(!rg||!rg.id||!rg.title)continue;
-      if(rg.fileType==="binary")rg.htmlContent="";
-      if(!localIds[rg.id]){
-        games.unshift(rg);added++;localIds[rg.id]=true;
-      }else{
-        for(var j=0;j<games.length;j++){
-          if(games[j].id===rg.id){
-            var remoteDate=new Date(rg.createdAt||0);
-            var localDate=new Date(games[j].createdAt||0);
-            if(remoteDate>localDate){games[j]=rg;updated++}
-            break;
-          }
-        }
-      }
-    }
-    if(added>0||updated>0){
-      saveGames();renderCatalog();
-      showToast('Загружено с GitHub: +'+added+' новых, '+updated+' обновлено','success');
-    }else{
-      showToast('Данные актуальны','info');
-    }
-    gh.syncing=false;
-    updateSyncUI("synced");
-  }).catch(function(e){
-    gh.syncing=false;
-    updateSyncUI("error");
-    showToast('Ошибка загрузки с GitHub: '+e.message,'error');
-    console.warn(e);
-  });
-}
-
-function updateSyncUI(state){
-  var el=document.getElementById("syncStatus");
-  if(!el)return;
-  if(!isGhReady()){
-    el.innerHTML='<span class="sync-badge off"><span class="sync-dot"></span>Облако выкл</span>';
-    return;
-  }
-  if(state==="syncing"){el.innerHTML='<span class="sync-badge syncing"><span class="sync-dot"></span>Синхронизация...</span>'}
-  else if(state==="synced"){
-    var t=gh.lastSync?new Date(gh.lastSync).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}):"";
-    el.innerHTML='<span class="sync-badge synced"><span class="sync-dot"></span>Облако '+t+'</span>';
-  }
-  else if(state==="error"){el.innerHTML='<span class="sync-badge error"><span class="sync-dot"></span>Ошибка синхр.</span>'}
-}
-
-function requestPersistentStorage(){
-  if(navigator.storage&&navigator.storage.persist){
-    navigator.storage.persist().then(function(granted){
-      if(granted)console.log('[GameForge] persistent storage granted');
-      else console.log('[GameForge] persistent storage denied');
-    }).catch(function(){});
-  }
-}
-
-function openSyncSettings(){
-  var panel=document.getElementById("syncPanel");
-  if(!panel){
-    panel=document.createElement("div");
-    panel.id="syncPanel";
-    panel.className="analytics-panel";
-    panel.innerHTML=
-      '<div class="analytics-header"><h2>Синхронизация с GitHub</h2><button class="sheet-close" id="syncClose">&times;</button></div>'+
-      '<div class="analytics-section">'+
-        '<h3>Почему это нужно?</h3>'+
-        '<p style="font-size:13px;color:var(--text2);line-height:1.6">Данные в браузере могут удалиться при очистке кэша или если долго не заходить. С GitHub синхронизация твои игры сохраняются в облаке и доступны с любого устройства.</p>'+
-      '</div>'+
-      '<div class="analytics-section">'+
-        '<h3>Настройка за 2 минуты</h3>'+
-        '<p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px">'+
-          '1. Зайди на <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent)">github.com/settings/tokens/new</a><br>'+
-          '2. Дай имя токену (например "GameForge")<br>'+
-          '3. Поставь галочку <b>Contents</b> (read and write)<br>'+
-          '4. Нажми Generate token и скопируй его<br>'+
-          '5. Вставь токен и данные репозитория ниже'+
-        '</p>'+
-      '</div>'+
-      '<div class="form-group">'+
-        '<label>GitHub Token *</label>'+
-        '<input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxx">'+
-      '</div>'+
-      '<div class="form-group">'+
-        '<label>Владелец репозитория (username/org) *</label>'+
-        '<input type="text" id="ghOwner" placeholder="my-username">'+
-      '</div>'+
-      '<div class="form-group">'+
-        '<label>Название репозитория *</label>'+
-        '<input type="text" id="ghRepo" placeholder="my-github-pages-repo">'+
-      '</div>'+
-      '<div class="data-actions">'+
-        '<button class="data-btn" id="ghTestBtn">Проверить</button>'+
-        '<button class="data-btn" id="ghPullBtn">Загрузить с GitHub</button>'+
-        '<button class="data-btn" id="ghSaveBtn">Сохранить настройки</button>'+
-      '</div>'+
-      '<div class="version-info" id="ghStatus"></div>';
-    document.body.appendChild(panel);
-    var overlay=document.createElement("div");
-    overlay.id="syncOverlay";
-    overlay.className="overlay open";
-    overlay.addEventListener("click",function(e){if(e.target===overlay)closeSyncSettings()});
-    document.body.appendChild(overlay);
-    overlay.appendChild(panel);
-    panel.querySelector("#syncClose").addEventListener("click",closeSyncSettings);
-    panel.querySelector("#ghTestBtn").addEventListener("click",testGhConnection);
-    panel.querySelector("#ghPullBtn").addEventListener("click",function(){pullFromGitHub();closeSyncSettings()});
-    panel.querySelector("#ghSaveBtn").addEventListener("click",saveGhSettings);
-  }
-  document.getElementById("ghToken").value=gh.token;
-  document.getElementById("ghOwner").value=gh.owner;
-  document.getElementById("ghRepo").value=gh.repo;
-  var st=document.getElementById("ghStatus");
-  if(isGhReady()){
-    var t=gh.lastSync?'Последняя синхр.: '+new Date(gh.lastSync).toLocaleString('uk'):'Не синхронизировано';
-    st.innerHTML='Статус: <span>Подключено</span> | '+t;
-  }else{
-    st.textContent='Статус: Не настроено';
-  }
-  document.getElementById("syncOverlay").style.display="flex";
-  document.body.style.overflow="hidden";
-}
-
-function closeSyncSettings(){
-  var ov=document.getElementById("syncOverlay");
-  if(ov)ov.remove();
-  var dp=document.getElementById("syncPanel");
-  if(dp)dp.remove();
-  document.body.style.overflow="";
-}
-
-function saveGhSettings(){
-  gh.token=document.getElementById("ghToken").value.trim();
-  gh.owner=document.getElementById("ghOwner").value.trim();
-  gh.repo=document.getElementById("ghRepo").value.trim();
-  saveGhConfig();
-  if(isGhReady()){
-    updateSyncUI("synced");
-    doSync();
-    showToast('Настройки сохранены! Синхронизация запущена.','success');
-    closeSyncSettings();
-  }else{
-    updateSyncUI('off');
-    showToast('Заполни все поля','error');
-  }
-}
-
-function testGhConnection(){
-  gh.token=document.getElementById("ghToken").value.trim();
-  gh.owner=document.getElementById("ghOwner").value.trim();
-  gh.repo=document.getElementById("ghRepo").value.trim();
-  var st=document.getElementById("ghStatus");
-  if(!gh.token||!gh.owner||!gh.repo){st.innerHTML='<span style="color:var(--danger)">Заполни все поля</span>';return}
-  st.innerHTML='<span style="color:var(--accent)">Проверяю...</span>';
-  ghApi("GET","/repos/"+gh.owner+"/"+gh.repo).then(function(repo){
-    if(repo&&repo.full_name){
-      st.innerHTML='Репозиторий: <span>'+escapeHtml(repo.full_name)+'</span> — OK!';
-    }else{
-      st.innerHTML='<span style="color:var(--danger)">Репозиторий не найден. Проверь имя.</span>';
-    }
-  }).catch(function(e){
-    st.innerHTML='<span style="color:var(--danger)">Ошибка: '+escapeHtml(e.message)+'</span>';
-  });
+  window.addEventListener("scroll",function(){document.getElementById("header").classList.toggle("scrolled",window.scrollY>10)});
 }
 
 /* ── Init ── */
 function init(){
   loadTheme();
-  loadGhConfig();
-  migrateData();
-  loadGames();
   loadLiked();
   loadAnalytics();
   trackVisit();
-  setupDropZone();
+  detectRepo();
+  checkAdmin();
   setupEvents();
-  renderCatalog();
-  checkDataConsistency();
-  requestPersistentStorage();
-  updateSyncUI(isGhReady()?"synced":"off");
-  if(isGhReady()&&games.length===0){
-    pullFromGitHub();
-  }
-}
-
-function checkDataConsistency(){
-  openDB().then(function(d){
-    return new Promise(function(resolve,reject){
-      var tx=d.transaction("files","readonly");
-      var store=tx.objectStore("files");
-      var req=store.getAll();
-      req.onsuccess=function(){
-        var dbFiles=req.result||[];
-        var dbIds={};
-        for(var i=0;i<dbFiles.length;i++)dbIds[dbFiles[i].id]=true;
-        var gameIds={};
-        for(var i=0;i<games.length;i++){
-          if(games[i].fileType==="binary")gameIds[games[i].id]=true;
-        }
-        var orphanFiles=0;
-        for(var id in dbIds){if(!gameIds[id])orphanFiles++}
-        if(orphanFiles>0){
-          console.log('[GameForge] orphan files in IndexedDB: '+orphanFiles);
-          for(var id in dbIds){
-            if(!gameIds[id]){
-              var delTx=d.transaction("files","readwrite");
-              delTx.objectStore("files").delete(id);
-            }
-          }
-        }
-      };
-      req.onerror=function(){};
-    });
-  }).catch(function(){});
+  loadGames();
+  if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(function(){})}
 }
 
 if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init)}else{init()}
@@ -1449,3 +786,4 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 </script>
 </body>
 </html>
+
