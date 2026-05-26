@@ -1,0 +1,28 @@
+[
+  {
+    "id": "demo_1",
+    "title": "Space Shooter",
+    "author": "GameDevAlex",
+    "description": "Космический шутер с волнами врагов и апгрейдами оружия",
+    "path": "games/space-shooter/index.html",
+    "cover": "games/space-shooter/cover.png",
+    "tags": "шутер, космос, аркада",
+    "platform": "pc",
+    "type": "HTML",
+    "plays": 42,
+    "likes": 8
+  },
+  {
+    "id": "demo_2",
+    "title": "Puzzle Quest",
+    "author": "GameDevAlex",
+    "description": "Головоломка с уровнями разной сложности",
+    "path": "games/puzzle-quest/index.html",
+    "cover": "games/puzzle-quest/cover.png",
+    "tags": "пазл, головоломка, логика",
+    "platform": "all",
+    "type": "HTML",
+    "plays": 28,
+    "likes": 12
+  }
+]
