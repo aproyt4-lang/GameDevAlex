@@ -1,0 +1,14 @@
+[
+  {
+    "id": "gmpq3q9zr2z2jyo",
+    "title": "шутер",
+    "author": "Саша",
+    "description": "стрельба в лесму по роботам",
+    "tags": "шутер лес дома",
+    "platform": "all",
+    "path": "games/shuter-mvla/index.html",
+    "cover": "games/shuter-mvla/cover.png",
+    "type": "HTML",
+    "createdAt": "2026-05-28T23:05:53.943Z"
+  }
+]
