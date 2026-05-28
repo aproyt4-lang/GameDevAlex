@@ -81,7 +81,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 .drop-zone p{margin-bottom:4px;font-size:14px}
 .drop-zone small{font-size:12px;opacity:.7}
 .drop-zone input{display:none}
-.drop-zone.has-file{border-color:var(--accent);border-style:solid;background:rgba(16,185,129,.05)}
+.drop-zone.has-file{border-color:var(--accent);border-style:solid;background:rgba(16,185,129,.05)}.field-hint{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5}.field-error{font-size:11px;color:var(--danger);margin-top:4px;display:none}.field-error.show{display:block}.char-counter{font-size:11px;color:var(--text2);text-align:right;margin-top:2px}.char-counter.warn{color:#f59e0b}.char-counter.over{color:var(--danger)}.cover-preview{margin-top:10px;border-radius:10px;overflow:hidden;max-height:200px;display:none;border:1px solid var(--border)}.cover-preview img{width:100%;height:200px;object-fit:cover}.cover-preview.show{display:block}.cover-preview .cover-warn{padding:8px 12px;font-size:11px;background:rgba(245,158,11,.1);color:#f59e0b;text-align:center}.file-info{padding:6px 0;font-size:13px;color:var(--accent)}.file-info.error{color:var(--danger)}
 .submit-btn{width:100%;padding:14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
 .submit-btn:hover{background:var(--accent2)}
 .submit-btn:disabled{opacity:.5;cursor:not-allowed}
@@ -134,7 +134,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
     <button class="filter-btn" data-platform="mobile">Мобильные</button>
   </div>
   <div class="actions">
-    <button class="icon-btn hidden" id="uploadBtn" title="Загрузить игру">
+    <button class="icon-btn" id="uploadBtn" title="Загрузить игру">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
     <button class="icon-btn" id="analyticsBtn" title="Аналитика">
@@ -177,31 +177,36 @@ main{padding:24px;max-width:1200px;margin:0 auto}
       <button class="sheet-close" id="uploadClose">&times;</button>
     </div>
     <form id="uploadForm" onsubmit="return false">
-      <div class="form-group"><label>Название *</label><input type="text" id="fTitle" placeholder="Моя крутая игра" required></div>
-      <div class="form-group"><label>Автор *</label><input type="text" id="fAuthor" placeholder="GameDevAlex" required></div>
-      <div class="form-group"><label>Описание</label><input type="text" id="fDesc" placeholder="Краткое описание игры"></div>
-      <div class="form-group"><label>Теги (через запятую)</label><input type="text" id="fTags" placeholder="шутер, аркада, мультиплеер"></div>
+      <div class="form-group"><label>Название * <small style="font-weight:400;color:var(--text2)">(2-60 символов)</small></label><input type="text" id="fTitle" placeholder="Моя крутая игра" maxlength="60"><div class="char-counter" id="titleCounter">0 / 60</div></div>
+      <div class="form-group"><label>Автор * <small style="font-weight:400;color:var(--text2)">(2-40 символов)</small></label><input type="text" id="fAuthor" placeholder="GameDevAlex" maxlength="40"><div class="char-counter" id="authorCounter">0 / 40</div></div>
+      <div class="form-group"><label>Описание * <small style="font-weight:400;color:var(--text2)">(20-200 символов)</small></label><textarea id="fDesc" rows="3" placeholder="Расскажи в чём суть игры, чем она интересна, какие есть особенности..." maxlength="200" style="resize:vertical;min-height:60px"></textarea><div class="char-counter" id="descCounter">0 / 200</div><div class="field-error" id="descError">Минимум 20 символов</div><div class="field-hint">Опиши суть игры, чем интересна, для кого предназначена. Это видят все пользователи.</div></div>
+      <div class="form-group"><label>Теги * <small style="font-weight:400;color:var(--text2)">(от 1 до 5, через запятую)</small></label><input type="text" id="fTags" placeholder="шутер, аркада, мультиплеер"><div class="field-error" id="tagsError">Нужно 1-5 тегов через запятую</div><div class="field-hint">По тегам пользователи будут искать игры. Например: шутер, хоррор, головоломка</div></div>
       <div class="form-group">
-        <label>Платформа</label>
+        <label>Платформа *</label>
         <select id="fPlatform"><option value="all">Все</option><option value="pc">PC</option><option value="mobile">Мобильные</option></select>
       </div>
       <div class="form-group">
-        <label>Файл игры (HTML, EXE, APK и др.) *</label>
+        <label>Файл игры *</label>
         <div class="drop-zone" id="dropZone">
           <input type="file" id="fFile" accept=".html,.htm,.exe,.apk,.aab,.zip,.rar">
           <p>Перетащите файл сюда или нажмите</p>
-          <small>HTML для браузерных игр, другие для скачивания</small>
+          <small>HTML — для браузерных игр (играется прямо на сайте)<br>EXE / APK / ZIP — для скачивания</small>
         </div>
-        <div id="fileInfo" style="display:none;padding:4px 0;font-size:13px;color:var(--accent)"></div>
+        <div class="field-hint">Максимум 25 МБ. Для браузерных игр — один HTML файл со всеми стилями и скриптами внутри.</div>
+        <div id="fileInfo" class="file-info" style="display:none"></div>
+        <div class="field-error" id="fileError"></div>
       </div>
       <div class="form-group">
-        <label>Обложка (картинка, необязательно)</label>
+        <label>Обложка</label>
         <div class="drop-zone" id="coverZone">
-          <input type="file" id="fCover" accept="image/*">
+          <input type="file" id="fCover" accept="image/png,image/jpeg,image/webp">
           <p>Перетащите обложку или нажмите</p>
-          <small>PNG, JPG до 2 МБ</small>
+          <small>PNG, JPG или WebP</small>
         </div>
-        <div id="coverInfo" style="display:none;padding:4px 0;font-size:13px;color:var(--accent)"></div>
+        <div class="field-hint">Минимум <b>500 x 500 px</b>. Максимум 2 МБ. Если не загрузить — сгенерируется автоматически.</div>
+        <div id="coverInfo" class="file-info" style="display:none"></div>
+        <div class="field-error" id="coverError"></div>
+        <div class="cover-preview" id="coverPreview"><img id="coverPreviewImg" src="" alt=""></div>
       </div>
       <button type="button" class="submit-btn" id="submitBtn">Загрузить на сайт</button>
       <div class="upload-progress" id="uploadProgress">
@@ -547,6 +552,10 @@ function resetForm(){
   document.getElementById("coverInfo").style.display="none";
   document.getElementById("dropZone").classList.remove("has-file");
   document.getElementById("coverZone").classList.remove("has-file");
+  document.getElementById("coverPreview").classList.remove("show");
+  document.getElementById("coverPreview").innerHTML="";
+  document.getElementById("coverPreviewImg").src="";
+  clearFieldError("descError");clearFieldError("tagsError");clearFieldError("fileError");clearFieldError("coverError");
   document.getElementById("submitBtn").disabled=false;
   document.getElementById("submitBtn").textContent="Загрузить на сайт";
   document.getElementById("uploadProgress").classList.remove("active");
@@ -559,17 +568,31 @@ function setProgress(pct,text){
   document.getElementById("progressBar").style.width=pct+"%";
 }
 
+function clearFieldError(id){document.getElementById(id).classList.remove("show")}
+function showFieldError(id,msg){var el=document.getElementById(id);if(msg)el.textContent=msg;el.classList.add("show")}
+function validateTags(tags){if(!tags)return false;var arr=tags.split(",").map(function(t){return t.trim()}).filter(function(t){return t.length>0});return arr.length>=1&&arr.length<=5}
+function validateUpload(){
+  clearFieldError("descError");clearFieldError("tagsError");clearFieldError("fileError");clearFieldError("coverError");
+  var title=document.getElementById("fTitle").value.trim();
+  var author=document.getElementById("fAuthor").value.trim();
+  var desc=document.getElementById("fDesc").value.trim();
+  var tags=document.getElementById("fTags").value.trim();
+  if(!title||title.length<2){showToast("Название минимум 2 символа","error");return false}
+  if(!author||author.length<2){showToast("Автор минимум 2 символа","error");return false}
+  if(desc.length<20){showFieldError("descError","Описание минимум 20 символов (сейчас "+desc.length+")");showToast("Описание минимум 20 символов","error");return false}
+  if(!validateTags(tags)){showFieldError("tagsError","Нужно 1-5 тегов через запятую");showToast("Нужно 1-5 тегов через запятую","error");return false}
+  if(!selectedFile){showFieldError("fileError","Выберите файл игры");showToast("Выберите файл игры","error");return false}
+  if(selectedFile.size>25*1024*1024){showFieldError("fileError","Файл слишком большой (максимум 25 МБ)");showToast("Файл слишком большой (макс 25 МБ)","error");return false}
+  if(!admin.isSetup){showToast("Сначала настройте GitHub токен — нажмите "+" ","error");return false}
+  return true;
+}
 function submitUpload(){
+  if(!validateUpload())return;
   var title=document.getElementById("fTitle").value.trim();
   var author=document.getElementById("fAuthor").value.trim();
   var desc=document.getElementById("fDesc").value.trim();
   var tags=document.getElementById("fTags").value.trim();
   var platform=document.getElementById("fPlatform").value;
-
-  if(!title){showToast("Введите название","error");return}
-  if(!author){showToast("Введите автора","error");return}
-  if(!selectedFile){showToast("Выберите файл игры","error");return}
-  if(!admin.isSetup){showToast("Настройте GitHub токен (Ctrl+Shift+U)","error");return}
 
   var ext=selectedFile.name.split(".").pop().toLowerCase();
   var slug=slugify(title)+"-"+uid().substr(-4);
@@ -633,18 +656,66 @@ function setupDrop(zoneId,fileId,infoId,onSelect){
 }
 
 function onFileSelect(f){
-  selectedFile=f;
+  clearFieldError("fileError");
   var sizeStr=f.size<1048576?(f.size/1024).toFixed(1)+" КБ":(f.size/1048576).toFixed(1)+" МБ";
-  document.getElementById("fileInfo").style.display="block";
-  document.getElementById("fileInfo").textContent=f.name+" ("+sizeStr+")";
+  var ext=f.name.split(".").pop().toLowerCase();
+  var isHTML=ext==="html"||ext==="htm";
+  var infoEl=document.getElementById("fileInfo");
+  if(f.size>25*1024*1024){
+    selectedFile=null;
+    infoEl.className="file-info error";infoEl.style.display="block";
+    infoEl.textContent=f.name+" ("+sizeStr+") — ОШИБКА: слишком большой (макс 25 МБ)";
+    showFieldError("fileError","Файл больше 25 МБ — GitHub не примет");
+    document.getElementById("dropZone").classList.remove("has-file");
+    showToast("Файл слишком большой (макс 25 МБ)","error");return;
+  }
+  selectedFile=f;
+  infoEl.className="file-info";infoEl.style.display="block";
+  var htmlInfo=isHTML?" — браузерная игра, откроется на сайте":" — будет доступен для скачивания";
+  infoEl.textContent=f.name+" ("+sizeStr+")"+htmlInfo;
   document.getElementById("dropZone").classList.add("has-file");
 }
 function onCoverSelect(f){
-  if(f.size>2*1024*1024){showToast("Обложка слишком большая (макс 2 МБ)","error");return}
+  clearFieldError("coverError");
+  var infoEl=document.getElementById("coverInfo");
+  var previewEl=document.getElementById("coverPreview");
+  var previewImg=document.getElementById("coverPreviewImg");
+  var ext=f.name.split(".").pop().toLowerCase();
+  if(ext!=="png"&&ext!=="jpg"&&ext!=="jpeg"&&ext!=="webp"){
+    infoEl.className="file-info error";infoEl.style.display="block";
+    infoEl.textContent=f.name+" — ОШИБКА: только PNG, JPG, WebP";
+    showFieldError("coverError","Неподходящий формат — нужен PNG, JPG или WebP");
+    showToast("Обложка должна быть PNG, JPG или WebP","error");return;
+  }
+  if(f.size>2*1024*1024){
+    infoEl.className="file-info error";infoEl.style.display="block";
+    infoEl.textContent=f.name+" ("+(f.size/1048576).toFixed(1)+" МБ) — ОШИБКА: макс 2 МБ";
+    showFieldError("coverError","Обложка слишком большая (макс 2 МБ)");
+    showToast("Обложка слишком большая (макс 2 МБ)","error");return;
+  }
   selectedCover=f;
-  document.getElementById("coverInfo").style.display="block";
-  document.getElementById("coverInfo").textContent=f.name;
+  infoEl.className="file-info";infoEl.style.display="block";
+  infoEl.textContent=f.name+" ("+(f.size/1024).toFixed(0)+" КБ)";
   document.getElementById("coverZone").classList.add("has-file");
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      previewImg.src=e.target.result;
+      previewEl.classList.add("show");
+      previewEl.innerHTML="";
+      var warnDiv=null;
+      if(img.width<500||img.height<500){
+        warnDiv=document.createElement("div");warnDiv.className="cover-warn";
+        warnDiv.textContent="Картинка слишком маленькая: "+img.width+"x"+img.height+". Минимум 500x500 px.";
+        previewEl.appendChild(warnDiv);
+      }
+      var newImg=document.createElement("img");newImg.src=e.target.result;newImg.alt="";
+      previewEl.appendChild(newImg);
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(f);
 }
 
 /* ── Analytics ── */
@@ -705,7 +776,7 @@ function setupEvents(){
   document.getElementById("analyticsBtn").addEventListener("click",openAnalytics);
   document.getElementById("analyticsClose").addEventListener("click",closeAnalytics);
   document.getElementById("playerClose").addEventListener("click",closePlayer);
-  document.getElementById("uploadBtn").addEventListener("click",openUpload);
+  document.getElementById("uploadBtn").addEventListener("click",function(){if(admin.isSetup){openUpload()}else{openSettings()}});
   document.getElementById("uploadClose").addEventListener("click",closeUpload);
   document.getElementById("submitBtn").addEventListener("click",submitUpload);
   document.getElementById("settingsClose").addEventListener("click",closeSettings);
@@ -737,6 +808,10 @@ function setupEvents(){
 
   setupDrop("dropZone","fFile","fileInfo",onFileSelect);
   setupDrop("coverZone","fCover","coverInfo",onCoverSelect);
+
+  document.getElementById("fTitle").addEventListener("input",function(){var c=document.getElementById("titleCounter");c.textContent=this.value.length+" / 60";c.className="char-counter"+(this.value.length>50?" warn":"")});
+  document.getElementById("fAuthor").addEventListener("input",function(){var c=document.getElementById("authorCounter");c.textContent=this.value.length+" / 40";c.className="char-counter"+(this.value.length>35?" warn":"")});
+  document.getElementById("fDesc").addEventListener("input",function(){var len=this.value.length;var c=document.getElementById("descCounter");c.textContent=len+" / 200";c.className="char-counter"+(len>180?" over":len<20?" warn":"");if(len>=20)clearFieldError("descError")});
 
   document.addEventListener("click",function(e){
     var del=e.target.closest("[data-del]");
