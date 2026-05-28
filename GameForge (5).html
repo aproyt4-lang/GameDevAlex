@@ -750,7 +750,7 @@ function setupEvents(){
   });
 
   document.addEventListener("keydown",function(e){
-    if(e.ctrlKey&&e.shiftKey&&(e.key==="U"||e.key==="u"||e.key==="Ц"||e.key==="ц")){e.preventDefault();openSettings();return}
+    if(e.ctrlKey&&e.shiftKey&&(e.key==="G"||e.key==="g"||e.key==="П"||e.key==="п")){e.preventDefault();openSettings();return}
     if(e.key==="Escape"){
       if(document.getElementById("playerOverlay").classList.contains("open"))closePlayer();
       else if(document.getElementById("uploadSheet").classList.contains("open"))closeUpload();
@@ -776,6 +776,7 @@ function init(){
   detectRepo();
   checkAdmin();
   setupEvents();
+  if(window.location.search.indexOf("admin=1")!==-1){openSettings()}
   loadGames();
   if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(function(){})}
 }
