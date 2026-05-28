@@ -192,7 +192,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
           <p>Перетащите файл сюда или нажмите</p>
           <small>HTML — для браузерных игр (играется прямо на сайте)<br>EXE / APK / ZIP — для скачивания</small>
         </div>
-        <div class="field-hint">Максимум 25 МБ. Для браузерных игр — один HTML файл со всеми стилями и скриптами внутри.</div>
+        <div class="field-hint">Для браузерных игр — один HTML файл со всеми стилями и скриптами внутри.</div>
         <div id="fileInfo" class="file-info" style="display:none"></div>
         <div class="field-error" id="fileError"></div>
       </div>
@@ -604,7 +604,7 @@ function validateUpload(){
   if(desc.length<20)errors.push("Описание: минимум 20 символов (сейчас "+desc.length+" ) — напиши подробнее про игру");
   if(!validateTags(tags))errors.push("Теги: нужно 1-5 тегов через запятую (например: шутер, аркада)");
   if(!selectedFile)errors.push("Файл игры: не выбран. Выбери HTML файл игры или EXE/APK для скачивания");
-  else if(selectedFile.size>25*1024*1024)errors.push("Файл игры: слишком большой ("+(selectedFile.size/1048576).toFixed(1)+" МБ), максимум 25 МБ");
+
   if(!admin.isSetup)errors.push("GitHub токен: не настроен. Нажми \"+\" для настройки");
   if(errors.length>0){
     var msg="<b>Ошибка загрузки — исправь и попробуй снова:</b><br>";
@@ -696,14 +696,7 @@ function onFileSelect(f){
   var ext=f.name.split(".").pop().toLowerCase();
   var isHTML=ext==="html"||ext==="htm";
   var infoEl=document.getElementById("fileInfo");
-  if(f.size>25*1024*1024){
-    selectedFile=null;
-    infoEl.className="file-info error";infoEl.style.display="block";
-    infoEl.textContent=f.name+" ("+sizeStr+") — ОШИБКА: слишком большой (макс 25 МБ)";
-    showFieldError("fileError","Файл больше 25 МБ — GitHub не примет");
-    document.getElementById("dropZone").classList.remove("has-file");
-    showToast("Файл слишком большой (макс 25 МБ)","error");return;
-  }
+
   selectedFile=f;
   infoEl.className="file-info";infoEl.style.display="block";
   var htmlInfo=isHTML?" — браузерная игра, откроется на сайте":" — будет доступен для скачивания";
@@ -911,4 +904,3 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 </script>
 </body>
 </html>
-
