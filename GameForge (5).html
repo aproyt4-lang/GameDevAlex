@@ -203,7 +203,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
           <p>Перетащите обложку или нажмите</p>
           <small>PNG, JPG или WebP</small>
         </div>
-        <div class="field-hint">Минимум <b>500 x 500 px</b>. Максимум 2 МБ. Если не загрузить — сгенерируется автоматически.</div>
+        <div class="field-hint">Минимум <b>500 x 500 px</b>. Максимум 5 МБ. JPG, PNG, WebP. Если не загрузить — сгенерируется автоматически.</div>
         <div id="coverInfo" class="file-info" style="display:none"></div>
         <div class="field-error" id="coverError"></div>
         <div class="cover-preview" id="coverPreview"><img id="coverPreviewImg" src="" alt=""></div>
@@ -684,11 +684,11 @@ function onCoverSelect(f){
     showFieldError("coverError","Неподходящий формат — нужен PNG, JPG или WebP");
     showToast("Обложка должна быть PNG, JPG или WebP","error");return;
   }
-  if(f.size>2*1024*1024){
+  if(f.size>5*1024*1024){
     infoEl.className="file-info error";infoEl.style.display="block";
-    infoEl.textContent=f.name+" ("+(f.size/1048576).toFixed(1)+" МБ) — ОШИБКА: макс 2 МБ";
-    showFieldError("coverError","Обложка слишком большая (макс 2 МБ)");
-    showToast("Обложка слишком большая (макс 2 МБ)","error");return;
+    infoEl.textContent=f.name+" ("+(f.size/1048576).toFixed(1)+" МБ) — ОШИБКА: макс 5 МБ";
+    showFieldError("coverError","Обложка слишком большая (макс 5 МБ)");
+    showToast("Обложка слишком большая (макс 5 МБ)","error");return;
   }
   selectedCover=f;
   infoEl.className="file-info";infoEl.style.display="block";
