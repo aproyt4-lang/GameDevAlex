@@ -237,8 +237,13 @@ main{padding:24px;max-width:1200px;margin:0 auto}
       <label>Название репозитория</label>
       <input type="text" id="sRepo" placeholder="авто">
     </div>
+    <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;background:var(--bg3);font-size:13px;line-height:1.5">
+      <span style="color:var(--text2)">Текущий репозиторий:</span><br>
+      <b id="currentRepoDisplay" style="color:var(--accent);font-size:14px"></b>
+    </div>
     <button type="button" class="submit-btn" id="saveSettingsBtn" style="margin-bottom:8px">Сохранить</button>
-    <button type="button" class="submit-btn" id="testSettingsBtn" style="background:var(--bg3);color:var(--text)">Проверить подключение</button>
+    <button type="button" class="submit-btn" id="testSettingsBtn" style="margin-bottom:8px;background:var(--bg3);color:var(--text)">Проверить подключение</button>
+    <button type="button" class="submit-btn" id="resetSettingsBtn" style="background:rgba(239,68,68,.15);color:var(--danger);font-size:13px;padding:10px">Сбросить все настройки</button>
     <div id="settingsStatus" style="margin-top:12px;font-size:13px;color:var(--text2);text-align:center"></div>
   </div>
 </div>
@@ -321,9 +326,13 @@ function ghApi(method,path,body){
       r.json().then(resolve).catch(reject);
     }).catch(function(err){
       if(err.message&&err.message.indexOf("GitHub")!==-1){reject(err);return}
-      var msg="Сеть недоступна или заблокирована.";
-      if(navigator.onLine===false)msg="Нет интернета — проверь подключение.";
-      reject(new Error(msg+" (проверь токен и подключение к интернету)"));
+      var url="https://api.github.com"+path;
+      var repoInfo=admin.owner+"/"+admin.repo;
+      var msg="Ошибка сети при обращении к GitHub API.\n";
+      msg+="URL: "+url+"\n";
+      msg+="Репозиторий: "+repoInfo+"\n";
+      msg+="Ошибка: "+(err.message||"неизвестна");
+      reject(new Error(msg));
     });
   });
 }
@@ -415,6 +424,8 @@ function openSettings(){
   document.getElementById("sRepo").value=admin.repo;
   document.getElementById("sOwner").placeholder=detected?detected.owner:"";
   document.getElementById("sRepo").placeholder=detected?detected.repo:"";
+  document.getElementById("currentRepoDisplay").textContent=admin.owner&&admin.repo?admin.owner+"/"+admin.repo:"НЕ НАСТРОЕН";
+  document.getElementById("currentRepoDisplay").style.color=admin.owner&&admin.repo?"var(--accent)":"var(--danger)";
   document.getElementById("settingsStatus").textContent="";
   document.getElementById("settingsSheet").classList.add("open");
   document.body.style.overflow="hidden";
@@ -819,6 +830,13 @@ function setupEvents(){
       else{st.innerHTML='<span style="color:var(--danger)">Репозиторий не найден</span>'}
     }).catch(function(e){st.innerHTML='<span style="color:var(--danger)">Ошибка: '+esc(e.message)+'</span>'});
   });
+  document.getElementById("resetSettingsBtn").addEventListener("click",function(){
+    if(!confirm("Сбросить все настройки (токен, репозиторий)?"))return;
+    localStorage.removeItem("gf_token");localStorage.removeItem("gf_owner");localStorage.removeItem("gf_repo");
+    admin.token="";admin.owner="";admin.repo="";admin.isSetup=false;
+    openSettings();
+    showToast("Настройки сброшены","info");
+  });
 
   document.getElementById("searchInput").addEventListener("input",function(){currentSearch=this.value;renderCatalog()});
 
@@ -893,3 +911,4 @@ if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded"
 </script>
 </body>
 </html>
+
