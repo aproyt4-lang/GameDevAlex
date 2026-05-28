@@ -574,13 +574,23 @@ function validateUpload(){
   var author=document.getElementById("fAuthor").value.trim();
   var desc=document.getElementById("fDesc").value.trim();
   var tags=document.getElementById("fTags").value.trim();
-  if(!title||title.length<2){showToast("Название минимум 2 символа","error");return false}
-  if(!author||author.length<2){showToast("Автор минимум 2 символа","error");return false}
-  if(desc.length<20){showFieldError("descError","Описание минимум 20 символов (сейчас "+desc.length+")");showToast("Описание минимум 20 символов","error");return false}
-  if(!validateTags(tags)){showFieldError("tagsError","Нужно 1-5 тегов через запятую");showToast("Нужно 1-5 тегов через запятую","error");return false}
-  if(!selectedFile){showFieldError("fileError","Выберите файл игры");showToast("Выберите файл игры","error");return false}
-  if(selectedFile.size>25*1024*1024){showFieldError("fileError","Файл слишком большой (максимум 25 МБ)");showToast("Файл слишком большой (макс 25 МБ)","error");return false}
-  if(!admin.isSetup){showToast("Сначала настройте GitHub токен — нажмите "+" ","error");return false}
+  var errors=[];
+  if(!title||title.length<2)errors.push("Название: минимум 2 символа (сейчас "+(title.length)+" )");
+  if(!author||author.length<2)errors.push("Автор: минимум 2 символа (сейчас "+(author.length)+" )");
+  if(desc.length<20)errors.push("Описание: минимум 20 символов (сейчас "+desc.length+" ) — напиши подробнее про игру");
+  if(!validateTags(tags))errors.push("Теги: нужно 1-5 тегов через запятую (например: шутер, аркада)");
+  if(!selectedFile)errors.push("Файл игры: не выбран. Выбери HTML файл игры или EXE/APK для скачивания");
+  else if(selectedFile.size>25*1024*1024)errors.push("Файл игры: слишком большой ("+(selectedFile.size/1048576).toFixed(1)+" МБ), максимум 25 МБ");
+  if(!admin.isSetup)errors.push("GitHub токен: не настроен. Нажми \"+\" для настройки");
+  if(errors.length>0){
+    var msg="Ошибка загрузки:\n\n";
+    for(var i=0;i<errors.length;i++){msg+=(i+1)+". "+errors[i]+"\n"}
+    alert(msg);
+    if(desc.length<20)showFieldError("descError","Минимум 20 символов (сейчас "+desc.length+")");
+    if(!validateTags(tags))showFieldError("tagsError","Нужно 1-5 тегов через запятую");
+    if(!selectedFile)showFieldError("fileError","Выбери файл игры (HTML, EXE, APK)");
+    return false;
+  }
   return true;
 }
 function submitUpload(){
