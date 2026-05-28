@@ -383,8 +383,6 @@ function detectRepo(){
 
 function checkAdmin(){
   admin.isSetup=!!(admin.token&&admin.owner&&admin.repo);
-  var btn=document.getElementById("uploadBtn");
-  if(admin.isSetup){btn.classList.remove("hidden")}else{btn.classList.add("hidden")}
 }
 
 function saveAdminConfig(){
