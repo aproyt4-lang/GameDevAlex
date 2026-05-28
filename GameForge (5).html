@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -81,7 +80,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 .drop-zone p{margin-bottom:4px;font-size:14px}
 .drop-zone small{font-size:12px;opacity:.7}
 .drop-zone input{display:none}
-.drop-zone.has-file{border-color:var(--accent);border-style:solid;background:rgba(16,185,129,.05)}.field-hint{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5}.field-error{font-size:11px;color:var(--danger);margin-top:4px;display:none}.field-error.show{display:block}.char-counter{font-size:11px;color:var(--text2);text-align:right;margin-top:2px}.char-counter.warn{color:#f59e0b}.char-counter.over{color:var(--danger)}.cover-preview{margin-top:10px;border-radius:10px;overflow:hidden;max-height:200px;display:none;border:1px solid var(--border)}.cover-preview img{width:100%;height:200px;object-fit:cover}.cover-preview.show{display:block}.cover-preview .cover-warn{padding:8px 12px;font-size:11px;background:rgba(245,158,11,.1);color:#f59e0b;text-align:center}.file-info{padding:6px 0;font-size:13px;color:var(--accent)}.file-info.error{color:var(--danger)}
+.drop-zone.has-file{border-color:var(--accent);border-style:solid;background:rgba(16,185,129,.05)}.field-hint{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5}.field-error{font-size:11px;color:var(--danger);margin-top:4px;display:none}.field-error.show{display:block}.char-counter{font-size:11px;color:var(--text2);text-align:right;margin-top:2px}.char-counter.warn{color:#f59e0b}.char-counter.over{color:var(--danger)}.cover-preview{margin-top:10px;border-radius:10px;overflow:hidden;max-height:200px;display:none;border:1px solid var(--border)}.cover-preview img{width:100%;height:200px;object-fit:cover}.cover-preview.show{display:block}.cover-preview .cover-warn{padding:8px 12px;font-size:11px;background:rgba(245,158,11,.1);color:#f59e0b;text-align:center}.file-info{padding:6px 0;font-size:13px;color:var(--accent)}.file-info.error{color:var(--danger)}.form-group.has-error input,.form-group.has-error textarea,.form-group.has-error select{border-color:var(--danger);background:rgba(239,68,68,.05)}.form-group.has-error .drop-zone{border-color:var(--danger);background:rgba(239,68,68,.05)}
 .submit-btn{width:100%;padding:14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
 .submit-btn:hover{background:var(--accent2)}
 .submit-btn:disabled{opacity:.5;cursor:not-allowed}
@@ -166,7 +165,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 <div class="overlay" id="playerOverlay">
   <div class="player-wrap">
     <button class="player-close" id="playerClose">&times;</button>
-    <iframe id="playerFrame" allow="autoplay; fullscreen; pointer-lock"></iframe>
+    <iframe id="playerFrame" allow="autoplay; fullscreen"></iframe>
   </div>
 </div>
 
@@ -209,6 +208,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
         <div class="cover-preview" id="coverPreview"><img id="coverPreviewImg" src="" alt=""></div>
       </div>
       <button type="button" class="submit-btn" id="submitBtn">Загрузить на сайт</button>
+      <div id="uploadErrors" style="display:none;margin-top:12px;padding:12px;border-radius:10px;background:rgba(239,68,68,.1);border:1px solid var(--danger);font-size:13px;color:var(--danger);line-height:1.6"></div>
       <div class="upload-progress" id="uploadProgress">
         <div id="progressText">Загрузка...</div>
         <div class="bar-bg"><div class="bar-fg" id="progressBar"></div></div>
@@ -229,12 +229,12 @@ main{padding:24px;max-width:1200px;margin:0 auto}
     <div class="form-group"><label>GitHub Token *</label><input type="password" id="sToken" placeholder="ghp_xxxxxxxxxx"></div>
     <div class="form-group">
       <label>Владелец репозитория</label>
-      <input type="text" id="sOwner" placeholder="auto-detect">
-      <small style="font-size:11px;color:var(--text2)">Автоматически определено из URL: <span id="sAutoDetect"></span></small>
+      <input type="text" id="sOwner" placeholder="авто">
+      <small style="font-size:11px;color:var(--text2)">Авто-определение из URL: <span id="sAutoDetect"></span></small>
     </div>
     <div class="form-group">
       <label>Название репозитория</label>
-      <input type="text" id="sRepo" placeholder="auto-detect">
+      <input type="text" id="sRepo" placeholder="авто">
     </div>
     <button type="button" class="submit-btn" id="saveSettingsBtn" style="margin-bottom:8px">Сохранить</button>
     <button type="button" class="submit-btn" id="testSettingsBtn" style="background:var(--bg3);color:var(--text)">Проверить подключение</button>
@@ -310,13 +310,20 @@ function updateThemeIcon(t){
 /* ── GitHub API (admin) ── */
 function ghApi(method,path,body){
   return new Promise(function(resolve,reject){
+    if(!admin.token){reject(new Error("GitHub токен не задан — нажми \"+\" и настрой"));return}
+    if(!admin.owner||!admin.repo){reject(new Error("Репозиторий не указан — нажми \"+\" и настрой"));return}
     var o={method:method,headers:{"Authorization":"Bearer "+admin.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}};
     if(body!==undefined){o.headers["Content-Type"]="application/json";o.body=JSON.stringify(body)}
     fetch("https://api.github.com"+path,o).then(function(r){
       if(r.status===404){resolve(null);return}
-      if(!r.ok){r.text().then(function(t){reject(new Error(r.status+": "+t))}).catch(function(){reject(new Error("HTTP "+r.status))});return}
+      if(!r.ok){r.text().then(function(t){reject(new Error("GitHub ответил ошибкой "+r.status+" . Причина: "+t.substring(0,200)))}).catch(function(){reject(new Error("GitHub ответил ошибкой HTTP "+r.status))});return}
       r.json().then(resolve).catch(reject);
-    }).catch(reject);
+    }).catch(function(err){
+      if(err.message&&err.message.indexOf("GitHub")!==-1){reject(err);return}
+      var msg="Сеть недоступна или заблокирована.";
+      if(navigator.onLine===false)msg="Нет интернета — проверь подключение.";
+      reject(new Error(msg+" (проверь токен и подключение к интернету)"));
+    });
   });
 }
 
@@ -370,15 +377,16 @@ function fileToBase64(file){
 }
 
 /* ── Admin Config ── */
-function detectRepo(){
+function autoDetectRepo(){
   var h=window.location.hostname;
   if(h.endsWith(".github.io")){
-    admin.owner=h.split(".")[0];
+    var owner=h.split(".")[0];
     var p=window.location.pathname.replace(/^\/|\/$/g,"");
-    admin.repo=p||admin.owner+".github.io";
-    return true;
+    var parts=p.split("/");
+    var repo=parts[0]||owner+".github.io";
+    return {owner:owner,repo:repo};
   }
-  return false;
+  return null;
 }
 
 function checkAdmin(){
@@ -398,11 +406,14 @@ function saveAdminConfig(){
 }
 
 function openSettings(){
-  detectRepo();
+  var detected=autoDetectRepo();
+  var detectLabel=detected?detected.owner+"/"+detected.repo:"не определено";
+  document.getElementById("sAutoDetect").textContent=detectLabel;
   document.getElementById("sToken").value=admin.token;
   document.getElementById("sOwner").value=admin.owner;
   document.getElementById("sRepo").value=admin.repo;
-  document.getElementById("sAutoDetect").textContent=admin.owner+"/"+admin.repo;
+  document.getElementById("sOwner").placeholder=detected?detected.owner:"";
+  document.getElementById("sRepo").placeholder=detected?detected.repo:"";
   document.getElementById("settingsStatus").textContent="";
   document.getElementById("settingsSheet").classList.add("open");
   document.body.style.overflow="hidden";
@@ -553,6 +564,7 @@ function resetForm(){
   document.getElementById("coverPreview").classList.remove("show");
   document.getElementById("coverPreview").innerHTML='<img id="coverPreviewImg" src="" alt="">';
   clearFieldError("descError");clearFieldError("tagsError");clearFieldError("fileError");clearFieldError("coverError");
+  document.getElementById("uploadErrors").style.display="none";
   document.getElementById("submitBtn").disabled=false;
   document.getElementById("submitBtn").textContent="Загрузить на сайт";
   document.getElementById("uploadProgress").classList.remove("active");
@@ -565,8 +577,8 @@ function setProgress(pct,text){
   document.getElementById("progressBar").style.width=pct+"%";
 }
 
-function clearFieldError(id){document.getElementById(id).classList.remove("show")}
-function showFieldError(id,msg){var el=document.getElementById(id);if(msg)el.textContent=msg;el.classList.add("show")}
+function clearFieldError(id){var el=document.getElementById(id);el.classList.remove("show");el.closest(".form-group").classList.remove("has-error")}
+function showFieldError(id,msg){var el=document.getElementById(id);if(msg)el.textContent=msg;el.classList.add("show");el.closest(".form-group").classList.add("has-error")}
 function validateTags(tags){if(!tags)return false;var arr=tags.split(",").map(function(t){return t.trim()}).filter(function(t){return t.length>0});return arr.length>=1&&arr.length<=5}
 function validateUpload(){
   clearFieldError("descError");clearFieldError("tagsError");clearFieldError("fileError");clearFieldError("coverError");
@@ -583,12 +595,14 @@ function validateUpload(){
   else if(selectedFile.size>25*1024*1024)errors.push("Файл игры: слишком большой ("+(selectedFile.size/1048576).toFixed(1)+" МБ), максимум 25 МБ");
   if(!admin.isSetup)errors.push("GitHub токен: не настроен. Нажми \"+\" для настройки");
   if(errors.length>0){
-    var msg="Ошибка загрузки:\n\n";
-    for(var i=0;i<errors.length;i++){msg+=(i+1)+". "+errors[i]+"\n"}
-    alert(msg);
+    var msg="<b>Ошибка загрузки — исправь и попробуй снова:</b><br>";
+    for(var i=0;i<errors.length;i++){msg+="<br>"+(i+1)+". "+errors[i]}
+    var el=document.getElementById("uploadErrors");el.innerHTML=msg;el.style.display="block";
+    if(!title||title.length<2)document.getElementById("fTitle").closest(".form-group").classList.add("has-error");
+    if(!author||author.length<2)document.getElementById("fAuthor").closest(".form-group").classList.add("has-error");
     if(desc.length<20)showFieldError("descError","Минимум 20 символов (сейчас "+desc.length+")");
     if(!validateTags(tags))showFieldError("tagsError","Нужно 1-5 тегов через запятую");
-    if(!selectedFile)showFieldError("fileError","Выбери файл игры (HTML, EXE, APK)");
+    if(!selectedFile)showFieldError("fileError","Выбери файл игры");
     return false;
   }
   return true;
@@ -637,7 +651,9 @@ function submitUpload(){
       setProgress(0,"Ошибка");
       document.getElementById("submitBtn").disabled=false;
       document.getElementById("submitBtn").textContent="Загрузить на сайт";
-      showToast("Ошибка: "+e.message,"error");
+      var errEl=document.getElementById("uploadErrors");
+      errEl.innerHTML="<b>Ошибка загрузки на GitHub:</b><br><br>"+esc(e.message)+"<br><br>Возможные причины:<br>1. Неверный GitHub токен<br>2. Нет прав на запись в репозиторий<br>3. Файл слишком большой<br>Нажми \"+\" чтобы проверить настройки токена.";
+      errEl.style.display="block";
       console.error(e);
     });
 }
@@ -816,9 +832,10 @@ function setupEvents(){
   setupDrop("dropZone","fFile","fileInfo",onFileSelect);
   setupDrop("coverZone","fCover","coverInfo",onCoverSelect);
 
-  document.getElementById("fTitle").addEventListener("input",function(){var c=document.getElementById("titleCounter");c.textContent=this.value.length+" / 60";c.className="char-counter"+(this.value.length>50?" warn":"")});
-  document.getElementById("fAuthor").addEventListener("input",function(){var c=document.getElementById("authorCounter");c.textContent=this.value.length+" / 40";c.className="char-counter"+(this.value.length>35?" warn":"")});
+  document.getElementById("fTitle").addEventListener("input",function(){var c=document.getElementById("titleCounter");c.textContent=this.value.length+" / 60";c.className="char-counter"+(this.value.length>50?" warn":"");if(this.value.trim().length>=2)this.closest(".form-group").classList.remove("has-error")});
+  document.getElementById("fAuthor").addEventListener("input",function(){var c=document.getElementById("authorCounter");c.textContent=this.value.length+" / 40";c.className="char-counter"+(this.value.length>35?" warn":"");if(this.value.trim().length>=2)this.closest(".form-group").classList.remove("has-error")});
   document.getElementById("fDesc").addEventListener("input",function(){var len=this.value.length;var c=document.getElementById("descCounter");c.textContent=len+" / 200";c.className="char-counter"+(len>180?" over":len<20?" warn":"");if(len>=20)clearFieldError("descError")});
+  document.getElementById("fTags").addEventListener("input",function(){if(validateTags(this.value.trim()))clearFieldError("tagsError")});
 
   document.addEventListener("click",function(e){
     var del=e.target.closest("[data-del]");
@@ -855,7 +872,13 @@ function init(){
   loadLiked();
   loadAnalytics();
   trackVisit();
-  detectRepo();
+  if(!admin.owner||!admin.repo){
+    var detected=autoDetectRepo();
+    if(detected){
+      if(!admin.owner){admin.owner=detected.owner;localStorage.setItem("gf_owner",admin.owner)}
+      if(!admin.repo){admin.repo=detected.repo;localStorage.setItem("gf_repo",admin.repo)}
+    }
+  }
   checkAdmin();
   setupEvents();
   if(window.location.search.indexOf("admin=1")!==-1){openSettings()}
