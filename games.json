@@ -22,5 +22,17 @@
     "cover": "games/beg-po-platforme-mzkh/cover.png",
     "type": "HTML",
     "createdAt": "2026-05-29T11:59:25.451Z"
+  },
+  {
+    "id": "gmpqwmkrzxri2m1",
+    "title": "Батла Арена",
+    "author": "Саша",
+    "description": "главный герой сражаеться на арене за доблест ьи славу",
+    "tags": "арене рпг мечь",
+    "platform": "all",
+    "path": "games/batla-arena-lfyt/index.html",
+    "cover": "games/batla-arena-lfyt/cover.png",
+    "type": "HTML",
+    "createdAt": "2026-05-29T12:34:50.159Z"
   }
 ]
