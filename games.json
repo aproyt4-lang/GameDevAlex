@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "gmpqup0c87znkvd",
+    "title": "шутер",
+    "author": "Саша",
+    "description": "игра про  стрельбу по роботам в лесу",
+    "tags": "шутер дом лес робот",
+    "platform": "all",
+    "path": "games/shuter-tm0c/index.html",
+    "cover": "games/shuter-tm0c/cover.png",
+    "type": "HTML",
+    "createdAt": "2026-05-29T11:40:44.408Z"
+  }
+]
