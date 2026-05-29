@@ -4181,7 +4181,7 @@ function renderPortfolio(filter) {
         div.onclick = (function(item) { return function() { openProjectModal(item); }; })(p);
         var tagsHtml = '';
         for (var j = 0; j < p.tags.length; j++) {
-            tagsHtml += "<span class="tag">" + p.tags[j] + "</span>";
+            tagsHtml += '<span class="tag">' + p.tags[j] + '</span>';
         }
         div.innerHTML = '<div class="portfolio-preview"><div class="portfolio-type">' + p.type + '</div></div>' +
             '<div class="portfolio-info"><h3 class="portfolio-title">' + p.title + '</h3>' +
