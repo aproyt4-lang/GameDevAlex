@@ -562,7 +562,8 @@ function openEditUpload(id){
   var g=null;for(var i=0;i<games.length;i++){if(games[i].id===id){g=games[i];break}}
   if(!g)return;
   editingGameId=id;
-  resetForm();
+  document.getElementById("uploadSheet").classList.add("open");
+  document.body.style.overflow="hidden";
   document.getElementById("uploadFormTitle").textContent="Обновить игру";
   document.getElementById("submitBtn").textContent="Сохранить изменения";
   document.getElementById("fTitle").value=g.title||"";
@@ -570,9 +571,6 @@ function openEditUpload(id){
   document.getElementById("fDesc").value=g.description||"";
   document.getElementById("fTags").value=g.tags||"";
   document.getElementById("fPlatform").value=g.platform||"all";
-  var ti=document.getElementById("titleCounter");ti.textContent=(g.title||"").length+" / 60";
-  var ai=document.getElementById("authorCounter");ai.textContent=(g.author||"").length+" / 40";
-  var di=document.getElementById("descCounter");di.textContent=(g.description||"").length+" / 200";
   if(g.cover){
     document.getElementById("coverInfo").className="file-info";document.getElementById("coverInfo").style.display="block";
     document.getElementById("coverInfo").textContent="Текущая обложка (загрузи новую чтобы заменить)";
@@ -580,8 +578,6 @@ function openEditUpload(id){
   }
   document.getElementById("fileInfo").className="file-info";document.getElementById("fileInfo").style.display="block";
   document.getElementById("fileInfo").textContent="Выбери новый файл игры (заменишь текущий)";
-  document.getElementById("uploadSheet").classList.add("open");
-  document.body.style.overflow="hidden";
 }
 function closeUpload(){
   document.getElementById("uploadSheet").classList.remove("open");
