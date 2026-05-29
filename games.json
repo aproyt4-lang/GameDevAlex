@@ -10,5 +10,17 @@
     "cover": "games/shuter-tm0c/cover.png",
     "type": "HTML",
     "createdAt": "2026-05-29T11:40:44.408Z"
+  },
+  {
+    "id": "gmpqvd1cbray15j",
+    "title": "бег по платформе",
+    "author": "Саша",
+    "description": "игрок убивает монстров",
+    "tags": "платформер враг игрок платформа",
+    "platform": "all",
+    "path": "games/beg-po-platforme-mzkh/index.html",
+    "cover": "games/beg-po-platforme-mzkh/cover.png",
+    "type": "HTML",
+    "createdAt": "2026-05-29T11:59:25.451Z"
   }
 ]
