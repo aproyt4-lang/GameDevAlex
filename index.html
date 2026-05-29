@@ -9,7 +9,6 @@
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
     <!-- Monaco Editor для кода -->
@@ -608,6 +607,9 @@
             background: var(--bg-hover);
             position: relative;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .portfolio-preview img, .portfolio-preview video {
@@ -620,6 +622,21 @@
         .portfolio-item:hover .portfolio-preview img {
             transform: scale(1.1);
         }
+
+        .portfolio-preview .placeholder-icon {
+            font-size: 3.5rem;
+            color: rgba(255,255,255,0.15);
+            transition: transform 0.5s, color 0.5s;
+        }
+
+        .portfolio-item:hover .portfolio-preview .placeholder-icon {
+            transform: scale(1.15);
+            color: rgba(255,255,255,0.3);
+        }
+
+        .portfolio-preview[data-gradient="game"] { background: linear-gradient(135deg, #1a0533 0%, #0a1628 50%, #1a0a2e 100%); }
+        .portfolio-preview[data-gradient="art"] { background: linear-gradient(135deg, #2d0a3e 0%, #0a1628 50%, #1a2a4e 100%); }
+        .portfolio-preview[data-gradient="model"] { background: linear-gradient(135deg, #0a2e1a 0%, #0a1628 50%, #2e1a0a 100%); }
 
         .portfolio-type {
             position: absolute;
@@ -788,17 +805,37 @@
         .about-avatar {
             width: 100%;
             aspect-ratio: 1;
-            background: var(--bg-card);
+            background: linear-gradient(135deg, #1a0533 0%, #0a1628 40%, #1a0a2e 100%);
             border-radius: 20px;
             border: 1px solid var(--border);
             overflow: hidden;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .about-avatar img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+
+        .about-avatar .avatar-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .about-avatar .avatar-placeholder i {
+            font-size: 5rem;
+            color: rgba(99, 102, 241, 0.3);
+        }
+
+        .about-avatar .avatar-placeholder span {
+            color: var(--text-muted);
+            font-size: 0.9rem;
         }
 
         .about-content h1 {
@@ -1222,9 +1259,13 @@
                         </button>
                         <div class="tts-settings-popup" id="tts-popup">
                             <label>Голос</label>
-                            <select id="tts-voice-select" onchange="tts.setVoice(this.value)"><option>Загрузка...</option></select>
-                            <label>Скорость: <span id="tts-rate-val">1.0</span></label>
-                            <input type="range" min="0.5" max="2" step="0.1" value="1" oninput="tts.setRate(this.value); document.getElementById('tts-rate-val').textContent=this.value">
+                            <select id="tts-voice-select" onchange="SashaTTS.setVoice(this.value)"><option>Загрузка...</option></select>
+                            <label>Скорость: <span id="tts-rate-val">0.9</span></label>
+                            <input type="range" min="0.3" max="2" step="0.05" value="0.92" oninput="SashaTTS.setRate(this.value); document.getElementById('tts-rate-val').textContent=parseFloat(this.value).toFixed(1)">
+                            <label>Тон: <span id="tts-pitch-val">1.0</span></label>
+                            <input type="range" min="0.3" max="2" step="0.05" value="1" oninput="SashaTTS.setPitch(this.value); document.getElementById('tts-pitch-val').textContent=parseFloat(this.value).toFixed(1)">
+                            <label>Громкость: <span id="tts-vol-val">1.0</span></label>
+                            <input type="range" min="0" max="1" step="0.1" value="1" oninput="SashaTTS.setVolume(this.value); document.getElementById('tts-vol-val').textContent=parseFloat(this.value).toFixed(1)">
                         </div>
                         <div class="memory-badge" id="memory-badge" onclick="toggleMemoryPanel()">
                             <i class="fas fa-brain"></i> <span id="memory-count">0 знаний</span>
@@ -1298,7 +1339,7 @@
                 <!-- Games -->
                 <div class="portfolio-item" data-type="games" onclick="openProject('game1')">
                     <div class="portfolio-preview">
-                        <img src="assets/images/games/game1.jpg" alt="Cyber Quest">
+                        <div data-gradient="game" class="placeholder-icon"><i class="fas fa-gamepad"></i></div>
                         <span class="portfolio-type">Игра</span>
                     </div>
                     <div class="portfolio-info">
@@ -1314,7 +1355,7 @@
 
                 <div class="portfolio-item" data-type="games" onclick="openProject('game2')">
                     <div class="portfolio-preview">
-                        <img src="assets/images/games/game2.jpg" alt="Space Shooter">
+                        <div data-gradient="game" class="placeholder-icon"><i class="fas fa-rocket"></i></div>
                         <span class="portfolio-type">Игра</span>
                     </div>
                     <div class="portfolio-info">
@@ -1331,7 +1372,7 @@
                 <!-- Art -->
                 <div class="portfolio-item" data-type="art" onclick="openProject('art1')">
                     <div class="portfolio-preview">
-                        <img src="assets/images/art/art1.jpg" alt="Digital Art">
+                        <div data-gradient="art" class="placeholder-icon"><i class="fas fa-palette"></i></div>
                         <span class="portfolio-type">Арт</span>
                     </div>
                     <div class="portfolio-info">
@@ -1347,7 +1388,7 @@
                 <!-- 3D Models -->
                 <div class="portfolio-item" data-type="models" onclick="openProject('model1')">
                     <div class="portfolio-preview">
-                        <img src="assets/images/models/model1.jpg" alt="3D Character">
+                        <div data-gradient="model" class="placeholder-icon"><i class="fas fa-cube"></i></div>
                         <span class="portfolio-type">3D Модель</span>
                     </div>
                     <div class="portfolio-info">
@@ -1413,7 +1454,10 @@
         <section id="about" class="section">
             <div class="about-grid">
                 <div class="about-avatar">
-                    <img src="assets/images/avatar.jpg" alt="Sasha">
+                    <div class="avatar-placeholder">
+                        <i class="fas fa-user-astronaut"></i>
+                        <span>Sasha AI</span>
+                    </div>
                 </div>
                 
                 <div class="about-content">
@@ -2226,67 +2270,219 @@ var SashaMemory = (function() {
 })();
 
 // ============ SashaTTS ============
-// Text-to-Speech via Web Speech API
+// Realistic Text-to-Speech with prosody, pauses, emotion, SSML-like processing
 var SashaTTS = (function() {
     var enabled = false;
     var utterance = null;
     var voices = [];
+    var allVoices = [];
     var selectedVoice = null;
-    var rate = 1.0;
+    var rate = 0.92;
+    var pitch = 1.0;
+    var volume = 1.0;
+    var isSpeaking = false;
+    var queue = [];
+    var currentEmotion = 'neutral'; // neutral, happy, thinking, error
 
     function init() {
-        if (typeof speechSynthesis !== 'undefined') {
-            loadVoices();
+        if (typeof speechSynthesis === 'undefined') return;
+        loadVoices();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
             speechSynthesis.onvoiceschanged = loadVoices;
         }
+        // Chrome bug fix: voices may load late
+        setTimeout(loadVoices, 500);
+        setTimeout(loadVoices, 1500);
     }
 
     function loadVoices() {
         voices = speechSynthesis.getVoices();
+        if (voices.length === 0) return;
+
+        // Sort: Russian voices first, then by quality hints
+        allVoices = [];
+        var ruPremium = [];
+        var ruStandard = [];
+        var ruOther = [];
+        var enPremium = [];
+        var otherAll = [];
+
+        for (var i = 0; i < voices.length; i++) {
+            var v = voices[i];
+            var name = v.name.toLowerCase();
+            var lang = v.lang.toLowerCase();
+            // Detect premium/high-quality voices
+            var isPremium = (name.indexOf('premium') !== -1 || name.indexOf('enhanced') !== -1 ||
+                name.indexOf('neural') !== -1 || name.indexOf('wavenet') !== -1 ||
+                name.indexOf('natural') !== -1 || name.indexOf('google') !== -1 ||
+                name.indexOf('microsoft') !== -1 || name.indexOf('azure') !== -1 ||
+                name.indexOf('amazon') !== -1);
+
+            if (lang.indexOf('ru') !== -1) {
+                if (isPremium) ruPremium.push(v);
+                else if (name.indexOf('online') !== -1) ruStandard.push(v);
+                else ruOther.push(v);
+            } else if (lang.indexOf('en') !== -1 && isPremium) {
+                enPremium.push(v);
+            } else {
+                otherAll.push(v);
+            }
+        }
+
+        allVoices = ruPremium.concat(ruStandard).concat(ruOther).concat(enPremium).concat(otherAll);
+
+        // Pick best voice
+        if (allVoices.length > 0) {
+            selectedVoice = allVoices[0];
+        }
+
+        // Update UI select
         var select = document.getElementById('tts-voice-select');
         if (select) {
             select.innerHTML = '';
-            var ruVoices = [];
-            var otherVoices = [];
-            for (var i = 0; i < voices.length; i++) {
-                var v = voices[i];
-                if (v.lang.indexOf('ru') !== -1) { ruVoices.push(v); }
-                else { otherVoices.push(v); }
-            }
-            var allVoices = ruVoices.concat(otherVoices);
             for (var i = 0; i < allVoices.length; i++) {
                 var opt = document.createElement('option');
                 opt.value = i;
-                opt.textContent = allVoices[i].name + ' (' + allVoices[i].lang + ')';
+                var label = allVoices[i].name + ' (' + allVoices[i].lang + ')';
+                if (i === 0) label = '★ ' + label;
+                opt.textContent = label;
                 select.appendChild(opt);
             }
-            if (allVoices.length > 0) { selectedVoice = allVoices[0]; }
+        }
+    }
+
+    // Split text into sentences for natural pauses
+    function splitToSentences(text) {
+        var sentences = [];
+        var current = '';
+        for (var i = 0; i < text.length; i++) {
+            current += text[i];
+            var ch = text[i];
+            if (ch === '.' || ch === '!' || ch === '?' || ch === '\n') {
+                if (current.trim().length > 0) {
+                    sentences.push(current.trim());
+                    current = '';
+                }
+            }
+        }
+        if (current.trim().length > 0) {
+            sentences.push(current.trim());
+        }
+        return sentences;
+    }
+
+    // Remove emoji and markdown for clean speech
+    function cleanText(text) {
+        // Remove emoji ranges
+        text = text.replace(/[\u{1F600}-\u{1F64F}]/gu, '');
+        text = text.replace(/[\u{1F300}-\u{1F5FF}]/gu, '');
+        text = text.replace(/[\u{1F680}-\u{1F6FF}]/gu, '');
+        text = text.replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '');
+        text = text.replace(/[\u{2600}-\u{26FF}]/gu, '');
+        text = text.replace(/[\u{2700}-\u{27BF}]/gu, '');
+        text = text.replace(/[\u{FE00}-\u{FE0F}]/gu, '');
+        text = text.replace(/[\u{1F900}-\u{1F9FF}]/gu, '');
+        text = text.replace(/[\u{1FA00}-\u{1FA6F}]/gu, '');
+        text = text.replace(/[\u{1FA70}-\u{1FAFF}]/gu, '');
+        // Remove markdown code blocks
+        text = text.replace(/```[\s\S]*?```/g, ' код ');
+        text = text.replace(/`[^`]+`/g, function(m) { return m.replace(/`/g, ''); });
+        // Remove markdown formatting
+        text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+        text = text.replace(/\*([^*]+)\*/g, '$1');
+        // Remove markdown headers
+        text = text.replace(/^#{1,6}\s+/gm, '');
+        // Clean up multiple spaces
+        text = text.replace(/\s{2,}/g, ' ').trim();
+        return text;
+    }
+
+    // Emotion-based pitch/rate adjustments
+    function getEmotionParams(emotion) {
+        switch(emotion) {
+            case 'happy': return { pitch: 1.15, rate: 1.0 };
+            case 'thinking': return { pitch: 0.95, rate: 0.85 };
+            case 'error': return { pitch: 0.85, rate: 0.9 };
+            case 'excited': return { pitch: 1.2, rate: 1.05 };
+            case 'calm': return { pitch: 0.9, rate: 0.82 };
+            default: return { pitch: pitch, rate: rate };
         }
     }
 
     function speak(text) {
         if (!enabled || typeof speechSynthesis === 'undefined') return;
         speechSynthesis.cancel();
-        utterance = new SpeechSynthesisUtterance(text);
+
+        var cleaned = cleanText(text);
+        if (cleaned.length === 0) return;
+
+        var sentences = splitToSentences(cleaned);
+        var params = getEmotionParams(currentEmotion);
+        queue = sentences.slice();
+        isSpeaking = true;
+        speakNext(params);
+    }
+
+    function speakNext(params) {
+        if (queue.length === 0 || !isSpeaking) {
+            isSpeaking = false;
+            return;
+        }
+
+        var sentence = queue.shift();
+        utterance = new SpeechSynthesisUtterance(sentence);
+
         if (selectedVoice) utterance.voice = selectedVoice;
-        utterance.rate = rate;
-        utterance.pitch = 1;
+        utterance.rate = params.rate;
+        utterance.pitch = params.pitch;
+        utterance.volume = volume;
         utterance.lang = 'ru-RU';
+
+        // Make sentence shorter = slightly faster, longer = slightly slower
+        if (sentence.length > 200) {
+            utterance.rate = Math.max(0.75, params.rate * 0.88);
+        } else if (sentence.length < 30) {
+            utterance.rate = params.rate;
+        }
+
+        utterance.onend = function() {
+            // Natural pause between sentences
+            var pause = sentence.endsWith('!') ? 400 : (sentence.endsWith('?') ? 350 : 250);
+            setTimeout(function() { speakNext(params); }, pause);
+        };
+
+        utterance.onerror = function(e) {
+            if (e.error !== 'interrupted' && e.error !== 'canceled') {
+                console.warn('TTS error:', e.error);
+            }
+            isSpeaking = false;
+        };
+
         speechSynthesis.speak(utterance);
     }
 
     function stop() {
-        if (typeof speechSynthesis !== 'undefined') { speechSynthesis.cancel(); }
+        isSpeaking = false;
+        queue = [];
+        if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
     }
 
     function toggle() { enabled = !enabled; return enabled; }
-    function setVoice(idx) { if (idx >= 0 && idx < voices.length) selectedVoice = voices[idx]; }
-    function setRate(r) { rate = parseFloat(r); }
+    function setVoice(idx) { if (idx >= 0 && idx < allVoices.length) selectedVoice = allVoices[idx]; }
+    function setRate(r) { rate = Math.max(0.3, Math.min(2.0, parseFloat(r))); }
+    function setPitch(p) { pitch = Math.max(0.3, Math.min(2.0, parseFloat(p))); }
+    function setVolume(v) { volume = Math.max(0.0, Math.min(1.0, parseFloat(v))); }
     function isEnabled() { return enabled; }
+    function isSpeakingNow() { return isSpeaking; }
+    function setEmotion(e) { currentEmotion = e; }
+    function getVoiceCount() { return allVoices.length; }
+    function getCurrentVoiceName() { return selectedVoice ? selectedVoice.name : 'Нет голоса'; }
 
     return {
         init: init, speak: speak, stop: stop, toggle: toggle,
-        setVoice: setVoice, setRate: setRate, isEnabled: isEnabled
+        setVoice: setVoice, setRate: setRate, setPitch: setPitch, setVolume: setVolume,
+        isEnabled: isEnabled, isSpeakingNow: isSpeakingNow, setEmotion: setEmotion,
+        getVoiceCount: getVoiceCount, getCurrentVoiceName: getCurrentVoiceName
     };
 })();
 
@@ -2964,7 +3160,7 @@ var SashaAIAgent = (function() {
 
 
 // ============ SashaScene3D ============
-// 3D scene: loads person3dmodel.fbx avatar, particles, data visualization, agent states
+// 3D scene: loads SashaAI.glb avatar, particles, data visualization, agent states
 var SashaScene3D = (function() {
     var scene, camera, renderer, controls;
     var avatar, particles, mixer;
@@ -3053,11 +3249,11 @@ var SashaScene3D = (function() {
     }
 
     function loadAvatar() {
-        var loader = new THREE.FBXLoader();
+        var loader = new THREE.GLTFLoader();
         loader.load(
-            'person3dmodel.fbx',
-            function(object) {
-                avatar = object;
+            'SashaAI.glb',
+            function(gltf) {
+                avatar = gltf.scene;
 
                 // Auto-scale and center the model
                 var box = new THREE.Box3().setFromObject(avatar);
@@ -3084,10 +3280,10 @@ var SashaScene3D = (function() {
                 });
 
                 // Play animations if any
-                if (object.animations && object.animations.length > 0) {
-                    mixer = new THREE.AnimationMixer(object);
-                    for (var i = 0; i < object.animations.length; i++) {
-                        mixer.clipAction(object.animations[i]).play();
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(avatar);
+                    for (var i = 0; i < gltf.animations.length; i++) {
+                        mixer.clipAction(gltf.animations[i]).play();
                     }
                 }
 
@@ -3099,45 +3295,136 @@ var SashaScene3D = (function() {
                 camera.position.set(0, 2, 5);
             },
             function(progress) {
-                // Loading progress (optional: update UI)
                 if (progress.lengthComputable) {
                     var pct = Math.round(progress.loaded / progress.total * 100);
-                    console.log('Loading avatar: ' + pct + '%');
+                    console.log('Loading SashaAI.glb: ' + pct + '%');
                 }
             },
             function(error) {
-                console.error('Error loading person3dmodel.fbx:', error);
-                // Create placeholder if FBX fails
+                console.error('Error loading SashaAI.glb:', error);
                 createPlaceholder();
             }
         );
     }
 
     function createPlaceholder() {
-        // Simple placeholder until real model loads
+        // Placeholder — ждет загрузки SashaAI.glb
         var group = new THREE.Group();
+        var skinColor = 0xd4a574;
+        var clothColor = 0x2d2d4e;
+        var hairColor = 0x1a1a2e;
+        var shoeColor = 0x111122;
 
-        // Head
-        var headGeo = new THREE.SphereGeometry(0.5, 32, 32);
-        var headMat = new THREE.MeshPhongMaterial({ color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.15 });
-        var headMesh = new THREE.Mesh(headGeo, headMat);
-        headMesh.position.y = 2.2;
-        group.add(headMesh);
+        // Голова (человеческая пропорция)
+        var headGeo = new THREE.SphereGeometry(0.28, 32, 32);
+        var headMat = new THREE.MeshPhongMaterial({ color: skinColor, shininess: 30 });
+        var head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 2.05;
+        head.scale.set(1, 1.1, 0.95);
+        group.add(head);
 
-        // Body
-        var bodyGeo = new THREE.CylinderGeometry(0.35, 0.4, 1.2, 16);
-        var bodyMat = new THREE.MeshPhongMaterial({ color: 0x1a1a2e });
-        var bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-        bodyMesh.position.y = 1.2;
-        group.add(bodyMesh);
+        // Волосы
+        var hairGeo = new THREE.SphereGeometry(0.3, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.65);
+        var hairMat = new THREE.MeshPhongMaterial({ color: hairColor });
+        var hair = new THREE.Mesh(hairGeo, hairMat);
+        hair.position.y = 2.1;
+        hair.scale.set(1.02, 1.15, 1.0);
+        group.add(hair);
 
-        // Platform glow ring
-        var ringGeo = new THREE.TorusGeometry(0.8, 0.03, 8, 64);
-        var ringMat = new THREE.MeshPhongMaterial({ color: 0xec4899, emissive: 0xec4899, emissiveIntensity: 0.8 });
+        // Шея
+        var neckGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.15, 12);
+        var neckMat = new THREE.MeshPhongMaterial({ color: skinColor });
+        var neck = new THREE.Mesh(neckGeo, neckMat);
+        neck.position.y = 1.78;
+        group.add(neck);
+
+        // Торс (человеческий - плечи шире)
+        var torsoGeo = new THREE.CylinderGeometry(0.22, 0.18, 0.7, 16);
+        var torsoMat = new THREE.MeshPhongMaterial({ color: clothColor });
+        var torso = new THREE.Mesh(torsoGeo, torsoMat);
+        torso.position.y = 1.35;
+        group.add(torso);
+
+        // Плечи
+        var shoulderGeo = new THREE.SphereGeometry(0.24, 16, 16);
+        var shoulderMat = new THREE.MeshPhongMaterial({ color: clothColor });
+        var shoulders = new THREE.Mesh(shoulderGeo, shoulderMat);
+        shoulders.position.y = 1.6;
+        shoulders.scale.set(1.6, 0.5, 0.8);
+        group.add(shoulders);
+
+        // Левая рука
+        var armGeo = new THREE.CylinderGeometry(0.06, 0.05, 0.65, 10);
+        var armMat = new THREE.MeshPhongMaterial({ color: clothColor });
+        var leftArm = new THREE.Mesh(armGeo, armMat);
+        leftArm.position.set(-0.35, 1.25, 0);
+        leftArm.rotation.z = 0.15;
+        group.add(leftArm);
+
+        // Правая рука
+        var rightArm = new THREE.Mesh(armGeo.clone(), armMat.clone());
+        rightArm.position.set(0.35, 1.25, 0);
+        rightArm.rotation.z = -0.15;
+        group.add(rightArm);
+
+        // Левое предплечье (скин)
+        var forearmGeo = new THREE.CylinderGeometry(0.04, 0.045, 0.5, 10);
+        var forearmMat = new THREE.MeshPhongMaterial({ color: skinColor });
+        var leftFore = new THREE.Mesh(forearmGeo, forearmMat);
+        leftFore.position.set(-0.38, 0.85, 0);
+        leftFore.rotation.z = 0.08;
+        group.add(leftFore);
+
+        var rightFore = new THREE.Mesh(forearmGeo.clone(), forearmMat.clone());
+        rightFore.position.set(0.38, 0.85, 0);
+        rightFore.rotation.z = -0.08;
+        group.add(rightFore);
+
+        // Таз
+        var hipGeo = new THREE.CylinderGeometry(0.2, 0.18, 0.25, 16);
+        var hipMat = new THREE.MeshPhongMaterial({ color: clothColor });
+        var hips = new THREE.Mesh(hipGeo, hipMat);
+        hips.position.y = 0.9;
+        group.add(hips);
+
+        // Левая нога
+        var legGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.7, 12);
+        var legMat = new THREE.MeshPhongMaterial({ color: clothColor });
+        var leftLeg = new THREE.Mesh(legGeo, legMat);
+        leftLeg.position.set(-0.12, 0.45, 0);
+        group.add(leftLeg);
+
+        // Правая нога
+        var rightLeg = new THREE.Mesh(legGeo.clone(), legMat.clone());
+        rightLeg.position.set(0.12, 0.45, 0);
+        group.add(rightLeg);
+
+        // Обувь
+        var shoeGeo = new THREE.BoxGeometry(0.14, 0.08, 0.22);
+        var shoeMat = new THREE.MeshPhongMaterial({ color: shoeColor });
+        var leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
+        leftShoe.position.set(-0.12, 0.04, 0.02);
+        group.add(leftShoe);
+
+        var rightShoe = new THREE.Mesh(shoeGeo.clone(), shoeMat.clone());
+        rightShoe.position.set(0.12, 0.04, 0.02);
+        group.add(rightShoe);
+
+        // Голографическое кольцо под ногами
+        var ringGeo = new THREE.TorusGeometry(0.5, 0.02, 8, 64);
+        var ringMat = new THREE.MeshPhongMaterial({ color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.6, transparent: true, opacity: 0.7 });
         var ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = Math.PI / 2;
         ring.position.y = 0.01;
         group.add(ring);
+
+        // Второе кольцо (розовое)
+        var ring2Geo = new THREE.TorusGeometry(0.35, 0.015, 8, 64);
+        var ring2Mat = new THREE.MeshPhongMaterial({ color: 0xec4899, emissive: 0xec4899, emissiveIntensity: 0.5, transparent: true, opacity: 0.5 });
+        var ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+        ring2.rotation.x = Math.PI / 2;
+        ring2.position.y = 0.01;
+        group.add(ring2);
 
         avatar = group;
         scene.add(avatar);
@@ -3712,6 +3999,7 @@ function sendMessage() {
 
     // Set 3D avatar to thinking state
     if (typeof SashaScene3D !== 'undefined') SashaScene3D.setAgentState('thinking');
+    if (typeof SashaTTS !== 'undefined') SashaTTS.setEmotion('thinking');
     showTyping();
 
     var delay = 300 + Math.random() * 500;
@@ -3719,11 +4007,27 @@ function sendMessage() {
         hideTyping();
         var response = SashaAIAgent.processMessage(text);
 
+        // Determine emotion from response intent
+        var emotion = 'neutral';
+        if (response.intent === 'greeting') emotion = 'happy';
+        else if (response.intent === 'thanks') emotion = 'happy';
+        else if (response.intent === 'positive') emotion = 'excited';
+        else if (response.intent === 'negative') emotion = 'error';
+        else if (response.intent === 'math_request' || response.intent === 'code_request') emotion = 'thinking';
+        else if (response.intent === 'creative') emotion = 'excited';
+        else if (response.intent === 'explain') emotion = 'calm';
+
+        // Set TTS emotion before rendering (TTS triggers in addEnhancedMessage)
+        if (typeof SashaTTS !== 'undefined') SashaTTS.setEmotion(emotion);
+
         // Render enhanced message
         addEnhancedMessage(response);
 
-        // Set 3D avatar to speaking state
-        if (typeof SashaScene3D !== 'undefined') SashaScene3D.setAgentState('speaking');
+        // Set 3D avatar state based on emotion
+        var state3d = 'speaking';
+        if (emotion === 'happy' || emotion === 'excited') state3d = 'happy';
+        else if (emotion === 'error') state3d = 'error';
+        if (typeof SashaScene3D !== 'undefined') SashaScene3D.setAgentState(state3d);
 
         // Trigger 3D visualization for numeric data
         if (response.codeResult) {
@@ -3731,7 +4035,6 @@ function sendMessage() {
                 if (typeof SashaScene3D !== 'undefined') SashaScene3D.visualizeData([response.codeResult.result]);
             }
             if (response.codeResult.steps) {
-                // Math result - maybe visualize the numbers
                 var nums = [];
                 var match = response.codeResult.expression && response.codeResult.expression.match(/\d+\.?\d*/g);
                 if (match) {
@@ -3743,10 +4046,24 @@ function sendMessage() {
             }
         }
 
-        // Return to idle after a delay
-        setTimeout(function() {
+        // Return to idle after speaking ends
+        function returnToIdle() {
             if (typeof SashaScene3D !== 'undefined') SashaScene3D.setAgentState('idle');
-        }, 3000);
+            if (typeof SashaTTS !== 'undefined') SashaTTS.setEmotion('neutral');
+        }
+        if (SashaTTS.isEnabled() && SashaTTS.isSpeakingNow()) {
+            // Wait for TTS to finish, check every 500ms
+            var checkInterval = setInterval(function() {
+                if (!SashaTTS.isSpeakingNow()) {
+                    clearInterval(checkInterval);
+                    setTimeout(returnToIdle, 500);
+                }
+            }, 500);
+            // Safety timeout
+            setTimeout(function() { clearInterval(checkInterval); returnToIdle(); }, 30000);
+        } else {
+            setTimeout(returnToIdle, 3000);
+        }
     }, delay);
 }
 
