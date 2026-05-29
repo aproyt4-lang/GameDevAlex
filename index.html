@@ -9,6 +9,7 @@
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
     <!-- Monaco Editor для кода -->
@@ -2963,18 +2964,22 @@ var SashaAIAgent = (function() {
 
 
 // ============ SashaScene3D ============
-// Enhanced 3D scene with robot avatar, data visualization, agent states
+// 3D scene: loads person3dmodel.fbx avatar, particles, data visualization, agent states
 var SashaScene3D = (function() {
     var scene, camera, renderer, controls;
-    var robot, head, antennaGlow, particles;
-    var leftEye, rightEye, robotBody;
+    var avatar, particles, mixer;
     var agentState = 'idle';
     var vizObjects = [];
     var stateStartTime = 0;
+    var avatarLoaded = false;
+    var avatarScale = 0.01;
+    var clock;
 
     function init() {
         var canvas = document.getElementById('sasha-canvas');
         if (!canvas) return;
+
+        clock = new THREE.Clock();
 
         scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x0a0a1a, 0.08);
@@ -2986,86 +2991,33 @@ var SashaScene3D = (function() {
         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setClearColor(0x0a0a1a);
+        renderer.outputEncoding = THREE.sRGBEncoding;
 
         controls = new THREE.OrbitControls(camera, canvas);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.minDistance = 2;
-        controls.maxDistance = 15;
+        controls.minDistance = 1;
+        controls.maxDistance = 20;
+        controls.target.set(0, 1.5, 0);
 
         // Lights
-        scene.add(new THREE.AmbientLight(0x404060, 0.6));
-        var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        scene.add(new THREE.AmbientLight(0x404060, 0.8));
+
+        var dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
         dirLight.position.set(5, 8, 5);
         scene.add(dirLight);
-        var pinkLight = new THREE.PointLight(0xec4899, 1.2, 20);
+
+        var backLight = new THREE.DirectionalLight(0x6366f1, 0.4);
+        backLight.position.set(-5, 5, -5);
+        scene.add(backLight);
+
+        var pinkLight = new THREE.PointLight(0xec4899, 1.5, 20);
         pinkLight.position.set(-3, 3, 2);
         scene.add(pinkLight);
-        var cyanLight = new THREE.PointLight(0x06b6d4, 1.2, 20);
+
+        var cyanLight = new THREE.PointLight(0x06b6d4, 1.5, 20);
         cyanLight.position.set(3, 3, -2);
         scene.add(cyanLight);
-
-        // Build robot
-        robot = new THREE.Group();
-
-        // Head
-        var headGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
-        var headMat = new THREE.MeshPhongMaterial({ color: 0x6366f1 });
-        head = new THREE.Mesh(headGeo, headMat);
-        head.position.y = 2.5;
-        robot.add(head);
-
-        // Eyes
-        var eyeGeo = new THREE.SphereGeometry(0.15, 16, 16);
-        var eyeMat = new THREE.MeshPhongMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.8 });
-        leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-        leftEye.position.set(-0.3, 2.6, 0.61);
-        robot.add(leftEye);
-        rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-        rightEye.position.set(0.3, 2.6, 0.61);
-        robot.add(rightEye);
-
-        // Body
-        var bodyGeo = new THREE.BoxGeometry(1.4, 1.6, 0.8);
-        var bodyMat = new THREE.MeshPhongMaterial({ color: 0x1a1a2e });
-        robotBody = new THREE.Mesh(bodyGeo, bodyMat);
-        robotBody.position.y = 1.2;
-        robot.add(robotBody);
-
-        // Arms
-        var armGeo = new THREE.BoxGeometry(0.3, 1.2, 0.3);
-        var armMat = new THREE.MeshPhongMaterial({ color: 0x6366f1 });
-        var leftArm = new THREE.Mesh(armGeo, armMat);
-        leftArm.position.set(-0.95, 1.2, 0);
-        robot.add(leftArm);
-        var rightArm = new THREE.Mesh(armGeo, armMat);
-        rightArm.position.set(0.95, 1.2, 0);
-        robot.add(rightArm);
-
-        // Legs
-        var legGeo = new THREE.BoxGeometry(0.35, 1, 0.35);
-        var legMat = new THREE.MeshPhongMaterial({ color: 0x6366f1 });
-        var leftLeg = new THREE.Mesh(legGeo, legMat);
-        leftLeg.position.set(-0.35, -0.1, 0);
-        robot.add(leftLeg);
-        var rightLeg = new THREE.Mesh(legGeo, legMat);
-        rightLeg.position.set(0.35, -0.1, 0);
-        robot.add(rightLeg);
-
-        // Antenna
-        var antCylGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8);
-        var antMat = new THREE.MeshPhongMaterial({ color: 0xec4899 });
-        var antCyl = new THREE.Mesh(antCylGeo, antMat);
-        antCyl.position.set(0, 3.35, 0);
-        robot.add(antCyl);
-
-        var antGlowGeo = new THREE.SphereGeometry(0.12, 16, 16);
-        var antGlowMat = new THREE.MeshPhongMaterial({ color: 0xec4899, emissive: 0xec4899, emissiveIntensity: 1.0 });
-        antennaGlow = new THREE.Mesh(antGlowGeo, antGlowMat);
-        antennaGlow.position.set(0, 3.65, 0);
-        robot.add(antennaGlow);
-
-        scene.add(robot);
 
         // Floor grid
         var grid = new THREE.GridHelper(20, 20, 0x6366f1, 0x1a1a2e);
@@ -3093,8 +3045,103 @@ var SashaScene3D = (function() {
         particles = new THREE.Points(partGeo, partMat);
         scene.add(particles);
 
+        // Load avatar FBX model
+        loadAvatar();
+
         window.addEventListener('resize', onResize);
         animate();
+    }
+
+    function loadAvatar() {
+        var loader = new THREE.FBXLoader();
+        loader.load(
+            'person3dmodel.fbx',
+            function(object) {
+                avatar = object;
+
+                // Auto-scale and center the model
+                var box = new THREE.Box3().setFromObject(avatar);
+                var size = box.getSize(new THREE.Vector3());
+                var center = box.getCenter(new THREE.Vector3());
+
+                // Scale model to fit ~3 units tall
+                var maxDim = Math.max(size.x, size.y, size.z);
+                if (maxDim > 0) {
+                    avatarScale = 3.0 / maxDim;
+                }
+                avatar.scale.set(avatarScale, avatarScale, avatarScale);
+
+                // Center model
+                avatar.position.sub(center.multiplyScalar(avatarScale));
+                avatar.position.y += 1.5;
+
+                // Enable shadows
+                avatar.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                // Play animations if any
+                if (object.animations && object.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(object);
+                    for (var i = 0; i < object.animations.length; i++) {
+                        mixer.clipAction(object.animations[i]).play();
+                    }
+                }
+
+                scene.add(avatar);
+                avatarLoaded = true;
+
+                // Update camera target to model center
+                controls.target.set(0, 1.5, 0);
+                camera.position.set(0, 2, 5);
+            },
+            function(progress) {
+                // Loading progress (optional: update UI)
+                if (progress.lengthComputable) {
+                    var pct = Math.round(progress.loaded / progress.total * 100);
+                    console.log('Loading avatar: ' + pct + '%');
+                }
+            },
+            function(error) {
+                console.error('Error loading person3dmodel.fbx:', error);
+                // Create placeholder if FBX fails
+                createPlaceholder();
+            }
+        );
+    }
+
+    function createPlaceholder() {
+        // Simple placeholder until real model loads
+        var group = new THREE.Group();
+
+        // Head
+        var headGeo = new THREE.SphereGeometry(0.5, 32, 32);
+        var headMat = new THREE.MeshPhongMaterial({ color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.15 });
+        var headMesh = new THREE.Mesh(headGeo, headMat);
+        headMesh.position.y = 2.2;
+        group.add(headMesh);
+
+        // Body
+        var bodyGeo = new THREE.CylinderGeometry(0.35, 0.4, 1.2, 16);
+        var bodyMat = new THREE.MeshPhongMaterial({ color: 0x1a1a2e });
+        var bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        bodyMesh.position.y = 1.2;
+        group.add(bodyMesh);
+
+        // Platform glow ring
+        var ringGeo = new THREE.TorusGeometry(0.8, 0.03, 8, 64);
+        var ringMat = new THREE.MeshPhongMaterial({ color: 0xec4899, emissive: 0xec4899, emissiveIntensity: 0.8 });
+        var ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.01;
+        group.add(ring);
+
+        avatar = group;
+        scene.add(avatar);
+        avatarLoaded = true;
     }
 
     function onResize() {
@@ -3108,40 +3155,10 @@ var SashaScene3D = (function() {
     function setAgentState(state) {
         agentState = state;
         stateStartTime = Date.now();
-
-        // Change robot appearance based on state
-        if (!robotBody) return;
-        switch(state) {
-            case 'thinking':
-                robotBody.material.color.setHex(0x1a1a2e);
-                if (antennaGlow) antennaGlow.material.color.setHex(0xf59e0b);
-                if (antennaGlow) antennaGlow.material.emissive.setHex(0xf59e0b);
-                break;
-            case 'speaking':
-                robotBody.material.color.setHex(0x1a1a2e);
-                if (antennaGlow) antennaGlow.material.color.setHex(0x22c55e);
-                if (antennaGlow) antennaGlow.material.emissive.setHex(0x22c55e);
-                break;
-            case 'happy':
-                robotBody.material.color.setHex(0x252542);
-                if (antennaGlow) antennaGlow.material.color.setHex(0xec4899);
-                if (antennaGlow) antennaGlow.material.emissive.setHex(0xec4899);
-                break;
-            case 'error':
-                robotBody.material.color.setHex(0x3a1a1a);
-                if (antennaGlow) antennaGlow.material.color.setHex(0xef4444);
-                if (antennaGlow) antennaGlow.material.emissive.setHex(0xef4444);
-                break;
-            default: // idle
-                robotBody.material.color.setHex(0x1a1a2e);
-                if (antennaGlow) antennaGlow.material.color.setHex(0xec4899);
-                if (antennaGlow) antennaGlow.material.emissive.setHex(0xec4899);
-                break;
-        }
     }
 
     function visualizeData(data) {
-        if (!scene || !robot) return;
+        if (!scene) return;
         // Clear previous viz
         for (var i = 0; i < vizObjects.length; i++) {
             scene.remove(vizObjects[i]);
@@ -3187,51 +3204,42 @@ var SashaScene3D = (function() {
 
     function animate() {
         requestAnimationFrame(animate);
-        if (!robot || !particles) return;
+        if (!particles) return;
 
         var t = Date.now() * 0.001;
-        var stateDuration = (Date.now() - stateStartTime) / 1000;
 
-        // Robot animation based on state
-        switch(agentState) {
-            case 'thinking':
-                // Fast head bob
-                if (head) head.position.y = 2.5 + Math.sin(t * 8) * 0.1;
-                robot.rotation.y = Math.sin(t * 1.5) * 0.2;
-                break;
-            case 'speaking':
-                // Glow pulse
-                if (antennaGlow && antennaGlow.material) {
-                    antennaGlow.material.emissiveIntensity = 0.5 + Math.sin(t * 6) * 0.5;
-                }
-                if (head) head.position.y = 2.5 + Math.sin(t * 4) * 0.04;
-                robot.rotation.y = Math.sin(t * 0.8) * 0.15;
-                break;
-            case 'happy':
-                // Bounce
-                if (robot) robot.position.y = Math.abs(Math.sin(t * 4)) * 0.3;
-                if (head) head.position.y = 2.5 + Math.sin(t * 3) * 0.08;
-                robot.rotation.y = Math.sin(t * 2) * 0.2;
-                break;
-            case 'error':
-                // Red glow pulse, shake
-                if (antennaGlow && antennaGlow.material) {
-                    antennaGlow.material.emissiveIntensity = 0.3 + Math.sin(t * 10) * 0.7;
-                }
-                robot.rotation.z = Math.sin(t * 15) * 0.05;
-                if (head) head.position.y = 2.5;
-                break;
-            default: // idle
-                robot.position.y = 0;
-                robot.rotation.y = Math.sin(t * 0.5) * 0.15;
-                robot.rotation.z = 0;
-                if (head) head.position.y = 2.5 + Math.sin(t * 2) * 0.05;
-                break;
+        // Update animation mixer (FBX animations)
+        if (mixer) {
+            var delta = clock ? clock.getDelta() : 0.016;
+            mixer.update(delta);
         }
 
-        // Antenna glow pulse (for non-speaking states)
-        if (agentState !== 'speaking' && agentState !== 'error' && antennaGlow && antennaGlow.material) {
-            antennaGlow.material.emissiveIntensity = 0.5 + Math.sin(t * 3) * 0.5;
+        // Avatar animation based on agent state
+        if (avatar && avatarLoaded) {
+            switch(agentState) {
+                case 'thinking':
+                    avatar.rotation.y = Math.sin(t * 1.5) * 0.3;
+                    avatar.position.y = Math.sin(t * 3) * 0.05;
+                    break;
+                case 'speaking':
+                    avatar.rotation.y = Math.sin(t * 0.8) * 0.2;
+                    avatar.position.y = Math.sin(t * 5) * 0.02;
+                    break;
+                case 'happy':
+                    avatar.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
+                    avatar.rotation.y = Math.sin(t * 2) * 0.25;
+                    break;
+                case 'error':
+                    avatar.rotation.z = Math.sin(t * 15) * 0.03;
+                    avatar.position.y = 0;
+                    avatar.rotation.y = 0;
+                    break;
+                default: // idle
+                    avatar.position.y = Math.sin(t * 1.5) * 0.03;
+                    avatar.rotation.y = Math.sin(t * 0.4) * 0.15;
+                    avatar.rotation.z = 0;
+                    break;
+            }
         }
 
         // Particles float up
@@ -4372,20 +4380,3 @@ document.addEventListener('DOMContentLoaded', function() {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
