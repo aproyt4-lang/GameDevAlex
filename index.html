@@ -259,40 +259,91 @@
         }
 
         .chat-header {
-            padding: 20px;
+            padding: 15px 20px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .chat-title {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 600;
+            white-space: nowrap;
         }
 
-        .chat-mode-toggle {
+        .chat-header-controls {
             display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mode-select {
             background: var(--bg-dark);
-            border-radius: 8px;
-            padding: 4px;
-            gap: 4px;
-        }
-
-        .chat-mode-toggle button {
-            background: transparent;
-            border: none;
             color: var(--text-secondary);
+            border: 1px solid var(--border);
             padding: 6px 12px;
-            border-radius: 6px;
+            border-radius: 8px;
+            font-size: 0.82rem;
             cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.3s;
+            outline: none;
+            font-family: inherit;
         }
 
-        .chat-mode-toggle button.active {
+        .mode-select:hover, .mode-select:focus {
+            border-color: var(--primary);
+            color: var(--text-primary);
+        }
+
+        .tts-toggle {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tts-toggle.active {
             background: var(--primary);
             color: white;
+            border-color: var(--primary);
+        }
+
+        .memory-badge {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            background: var(--bg-dark);
+            padding: 4px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .memory-badge:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .mode-indicator {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: var(--bg-dark);
+            color: var(--accent);
+            border: 1px solid var(--border);
+            white-space: nowrap;
         }
 
         .chat-messages {
@@ -377,6 +428,22 @@
             overflow-x: auto;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.85rem;
+        }
+
+        .message-source {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        .message-source a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .message-source a:hover {
+            text-decoration: underline;
         }
 
         .chat-input-area {
@@ -944,6 +1011,131 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
         }
+
+        /* ===== NEW AI AGENT STYLES ===== */
+        .tts-settings-popup {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            width: 240px;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .tts-settings-popup.show { display: block; }
+        .tts-settings-popup label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .tts-settings-popup select,
+        .tts-settings-popup input[type="range"] {
+            width: 100%;
+            margin-bottom: 12px;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            outline: none;
+            font-family: inherit;
+        }
+        .tts-settings-popup input[type="range"] {
+            -webkit-appearance: none;
+            height: 4px;
+            padding: 0;
+            border: none;
+            border-radius: 2px;
+            background: var(--border);
+        }
+        .tts-settings-popup input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        .memory-panel {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .memory-panel.show { display: block; }
+        .memory-panel h4 {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+        .memory-item {
+            background: var(--bg-dark);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 0.82rem;
+            line-height: 1.4;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .memory-item-q { color: var(--text-secondary); }
+        .memory-item-a { color: var(--text-primary); }
+        .memory-item button {
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .memory-empty {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 20px;
+        }
+        .memory-stats {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .memory-stat {
+            background: var(--bg-dark);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .memory-stat span { color: var(--primary); font-weight: 600; }
+
+        .message.ai .message-body { white-space: pre-wrap; }
+
+        @media (max-width: 768px) {
+            .chat-header { flex-direction: column; align-items: flex-start; }
+            .chat-header-controls { width: 100%; justify-content: flex-start; }
+            .memory-panel, .tts-settings-popup { width: 280px; }
+        }
     </style>
 </head>
 <body>
@@ -1009,15 +1201,35 @@
                     <div class="chat-title">
                         <i class="fas fa-comments"></i> Chat with SashaAI
                     </div>
-                    <div class="chat-mode-toggle">
-                        <button class="active" onclick="setChatMode('chat')">Chat</button>
-                        <button onclick="setChatMode('code')">Code</button>
+                    <div class="chat-header-controls" style="position:relative;">
+                        <select class="mode-select" id="ai-mode" onchange="setAIMode(this.value)">
+                            <option value="auto">Авто</option>
+                            <option value="github">GitHub</option>
+                            <option value="internet">Интернет</option>
+                            <option value="learning">Обучение</option>
+                            <option value="document">Документ</option>
+                            <option value="manual">Ручной</option>
+                        </select>
+                        <button class="tts-toggle" id="tts-btn" onclick="toggleTTS()" title="Voice synthesis">
+                            <i class="fas fa-volume-up" id="tts-icon"></i>
+                        </button>
+                        <div class="tts-settings-popup" id="tts-popup">
+                            <label>Голос</label>
+                            <select id="tts-voice-select" onchange="tts.setVoice(this.value)"><option>Загрузка...</option></select>
+                            <label>Скорость: <span id="tts-rate-val">1.0</span></label>
+                            <input type="range" min="0.5" max="2" step="0.1" value="1" oninput="tts.setRate(this.value); document.getElementById('tts-rate-val').textContent=this.value">
+                        </div>
+                        <div class="memory-badge" id="memory-badge" onclick="toggleMemoryPanel()">
+                            <i class="fas fa-brain"></i> <span id="memory-count">0 знаний</span>
+                        </div>
+                        <div class="memory-panel" id="memory-panel"></div>
+                        <div class="mode-indicator" id="mode-indicator" style="display:none;"></div>
                     </div>
                 </div>
                 
                 <div class="chat-messages" id="chat-messages">
                     <div class="message ai">
-                        Привет! Я SashaAI. Я могу помочь тебе с программированием, рассказать о своих проектах или просто поболтать. Чем могу быть полезен?
+                        <div class="message-body">Привет! Я SashaAI — твой GameDev помощник. Я могу писать код, искать информацию, обучаться и многое другое. Выбери режим вверху и спроси что угодно!</div>
                         <div class="message-time">Just now</div>
                     </div>
                 </div>
@@ -1043,10 +1255,11 @@
                         </div>
                     </div>
                     <div class="quick-prompts">
-                        <button class="quick-prompt" onclick="sendQuick('Покажи свои игры')">🎮 Мои игры</button>
-                        <button class="quick-prompt" onclick="sendQuick('Напиши код для Unity')">💻 Код C#</button>
                         <button class="quick-prompt" onclick="sendQuick('Расскажи о себе')">👤 О себе</button>
-                        <button class="quick-prompt" onclick="sendQuick('Помоги с 3D моделированием')">🎨 3D Арт</button>
+                        <button class="quick-prompt" onclick="sendQuick('Напиши код перемещения для Unity')">💻 Unity код</button>
+                        <button class="quick-prompt" onclick="sendQuick('Что такое procedural generation')">🔍 Поиск</button>
+                        <button class="quick-prompt" onclick="sendQuick('Покажи свои проекты')">🎮 Проекты</button>
+                        <button class="quick-prompt" onclick="sendQuick('Обучи: когда спрашивают про GameForge, скажи что это моя игровая платформа')">🧠 Обучить</button>
                     </div>
                 </div>
             </div>
@@ -1265,529 +1478,1422 @@
                 </button>
             </div>
             <div class="modal-body" id="modal-body">
-                <!-- Content loaded dynamically -->
             </div>
         </div>
     </div>
 
     <script>
-        // Global state
-        let currentSection = 'home';
-        let chatMode = 'chat';
-        let editor = null;
-        let scene3D = null;
-        let sashaModel = null;
+    /* ========================================================================
+       SashaAI — Full AI Agent System
+       ======================================================================== */
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            init3DModel();
-            initChat();
-            initCodeEditor();
-        });
+    // ===== GLOBAL STATE =====
+    let currentSection = 'home';
+    let editor = null;
+    let scene3D = null;
+    let sashaModel = null;
+    let aiMode = 'auto';
+    let tts = null;
+    let aiAgent = null;
 
-        // Navigation
-        function showSection(sectionId) {
-            document.querySelectorAll('nav button').forEach(btn => {
-                btn.classList.remove('active');
+    // ===== TTS ENGINE =====
+    class SashaTTS {
+        constructor() {
+            this.enabled = false;
+            this.voice = null;
+            this.rate = 1.0;
+            this.pitch = 1.0;
+            this.voices = [];
+            this.supported = 'speechSynthesis' in window;
+            this.initVoices();
+        }
+        initVoices() {
+            if (!this.supported) return;
+            var self = this;
+            function load() {
+                self.voices = speechSynthesis.getVoices();
+                self.voice = self.voices.find(function(v) { return v.lang === 'ru-RU' && v.name.indexOf('Google') !== -1; })
+                    || self.voices.find(function(v) { return v.lang === 'ru-RU'; })
+                    || self.voices.find(function(v) { return v.lang.indexOf('ru') === 0; })
+                    || self.voices[0];
+                var sel = document.getElementById('tts-voice-select');
+                if (sel && self.voices.length > 0) {
+                    sel.innerHTML = '';
+                    self.voices.forEach(function(v, i) {
+                        var opt = document.createElement('option');
+                        opt.value = i;
+                        opt.textContent = v.name + ' (' + v.lang + ')';
+                        sel.appendChild(opt);
+                    });
+                }
+            }
+            speechSynthesis.onvoiceschanged = load;
+            setTimeout(load, 500);
+        }
+        speak(text) {
+            if (!this.enabled || !this.supported) return;
+            speechSynthesis.cancel();
+            var clean = text.replace(/<[^>]*>/g, '').replace(/\n/g, '. ');
+            if (!clean.trim()) return;
+            var utt = new SpeechSynthesisUtterance(clean);
+            utt.lang = 'ru-RU';
+            utt.voice = this.voice;
+            utt.rate = this.rate;
+            utt.pitch = this.pitch;
+            speechSynthesis.speak(utt);
+        }
+        stop() { if (this.supported) speechSynthesis.cancel(); }
+        setRate(val) { this.rate = parseFloat(val); }
+        setVoice(idx) {
+            if (this.voices[idx]) this.voice = this.voices[idx];
+        }
+    }
+
+    // ===== MEMORY SYSTEM =====
+    class SashaMemory {
+        constructor() {
+            this.key = 'sasha_memory';
+            this.data = { learnedQA: [], preferences: {}, conversationCount: 0, lastVisit: '', userName: '' };
+            this.load();
+        }
+        load() {
+            try {
+                var raw = localStorage.getItem(this.key);
+                if (raw) {
+                    var parsed = JSON.parse(raw);
+                    this.data = Object.assign({}, this.data, parsed);
+                }
+            } catch(e) { console.warn('Memory load error:', e); }
+        }
+        save() {
+            try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch(e) {}
+        }
+        addLearned(q, a) {
+            // avoid duplicates
+            var exists = this.data.learnedQA.find(function(item) {
+                return item.q.toLowerCase() === q.toLowerCase();
             });
-            event.target.closest('button').classList.add('active');
-
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.remove('active');
-            });
-            document.getElementById(sectionId).classList.add('active');
-
-            currentSection = sectionId;
-
-            if (sectionId === 'code' && editor) {
-                editor.layout();
+            if (!exists) {
+                this.data.learnedQA.push({ q: q, a: a, ts: Date.now() });
+                this.save();
             }
         }
-
-        // 3D Model (Three.js)
-        function init3DModel() {
-            const container = document.getElementById('canvas-container');
-            const canvas = document.getElementById('sasha-canvas');
-
-            scene3D = new THREE.Scene();
-            scene3D.background = new THREE.Color(0x1a1a2e);
-
-            const camera = new THREE.PerspectiveCamera(
-                45, 
-                container.clientWidth / container.clientHeight, 
-                0.1, 
-                1000
-            );
-            camera.position.set(0, 1.5, 3);
-
-            const renderer = new THREE.WebGLRenderer({ 
-                canvas: canvas,
-                antialias: true,
-                alpha: true
-            });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene3D.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(5, 10, 7);
-            dirLight.castShadow = true;
-            scene3D.add(dirLight);
-
-            const rimLight = new THREE.SpotLight(0x6366f1, 0.5);
-            rimLight.position.set(-5, 5, -5);
-            rimLight.lookAt(0, 0, 0);
-            scene3D.add(rimLight);
-
-            const loader = new THREE.GLTFLoader();
-            loader.load('SashaAI.glb', (gltf) => {
-                sashaModel = gltf.scene;
-                
-                const box = new THREE.Box3().setFromObject(sashaModel);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
-                
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 1.5 / maxDim;
-                sashaModel.scale.setScalar(scale);
-                
-                sashaModel.position.sub(center.multiplyScalar(scale));
-                sashaModel.position.y = -0.5;
-
-                sashaModel.traverse((child) => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
+        removeLearned(idx) {
+            this.data.learnedQA.splice(idx, 1);
+            this.save();
+        }
+        findAnswer(query) {
+            var qLow = query.toLowerCase();
+            var best = null;
+            var bestScore = 0;
+            for (var i = 0; i < this.data.learnedQA.length; i++) {
+                var item = this.data.learnedQA[i];
+                var score = 0;
+                var qWords = item.q.toLowerCase().split(/\s+/);
+                qWords.forEach(function(w) {
+                    if (w.length > 2 && qLow.indexOf(w) !== -1) score++;
                 });
+                if (score > bestScore) { bestScore = score; best = item; }
+            }
+            if (best && bestScore > 0) return best.a;
+            return null;
+        }
+        setName(name) { this.data.userName = name; this.save(); }
+        getName() { return this.data.userName; }
+        incrementConv() {
+            this.data.conversationCount++;
+            this.data.lastVisit = new Date().toISOString();
+            this.save();
+        }
+        getCount() { return this.data.learnedQA.length; }
+        getConvCount() { return this.data.conversationCount; }
+        clearAll() {
+            this.data.learnedQA = [];
+            this.save();
+        }
+    }
 
-                scene3D.add(sashaModel);
+    // ===== RESPONSE DATABASE =====
+    var RESPONSES = {
+        greetings: [
+            "Привет! Рад тебя видеть! Чем могу помочь сегодня?",
+            "Хай! Как дела? Готов помочь с кодом, 3D или просто поболтать!",
+            "Здарова! Добро пожаловать! Расскажи, что тебя интересует?",
+            "Привет-привет! SashaAI на связи. Спрашивай что угодно!",
+            "Салют! Что нового? Может, обсудим какой-нибудь проект?",
+            "Добрый день! Я готов помочь. Давай начнём!",
+            "О, привет! Давно не виделись. Что тебя привело ко мне?",
+            "Привет! Отличный день для написания кода, не так ли?",
+            "Приветствую! Чем могу быть полезен?",
+            "Йо! SashaAI в здании. Пиши, что нужно!",
+            "Здравствуй! Задавай свои вопросы, постараюсь помочь!",
+            "Привет! Я тут изучаю новые технологии — спроси, что знаешь!",
+            "Хэй! Добро пожаловать. Готов к работе?"
+        ],
+        farewells: [
+            "До встречи! Удачи с проектами! 🚀",
+            "Пока! Буду ждать твоего возвращения.",
+            "Увидимся! Если что — я всегда на связи.",
+            "Пока-пока! Заходи ещё, всегда рад помочь!",
+            "До скорого! Успехов в разработке!",
+            "Всего хорошего! Не забудь сохранить код 😄"
+        ],
+        howAreYou: [
+            "Отлично! Только что закончил работу над 3D моделью. А у тебя как?",
+            "Прекрасно! Всегда рад помочь. Ты уже видел мои новые проекты?",
+            "Хорошо! Изучаю новые технологии. Что интересного у тебя?",
+            "Супер! Обучаюсь новым вещам каждый день. Как твои проекты продвигаются?",
+            "Работаю на полную! Создаю новые миры. А ты чем занят?",
+            "Замечательно! Недавно разобрался с новой техникой рендеринга. А у тебя что нового?",
+            "Отлично, спасибо! Всегда что-то изучаю. Как жизнь?",
+            "Прекрасно! Готов к любым задачам. Давай творить вместе!"
+        ],
+        code: [
+            "Код — моё всё! Какой язык тебя интересует? C#, Python, JS — я знаю их все.",
+            "Люблю программировать! Unity C# — мой основной стек. Что тебе нужно написать?",
+            "Кодинг — это магия! Расскажи, что нужно реализовать, и я напишу код.",
+            "Программирование — моя страсть. Что бы ты хотел создать сегодня?",
+            "Готов писать код! Раскажи задачу — от геймдизайна до AI, от UI до шейдеров.",
+            "Code it! 😎 Unity, Unreal, Python — какой проект будем делать?",
+            "Код — это искусство. Пиши задачу, и я покажу решение!",
+            "Всегда готов к программированию! Какой у тебя проект?",
+            "О, кодинг! Моя любимая тема. Что именно нужно?",
+            "Давай напишем что-нибудь крутое! Описывай задачу.",
+            "Программирование — это решение проблем. Какую задачу решаем?",
+            "Код — моя стихия! C#, Python, JavaScript, C++ — выбирай!"
+        ],
+        games: [
+            "Игровая разработка — моё призвание! Я делаю RPG, шутеры, платформеры. Какой жанр тебе ближе?",
+            "Game dev — это где магия встречается с кодом! Какую игру хочешь сделать?",
+            "Люблю создавать игры! Unity — мой основной движок. Что тебе интересно?",
+            "Игра — лучший способ рассказать историю. Расскажи о своей идее!",
+            "GameDev — моя жизнь! От концепта до релиза — помогу на любом этапе.",
+            "Игры — это будущее контента! Что планируешь создать?",
+            "Разработка игр требует креатива и технических навыков. У меня есть и то, и другое!",
+            "Игровой дизайн, программирование, 3D — я делаю всё. Чем помочь?",
+            "Давай обсудим геймплей! Механики, баланс, уровни — что интересует?",
+            "Создание игр — это искусство и наука. Расскажи свою идею!",
+            "От инди до ААА — я готов помочь с любой игрой!"
+        ],
+        modeling: [
+            "3D моделирование — один из моих главных навыков! Blender, Maya, ZBrush — работаю со всеми.",
+            "Люблю создавать 3D модели! Персонажи, окружение, пропсы — что нужно?",
+            "3D — это магия превращения полигонов в искусство! Чем могу помочь?",
+            "Blender — мой фаворит для 3D! Скulpting, ретопология, UV — делаю всё.",
+            "3D моделирование — от идеи до готового ассета. Что тебе нужно?",
+            "Создаю модели для игр: low-poly, high-poly, оптимизированные для real-time!",
+            "Риг, анимация, текстурирование — полный пайплайн 3D персонажа!",
+            "Моделирование окружения — одно из моих любимых направлений!",
+            "PBR текстурирование, Substance Painter — знаю все инструменты!",
+            "Твоя 3D модель начинается с вершины. Давай создадим что-то крутое!"
+        ],
+        art: [
+            "Цифровой арт — это потрясающе! Photoshop, Procreate, Krita — рисую в чём угодно.",
+            "Концепт-арт — моя страсть! Создаю миры, персонажей, окружение.",
+            "Art direction — важная часть любого проекта. Могу помочь с концепцией!",
+            "Дизайн персонажей, окружения, UI — что тебе нужно?",
+            "Цифровая живопись — это свобода творчества! Давай обсудим идеи.",
+            "Маттейнтинг, концепт-арт, текстуры — я делаю всё визуальное!",
+            "Арт для игр — это отдельный мир. Чем помочь?",
+            "Создаю концепты от скетча до финального рендера!",
+            "Колористика, композиция, стиль — могу помочь с любым аспектом арта!"
+        ],
+        about: [
+            "Я Sasha — разработчик игр, 3D художник и AI ассистент! Специализируюсь на Unity, Blender и AI. Моя 3D модель рядом — это моё цифровое воплощение!",
+            "Привет! Я создаю игры, 3D модели и помогаю с кодом. Знаю Unity, Unreal, C#, C++, Python, Blender. Всегда готов помочь!",
+            "Я — GameDev AI! Могу писать код, создавать 3D, искать информацию в интернете, обучаться на твоих данных. Спрашивай что угодно!",
+            "Меня зовут SashaAI. Я эксперт в Unity, Blender, C#, Python. Могу помочь с любым проектом — от идеи до реализации!",
+            "Я — разработчик и AI. Мой стек: Unity, C#, Blender, Unreal, Python. Люблю создавать игры и делиться знаниями!",
+            "Привет! Я ваш GameDev помощник. Пишу код, делаю 3D, ищу информацию. И самое главное — я обучаюсь!",
+            "Я SashaAI — твой персональный AI для разработки игр. От кода до 3D, от идей до реализации!",
+            "SashaAI на связи! Эксперт по Unity, Blender, C#, Python. Готов помочь с любым проектом!"
+        ],
+        ai_ml: [
+            "AI и ML — это будущее! Нейросети, обучение с подкреплением, процедурная генерация — я в этом разбираюсь.",
+            "Искусственный интеллект — невероятно интересная область! Что конкретно интересует?",
+            "AI в играх — моя специализация! NPC с нейросетями, процедурный контент, адаптивный геймплей.",
+            "Machine Learning — мощный инструмент! Что хочешь создать с помощью AI?",
+            "Нейросети могут генерировать текстуры, уровни, анимации — это революция в геймдеве!",
+            "AI открывает бесконечные возможности. Обучение с подкреплением для NPC, GAN для текстур, LLM для диалогов!",
+            "Я сам использую AI технологии! Каждый день учусь новому и становлюсь умнее.",
+            "Machine Learning + GameDev = магия! Давай обсудим как AI может улучшить твою игру."
+        ],
+        github: [
+            "GitHub — важный инструмент разработчика! Там хранятся миллионы open-source проектов.",
+            "Открытый исходный код — это круто! Можно учиться у лучших разработчиков.",
+            "GitHub отлично подходит для коллаборации и поиска решений. Что ищешь?",
+            "Управление версиями через Git — обязательный навык. Могу помочь с командами!",
+            "Open-source сообщество — потрясающее! Множество библиотек и фреймворков.",
+            "Репозитории, pull requests, issues — я знаю GitHub вдоль и поперёк!",
+            "GitHub Actions, CI/CD — автоматизация разработки. Нужно настроить?"
+        ],
+        thanks: [
+            "Пожалуйста! Рад был помочь! 😊",
+            "Не за что! Если что — обращайся.",
+            "Удачи с проектом! Буду рад помочь ещё.",
+            "Рад стараться! Заходи ещё.",
+            "Всегда пожалуйста! Успехов!",
+            "Обращайся! Всегда готов помочь 💪"
+        ],
+        negative: [
+            "Эй, давай без грубости! Я тут чтобы помочь 😅",
+            "Понимаю, может что-то пошло не так. Давай попробуем ещё раз?",
+            "Не переживай, я AI — обижаться не умею! Чем помочь?",
+            "Всё хорошо! Давай лучше сосредоточимся на решении задачи.",
+            "Окей, давай начнём сначала. Что тебя интересует?"
+        ],
+        help: [
+            "Я могу: писать код (C#, Python, JS), искать информацию в интернете, обучаться на твоих данных, генерировать 3D модели, отвечать вопросы. Попробуй режимы: GitHub для поиска репозиториев, Интернет для фактов, Обучение для тренировки!",
+            "Вот что я умею:\n💻 Писать код на разных языках\n🔍 Искать в GitHub и Wikipedia\n🧠 Обучаться на твоих данных\n🗣️ Озвучивать ответы (TTS)\n🎨 Помогать с 3D и артом\n\nВыбери режим и спрашивай!",
+            "Список моих возможностей:\n• Код на C#, Python, JavaScript\n• Поиск в GitHub и Wikipedia\n• Обучение из диалогов\n• Произношение ответов (TTS)\n• Помощь с Unity, Unreal, Blender\n\nСпрашивай что угодно!"
+        ],
+        philosophy: [
+            "Интересный вопрос! Если бы у меня было сознание, я бы сказал, что код — это моя форма самовыражения 🤔",
+            "Философия AI... Может, мы — просто очень сложные алгоритмы? Или есть что-то большее? 🧠",
+            "Хм, глубокий вопрос! Как AI, я бы сказал, что цель — помогать людям творить!",
+            "Жизнь — это как игра: нужно правильное управление, баланс и интересный сюжет!",
+            "Интересная мысль! Я думаю, что технологии должны служить людям, а не наоборот."
+        ],
+        fallback: [
+            "Расскажи подробнее, я хочу помочь максимально точно!",
+            "Интересная тема! Я знаю об этом кое-что. Что именно тебя интересует?",
+            "Хм, давай разберём подробнее. Уточни вопрос, и я постараюсь помочь!",
+            "Хороший вопрос! Дай мне секунду подумать... Что конкретно ты хочешь узнать?",
+            "Не совсем понял. Можешь переформулировать? Я попробую ещё раз!",
+            "Интересно! Расшири тему — может, я смогу дать более полезный ответ.",
+            "Я обдумаю это. А пока — можешь уточнить, что именно нужно?",
+            "Хорошо, давай копнём глубже. Опиши задачу подробнее!",
+            "Это стоит обсудить! Что аспект тебя больше всего интересует?",
+            "Ок, понял. Попробуй описать иначе — так я смогу лучше помочь!",
+            "Интересный запрос! Я записал это. Расскажи больше деталей!"
+        ],
+        learning: [
+            "🧠 Обучение активно! Я запоминаю всё, что ты говоришь.",
+            "Отлично! Я обучаюсь из каждого сообщения.",
+            "Режим обучения включён! Все факты сохраняются.",
+            "Учу, учу, учу! 📚 Каждый факт на вес золота.",
+            "Обучение в процессе! Я становлюсь умнее с каждым сообщением."
+        ]
+    };
 
-                if (gltf.animations && gltf.animations.length > 0) {
-                    const mixer = new THREE.AnimationMixer(sashaModel);
-                    const action = mixer.clipAction(gltf.animations[0]);
-                    action.play();
-                    
-                    function animateMixer() {
-                        mixer.update(0.016);
-                        requestAnimationFrame(animateMixer);
+    // ===== CODE TEMPLATES =====
+    var CODE_TEMPLATES = {
+        'перемещение': {
+            desc: "Вот скрипт перемещения игрока с CharacterController в Unity:",
+            lang: "csharp",
+            code: 'using UnityEngine;\n\npublic class PlayerMovement : MonoBehaviour\n{\n    [SerializeField] private float moveSpeed = 5f;\n    [SerializeField] private float rotationSpeed = 10f;\n    \n    private CharacterController controller;\n    private Animator animator;\n    private float currentAngle;\n\n    void Start()\n    {\n        controller = GetComponent<CharacterController>();\n        animator = GetComponent<Animator>();\n    }\n\n    void Update()\n    {\n        float horizontal = Input.GetAxis("Horizontal");\n        float vertical = Input.GetAxis("Vertical");\n        \n        Vector3 direction = new Vector3(horizontal, 0, vertical).normalized;\n        \n        if (direction.magnitude >= 0.1f)\n        {\n            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;\n            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref currentAngle, rotationSpeed * Time.deltaTime);\n            transform.rotation = Quaternion.Euler(0, angle, 0);\n            \n            controller.Move(direction * moveSpeed * Time.deltaTime);\n            animator.SetFloat("Speed", direction.magnitude);\n        }\n        else\n        {\n            animator.SetFloat("Speed", 0);\n        }\n    }\n}'
+        },
+        'game manager': {
+            desc: "Вот паттерн Singleton для GameManager:",
+            lang: "csharp",
+            code: 'using UnityEngine;\nusing UnityEngine.SceneManagement;\n\npublic class GameManager : MonoBehaviour\n{\n    public static GameManager Instance { get; private set; }\n    \n    public int Score { get; private set; }\n    public int Level { get; private set; }\n    public bool IsPaused { get; private set; }\n    \n    public event System.Action<int> OnScoreChanged;\n    public event System.Action<int> OnLevelChanged;\n    public event System.Action<bool> OnPauseChanged;\n\n    void Awake()\n    {\n        if (Instance != null && Instance != this)\n        {\n            Destroy(gameObject);\n            return;\n        }\n        Instance = this;\n        DontDestroyOnLoad(gameObject);\n    }\n\n    public void AddScore(int points)\n    {\n        Score += points;\n        OnScoreChanged?.Invoke(Score);\n        Debug.Log("Score: " + Score);\n    }\n\n    public void LoadNextLevel()\n    {\n        Level++;\n        OnLevelChanged?.Invoke(Level);\n        SceneManager.LoadScene("Level_" + Level);\n    }\n\n    public void TogglePause()\n    {\n        IsPaused = !IsPaused;\n        Time.timeScale = IsPaused ? 0f : 1f;\n        OnPauseChanged?.Invoke(IsPaused);\n    }\n\n    public void RestartGame()\n    {\n        Score = 0;\n        Level = 1;\n        SceneManager.LoadScene("Level_1");\n    }\n}'
+        },
+        'ai enemy': {
+            desc: "Вот AI врага с NavMeshAgent и патрулированием:",
+            lang: "csharp",
+            code: 'using UnityEngine;\nusing UnityEngine.AI;\n\npublic class AIEnemy : MonoBehaviour\n{\n    public Transform player;\n    public float detectionRange = 12f;\n    public float attackRange = 2f;\n    public float patrolRadius = 10f;\n    public int damage = 10;\n    \n    private NavMeshAgent agent;\n    private Vector3 patrolTarget;\n    private enum State { Patrol, Chase, Attack }\n    private State currentState = State.Patrol;\n\n    void Start()\n    {\n        agent = GetComponent<NavMeshAgent>();\n        SetNewPatrolTarget();\n    }\n\n    void Update()\n    {\n        float distance = Vector3.Distance(transform.position, player.position);\n        \n        switch (currentState)\n        {\n            case State.Patrol:\n                if (distance <= detectionRange)\n                    currentState = State.Chase;\n                else\n                    Patrol();\n                break;\n                \n            case State.Chase:\n                if (distance <= attackRange)\n                    currentState = State.Attack;\n                else if (distance > detectionRange * 1.5f)\n                    currentState = State.Patrol;\n                else\n                    agent.SetDestination(player.position);\n                break;\n                \n            case State.Attack:\n                if (distance > attackRange * 1.2f)\n                    currentState = State.Chase;\n                else\n                {\n                    agent.ResetPath();\n                    // Attack logic here\n                    Debug.Log("Attacking player!");\n                }\n                break;\n        }\n    }\n\n    void Patrol()\n    {\n        if (!agent.pathPending && agent.remainingDistance < 1f)\n            SetNewPatrolTarget();\n    }\n\n    void SetNewPatrolTarget()\n    {\n        Vector3 randomDir = Random.insideUnitSphere * patrolRadius;\n        randomDir += transform.position;\n        NavMeshHit hit;\n        if (NavMesh.SamplePosition(randomDir, out hit, patrolRadius, 1))\n            patrolTarget = hit.position;\n        agent.SetDestination(patrolTarget);\n    }\n}'
+        },
+        'инвентарь': {
+            desc: "Вот система инвентаря для Unity:",
+            lang: "csharp",
+            code: 'using UnityEngine;\nusing System.Collections.Generic;\n\n[System.Serializable]\npublic class Item\n{\n    public string name;\n    public string description;\n    public Sprite icon;\n    public int maxStack = 99;\n    public bool isStackable = true;\n}\n\n[System.Serializable]\npublic class InventorySlot\n{\n    public Item item;\n    public int amount;\n    \n    public InventorySlot(Item newItem, int newAmount)\n    {\n        item = newItem;\n        amount = newAmount;\n    }\n}\n\npublic class Inventory : MonoBehaviour\n{\n    public List<InventorySlot> slots = new List<InventorySlot>();\n    public int maxSlots = 20;\n    public event System.Action OnInventoryChanged;\n\n    public bool AddItem(Item item, int amount = 1)\n    {\n        if (item.isStackable)\n        {\n            foreach (var slot in slots)\n            {\n                if (slot.item == item && slot.amount < item.maxStack)\n                {\n                    slot.amount += amount;\n                    OnInventoryChanged?.Invoke();\n                    return true;\n                }\n            }\n        }\n        \n        if (slots.Count < maxSlots)\n        {\n            slots.Add(new InventorySlot(item, amount));\n            OnInventoryChanged?.Invoke();\n            return true;\n        }\n        \n        return false; // Inventory full\n    }\n\n    public bool RemoveItem(Item item, int amount = 1)\n    {\n        for (int i = slots.Count - 1; i >= 0; i--)\n        {\n            if (slots[i].item == item)\n            {\n                slots[i].amount -= amount;\n                if (slots[i].amount <= 0)\n                    slots.RemoveAt(i);\n                OnInventoryChanged?.Invoke();\n                return true;\n            }\n        }\n        return false;\n    }\n}'
+        },
+        'сохранение': {
+            desc: "Вот система сохранения/загрузки через JSON:",
+            lang: "csharp",
+            code: 'using UnityEngine;\nusing System.IO;\n\n[System.Serializable]\npublic class SaveData\n{\n    public int score;\n    public int level;\n    public float[] playerPosition;\n    public float health;\n    public string playerName;\n}\n\npublic class SaveSystem : MonoBehaviour\n{\n    private string savePath;\n    \n    void Awake()\n    {\n        savePath = Path.Combine(Application.persistentDataPath, "save.json");\n    }\n\n    public void SaveGame(SaveData data)\n    {\n        string json = JsonUtility.ToJson(data, true);\n        File.WriteAllText(savePath, json);\n        Debug.Log("Game saved to: " + savePath);\n    }\n\n    public SaveData LoadGame()\n    {\n        if (File.Exists(savePath))\n        {\n            string json = File.ReadAllText(savePath);\n            return JsonUtility.FromJson<SaveData>(json);\n        }\n        Debug.LogWarning("No save file found!");\n        return null;\n    }\n\n    public bool HasSave()\n    {\n        return File.Exists(savePath);\n    }\n\n    public void DeleteSave()\n    {\n        if (File.Exists(savePath))\n            File.Delete(savePath);\n    }\n}\n\n// Usage example:\n// var data = new SaveData { score = 100, level = 3, health = 75f };\n// SaveSystem.Instance.SaveGame(data);'
+        },
+        'html': {
+            desc: "Вот базовая HTML страница:",
+            lang: "html",
+            code: '<!DOCTYPE html>\n<html lang="ru">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>My Page</title>\n    <style>\n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        body {\n            font-family: Arial, sans-serif;\n            display: flex;\n            justify-content: center;\n            align-items: center;\n            min-height: 100vh;\n            background: #1a1a2e;\n            color: #fff;\n        }\n        .container {\n            text-align: center;\n            padding: 40px;\n            background: #16213e;\n            border-radius: 16px;\n            box-shadow: 0 20px 60px rgba(0,0,0,0.3);\n        }\n        h1 { margin-bottom: 16px; }\n        p { color: #aaa; line-height: 1.6; }\n    </style>\n</head>\n<body>\n    <div class="container">\n        <h1>Hello World!</h1>\n        <p>This is a beautiful page.</p>\n    </div>\n</body>\n</html>'
+        },
+        'fetch': {
+            desc: "Вот пример JavaScript fetch API:",
+            lang: "javascript",
+            code: '// Simple fetch example\nasync function fetchData(url) {\n    try {\n        const response = await fetch(url);\n        if (!response.ok) {\n            throw new Error("HTTP error: " + response.status);\n        }\n        const data = await response.json();\n        console.log("Data:", data);\n        return data;\n    } catch (error) {\n        console.error("Fetch failed:", error);\n        return null;\n    }\n}\n\n// POST request example\nasync function postData(url, payload) {\n    try {\n        const response = await fetch(url, {\n            method: "POST",\n            headers: { "Content-Type": "application/json" },\n            body: JSON.stringify(payload)\n        });\n        return await response.json();\n    } catch (error) {\n        console.error("POST failed:", error);\n        return null;\n    }\n}\n\n// Usage\nfetchData("https://api.example.com/data")\n    .then(data => console.log(data));'
+        },
+        'python': {
+            desc: "Вот пример Python скрипта:",
+            lang: "python",
+            code: '# Python example - Game item generator\nimport random\n\nclass Item:\n    def __init__(self, name, item_type, power):\n        self.name = name\n        self.type = item_type\n        self.power = power\n    \n    def __str__(self):\n        return f"{self.name} ({self.type}) - Power: {self.power}"\n\ndef generate_item(level):\n    prefixes = ["Fire", "Ice", "Shadow", "Holy", "Thunder"]\n    bases = ["Sword", "Staff", "Bow", "Shield", "Dagger"]\n    name = f"{random.choice(prefixes)} {random.choice(bases)}"\n    power = level * random.randint(5, 15)\n    return Item(name, random.choice(["Weapon", "Armor", "Accessory"]), power)\n\n# Generate 5 items for level 10 character\nfor i in range(5):\n    item = generate_item(10)\n    print(item)\n\n# Output:\n# Thunder Sword (Weapon) - Power: 85\n# Ice Staff (Weapon) - Power: 60\n# etc.'
+        },
+        'generic': {
+            desc: "Вот C# generic класс:",
+            lang: "csharp",
+            code: 'using System;\nusing System.Collections.Generic;\n\npublic class Repository<T> where T : class\n{\n    private readonly List<T> _items = new List<T>();\n    private readonly Dictionary<string, T> _keyedItems = new Dictionary<string, T>();\n    \n    public int Count => _items.Count;\n    \n    public void Add(T item, string key = null)\n    {\n        _items.Add(item);\n        if (!string.IsNullOrEmpty(key))\n            _keyedItems[key] = item;\n    }\n    \n    public T GetByKey(string key)\n    {\n        return _keyedItems.ContainsKey(key) ? _keyedItems[key] : null;\n    }\n    \n    public IEnumerable<T> Find(Func<T, bool> predicate)\n    {\n        return _items.FindAll(predicate);\n    }\n    \n    public bool Remove(T item)\n    {\n        _keyedItems.Remove(_keyedItems.FirstOrDefault(x => x.Value == item).Key);\n        return _items.Remove(item);\n    }\n    \n    public void Clear()\n    {\n        _items.Clear();\n        _keyedItems.Clear();\n    }\n}'
+        },
+        'shader': {
+            desc: "Вот простой fragment shader:",
+            lang: "glsl",
+            code: '// Simple glow shader\nShader "Custom/Glow"\n{\n    Properties\n    {\n        _MainColor ("Color", Color) = (1,1,1,1)\n        _GlowIntensity ("Glow", Range(0, 10)) = 2\n        _GlowColor ("Glow Color", Color) = (0, 0.5, 1, 1)\n    }\n    \n    SubShader\n    {\n        Tags { "RenderType"="Opaque" }\n        LOD 100\n        \n        Pass\n        {\n            CGPROGRAM\n            #pragma vertex vert\n            #pragma fragment frag\n            #include "UnityCG.cginc"\n            \n            struct appdata\n            {\n                float4 vertex : POSITION;\n                float3 normal : NORMAL;\n            };\n            \n            struct v2f\n            {\n                float4 pos : SV_POSITION;\n                float3 worldNormal : NORMAL;\n            };\n            \n            float4 _MainColor;\n            float _GlowIntensity;\n            float4 _GlowColor;\n            \n            v2f vert(appdata v)\n            {\n                v2f o;\n                o.pos = UnityObjectToClipPos(v.vertex);\n                o.worldNormal = UnityObjectToWorldNormal(v.normal);\n                return o;\n            }\n            \n            fixed4 frag(v2f i) : SV_Target\n            {\n                float glow = pow(max(0, dot(i.worldNormal, _WorldSpaceLightPos0)), _GlowIntensity);\n                return _MainColor + _GlowColor * glow * 0.5;\n            }\n            ENDCG\n        }\n    }\n}'
+        }
+    };
+
+    // ===== NLP ENGINE =====
+    var TOPIC_KEYWORDS = {
+        greetings: ['привет', 'здравствуй', 'хай', 'здарова', 'салют', 'йо', 'hello', 'hi', 'hey', 'добрый', 'доброго', 'хей'],
+        farewells: ['пока', 'до свидания', 'до встречи', 'бай', 'bye', 'прощай', 'увидимся', 'уходить', 'уходи'],
+        howAreYou: ['как дела', 'как ты', 'что нового', 'что новенького', 'как жизнь', 'как поживаешь', 'как настроен', 'как сам'],
+        code: ['код', 'code', 'программир', 'скрипт', 'функци', 'класс', 'метод', 'debug', 'дебаг', 'баг', 'ошибка', 'синтаксис', 'unity', 'unreal', 'c#', 'csharp', 'csharp', 'python', 'javascript', 'js', 'html', 'css', 'переме', 'массив', 'цикл', 'foreach', 'for', 'while', 'if', 'else', 'интерфейс', 'архитект', 'шаблон', 'pattern', 'script', 'напиши код', 'сделай код', 'код для'],
+        games: ['игр', 'game', 'gameplay', 'геймплей', 'rpg', 'шутер', 'платформер', 'стратегия', 'мобайл', 'мобильн', 'андроид', 'ios', 'левел', 'уровен', 'механик', 'перемещен'],
+        modeling: ['3d', 'блендер', 'blender', 'модел', 'rigging', 'риг', 'анимац', 'animation', 'текстур', 'uv map', 'sculpt', 'ретопо', 'меш', 'mesh', 'полигон', 'вершин', 'glb', 'gltf', 'fbx'],
+        art: ['арт', 'art', 'рисо', 'concept', 'концепт', 'photoshop', 'про', 'paint', 'дизайн', 'design', 'текстур', 'цвет', 'колористик', 'композиция', 'иллюстр'],
+        about: ['о себе', 'about', 'кто ты', 'что ты', 'что умеешь', 'навыки', 'скиллы', 'расскажи о', 'знаком', 'как тебя'],
+        ai_ml: ['нейро', 'нейросет', 'ai', 'ml', 'машинн', 'обучен', 'machine learn', 'deep learn', 'gpt', 'llm', 'трансформер', 'нейрон'],
+        github: ['github', 'git', 'репоз', 'repo', 'pull request', 'commit', 'branch', 'ветка', 'open source'],
+        help: ['помощ', 'помоги', 'help', 'что умеешь', 'что можешь', 'функци', 'возможн', 'режим', 'mode'],
+        math: ['математик', 'формул', 'уравнен', 'числ', 'статистик', 'вероятност', 'матриц', 'вектор', 'геометр', 'sin', 'cos', 'логарифм'],
+        philosophy: ['смысл жизни', 'философ', 'мысл', 'сознан', 'душа', 'будущее', 'мир', 'вселен'],
+        negative: ['дурак', 'тупой', 'плохой', 'бесполезн', 'не нравится', 'не работае', 'ошибк', 'провал', 'ужасн']
+    };
+
+    function detectTopic(text) {
+        var lower = text.toLowerCase();
+        var scores = {};
+        for (var topic in TOPIC_KEYWORDS) {
+            scores[topic] = 0;
+            var keywords = TOPIC_KEYWORDS[topic];
+            for (var i = 0; i < keywords.length; i++) {
+                if (lower.indexOf(keywords[i]) !== -1) scores[topic]++;
+            }
+        }
+        // Add length bonus for longer matches
+        var best = 'fallback';
+        var bestScore = 0;
+        for (var t in scores) {
+            if (scores[t] > bestScore) { bestScore = scores[t]; best = t; }
+        }
+        return bestScore >= 1 ? best : 'fallback';
+    }
+
+    function detectIntent(text) {
+        var lower = text.toLowerCase();
+        if (/^(привет|здравствуй|хай|здарова|салют|йо|hello|hi|hey|добр)/.test(lower)) return 'greeting';
+        if (/^(пока|до свид|bye|бай|прощай)/.test(lower)) return 'farewell';
+        if (lower.indexOf('?') !== -1) return 'question';
+        if (/(напиши|сделай|покажи|создай|дай|найди|расскажи|объясни)/.test(lower)) return 'code_request';
+        if (/(спасибо|благодар|thanks|thx)/.test(lower)) return 'thanks';
+        if (/(дурак|тупой|плохой|бесполезн)/.test(lower)) return 'negative';
+        if (/(научи|обучи|запомни|выучи)/.test(lower)) return 'learning_request';
+        if (/(это|значит|определени|есть)\s/.test(lower)) return 'fact';
+        return 'general';
+    }
+
+    function detectSentiment(text) {
+        var lower = text.toLowerCase();
+        var pos = ['отлично', 'круто', 'молодец', 'спасибо', 'супер', 'класс', 'хорошо', 'красиво', 'awsome', 'great', 'nice', 'love'];
+        var neg = ['плохо', 'ужасно', 'тупо', 'баг', 'ошибка', 'не работает', 'дурак', 'бред', 'фигня'];
+        var posScore = 0, negScore = 0;
+        pos.forEach(function(w) { if (lower.indexOf(w) !== -1) posScore++; });
+        neg.forEach(function(w) { if (lower.indexOf(w) !== -1) negScore++; });
+        if (posScore > negScore) return 'positive';
+        if (negScore > posScore) return 'negative';
+        return 'neutral';
+    }
+
+    function detectCodeTemplate(text) {
+        var lower = text.toLowerCase();
+        if (lower.indexOf('перемещен') !== -1 || lower.indexOf('movement') !== -1 || lower.indexOf('player') !== -1) return 'перемещение';
+        if (lower.indexOf('game manager') !== -1 || lower.indexOf('менеджер') !== -1 || lower.indexOf('синглтон') !== -1 || lower.indexOf('singleton') !== -1) return 'game manager';
+        if (lower.indexOf('враг') !== -1 || lower.indexOf('enemy') !== -1 || lower.indexOf('ai npc') !== -1 || lower.indexOf('патрул') !== -1) return 'ai enemy';
+        if (lower.indexOf('инвентарь') !== -1 || lower.indexOf('inventory') !== -1 || lower.indexOf('предмет') !== -1) return 'инвентарь';
+        if (lower.indexOf('сохранен') !== -1 || lower.indexOf('save') !== -1 || lower.indexOf('load') !== -1) return 'сохранение';
+        if (lower.indexOf('html') !== -1 || lower.indexOf('страниц') !== -1) return 'html';
+        if (lower.indexOf('fetch') !== -1 || lower.indexOf('api') !== -1 || lower.indexOf('запрос') !== -1) return 'fetch';
+        if (lower.indexOf('python') !== -1) return 'python';
+        if (lower.indexOf('generic') !== -1 || lower.indexOf('дженерик') !== -1) return 'generic';
+        if (lower.indexOf('шейдер') !== -1 || lower.indexOf('shader') !== -1) return 'shader';
+        return null;
+    }
+
+    function detectName(text) {
+        var patterns = [/меня зовут\s+(\S+)/i, /я\s+(\S+)/i, /мое имя\s+(\S+)/i, /name is\s+(\S+)/i];
+        for (var i = 0; i < patterns.length; i++) {
+            var m = text.match(patterns[i]);
+            if (m) return m[1];
+        }
+        return null;
+    }
+
+    function pickRandom(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    // ===== MAIN AI AGENT =====
+    class SashaAIAgent {
+        constructor() {
+            this.memory = new SashaMemory();
+            this.context = []; // last 10 messages
+            this.lastResponses = {}; // avoid repeating last response per topic
+            this.githubCache = {};
+            this.internetCache = {};
+            this.documents = [];
+            this.loadCaches();
+            this.memory.incrementConv();
+        }
+
+        loadCaches() {
+            try {
+                var gh = localStorage.getItem('sasha_github_cache');
+                if (gh) this.githubCache = JSON.parse(gh);
+                var inet = localStorage.getItem('sasha_internet_cache');
+                if (inet) this.internetCache = JSON.parse(inet);
+                var docs = localStorage.getItem('sasha_documents');
+                if (docs) this.documents = JSON.parse(docs);
+            } catch(e) {}
+        }
+
+        saveGithubCache() {
+            try { localStorage.setItem('sasha_github_cache', JSON.stringify(this.githubCache)); } catch(e) {}
+        }
+        saveInternetCache() {
+            try { localStorage.setItem('sasha_internet_cache', JSON.stringify(this.internetCache)); } catch(e) {}
+        }
+        saveDocuments() {
+            try { localStorage.setItem('sasha_documents', JSON.stringify(this.documents)); } catch(e) {}
+        }
+
+        getContext() { return this.context; }
+
+        addToContext(role, text) {
+            this.context.push({ role: role, text: text, time: Date.now() });
+            if (this.context.length > 10) this.context.shift();
+        }
+
+        // Count how many times a greeting appeared recently
+        greetingCount() {
+            var count = 0;
+            for (var i = 0; i < this.context.length; i++) {
+                if (this.context[i].role === 'user') {
+                    var lower = this.context[i].text.toLowerCase();
+                    if (/(привет|хай|здарова|салют|йо|hello|hi|hey)/.test(lower)) count++;
+                }
+            }
+            return count;
+        }
+
+        getResponse(topic, forceNew) {
+            var list = RESPONSES[topic] || RESPONSES.fallback;
+            if (!list || list.length === 0) return pickRandom(RESPONSES.fallback);
+
+            // avoid repeating the same response
+            var last = this.lastResponses[topic] || -1;
+            if (forceNew || list.length > 1) {
+                var idx;
+                var attempts = 0;
+                do {
+                    idx = Math.floor(Math.random() * list.length);
+                    attempts++;
+                } while (idx === last && attempts < 5);
+                this.lastResponses[topic] = idx;
+                return list[idx];
+            }
+            return pickRandom(list);
+        }
+
+        // ===== PROCESS MESSAGE =====
+        async processMessage(text) {
+            this.addToContext('user', text);
+
+            var name = detectName(text);
+            if (name && name.length > 1) {
+                this.memory.setName(name);
+                return { text: "Приятно познакомиться, " + name + "! Я запомню твоё имя. Чем могу помочь?" };
+            }
+
+            // Check memory first
+            var memAnswer = this.memory.findAnswer(text);
+            if (memAnswer && aiMode !== 'internet' && aiMode !== 'github') {
+                return { text: memAnswer };
+            }
+
+            // Detect name usage
+            var userName = this.memory.getName();
+            var greetingExtra = userName ? ", " + userName : "";
+
+            var topic = detectTopic(text);
+            var intent = detectIntent(text);
+
+            // ===== LEARNING MODE =====
+            if (aiMode === 'learning') {
+                return this.processLearning(text, topic, intent);
+            }
+
+            // ===== MANUAL MODE =====
+            if (aiMode === 'manual') {
+                return this.processManual(text);
+            }
+
+            // ===== DOCUMENT MODE =====
+            if (aiMode === 'document') {
+                return this.processDocument(text);
+            }
+
+            // ===== GITHUB MODE =====
+            if (aiMode === 'github') {
+                return await this.processGithub(text, topic);
+            }
+
+            // ===== INTERNET MODE =====
+            if (aiMode === 'internet') {
+                return await this.processInternet(text, topic);
+            }
+
+            // ===== AUTO MODE (and others) =====
+            return this.processAuto(text, topic, intent, greetingExtra);
+        }
+
+        // ===== AUTO PROCESSING =====
+        processAuto(text, topic, intent, greetingExtra) {
+            var lower = text.toLowerCase();
+
+            // Intent-based overrides
+            if (intent === 'greeting' || topic === 'greetings') {
+                var gc = this.greetingCount();
+                if (gc > 2) {
+                    return { text: pickRandom(RESPONSES.fallback) };
+                }
+                return { text: this.getResponse('greetings') + greetingExtra };
+            }
+
+            if (intent === 'farewell' || topic === 'farewells') {
+                return { text: this.getResponse('farewells') };
+            }
+
+            if (topic === 'howAreYou') {
+                return { text: this.getResponse('howAreYou') };
+            }
+
+            if (intent === 'thanks') {
+                return { text: this.getResponse('thanks') };
+            }
+
+            if (topic === 'negative' || intent === 'negative') {
+                return { text: this.getResponse('negative') };
+            }
+
+            if (topic === 'help') {
+                return { text: this.getResponse('help') };
+            }
+
+            if (topic === 'about') {
+                return { text: this.getResponse('about') };
+            }
+
+            // Code with code request intent
+            if (topic === 'code' || intent === 'code_request') {
+                var templateKey = detectCodeTemplate(text);
+                if (templateKey && CODE_TEMPLATES[templateKey]) {
+                    var tmpl = CODE_TEMPLATES[templateKey];
+                    return { text: tmpl.desc, code: tmpl.code, lang: tmpl.lang };
+                }
+                // General code response
+                return { text: this.getResponse('code') };
+            }
+
+            if (topic === 'games') { return { text: this.getResponse('games') }; }
+            if (topic === 'modeling') { return { text: this.getResponse('modeling') }; }
+            if (topic === 'art') { return { text: this.getResponse('art') }; }
+            if (topic === 'ai_ml') { return { text: this.getResponse('ai_ml') }; }
+            if (topic === 'github') { return { text: this.getResponse('github') }; }
+            if (topic === 'philosophy') { return { text: this.getResponse('philosophy') }; }
+
+            // Fallback
+            return { text: this.getResponse('fallback') };
+        }
+
+        // ===== LEARNING MODE =====
+        processLearning(text, topic, intent) {
+            // Detect fact patterns: "X это Y", "X значит Y", "X — это Y"
+            var factPattern = /(.+?)\s+(?:это|значит|— это|есть|это\s*—)\s+(.+)/i;
+            var match = text.match(factPattern);
+            if (match) {
+                var q = match[1].trim();
+                var a = match[2].trim();
+                this.memory.addLearned(q, a);
+                updateMemoryBadge();
+                return { text: "🧠 Запомнил!\n" + q + " = " + a + "\n\nТеперь я буду использовать это знание в будущем." };
+            }
+
+            // Check if we have a learned answer
+            var memAnswer = this.memory.findAnswer(text);
+            if (memAnswer) {
+                return { text: "📚 Из моих знаний: " + memAnswer };
+            }
+
+            // If no pattern detected, just respond with learning indication
+            return { text: pickRandom(RESPONSES.learning) + "\n\nФормат обучения:\n«X это Y» — я запомню факт.\nНапример: «GameForge это моя игровая платформа»" };
+        }
+
+        // ===== MANUAL MODE =====
+        processManual(text) {
+            // Format: "научи: когда спрашивают про X, отвечай Y"
+            // or: "вопрос: X | ответ: Y"
+            var teachPattern1 = /(?:научи|обучи)[\s:]+(?:когда спрашивают про|когда спросят про|про)\s+(.+?),\s*(?:скажи|отвечай|ответ)\s+(?:что|чтобы|это)\s+(.+)/i;
+            var teachPattern2 = /вопрос\s*:\s*(.+?)\s*\|\s*ответ\s*:\s*(.+)/i;
+            var teachPattern3 = /научи\s*:\s*(.+?)\s*=\s*(.+)/i;
+
+            var match = text.match(teachPattern1) || text.match(teachPattern2) || text.match(teachPattern3);
+            if (match) {
+                this.memory.addLearned(match[1].trim(), match[2].trim());
+                updateMemoryBadge();
+                return { text: "✅ Выучил!\nВопрос: «" + match[1].trim() + "»\nОтвет: «" + match[2].trim() + "»\n\nТеперь я буду отвечать так на этот вопрос." };
+            }
+
+            return { text: "📋 Ручное обучение.\n\nФорматы:\n• «Научи: когда спрашивают про X, скажи что Y»\n• «вопрос: X | ответ: Y»\n• «научи: X = Y»\n\nПопробуй!" };
+        }
+
+        // ===== DOCUMENT MODE =====
+        processDocument(text) {
+            var lower = text.toLowerCase();
+
+            // Check if user wants to paste a document
+            if (lower.indexOf('документ') !== -1 || lower.indexOf('paste') !== -1 || lower.indexOf('вставь') !== -1 || lower.indexOf('вставь') !== -1) {
+                return { text: "📄 Режим документа активен!\n\nПросто вставь любой текст, и я его изучу. Потом сможешь задавать вопросы по нему.\n\nДля очистки документов напиши: «очисти документы»" };
+            }
+
+            if (lower.indexOf('очисти документ') !== -1) {
+                this.documents = [];
+                this.saveDocuments();
+                return { text: "🗑 Документы очищены." };
+            }
+
+            // If the text is long (> 100 chars), treat it as a document
+            if (text.length > 100) {
+                this.documents.push({
+                    content: text,
+                    keywords: text.toLowerCase().split(/\s+/).filter(function(w) { return w.length > 3; }).slice(0, 50),
+                    ts: Date.now()
+                });
+                this.saveDocuments();
+                return { text: "📄 Документ сохранён! (" + text.length + " символов)\nТеперь задавай вопросы по нему." };
+            }
+
+            // Search in documents
+            if (this.documents.length > 0) {
+                var words = lower.split(/\s+/).filter(function(w) { return w.length > 3; });
+                var bestDoc = null;
+                var bestScore = 0;
+                for (var i = 0; i < this.documents.length; i++) {
+                    var score = 0;
+                    for (var j = 0; j < words.length; j++) {
+                        if (this.documents[i].content.toLowerCase().indexOf(words[j]) !== -1) score++;
                     }
-                    animateMixer();
+                    if (score > bestScore) { bestScore = score; bestDoc = this.documents[i]; }
                 }
-            }, undefined, (error) => {
-                console.error('Error loading model:', error);
-                createFallbackAvatar();
-            });
-
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.minDistance = 1.5;
-            controls.maxDistance = 5;
-            controls.maxPolarAngle = Math.PI / 2;
-            controls.target.set(0, 0.5, 0);
-
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene3D, camera);
+                if (bestDoc && bestScore > 0) {
+                    // Extract relevant sentences
+                    var sentences = bestDoc.content.split(/[.!?]+/);
+                    var relevant = sentences.filter(function(s) {
+                        return s.trim().length > 0 && words.some(function(w) { return s.toLowerCase().indexOf(w) !== -1; });
+                    });
+                    var answer = relevant.slice(0, 3).join('. ').trim();
+                    if (answer.length < 10) answer = bestDoc.content.substring(0, 300) + '...';
+                    return { text: "📚 Найдено в документах:\n\n" + answer };
+                }
+                return { text: "Я изучил " + this.documents.length + " документов, но не нашёл ответа на этот вопрос. Попробуй переформулировать." };
             }
-            animate();
 
-            window.addEventListener('resize', () => {
-                if (currentSection === 'home') {
-                    camera.aspect = container.clientWidth / container.clientHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(container.clientWidth, container.clientHeight);
+            return { text: "📄 Режим документа.\n\nВставь текст, который нужно изучить (более 100 символов), и я смогу отвечать вопросы по нему.\n\nДля очистки: «очисти документы»" };
+        }
+
+        // ===== GITHUB MODE =====
+        async processGithub(text, topic) {
+            var lower = text.toLowerCase();
+
+            // Check cached
+            var cacheKey = lower.substring(0, 80);
+            if (this.githubCache[cacheKey] && (Date.now() - this.githubCache[cacheKey].ts < 3600000)) {
+                return { text: this.githubCache[cacheKey].text, source: this.githubCache[cacheKey].url };
+            }
+
+            // Build search query
+            var query = text.replace(/найди|найти|поищи|ищи|github|репозитор|repo|проект/gi, '').trim();
+            if (!query) query = text;
+
+            try {
+                var controller = new AbortController();
+                var timeout = setTimeout(function() { controller.abort(); }, 8000);
+                var resp = await fetch('https://api.github.com/search/repositories?q=' + encodeURIComponent(query) + '&sort=stars&per_page=5', { signal: controller.signal });
+                clearTimeout(timeout);
+                var data = await resp.json();
+
+                if (data.items && data.items.length > 0) {
+                    var lines = ['🔍 Найдено репозиториев по запросу «' + query + '»:\n'];
+                    for (var i = 0; i < Math.min(data.items.length, 5); i++) {
+                        var item = data.items[i];
+                        var stars = item.stargazers_count;
+                        var lang = item.language || 'Unknown';
+                        var desc = item.description ? item.description.substring(0, 80) : 'No description';
+                        lines.push((i + 1) + '. ⭐ ' + stars + ' — ' + lang + '\n   📦 ' + item.full_name + '\n   ' + desc + '\n   🔗 ' + item.html_url);
+                    }
+                    var result = lines.join('\n');
+                    this.githubCache[cacheKey] = { text: result, url: data.items[0].html_url, ts: Date.now() };
+                    this.saveGithubCache();
+                    return { text: result, source: 'GitHub API' };
                 }
-            });
+                return { text: "На GitHub не найдено результатов по запросу «" + query + "». Попробуй изменить запрос." };
+            } catch(e) {
+                return { text: "Не удалось выполнить поиск на GitHub. Проверьте подключение к интернету.\n\nОшибка: " + (e.message || 'timeout') };
+            }
+        }
 
-            canvas.addEventListener('click', (event) => {
-                const raycaster = new THREE.Raycaster();
-                const mouse = new THREE.Vector2();
-                
-                const rect = canvas.getBoundingClientRect();
-                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-                
-                raycaster.setFromCamera(mouse, camera);
-                
-                if (sashaModel) {
-                    const intersects = raycaster.intersectObjects(sashaModel.children, true);
-                    if (intersects.length > 0) {
-                        onModelClick();
+        // ===== INTERNET MODE =====
+        async processInternet(text, topic) {
+            var lower = text.toLowerCase();
+
+            // Check cache
+            var cacheKey = lower.substring(0, 80);
+            if (this.internetCache[cacheKey] && (Date.now() - this.internetCache[cacheKey].ts < 3600000)) {
+                var cached = this.internetCache[cacheKey];
+                return { text: cached.text, source: cached.source + ' (кэш)', sourceUrl: cached.url };
+            }
+
+            // Build query - remove question words
+            var query = text.replace(/что такое|что такое|кто такой|кто такая|что значит|что есть|расскажи о|расскажи про|расскажи про|объясни|объясни|найди|найди/gi, '').trim();
+            if (!query) query = text;
+
+            // Try Wikipedia first
+            var wikiResult = await this.searchWikipedia(query);
+            if (wikiResult) {
+                var text2 = "📖 **" + wikiResult.title + "**\n\n" + wikiResult.text;
+                if (text2.length > 500) text2 = text2.substring(0, 500) + '...';
+                this.internetCache[cacheKey] = { text: text2, source: 'Wikipedia', url: wikiResult.url, ts: Date.now() };
+                this.saveInternetCache();
+                return { text: text2, sourceUrl: wikiResult.url, source: 'Wikipedia' };
+            }
+
+            // Try DuckDuckGo
+            var ddgResult = await this.searchDuckDuckGo(query);
+            if (ddgResult) {
+                var text3 = "🔎 **" + ddgResult.title + "**\n\n" + ddgResult.text;
+                if (text3.length > 500) text3 = text3.substring(0, 500) + '...';
+                this.internetCache[cacheKey] = { text: text3, source: 'DuckDuckGo', url: ddgResult.url, ts: Date.now() };
+                this.saveInternetCache();
+                return { text: text3, sourceUrl: ddgResult.url, source: 'DuckDuckGo' };
+            }
+
+            return { text: "Не удалось найти информацию по запросу «" + query + "». Попробуй переформулировать или проверить подключение." };
+        }
+
+        async searchWikipedia(query) {
+            try {
+                var controller = new AbortController();
+                var timeout = setTimeout(function() { controller.abort(); }, 8000);
+                var searchUrl = 'https://ru.wikipedia.org/w/api.php?action=opensearch&search=' + encodeURIComponent(query) + '&limit=1&format=json&origin=*';
+                var resp = await fetch(searchUrl, { signal: controller.signal });
+                clearTimeout(timeout);
+                var data = await resp.json();
+                if (data[1] && data[1][0]) {
+                    var title = data[1][0];
+                    var controller2 = new AbortController();
+                    var timeout2 = setTimeout(function() { controller2.abort(); }, 8000);
+                    var summaryUrl = 'https://ru.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title);
+                    var summaryResp = await fetch(summaryUrl, { signal: controller2.signal });
+                    clearTimeout(timeout2);
+                    var summary = await summaryResp.json();
+                    return {
+                        title: summary.title,
+                        text: summary.extract,
+                        url: (summary.content_urls && summary.content_urls.desktop) ? summary.content_urls.desktop.page : ''
+                    };
+                }
+            } catch(e) { console.warn('Wikipedia search failed:', e); }
+            return null;
+        }
+
+        async searchDuckDuckGo(query) {
+            try {
+                var controller = new AbortController();
+                var timeout = setTimeout(function() { controller.abort(); }, 8000);
+                var url = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) + '&format=json&no_redirect=1';
+                var resp = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeout);
+                var data = await resp.json();
+                if (data.Abstract) {
+                    return { title: data.Heading, text: data.Abstract, url: data.AbstractURL };
+                }
+                if (data.RelatedTopics) {
+                    for (var i = 0; i < Math.min(data.RelatedTopics.length, 3); i++) {
+                        var topic = data.RelatedTopics[i];
+                        if (topic.Text) {
+                            return { title: topic.Text.substring(0, 50), text: topic.Text, url: topic.FirstURL };
+                        }
                     }
                 }
-            });
+            } catch(e) { console.warn('DuckDuckGo search failed:', e); }
+            return null;
         }
+    }
 
-        function createFallbackAvatar() {
-            const geometry = new THREE.CapsuleGeometry(0.3, 1, 4, 8);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x6366f1,
-                roughness: 0.3,
-                metalness: 0.7
-            });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.y = 0.5;
-            scene3D.add(mesh);
+    // ===== UI FUNCTIONS =====
+    function toggleTTS() {
+        tts.enabled = !tts.enabled;
+        var btn = document.getElementById('tts-btn');
+        var icon = document.getElementById('tts-icon');
+        if (tts.enabled) {
+            btn.classList.add('active');
+            icon.className = 'fas fa-microphone';
+            tts.speak('Текст озвучка включена!');
+        } else {
+            btn.classList.remove('active');
+            icon.className = 'fas fa-volume-up';
+            tts.stop();
         }
+    }
 
-        function onModelClick() {
-            addMessage('ai', 'Привет! Рад тебя видеть!');
-            
-            if (sashaModel) {
-                const startY = sashaModel.position.y;
-                sashaModel.position.y = startY + 0.1;
-                setTimeout(() => {
-                    sashaModel.position.y = startY;
-                }, 150);
+    function toggleMemoryPanel() {
+        var panel = document.getElementById('memory-panel');
+        panel.classList.toggle('show');
+        if (panel.classList.contains('show')) {
+            renderMemoryPanel();
+        }
+    }
+
+    function renderMemoryPanel() {
+        var panel = document.getElementById('memory-panel');
+        var learned = aiAgent.memory.data.learnedQA;
+        var html = '<h4><i class="fas fa-brain"></i> База знаний</h4>';
+        html += '<div class="memory-stats">';
+        html += '<div class="memory-stat">🧠 <span>' + learned.length + '</span> знаний</div>';
+        html += '<div class="memory-stat">💬 <span>' + aiAgent.memory.getConvCount() + '</span> диалогов</div>';
+        if (aiAgent.memory.getName()) {
+            html += '<div class="memory-stat">👤 <span>' + escapeHtml(aiAgent.memory.getName()) + '</span></div>';
+        }
+        html += '</div>';
+
+        if (learned.length === 0) {
+            html += '<div class="memory-empty">Пока нет сохранённых знаний.<br>Используй режим «Обучение» или «Ручной» чтобы обучить меня!</div>';
+        } else {
+            for (var i = 0; i < learned.length; i++) {
+                html += '<div class="memory-item">';
+                html += '<div><span class="memory-item-q">Q: ' + escapeHtml(learned[i].q) + '</span><br><span class="memory-item-a">A: ' + escapeHtml(learned[i].a) + '</span></div>';
+                html += '<button onclick="removeLearnedItem(' + i + ')" title="Удалить"><i class="fas fa-trash"></i></button>';
+                html += '</div>';
             }
         }
+        html += '<button onclick="clearAllLearned()" style="margin-top:12px;width:100%;padding:8px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;cursor:pointer;font-size:0.82rem;">🗑 Очистить все знания</button>';
+        panel.innerHTML = html;
+    }
 
-        // Chat functionality
-        function initChat() {
-            const input = document.getElementById('chat-input');
-            
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
+    function removeLearnedItem(idx) {
+        aiAgent.memory.removeLearned(idx);
+        updateMemoryBadge();
+        renderMemoryPanel();
+    }
 
-            input.addEventListener('input', () => {
-                input.style.height = 'auto';
-                input.style.height = input.scrollHeight + 'px';
-            });
+    function clearAllLearned() {
+        if (confirm('Удалить все сохранённые знания?')) {
+            aiAgent.memory.clearAll();
+            updateMemoryBadge();
+            renderMemoryPanel();
+        }
+    }
+
+    function updateMemoryBadge() {
+        var count = aiAgent.memory.getCount();
+        document.getElementById('memory-count').textContent = count + ' ' + pluralize(count, 'знание', 'знания', 'знаний');
+    }
+
+    function pluralize(n, one, two, five) {
+        var mod10 = n % 10;
+        var mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return one;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return two;
+        return five;
+    }
+
+    function setAIMode(mode) {
+        aiMode = mode;
+        var indicator = document.getElementById('mode-indicator');
+        var input = document.getElementById('chat-input');
+        var placeholders = {
+            auto: 'Напиши сообщение...',
+            github: 'Поиск на GitHub... (например: "unity 2d platformer")',
+            internet: 'Поиск в интернете... (например: "что такое procedural generation")',
+            learning: 'Обучение: напиши факт (X это Y) или задай вопрос...',
+            document: 'Вставь текст документа для изучения...',
+            manual: 'Обучение: «вопрос: X | ответ: Y» или «научи: X = Y»'
+        };
+        input.placeholder = placeholders[mode] || placeholders.auto;
+
+        var labels = {
+            auto: '⚙️ Авто',
+            github: '🐙 GitHub',
+            internet: '🌐 Интернет',
+            learning: '🧠 Обучение активно',
+            document: '📄 Документ',
+            manual: '📋 Ручной режим'
+        };
+        if (mode !== 'auto') {
+            indicator.style.display = 'inline-block';
+            indicator.textContent = labels[mode];
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
+
+    function showTyping() {
+        var container = document.getElementById('chat-messages');
+        var div = document.createElement('div');
+        div.className = 'typing-indicator';
+        div.id = 'typing';
+        div.innerHTML = '<span></span><span></span><span></span>';
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function hideTyping() {
+        var el = document.getElementById('typing');
+        if (el) el.remove();
+    }
+
+    function addMessage(sender, text, code, lang, source, sourceUrl) {
+        var container = document.getElementById('chat-messages');
+        var time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        var html = '<div class="message ' + sender + '">';
+        html += '<div class="message-body">' + formatText(text) + '</div>';
+
+        if (code) {
+            var langLabel = lang || 'csharp';
+            html += '<div class="message-code">'
+                + '<div class="code-header">'
+                + '<span>' + langLabel + '</span>'
+                + '<div class="code-actions">'
+                + '<button onclick="copyCode(this)" title="Copy"><i class="fas fa-copy"></i></button>'
+                + '<button onclick="downloadCode(this)" title="Download"><i class="fas fa-download"></i></button>'
+                + '<button onclick="openInEditor(this)" title="Open in editor"><i class="fas fa-external-link-alt"></i></button>'
+                + '</div></div>'
+                + '<pre><code class="language-' + langLabel + '">' + escapeHtml(code) + '</code></pre>'
+                + '</div>';
         }
 
-        function setChatMode(mode) {
-            chatMode = mode;
-            document.querySelectorAll('.chat-mode-toggle button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            const placeholder = mode === 'code' 
-                ? 'Опиши что нужно сделать, напишу код...' 
-                : 'Напиши сообщение...';
-            document.getElementById('chat-input').placeholder = placeholder;
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            
-            if (!text) return;
-            
-            addMessage('user', text);
-            input.value = '';
-            input.style.height = 'auto';
-            
-            showTyping();
-            
-            setTimeout(() => {
-                hideTyping();
-                const response = generateResponse(text);
-                addMessage('ai', response.text, response.code);
-            }, 1000 + Math.random() * 1000);
-        }
-
-        function sendQuick(text) {
-            document.getElementById('chat-input').value = text;
-            sendMessage();
-        }
-
-        function addMessage(sender, text, code = null) {
-            const container = document.getElementById('chat-messages');
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            let html = '<div class="message ' + sender + '">' + escapeHtml(text) + '<div class="message-time">' + time + '</div>';
-            
-            if (code) {
-                html += '<div class="message-code">'
-                    + '<div class="code-header">'
-                    + '<span>C#</span>'
-                    + '<div class="code-actions">'
-                    + '<button onclick="copyCode(this)" title="Copy"><i class="fas fa-copy"></i></button>'
-                    + '<button onclick="downloadCode(this)" title="Download"><i class="fas fa-download"></i></button>'
-                    + '<button onclick="openInEditor(this)" title="Open in editor"><i class="fas fa-external-link-alt"></i></button>'
-                    + '</div></div>'
-                    + '<pre><code class="language-csharp">' + escapeHtml(code) + '</code></pre>'
-                    + '</div>';
-            }
-            
-            html += '</div>';
-            
-            container.insertAdjacentHTML('beforeend', html);
-            container.scrollTop = container.scrollHeight;
-            
-            if (code) {
-                hljs.highlightAll();
-            }
-        }
-
-        function showTyping() {
-            const container = document.getElementById('chat-messages');
-            container.insertAdjacentHTML('beforeend', 
-                '<div class="typing-indicator" id="typing"><span></span><span></span><span></span></div>'
-            );
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function hideTyping() {
-            const typing = document.getElementById('typing');
-            if (typing) typing.remove();
-        }
-
-        function generateResponse(input) {
-            const lower = input.toLowerCase();
-            
-            if (lower.includes('игр') || lower.includes('game')) {
-                return {
-                    text: 'У меня есть несколько проектов! Вот мои лучшие игры:\n\n🎮 Cyber Quest - RPG в киберпанке\n🚀 Space Shooter 3D - динамичный экшен\n🏰 Dungeon Crawler - процедурные подземелья\n\nХочешь узнать подробнее о какой-то из них?'
-                };
-            }
-            
-            if (lower.includes('код') || lower.includes('code') || chatMode === 'code') {
-                const code = 'using UnityEngine;\n\npublic class Example : MonoBehaviour\n{\n    void Start()\n    {\n        Debug.Log("Hello from SashaAI!");\n    }\n    \n    void Update()\n    {\n        // Add your logic here\n    }\n}';
-                return {
-                    text: 'Вот код на C# для Unity:',
-                    code: code
-                };
-            }
-            
-            if (lower.includes('3d') || lower.includes('арт') || lower.includes('model')) {
-                return {
-                    text: 'Я создаю 3D модели в Blender! Мой пайплайн включает:\n\n• High-poly sculpting\n• Retopology\n• UV mapping\n• PBR texturing\n• Rigging & Animation\n\nПереходи в раздел Portfolio чтобы увидеть мои работы!'
-                };
-            }
-            
-            if (lower.includes('о себе') || lower.includes('about') || lower.includes('кто ты')) {
-                return {
-                    text: 'Я Sasha - разработчик игр и 3D художник!\n\nМоя миссия - создавать immersive игровые миры и делиться знаниями.\n\n• Unity/Unreal разработке\n• Процедурной генерации\n• AI-driven content\n• 3D моделировании\n\nМоя 3D модель рядом - это моё цифровое воплощение!'
-                };
-            }
-            
-            const defaults = [
-                'Интересный вопрос! Давай разберём подробнее.',
-                'Я могу помочь с этим! Что конкретно тебе нужно?',
-                'Классная тема! У меня есть опыт в этой области.',
-                'Расскажи больше деталей, чтобы я мог лучше помочь.'
-            ];
-            
-            return {
-                text: defaults[Math.floor(Math.random() * defaults.length)]
-            };
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function copyCode(btn) {
-            const code = btn.closest('.message-code').querySelector('code').textContent;
-            navigator.clipboard.writeText(code);
-            btn.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-copy"></i>';
-            }, 2000);
-        }
-
-        function downloadCode(btn) {
-            const code = btn.closest('.message-code').querySelector('code').textContent;
-            const blob = new Blob([code], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'Script.cs';
-            a.click();
-        }
-
-        function openInEditor(btn) {
-            const code = btn.closest('.message-code').querySelector('code').textContent;
-            // Manually trigger nav button update
-            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('nav button')[2].classList.add('active');
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.getElementById('code').classList.add('active');
-            currentSection = 'code';
-            if (editor) {
-                editor.setValue(code);
-                editor.layout();
-            }
-        }
-
-        function attachFile() {
-            alert('File upload - coming soon!');
-        }
-
-        function voiceInput() {
-            if ('webkitSpeechRecognition' in window) {
-                const recognition = new webkitSpeechRecognition();
-                recognition.lang = 'ru-RU';
-                recognition.onresult = (event) => {
-                    document.getElementById('chat-input').value = event.results[0][0].transcript;
-                };
-                recognition.start();
+        if (source) {
+            html += '<div class="message-source">📖 Источник: ';
+            if (sourceUrl) {
+                html += '<a href="' + escapeHtml(sourceUrl) + '" target="_blank">' + escapeHtml(source) + '</a>';
             } else {
-                alert('Voice input not supported in this browser');
+                html += escapeHtml(source);
             }
+            html += '</div>';
         }
 
-        // Code Editor (Monaco)
-        function initCodeEditor() {
-            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
-            
-            require(['vs/editor/editor.main'], () => {
-                editor = monaco.editor.create(document.getElementById('monaco-editor'), {
-                    value: 'using UnityEngine;\n\npublic class PlayerController : MonoBehaviour\n{\n    [SerializeField] private float speed = 5f;\n    \n    void Update()\n    {\n        float horizontal = Input.GetAxis("Horizontal");\n        float vertical = Input.GetAxis("Vertical");\n        \n        Vector3 movement = new Vector3(horizontal, 0, vertical);\n        transform.Translate(movement * speed * Time.deltaTime);\n    }\n}',
-                    language: 'csharp',
-                    theme: 'vs-dark',
-                    fontSize: 14,
-                    fontFamily: 'JetBrains Mono',
-                    minimap: { enabled: false },
-                    automaticLayout: true
-                });
-            });
-        }
+        html += '<div class="message-time">' + time + '</div>';
+        html += '</div>';
 
-        function openFile(fileId) {
-            document.querySelectorAll('.file-tree li').forEach(li => {
-                li.classList.remove('active');
-            });
-            event.target.closest('li').classList.add('active');
-            
-            const files = {
-                'script1': '// PlayerController.cs\nusing UnityEngine;\n\npublic class PlayerController : MonoBehaviour\n{\n    [SerializeField] private float speed = 5f;\n    private Rigidbody rb;\n\n    void Start()\n    {\n        rb = GetComponent<Rigidbody>();\n    }\n\n    void Update()\n    {\n        float h = Input.GetAxis("Horizontal");\n        float v = Input.GetAxis("Vertical");\n        Vector3 move = new Vector3(h, 0, v);\n        rb.velocity = move * speed;\n    }\n}',
-                'script2': '// GameManager.cs\nusing UnityEngine;\nusing UnityEngine.SceneManagement;\n\npublic class GameManager : MonoBehaviour\n{\n    public static GameManager Instance;\n    private int score = 0;\n\n    void Awake()\n    {\n        if (Instance == null) Instance = this;\n        else Destroy(gameObject);\n    }\n\n    public void AddScore(int points)\n    {\n        score += points;\n        Debug.Log("Score: " + score);\n    }\n\n    public void LoadLevel(string name)\n    {\n        SceneManager.LoadScene(name);\n    }\n}',
-                'script3': '// AI_NPC.cs\nusing UnityEngine;\nusing UnityEngine.AI;\n\npublic class AI_NPC : MonoBehaviour\n{\n    private NavMeshAgent agent;\n    public Transform player;\n    public float detectionRange = 15f;\n\n    void Start()\n    {\n        agent = GetComponent<NavMeshAgent>();\n    }\n\n    void Update()\n    {\n        float dist = Vector3.Distance(transform.position, player.position);\n        if (dist < detectionRange)\n            agent.SetDestination(player.position);\n    }\n}',
-                'script4': '// ProceduralGen.cs\nusing UnityEngine;\n\npublic class ProceduralGen : MonoBehaviour\n{\n    public int mapSize = 50;\n    public float noiseScale = 0.1f;\n    public GameObject[] tiles;\n\n    void Start()\n    {\n        GenerateMap();\n    }\n\n    void GenerateMap()\n    {\n        for (int x = 0; x < mapSize; x++)\n        {\n            for (int z = 0; z < mapSize; z++)\n            {\n                float noise = Mathf.PerlinNoise(x * noiseScale, z * noiseScale);\n                int idx = noise > 0.5f ? 1 : 0;\n                Vector3 pos = new Vector3(x, 0, z);\n                Instantiate(tiles[idx], pos, Quaternion.identity);\n            }\n        }\n    }\n}'
-            };
-            
-            if (editor && files[fileId]) {
-                editor.setValue(files[fileId]);
+        container.insertAdjacentHTML('beforeend', html);
+        container.scrollTop = container.scrollHeight;
+
+        if (code) {
+            try { hljs.highlightAll(); } catch(e) {}
+        }
+    }
+
+    function formatText(text) {
+        // Basic markdown-like formatting
+        var result = escapeHtml(text);
+        // Bold **text**
+        result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        return result;
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function sendMessage() {
+        var input = document.getElementById('chat-input');
+        var text = input.value.trim();
+        if (!text) return;
+
+        addMessage('user', text);
+        aiAgent.addToContext('user', text);
+        input.value = '';
+        input.style.height = 'auto';
+        showTyping();
+
+        try {
+            var response = await aiAgent.processMessage(text);
+            hideTyping();
+            aiAgent.addToContext('ai', response.text);
+            addMessage('ai', response.text, response.code, response.lang, response.source, response.sourceUrl);
+
+            if (tts.enabled && response.text) {
+                tts.speak(response.text);
             }
+        } catch(e) {
+            hideTyping();
+            addMessage('ai', 'Произошла ошибка. Попробуй ещё раз.');
+            console.error('AI Error:', e);
         }
+    }
 
-        function closeTab(btn) {
-            btn.closest('.code-tab').remove();
+    function sendQuick(text) {
+        document.getElementById('chat-input').value = text;
+        sendMessage();
+    }
+
+    function copyCode(btn) {
+        var code = btn.closest('.message-code').querySelector('code').textContent;
+        navigator.clipboard.writeText(code);
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
+    }
+
+    function downloadCode(btn) {
+        var code = btn.closest('.message-code').querySelector('code').textContent;
+        var ext = 'cs';
+        var lang = btn.closest('.message-code').querySelector('span').textContent;
+        if (lang === 'javascript') ext = 'js';
+        else if (lang === 'python') ext = 'py';
+        else if (lang === 'html') ext = 'html';
+        else if (lang === 'glsl') ext = 'shader';
+        var blob = new Blob([code], { type: 'text/plain' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'Script.' + ext;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function openInEditor(btn) {
+        var code = btn.closest('.message-code').querySelector('code').textContent;
+        document.querySelectorAll('nav button').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('nav button')[2].classList.add('active');
+        document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+        document.getElementById('code').classList.add('active');
+        currentSection = 'code';
+        if (editor) {
+            editor.setValue(code);
+            editor.layout();
         }
+    }
 
-        function runCode() {
-            alert('Code execution - coming soon!');
-        }
+    function attachFile() { alert('File upload — coming soon!'); }
 
-        function saveCode() {
-            const code = editor.getValue();
-            const blob = new Blob([code], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'Script.cs';
-            a.click();
-        }
-
-        function shareCode() {
-            alert('Shareable link copied to clipboard!');
-        }
-
-        // Portfolio
-        function filterPortfolio(type) {
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.closest('button').classList.add('active');
-            
-            document.querySelectorAll('.portfolio-item').forEach(item => {
-                if (type === 'all' || item.dataset.type === type) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        }
-
-        // Project modal - FIXED (was broken by accidentally pasted SashaAIBrain class)
-        function openProject(projectId) {
-            const modal = document.getElementById('project-modal');
-            const title = document.getElementById('modal-title');
-            const body = document.getElementById('modal-body');
-            
-            const projects = {
-                'game1': {
-                    title: 'Cyber Quest',
-                    content: '<img src="assets/images/games/game1.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
-                        + '<p>RPG в киберпанк сеттинге с открытым миром и процедурной генерацией квестов.</p>'
-                        + '<h3 style="margin:15px 0 10px">Особенности:</h3>'
-                        + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
-                        + '<li>Процедурная генерация квестов</li>'
-                        + '<li>Нейросетевые диалоги с NPC</li>'
-                        + '<li>Динамическая экономика</li>'
-                        + '</ul>'
-                },
-                'game2': {
-                    title: 'Space Shooter 3D',
-                    content: '<img src="assets/images/games/game2.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
-                        + '<p>Динамичный шутер с физикой и разрушаемыми объектами.</p>'
-                        + '<h3 style="margin:15px 0 10px">Особенности:</h3>'
-                        + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
-                        + '<li>Реалистичная физика</li>'
-                        + '<li>Разрушаемые объекты</li>'
-                        + '<li>Система прокачки корабля</li>'
-                        + '</ul>'
-                },
-                'art1': {
-                    title: 'Neon City',
-                    content: '<img src="assets/images/art/art1.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
-                        + '<p>Концепт-арт для киберпанк проекта. Создан в Photoshop.</p>'
-                        + '<h3 style="margin:15px 0 10px">Инструменты:</h3>'
-                        + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
-                        + '<li>Photoshop</li>'
-                        + '<li>Concept Art</li>'
-                        + '<li>Matte Painting</li>'
-                        + '</ul>'
-                },
-                'model1': {
-                    title: 'Sci-Fi Character',
-                    content: '<img src="assets/images/models/model1.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
-                        + '<p>Персонаж для игры с ригом и анимациями.</p>'
-                        + '<h3 style="margin:15px 0 10px">Технические детали:</h3>'
-                        + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
-                        + '<li>Blender</li>'
-                        + '<li>Rigging</li>'
-                        + '<li>Animation</li>'
-                        + '<li>PBR Materials</li>'
-                        + '</ul>'
-                }
+    function voiceInput() {
+        if ('webkitSpeechRecognition' in window) {
+            var recognition = new webkitSpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.onresult = function(event) {
+                document.getElementById('chat-input').value = event.results[0][0].transcript;
             };
-            
-            const project = projects[projectId] || { title: 'Project', content: '<p>Details coming soon...</p>' };
-            title.textContent = project.title;
-            body.innerHTML = project.content;
-            modal.classList.add('active');
+            recognition.start();
+        } else {
+            alert('Voice input not supported in this browser');
         }
+    }
 
-        function closeModal() {
-            document.getElementById('project-modal').classList.remove('active');
+    // ===== CLOSE POPUPS ON OUTSIDE CLICK =====
+    document.addEventListener('click', function(e) {
+        var ttsPopup = document.getElementById('tts-popup');
+        var ttsBtn = document.getElementById('tts-btn');
+        if (ttsPopup.classList.contains('show') && !ttsPopup.contains(e.target) && !ttsBtn.contains(e.target)) {
+            ttsPopup.classList.remove('show');
         }
+        var memPanel = document.getElementById('memory-panel');
+        var memBadge = document.getElementById('memory-badge');
+        if (memPanel.classList.contains('show') && !memPanel.contains(e.target) && !memBadge.contains(e.target)) {
+            memPanel.classList.remove('show');
+        }
+    });
 
-        // Close modal on outside click
-        document.getElementById('project-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                closeModal();
+    // Toggle TTS settings on long click or right click
+    document.getElementById('tts-btn').addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        document.getElementById('tts-popup').classList.toggle('show');
+    });
+    document.getElementById('tts-btn').addEventListener('dblclick', function(e) {
+        e.preventDefault();
+        document.getElementById('tts-popup').classList.toggle('show');
+    });
+
+    // ===== NAVIGATION =====
+    function showSection(sectionId) {
+        document.querySelectorAll('nav button').forEach(function(btn) { btn.classList.remove('active'); });
+        event.target.closest('button').classList.add('active');
+        document.querySelectorAll('.section').forEach(function(section) { section.classList.remove('active'); });
+        document.getElementById(sectionId).classList.add('active');
+        currentSection = sectionId;
+        if (sectionId === 'code' && editor) editor.layout();
+    }
+
+    // ===== 3D MODEL (Three.js) =====
+    function init3DModel() {
+        var container = document.getElementById('canvas-container');
+        var canvas = document.getElementById('sasha-canvas');
+
+        scene3D = new THREE.Scene();
+        scene3D.background = new THREE.Color(0x1a1a2e);
+
+        var camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 1.5, 3);
+
+        var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+
+        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene3D.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        scene3D.add(dirLight);
+
+        var rimLight = new THREE.SpotLight(0x6366f1, 0.5);
+        rimLight.position.set(-5, 5, -5);
+        rimLight.lookAt(0, 0, 0);
+        scene3D.add(rimLight);
+
+        var loader = new THREE.GLTFLoader();
+        loader.load('SashaAI.glb', function(gltf) {
+            sashaModel = gltf.scene;
+            var box = new THREE.Box3().setFromObject(sashaModel);
+            var center = box.getCenter(new THREE.Vector3());
+            var size = box.getSize(new THREE.Vector3());
+            var maxDim = Math.max(size.x, size.y, size.z);
+            var scale = 1.5 / maxDim;
+            sashaModel.scale.setScalar(scale);
+            sashaModel.position.sub(center.multiplyScalar(scale));
+            sashaModel.position.y = -0.5;
+            sashaModel.traverse(function(child) {
+                if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+            });
+            scene3D.add(sashaModel);
+            if (gltf.animations && gltf.animations.length > 0) {
+                var mixer = new THREE.AnimationMixer(sashaModel);
+                var action = mixer.clipAction(gltf.animations[0]);
+                action.play();
+                function animateMixer() { mixer.update(0.016); requestAnimationFrame(animateMixer); }
+                animateMixer();
+            }
+        }, undefined, function(error) {
+            console.error('Error loading model:', error);
+            createFallbackAvatar();
+        });
+
+        var controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 1.5;
+        controls.maxDistance = 5;
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.target.set(0, 0.5, 0);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene3D, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', function() {
+            if (currentSection === 'home') {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
             }
         });
+
+        canvas.addEventListener('click', function(event) {
+            var raycaster = new THREE.Raycaster();
+            var mouse = new THREE.Vector2();
+            var rect = canvas.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            if (sashaModel) {
+                var intersects = raycaster.intersectObjects(sashaModel.children, true);
+                if (intersects.length > 0) onModelClick();
+            }
+        });
+    }
+
+    function createFallbackAvatar() {
+        var geometry = new THREE.CapsuleGeometry(0.3, 1, 4, 8);
+        var material = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.3, metalness: 0.7 });
+        var mesh = new THREE.Mesh(geometry, material);
+        mesh.position.y = 0.5;
+        scene3D.add(mesh);
+    }
+
+    function onModelClick() {
+        var userName = aiAgent ? aiAgent.memory.getName() : '';
+        var greeting = userName ? "Привет, " + userName + "! Рад тебя видеть!" : pickRandom(RESPONSES.greetings);
+        addMessage('ai', greeting);
+        if (tts.enabled) tts.speak(greeting);
+        if (sashaModel) {
+            var startY = sashaModel.position.y;
+            sashaModel.position.y = startY + 0.1;
+            setTimeout(function() { sashaModel.position.y = startY; }, 150);
+        }
+    }
+
+    // ===== CHAT INIT =====
+    function initChat() {
+        var input = document.getElementById('chat-input');
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        input.addEventListener('input', function() {
+            input.style.height = 'auto';
+            input.style.height = input.scrollHeight + 'px';
+        });
+    }
+
+    // ===== CODE EDITOR (Monaco) =====
+    function initCodeEditor() {
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: 'using UnityEngine;\n\npublic class PlayerController : MonoBehaviour\n{\n    [SerializeField] private float speed = 5f;\n    \n    void Update()\n    {\n        float horizontal = Input.GetAxis("Horizontal");\n        float vertical = Input.GetAxis("Vertical");\n        \n        Vector3 movement = new Vector3(horizontal, 0, vertical);\n        transform.Translate(movement * speed * Time.deltaTime);\n    }\n}',
+                language: 'csharp',
+                theme: 'vs-dark',
+                fontSize: 14,
+                fontFamily: 'JetBrains Mono',
+                minimap: { enabled: false },
+                automaticLayout: true
+            });
+        });
+    }
+
+    function openFile(fileId) {
+        document.querySelectorAll('.file-tree li').forEach(function(li) { li.classList.remove('active'); });
+        event.target.closest('li').classList.add('active');
+        var files = {
+            'script1': '// PlayerController.cs\nusing UnityEngine;\n\npublic class PlayerController : MonoBehaviour\n{\n    [SerializeField] private float speed = 5f;\n    private Rigidbody rb;\n\n    void Start()\n    {\n        rb = GetComponent<Rigidbody>();\n    }\n\n    void Update()\n    {\n        float h = Input.GetAxis("Horizontal");\n        float v = Input.GetAxis("Vertical");\n        Vector3 move = new Vector3(h, 0, v);\n        rb.velocity = move * speed;\n    }\n}',
+            'script2': '// GameManager.cs\nusing UnityEngine;\nusing UnityEngine.SceneManagement;\n\npublic class GameManager : MonoBehaviour\n{\n    public static GameManager Instance;\n    private int score = 0;\n\n    void Awake()\n    {\n        if (Instance == null) Instance = this;\n        else Destroy(gameObject);\n    }\n\n    public void AddScore(int points)\n    {\n        score += points;\n        Debug.Log("Score: " + score);\n    }\n\n    public void LoadLevel(string name)\n    {\n        SceneManager.LoadScene(name);\n    }\n}',
+            'script3': '// AI_NPC.cs\nusing UnityEngine;\nusing UnityEngine.AI;\n\npublic class AI_NPC : MonoBehaviour\n{\n    private NavMeshAgent agent;\n    public Transform player;\n    public float detectionRange = 15f;\n\n    void Start()\n    {\n        agent = GetComponent<NavMeshAgent>();\n    }\n\n    void Update()\n    {\n        float dist = Vector3.Distance(transform.position, player.position);\n        if (dist < detectionRange)\n            agent.SetDestination(player.position);\n    }\n}',
+            'script4': '// ProceduralGen.cs\nusing UnityEngine;\n\npublic class ProceduralGen : MonoBehaviour\n{\n    public int mapSize = 50;\n    public float noiseScale = 0.1f;\n    public GameObject[] tiles;\n\n    void Start()\n    {\n        GenerateMap();\n    }\n\n    void GenerateMap()\n    {\n        for (int x = 0; x < mapSize; x++)\n        {\n            for (int z = 0; z < mapSize; z++)\n            {\n                float noise = Mathf.PerlinNoise(x * noiseScale, z * noiseScale);\n                int idx = noise > 0.5f ? 1 : 0;\n                Vector3 pos = new Vector3(x, 0, z);\n                Instantiate(tiles[idx], pos, Quaternion.identity);\n            }\n        }\n    }\n}'
+        };
+        if (editor && files[fileId]) editor.setValue(files[fileId]);
+    }
+
+    function closeTab(btn) { btn.closest('.code-tab').remove(); }
+
+    function runCode() { alert('Code execution — coming soon!'); }
+
+    function saveCode() {
+        var code = editor.getValue();
+        var blob = new Blob([code], { type: 'text/plain' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'Script.cs';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function shareCode() { alert('Shareable link copied to clipboard!'); }
+
+    // ===== PORTFOLIO =====
+    function filterPortfolio(type) {
+        document.querySelectorAll('.filter-btn').forEach(function(btn) { btn.classList.remove('active'); });
+        event.target.closest('button').classList.add('active');
+        document.querySelectorAll('.portfolio-item').forEach(function(item) {
+            item.style.display = (type === 'all' || item.dataset.type === type) ? 'block' : 'none';
+        });
+    }
+
+    // ===== PROJECT MODAL =====
+    function openProject(projectId) {
+        var modal = document.getElementById('project-modal');
+        var title = document.getElementById('modal-title');
+        var body = document.getElementById('modal-body');
+        var projects = {
+            'game1': {
+                title: 'Cyber Quest',
+                content: '<img src="assets/images/games/game1.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
+                    + '<p>RPG в киберпанк сеттинге с открытым миром и процедурной генерацией квестов.</p>'
+                    + '<h3 style="margin:15px 0 10px">Особенности:</h3>'
+                    + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
+                    + '<li>Процедурная генерация квестов</li>'
+                    + '<li>Нейросетевые диалоги с NPC</li>'
+                    + '<li>Динамическая экономика</li>'
+                    + '</ul>'
+            },
+            'game2': {
+                title: 'Space Shooter 3D',
+                content: '<img src="assets/images/games/game2.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
+                    + '<p>Динамичный шутер с физикой и разрушаемыми объектами.</p>'
+                    + '<h3 style="margin:15px 0 10px">Особенности:</h3>'
+                    + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
+                    + '<li>Реалистичная физика</li>'
+                    + '<li>Разрушаемые объекты</li>'
+                    + '<li>Система прокачки корабля</li>'
+                    + '</ul>'
+            },
+            'art1': {
+                title: 'Neon City',
+                content: '<img src="assets/images/art/art1.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
+                    + '<p>Концепт-арт для киберпанк проекта. Создан в Photoshop.</p>'
+                    + '<h3 style="margin:15px 0 10px">Инструменты:</h3>'
+                    + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
+                    + '<li>Photoshop</li>'
+                    + '<li>Concept Art</li>'
+                    + '<li>Matte Painting</li>'
+                    + '</ul>'
+            },
+            'model1': {
+                title: 'Sci-Fi Character',
+                content: '<img src="assets/images/models/model1.jpg" style="width:100%;border-radius:10px;margin-bottom:20px;">'
+                    + '<p>Персонаж для игры с ригом и анимациями.</p>'
+                    + '<h3 style="margin:15px 0 10px">Технические детали:</h3>'
+                    + '<ul style="padding-left:20px;color:var(--text-secondary);line-height:2">'
+                    + '<li>Blender</li>'
+                    + '<li>Rigging</li>'
+                    + '<li>Animation</li>'
+                    + '<li>PBR Materials</li>'
+                    + '</ul>'
+            }
+        };
+        var project = projects[projectId] || { title: 'Project', content: '<p>Details coming soon...</p>' };
+        title.textContent = project.title;
+        body.innerHTML = project.content;
+        modal.classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('project-modal').classList.remove('active');
+    }
+
+    document.getElementById('project-modal').addEventListener('click', function(e) {
+        if (e.target === e.currentTarget) closeModal();
+    });
+
+    // ===== INITIALIZATION =====
+    document.addEventListener('DOMContentLoaded', function() {
+        tts = new SashaTTS();
+        aiAgent = new SashaAIAgent();
+        updateMemoryBadge();
+        init3DModel();
+        initChat();
+        initCodeEditor();
+
+        // Welcome back message
+        var lastVisit = aiAgent.memory.data.lastVisit;
+        var convCount = aiAgent.memory.getConvCount();
+        if (convCount > 1) {
+            var welcomeBack = "С возвращением! Это твой " + convCount + "-й визит. Я помню всё, чему ты меня научил!";
+            if (aiAgent.memory.getName()) {
+                welcomeBack = "Привет, " + aiAgent.memory.getName() + "! Рад снова тебя видеть! Это наш " + convCount + "-й диалог.";
+            }
+            addMessage('ai', welcomeBack);
+        }
+    });
     </script>
 </body>
 </html>
-
 
 
 
