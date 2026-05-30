@@ -4859,10 +4859,10 @@ var SashaWebLLM = (function() {
             var mod = await importWebLLM();
             if (engine) {
                 try { await engine.unload(); } catch(e) {}
+                engine = null;
             }
-            engine = new mod.MLCEngine();
 
-            await engine.reload(modelId, {
+            engine = await mod.CreateMLCEngine(modelId, {
                 initProgressCallback: function(report) {
                     if (onProgress) {
                         onProgress({
@@ -4874,6 +4874,11 @@ var SashaWebLLM = (function() {
                     }
                 }
             });
+
+            // Verify engine actually has the model
+            if (!engine) {
+                throw new Error('Engine creation returned null');
+            }
 
             status = 'ready';
             updateStatus();
@@ -4894,8 +4899,12 @@ var SashaWebLLM = (function() {
             if (engine) { try { await engine.unload(); } catch(e) {} }
             engine = null;
             await new Promise(function(r) { setTimeout(r, 500); });
-            engine = new mod.MLCEngine();
-            await engine.reload(modelId, { initProgressCallback: function() {} });
+            engine = await mod.CreateMLCEngine(modelId, {
+                initProgressCallback: function() {}
+            });
+            if (!engine) {
+                throw new Error('Engine re-creation returned null');
+            }
             status = 'ready';
             updateStatus();
             console.log('Engine re-initialized OK');
@@ -5650,5 +5659,3 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
-
-
