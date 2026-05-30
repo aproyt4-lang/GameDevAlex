@@ -4885,6 +4885,29 @@ var SashaWebLLM = (function() {
         }
     }
 
+    async function reinitEngine() {
+        console.log('Re-initializing engine after GPU error...');
+        status = 'loading';
+        updateStatus();
+        try {
+            var mod = await importWebLLM();
+            if (engine) { try { await engine.unload(); } catch(e) {} }
+            engine = null;
+            await new Promise(function(r) { setTimeout(r, 500); });
+            engine = new mod.MLCEngine();
+            await engine.reload(modelId, { initProgressCallback: function() {} });
+            status = 'ready';
+            updateStatus();
+            console.log('Engine re-initialized OK');
+            return true;
+        } catch(e) {
+            console.error('Engine re-init failed:', e);
+            status = 'error';
+            updateStatus();
+            return false;
+        }
+    }
+
     async function generate(prompt, systemPrompt) {
         if (status !== 'ready' || !engine) return 'AI model not loaded.';
 
@@ -4898,17 +4921,51 @@ var SashaWebLLM = (function() {
             messages.push(chatHistory[i]);
         }
 
-        // Retry on GPU buffer errors
-        var maxRetries = 3;
+        // Retry on GPU buffer errors with full engine reinit
+        var maxRetries = 2;
         for (var attempt = 0; attempt < maxRetries; attempt++) {
+            var text = '';
             try {
-                var reply = await engine.chat.completions.create({
+                // Use streaming mode — more stable with GPU buffers
+                var chunks = await engine.chat.completions.create({
                     messages: messages,
-                    max_tokens: 1024,
+                    max_tokens: 512,
                     temperature: 0.7,
-                    top_p: 0.9
+                    top_p: 0.9,
+                    stream: true,
+                    stream_options: { include_usage: false }
                 });
-                var text = reply.choices[0].message.content;
+
+                // Collect streamed chunks
+                var chunkList = [];
+                if (typeof chunks[Symbol.asyncIterator] === 'function') {
+                    var iterator = chunks;
+                    var result = await iterator.next();
+                    while (!result.done) {
+                        var chunk = result.value;
+                        if (chunk && chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
+                            text += chunk.choices[0].delta.content;
+                        }
+                        result = await iterator.next();
+                    }
+                } else if (Array.isArray(chunks)) {
+                    for (var c = 0; c < chunks.length; c++) {
+                        if (chunks[c] && chunks[c].choices && chunks[c].choices[0] && chunks[c].choices[0].delta && chunks[c].choices[0].delta.content) {
+                            text += chunks[c].choices[0].delta.content;
+                        }
+                    }
+                } else {
+                    // Fallback: non-streaming
+                    var reply = await engine.chat.completions.create({
+                        messages: messages,
+                        max_tokens: 512,
+                        temperature: 0.7,
+                        top_p: 0.9
+                    });
+                    text = reply.choices[0].message.content;
+                }
+
+                if (!text || text.length < 1) text = 'Error: empty response';
                 chatHistory.push({ role: 'assistant', content: text });
                 if (chatHistory.length > 20) {
                     chatHistory = chatHistory.slice(chatHistory.length - 10);
@@ -4917,13 +4974,10 @@ var SashaWebLLM = (function() {
             } catch(e) {
                 var errMsg = String(e.message || e);
                 console.error('Generation error (attempt ' + (attempt + 1) + '):', errMsg);
-                if (errMsg.indexOf('mapAsync') !== -1 || errMsg.indexOf('unmapped') !== -1 || errMsg.indexOf('GPUBuffer') !== -1) {
-                    if (attempt < maxRetries - 1) {
-                        // Remove failed user message from history so it can be retried
-                        chatHistory.pop();
-                        await new Promise(function(r) { setTimeout(r, 1500); });
-                        continue;
-                    }
+                chatHistory.pop();
+                if (attempt < maxRetries - 1) {
+                    var ok = await reinitEngine();
+                    if (ok) continue;
                 }
                 return 'Error: ' + errMsg;
             }
