@@ -1541,7 +1541,7 @@
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- выбери модель --</option>
                         <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
-                        <option value="Llama-3-8B-Instruct-q4f16_1-MLC">Llama 3 8B</option>
+                        <option value="Llama-3.1-8B-Instruct-q4f16_1-MLC">Llama 3 (8B)</option>
                     </select>
                     <button class="eng-btn" onclick="EngineApp.saveProject()" title="Save"><i class="fas fa-save"></i> Save</button>
                     <button class="eng-btn" onclick="EngineApp.exportGame()" title="Export as HTML"><i class="fas fa-file-export"></i> Export</button>
@@ -4898,24 +4898,37 @@ var SashaWebLLM = (function() {
             messages.push(chatHistory[i]);
         }
 
-        try {
-            var reply = await engine.chat.completions.create({
-                messages: messages,
-                max_tokens: 2048,
-                temperature: 0.7,
-                top_p: 0.9
-            });
-            var text = reply.choices[0].message.content;
-            chatHistory.push({ role: 'assistant', content: text });
-            // Keep history manageable
-            if (chatHistory.length > 20) {
-                chatHistory = chatHistory.slice(chatHistory.length - 10);
+        // Retry on GPU buffer errors
+        var maxRetries = 3;
+        for (var attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                var reply = await engine.chat.completions.create({
+                    messages: messages,
+                    max_tokens: 1024,
+                    temperature: 0.7,
+                    top_p: 0.9
+                });
+                var text = reply.choices[0].message.content;
+                chatHistory.push({ role: 'assistant', content: text });
+                if (chatHistory.length > 20) {
+                    chatHistory = chatHistory.slice(chatHistory.length - 10);
+                }
+                return text;
+            } catch(e) {
+                var errMsg = String(e.message || e);
+                console.error('Generation error (attempt ' + (attempt + 1) + '):', errMsg);
+                if (errMsg.indexOf('mapAsync') !== -1 || errMsg.indexOf('unmapped') !== -1 || errMsg.indexOf('GPUBuffer') !== -1) {
+                    if (attempt < maxRetries - 1) {
+                        // Remove failed user message from history so it can be retried
+                        chatHistory.pop();
+                        await new Promise(function(r) { setTimeout(r, 1500); });
+                        continue;
+                    }
+                }
+                return 'Error: ' + errMsg;
             }
-            return text;
-        } catch(e) {
-            console.error('Generation error:', e);
-            return 'Error: ' + e.message;
         }
+        return 'Error: failed after retries';
     }
 
     async function generateCode(prompt, currentCode) {
