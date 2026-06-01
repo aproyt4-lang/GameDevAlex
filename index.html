@@ -1202,13 +1202,150 @@
         .engine-model-status .status-dot.loading { background: #f59e0b; animation: blink 1s infinite; }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        .engine-body { display: flex; flex: 1; overflow: hidden; }
-        .engine-editor-pane { width: 45%; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-        .engine-viewport-pane { width: 55%; position: relative; background: #0a0a1a; }
+        /* Play/Pause/Stop buttons */
+        .engine-play-controls { display: flex; gap: 4px; }
+        .eng-btn.play-btn { background: #22c55e !important; color: #fff !important; border-color: #22c55e !important; }
+        .eng-btn.play-btn:hover { background: #16a34a !important; }
+        .eng-btn.pause-btn { background: #f59e0b !important; color: #fff !important; border-color: #f59e0b !important; }
+        .eng-btn.pause-btn:hover { background: #d97706 !important; }
+        .eng-btn.stop-btn { background: #ef4444 !important; color: #fff !important; border-color: #ef4444 !important; }
+        .eng-btn.stop-btn:hover { background: #dc2626 !important; }
+
+        /* Main 3-column grid: Hierarchy | Viewport | Inspector */
+        .engine-main-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr 280px;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* Hierarchy panel (left) */
+        .engine-hierarchy {
+            display: flex; flex-direction: column;
+            background: var(--bg-dark); border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .hier-item {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 8px; cursor: pointer; font-size: 0.78rem;
+            color: var(--text-secondary); border-left: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .hier-item:hover { background: var(--bg-hover); color: #fff; }
+        .hier-item.selected { background: var(--bg-hover); color: #fff; border-left-color: var(--primary); }
+        .hier-item .hier-icon { width: 16px; text-align: center; font-size: 0.72rem; }
+        .hier-item .hier-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hier-item .hier-vis {
+            background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem; padding: 2px;
+        }
+        .hier-item .hier-vis:hover { color: var(--primary); }
+        .hier-item.builtin { color: var(--text-muted); opacity: 0.6; }
+
+        /* Inspector panel (right) */
+        .engine-inspector {
+            display: flex; flex-direction: column;
+            background: var(--bg-dark); border-left: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .insp-section {
+            border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; overflow: hidden;
+        }
+        .insp-section-header {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 10px; font-size: 0.78rem; font-weight: 600;
+            background: var(--bg-card); color: var(--text-secondary);
+            cursor: pointer; user-select: none;
+        }
+        .insp-section-header:hover { color: #fff; }
+        .insp-section-header i { font-size: 0.7rem; }
+        .insp-row {
+            display: flex; align-items: center; padding: 3px 10px; gap: 6px;
+        }
+        .insp-label {
+            font-size: 0.72rem; color: var(--text-muted); width: 22px; min-width: 22px; text-align: center;
+        }
+        .insp-row.x-row .insp-label { color: #ef4444; }
+        .insp-row.y-row .insp-label { color: #22c55e; }
+        .insp-row.z-row .insp-label { color: #3b82f6; }
+        .insp-input {
+            flex: 1; background: var(--bg-card); border: 1px solid var(--border); color: #fff;
+            padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; outline: none;
+            font-family: 'JetBrains Mono', monospace; min-width: 0;
+        }
+        .insp-input:focus { border-color: var(--primary); }
+        .insp-btn {
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 0.72rem;
+            transition: all 0.15s;
+        }
+        .insp-btn:hover { border-color: var(--primary); color: #fff; }
+        .insp-btn.danger { color: #ef4444; }
+        .insp-btn.danger:hover { background: #ef4444; color: #fff; }
+        .insp-color-input {
+            width: 32px; height: 22px; border: 1px solid var(--border); border-radius: 4px;
+            cursor: pointer; background: none; padding: 0;
+        }
+        .insp-checkbox { accent-color: var(--primary); cursor: pointer; }
+        .insp-section-body { padding: 6px 0; }
+        .insp-select {
+            flex: 1; background: var(--bg-card); border: 1px solid var(--border); color: #fff;
+            padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; outline: none;
+        }
+
+        /* Component items */
+        .comp-item {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 10px; font-size: 0.75rem; color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+        .comp-item:last-child { border-bottom: none; }
+        .comp-item i { width: 14px; text-align: center; font-size: 0.68rem; }
+        .comp-item .comp-name { flex: 1; }
+        .comp-item .comp-del {
+            background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem;
+        }
+        .comp-item .comp-del:hover { color: #ef4444; }
+        .comp-script {
+            width: 100%; background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;
+            padding: 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; resize: vertical; min-height: 60px; outline: none;
+        }
+        .comp-script:focus { border-color: var(--primary); }
+        .phys-badge {
+            display: inline-block; font-size: 0.6rem; padding: 1px 5px;
+            border-radius: 3px; background: var(--primary); color: #fff; margin-left: 4px;
+        }
+
+        /* Viewport */
+        .engine-viewport-pane { position: relative; background: #0a0a1a; overflow: hidden; }
         .engine-viewport-pane canvas { width: 100% !important; height: 100% !important; display: block; }
 
-        .engine-bottom { display: flex; height: 220px; border-top: 1px solid var(--border); }
-        .engine-console { flex: 1; background: var(--bg-card); overflow-y: auto; padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+        /* Bottom tabs area */
+        .engine-bottom-grid {
+            display: flex; flex-direction: column;
+            height: 220px; border-top: 1px solid var(--border);
+        }
+        .engine-bottom-tabs {
+            display: flex; gap: 0; background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        .eng-tab {
+            background: none; border: none; border-bottom: 2px solid transparent;
+            color: var(--text-muted); padding: 6px 16px; cursor: pointer;
+            font-size: 0.75rem; transition: all 0.15s;
+        }
+        .eng-tab:hover { color: #fff; }
+        .eng-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .engine-bottom-content { flex: 1; overflow: hidden; min-height: 0; }
+        .eng-tab-content { width: 100%; height: 100%; overflow: hidden; display: none; }
+        .eng-tab-content.active { display: block; }
+
+        /* Console */
+        .engine-console {
+            width: 100%; height: 100%; background: var(--bg-card); overflow-y: auto;
+            padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+        }
         .engine-console .con-line { padding: 2px 0; }
         .engine-console .con-line.log { color: #e2e8f0; }
         .engine-console .con-line.error { color: #ef4444; }
@@ -1216,10 +1353,12 @@
         .engine-console .con-line.info { color: #06b6d4; }
         .engine-console .con-line.result { color: #22c55e; }
 
-        .engine-ai-panel {
-            width: 380px; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg-dark);
-        }
-        .engine-ai-input-row { display: flex; padding: 8px; gap: 6px; border-top: 1px solid var(--border); }
+        /* AI panel in bottom tab */
+        .engine-ai-chat { height: 100%; overflow-y: auto; padding: 8px; font-size: 0.78rem; }
+        .engine-ai-msg { padding: 6px 10px; margin-bottom: 6px; border-radius: 8px; max-width: 95%; }
+        .engine-ai-msg.user { background: var(--bg-hover); margin-left: auto; text-align: right; }
+        .engine-ai-msg.ai { background: var(--bg-card); border: 1px solid var(--border); }
+        .engine-ai-input-row { display: flex; padding: 8px; gap: 6px; border-top: 1px solid var(--border); background: var(--bg-dark); }
         .engine-ai-input-row input {
             flex: 1; background: var(--bg-card); border: 1px solid var(--border); color: #fff;
             padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; outline: none;
@@ -1228,10 +1367,6 @@
         .engine-ai-input-row button {
             background: var(--primary); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
         }
-        .engine-ai-chat { flex: 1; overflow-y: auto; padding: 8px; font-size: 0.78rem; }
-        .engine-ai-msg { padding: 6px 10px; margin-bottom: 6px; border-radius: 8px; max-width: 95%; }
-        .engine-ai-msg.user { background: var(--bg-hover); margin-left: auto; text-align: right; }
-        .engine-ai-msg.ai { background: var(--bg-card); border: 1px solid var(--border); }
 
         /* Model load overlay */
         .engine-model-overlay {
@@ -1530,30 +1665,44 @@
         <!-- Engine Section -->
         <section id="engine" class="section">
             <div class="engine-section">
+                <!-- Toolbar -->
                 <div class="engine-toolbar">
-                    <button class="eng-btn run-btn" onclick="EngineApp.runCode()" title="Run code"><i class="fas fa-play"></i> Run</button>
-                    <button class="eng-btn" id="eng-live-btn" onclick="EngineApp.toggleLive()" title="Live mode"><i class="fas fa-bolt"></i> Live</button>
+                    <button class="eng-btn play-btn" onclick="EngineApp.play()" title="Play"><i class="fas fa-play"></i></button>
+                    <button class="eng-btn pause-btn" onclick="EngineApp.pause()" title="Pause"><i class="fas fa-pause"></i></button>
+                    <button class="eng-btn stop-btn" onclick="EngineApp.stop()" title="Stop"><i class="fas fa-stop"></i></button>
                     <div class="eng-separator"></div>
-                    <button class="eng-btn" onclick="EngineApp.loadModelFromURL()" title="Load GLB model"><i class="fas fa-file-import"></i> Load Model</button>
-                    <button class="eng-btn" onclick="EngineApp.clearScene()" title="Clear scene"><i class="fas fa-trash"></i> Clear</button>
+                    <button class="eng-btn" onclick="EngineApp.addObject('cube')" title="Add Cube"><i class="fas fa-cube"></i> Cube</button>
+                    <button class="eng-btn" onclick="EngineApp.addObject('sphere')" title="Add Sphere"><i class="fas fa-circle"></i> Sphere</button>
+                    <button class="eng-btn" onclick="EngineApp.addObject('cylinder')" title="Add Cylinder"><i class="fas fa-database"></i> Cylinder</button>
+                    <button class="eng-btn" onclick="EngineApp.addObject('plane')" title="Add Plane"><i class="fas fa-square"></i> Plane</button>
+                    <button class="eng-btn" onclick="EngineApp.addObject('light')" title="Add Light"><i class="fas fa-lightbulb"></i> Light</button>
                     <div class="eng-separator"></div>
-                    <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load LLM"><i class="fas fa-brain"></i> Load AI</button>
+                    <button class="eng-btn" onclick="EngineApp.loadModelFromURL()" title="Load 3D Model"><i class="fas fa-file-import"></i> Model</button>
+                    <button class="eng-btn" onclick="EngineApp.clearScene()" title="Clear"><i class="fas fa-trash"></i></button>
+                    <div class="eng-separator"></div>
+                    <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
-                        <option value="">-- выбери модель --</option>
+                        <option value="">-- AI --</option>
                         <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
                         <option value="Llama-3.1-8B-Instruct-q4f16_1-MLC">Llama 3 (8B)</option>
                     </select>
-                    <button class="eng-btn" onclick="EngineApp.saveProject()" title="Save"><i class="fas fa-save"></i> Save</button>
-                    <button class="eng-btn" onclick="EngineApp.exportGame()" title="Export as HTML"><i class="fas fa-file-export"></i> Export</button>
+                    <button class="eng-btn" onclick="EngineApp.saveProject()" title="Save"><i class="fas fa-save"></i></button>
+                    <button class="eng-btn" onclick="EngineApp.exportGame()" title="Export"><i class="fas fa-file-export"></i></button>
                     <div class="engine-model-status">
                         <div class="status-dot" id="eng-status-dot"></div>
                         <span id="eng-status-text">AI: offline</span>
                     </div>
                 </div>
-                <div class="engine-body">
-                    <div class="engine-editor-pane">
-                        <div id="engine-monaco" style="flex:1;"></div>
+
+                <!-- Main area: Hierarchy | Viewport | Inspector -->
+                <div class="engine-main-grid">
+                    <!-- Hierarchy -->
+                    <div class="engine-hierarchy">
+                        <div class="insp-section-header"><i class="fas fa-sitemap"></i> Hierarchy</div>
+                        <div id="eng-hierarchy" style="flex:1;overflow-y:auto;padding:4px;"></div>
                     </div>
+
+                    <!-- Viewport -->
                     <div class="engine-viewport-pane">
                         <canvas id="engine-canvas"></canvas>
                         <div class="engine-model-overlay" id="eng-overlay">
@@ -1561,14 +1710,36 @@
                             <div class="model-progress"><div class="model-progress-bar" id="eng-progress-bar"></div></div>
                         </div>
                     </div>
+
+                    <!-- Inspector -->
+                    <div class="engine-inspector">
+                        <div class="insp-section-header"><i class="fas fa-sliders-h"></i> Inspector</div>
+                        <div id="eng-inspector" style="flex:1;overflow-y:auto;padding:8px;">
+                            <div style="color:var(--text-secondary);font-size:0.8rem;text-align:center;padding:20px;">Select an object</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="engine-bottom">
-                    <div class="engine-console" id="eng-console"></div>
-                    <div class="engine-ai-panel">
-                        <div class="engine-ai-chat" id="eng-ai-chat"></div>
-                        <div class="engine-ai-input-row">
-                            <input type="text" id="eng-ai-input" placeholder="Ask AI to write code..." onkeydown="if(event.key==='Enter')EngineApp.sendAIToEditor()">
-                            <button onclick="EngineApp.sendAIToEditor()">Apply</button>
+
+                <!-- Bottom: Tabs (Console / Code / AI) -->
+                <div class="engine-bottom-grid">
+                    <div class="engine-bottom-tabs">
+                        <button class="eng-tab active" onclick="EngineApp.switchTab('console')"><i class="fas fa-terminal"></i> Console</button>
+                        <button class="eng-tab" onclick="EngineApp.switchTab('code')"><i class="fas fa-code"></i> Code</button>
+                        <button class="eng-tab" onclick="EngineApp.switchTab('ai')"><i class="fas fa-robot"></i> AI Agent</button>
+                    </div>
+                    <div class="engine-bottom-content">
+                        <div class="eng-tab-content" id="eng-tab-console" style="display:block;">
+                            <div class="engine-console" id="eng-console"></div>
+                        </div>
+                        <div class="eng-tab-content" id="eng-tab-code" style="display:none;">
+                            <div id="engine-monaco" style="width:100%;height:100%;"></div>
+                        </div>
+                        <div class="eng-tab-content" id="eng-tab-ai" style="display:none;">
+                            <div class="engine-ai-chat" id="eng-ai-chat"></div>
+                            <div class="engine-ai-input-row">
+                                <input type="text" id="eng-ai-input" placeholder="Ask AI to write code..." onkeydown="if(event.key==='Enter')EngineApp.sendAIToEditor()">
+                                <button onclick="EngineApp.sendAIToEditor()">Apply</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4855,14 +5026,13 @@ var SashaWebLLM = (function() {
         chatHistory = [];
         updateStatus();
 
+        gpuDead = false;
         try {
             var mod = await importWebLLM();
             if (engine) {
                 try { await engine.unload(); } catch(e) {}
             }
-            engine = new mod.MLCEngine();
-
-            await engine.reload(modelId, {
+            engine = new mod.MLCEngine({
                 initProgressCallback: function(report) {
                     if (onProgress) {
                         onProgress({
@@ -4875,6 +5045,8 @@ var SashaWebLLM = (function() {
                 }
             });
 
+            await engine.reload(modelId);
+
             status = 'ready';
             updateStatus();
         } catch(e) {
@@ -4885,30 +5057,17 @@ var SashaWebLLM = (function() {
         }
     }
 
-    async function reinitEngine() {
-        console.log('Re-initializing engine after GPU error...');
-        status = 'loading';
-        updateStatus();
-        try {
-            var mod = await importWebLLM();
-            if (engine) { try { await engine.unload(); } catch(e) {} }
-            engine = null;
-            await new Promise(function(r) { setTimeout(r, 500); });
-            engine = new mod.MLCEngine();
-            await engine.reload(modelId, { initProgressCallback: function() {} });
-            status = 'ready';
-            updateStatus();
-            console.log('Engine re-initialized OK');
-            return true;
-        } catch(e) {
-            console.error('Engine re-init failed:', e);
-            status = 'error';
-            updateStatus();
-            return false;
-        }
+    var gpuDead = false;
+
+    function isGPUDead(errMsg) {
+        return errMsg.indexOf('DXGI_ERROR_DEVICE_REMOVED') !== -1 ||
+               errMsg.indexOf('requestDevice') !== -1 ||
+               errMsg.indexOf('No available adapters') !== -1 ||
+               errMsg.indexOf('GPU device lost') !== -1;
     }
 
     async function generate(prompt, systemPrompt) {
+        if (gpuDead) return 'Error: GPU crashed. Restart browser and reload page.';
         if (status !== 'ready' || !engine) return 'AI model not loaded.';
 
         chatHistory.push({ role: 'user', content: prompt });
@@ -4921,68 +5080,58 @@ var SashaWebLLM = (function() {
             messages.push(chatHistory[i]);
         }
 
-        // Retry on GPU buffer errors with full engine reinit
-        var maxRetries = 2;
-        for (var attempt = 0; attempt < maxRetries; attempt++) {
-            var text = '';
-            try {
-                // Use streaming mode — more stable with GPU buffers
-                var chunks = await engine.chat.completions.create({
-                    messages: messages,
-                    max_tokens: 512,
-                    temperature: 0.7,
-                    top_p: 0.9,
-                    stream: true,
-                    stream_options: { include_usage: false }
-                });
+        var text = '';
+        try {
+            var chunks = await engine.chat.completions.create({
+                messages: messages,
+                max_tokens: 512,
+                temperature: 0.7,
+                top_p: 0.9,
+                stream: true,
+                stream_options: { include_usage: true }
+            });
 
-                // Collect streamed chunks
-                var chunkList = [];
-                if (typeof chunks[Symbol.asyncIterator] === 'function') {
-                    var iterator = chunks;
-                    var result = await iterator.next();
+            // Use for-await-of as documented — properly cleans up GPU resources via iterator.return()
+            var chunk;
+            if (typeof chunks[Symbol.asyncIterator] === 'function') {
+                var iter = chunks[Symbol.asyncIterator]();
+                try {
+                    var result = await iter.next();
                     while (!result.done) {
-                        var chunk = result.value;
+                        chunk = result.value;
                         if (chunk && chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
                             text += chunk.choices[0].delta.content;
                         }
-                        result = await iterator.next();
+                        result = await iter.next();
                     }
-                } else if (Array.isArray(chunks)) {
-                    for (var c = 0; c < chunks.length; c++) {
-                        if (chunks[c] && chunks[c].choices && chunks[c].choices[0] && chunks[c].choices[0].delta && chunks[c].choices[0].delta.content) {
-                            text += chunks[c].choices[0].delta.content;
-                        }
-                    }
-                } else {
-                    // Fallback: non-streaming
-                    var reply = await engine.chat.completions.create({
-                        messages: messages,
-                        max_tokens: 512,
-                        temperature: 0.7,
-                        top_p: 0.9
-                    });
-                    text = reply.choices[0].message.content;
+                } finally {
+                    // Cleanup GPU resources — for await does this automatically, we do it manually
+                    if (iter.return) { try { await iter.return(); } catch(e) {} }
                 }
-
-                if (!text || text.length < 1) text = 'Error: empty response';
-                chatHistory.push({ role: 'assistant', content: text });
-                if (chatHistory.length > 20) {
-                    chatHistory = chatHistory.slice(chatHistory.length - 10);
+            } else {
+                // Non-streaming response (shouldn't happen with stream:true, but safety)
+                if (chunks && chunks.choices && chunks.choices[0] && chunks.choices[0].message) {
+                    text = chunks.choices[0].message.content || '';
                 }
-                return text;
-            } catch(e) {
-                var errMsg = String(e.message || e);
-                console.error('Generation error (attempt ' + (attempt + 1) + '):', errMsg);
-                chatHistory.pop();
-                if (attempt < maxRetries - 1) {
-                    var ok = await reinitEngine();
-                    if (ok) continue;
-                }
-                return 'Error: ' + errMsg;
             }
+
+            if (!text || text.length < 1) text = 'Error: empty response';
+            chatHistory.push({ role: 'assistant', content: text });
+            if (chatHistory.length > 20) {
+                chatHistory = chatHistory.slice(chatHistory.length - 10);
+            }
+            return text;
+        } catch(e) {
+            var errMsg = String(e.message || e);
+            chatHistory.pop();
+            if (isGPUDead(errMsg)) {
+                gpuDead = true;
+                status = 'error';
+                updateStatus();
+                return 'Error: GPU crashed (DXGI_ERROR_DEVICE_REMOVED). Close all browser tabs, restart Chrome, and reload page.';
+            }
+            return 'Error: ' + errMsg;
         }
-        return 'Error: failed after retries';
     }
 
     async function generateCode(prompt, currentCode) {
@@ -5064,6 +5213,13 @@ var SashaEngineAPI = (function() {
     var canvas;
     var initialized = false;
     var animFrameId = null;
+    var selectedObject = null;
+    var playState = 'stopped';
+    var savedState = {};
+    var objectComponents = {};
+    var physicsObjects = {};
+    var GRAVITY = -9.8;
+    var objectTypes = {};
 
     function init() {
         canvas = document.getElementById('engine-canvas');
@@ -5136,6 +5292,7 @@ var SashaEngineAPI = (function() {
         mesh.name = name;
         scene.add(mesh);
         objects[name] = mesh;
+        objectTypes[name] = 'cube';
         return name;
     }
 
@@ -5153,6 +5310,7 @@ var SashaEngineAPI = (function() {
         mesh.name = name;
         scene.add(mesh);
         objects[name] = mesh;
+        objectTypes[name] = 'sphere';
         return name;
     }
 
@@ -5170,6 +5328,7 @@ var SashaEngineAPI = (function() {
         mesh.name = name;
         scene.add(mesh);
         objects[name] = mesh;
+        objectTypes[name] = 'plane';
         return name;
     }
 
@@ -5189,6 +5348,7 @@ var SashaEngineAPI = (function() {
         mesh.name = name;
         scene.add(mesh);
         objects[name] = mesh;
+        objectTypes[name] = 'cylinder';
         return name;
     }
 
@@ -5207,6 +5367,7 @@ var SashaEngineAPI = (function() {
         light.name = name;
         scene.add(light);
         objects[name] = light;
+        objectTypes[name] = 'light';
         return name;
     }
 
@@ -5230,6 +5391,9 @@ var SashaEngineAPI = (function() {
             model.name = targetName;
             scene.add(model);
             objects[targetName] = model;
+            objectTypes[targetName] = 'model';
+            EngineApp.refreshHierarchy();
+            EngineApp.refreshInspector();
         }, undefined, function(err) {
             console.error('Model load error:', err);
         });
@@ -5246,6 +5410,10 @@ var SashaEngineAPI = (function() {
                 } else { objects[name].material.dispose(); }
             }
             delete objects[name];
+            delete objectTypes[name];
+            if (objectComponents[name]) { delete objectComponents[name]; }
+            if (physicsObjects[name]) { delete physicsObjects[name]; }
+            if (selectedObject === name) { selectedObject = null; }
         }
     }
 
@@ -5284,15 +5452,205 @@ var SashaEngineAPI = (function() {
         }
         animations = [];
         frameCallbacks = [];
+        objectComponents = {};
+        physicsObjects = {};
+        selectedObject = null;
+        objectTypes = {};
     }
 
     function getObjects() { return objects; }
+
+    function getObjectTypes() { return objectTypes; }
+
+    // --- Object management for hierarchy/inspector ---
+
+    function addObject(type) {
+        var name = null;
+        if (type === 'cube') { name = addCube(0, 0.5, 0, 1, 0x6366f1); }
+        else if (type === 'sphere') { name = addSphere(0, 0.5, 0, 0.5, 0xec4899); }
+        else if (type === 'cylinder') { name = addCylinder(0, 0.5, 0, 0.3, 0.3, 1, 0x06b6d4); }
+        else if (type === 'plane') { name = addPlane(10, 10, 0x252542); }
+        else if (type === 'light') { name = addLight('point', 0, 5, 0, 0xffffff, 1); }
+        if (name) {
+            selectObject(name);
+        }
+        return name;
+    }
+
+    function selectObject(name) {
+        selectedObject = name;
+    }
+
+    function getSelectedObject() { return selectedObject; }
+
+    function getAllObjectNames() {
+        var names = [];
+        for (var n in objects) {
+            if (objects.hasOwnProperty(n) && n.indexOf('__builtin') !== 0) {
+                names.push(n);
+            }
+        }
+        return names;
+    }
+
+    // --- Component system ---
+
+    function getObjectComponent(name, compType) {
+        if (!objectComponents[name]) return null;
+        var comps = objectComponents[name];
+        if (compType === 'script') {
+            for (var i = 0; i < comps.length; i++) {
+                if (comps[i].type === 'script') return comps[i];
+            }
+        } else {
+            for (var j = 0; j < comps.length; j++) {
+                if (comps[j].type === compType) return comps[j];
+            }
+        }
+        return null;
+    }
+
+    function getAllComponents(name) {
+        return objectComponents[name] || [];
+    }
+
+    function addObjectComponent(name, compType, data) {
+        if (!objectComponents[name]) { objectComponents[name] = []; }
+        var comp = { type: compType };
+        if (compType === 'script') {
+            comp.name = (data && data.name) || 'NewScript';
+            comp.code = (data && data.code) || 'function onUpdate(delta, obj) {\n  // Your code here\n}';
+            comp.enabled = (data && data.enabled !== undefined) ? data.enabled : true;
+        } else if (compType === 'rigidbody') {
+            comp.mass = (data && data.mass !== undefined) ? data.mass : 1;
+            comp.useGravity = (data && data.useGravity !== undefined) ? data.useGravity : true;
+            comp.velocity = { x: 0, y: 0, z: 0 };
+            physicsObjects[name] = comp;
+        } else if (compType === 'boxcollider') {
+            comp.size = { x: 1, y: 1, z: 1 };
+        } else if (compType === 'spherecollider') {
+            comp.radius = 0.5;
+        }
+        objectComponents[name].push(comp);
+    }
+
+    function removeObjectComponent(name, compType) {
+        if (!objectComponents[name]) return;
+        var comps = objectComponents[name];
+        for (var i = comps.length - 1; i >= 0; i--) {
+            if (comps[i].type === compType) {
+                comps.splice(i, 1);
+                if (compType === 'rigidbody' && physicsObjects[name]) {
+                    delete physicsObjects[name];
+                }
+                break;
+            }
+        }
+        if (objectComponents[name].length === 0) { delete objectComponents[name]; }
+    }
+
+    // --- Play state management ---
+
+    function savePlayState() {
+        savedState = {};
+        for (var name in objects) {
+            if (objects.hasOwnProperty(name) && name.indexOf('__builtin') !== 0) {
+                var obj = objects[name];
+                savedState[name] = {
+                    px: obj.position.x, py: obj.position.y, pz: obj.position.z,
+                    rx: obj.rotation.x, ry: obj.rotation.y, rz: obj.rotation.z,
+                    sx: obj.scale.x, sy: obj.scale.y, sz: obj.scale.z
+                };
+            }
+        }
+    }
+
+    function restorePlayState() {
+        for (var name in savedState) {
+            if (savedState.hasOwnProperty(name) && objects[name]) {
+                var obj = objects[name];
+                var s = savedState[name];
+                obj.position.set(s.px, s.py, s.pz);
+                obj.rotation.set(s.rx, s.ry, s.rz);
+                obj.scale.set(s.sx, s.sy, s.sz);
+            }
+        }
+        savedState = {};
+        // Reset physics velocities
+        for (var pn in physicsObjects) {
+            if (physicsObjects.hasOwnProperty(pn)) {
+                physicsObjects[pn].velocity = { x: 0, y: 0, z: 0 };
+            }
+        }
+    }
+
+    function getPlayState() { return playState; }
+
+    function setPlayState(s) { playState = s; }
+
+    // --- Physics ---
+
+    function updatePhysics(delta) {
+        var dt = Math.min(delta, 0.05);
+        for (var name in physicsObjects) {
+            if (!physicsObjects.hasOwnProperty(name)) continue;
+            var rb = physicsObjects[name];
+            var obj = objects[name];
+            if (!obj || !rb.useGravity) continue;
+            // Apply gravity
+            rb.velocity.y += GRAVITY * dt;
+            // Integrate position
+            obj.position.x += rb.velocity.x * dt;
+            obj.position.y += rb.velocity.y * dt;
+            obj.position.z += rb.velocity.z * dt;
+            // Ground collision (y = 0)
+            var minY = 0;
+            if (obj.position.y < minY) {
+                obj.position.y = minY;
+                rb.velocity.y = -rb.velocity.y * 0.4;
+                if (Math.abs(rb.velocity.y) < 0.1) { rb.velocity.y = 0; }
+            }
+        }
+    }
+
+    // --- Script execution ---
+
+    function stepScripts(delta) {
+        for (var name in objectComponents) {
+            if (!objectComponents.hasOwnProperty(name)) continue;
+            var comps = objectComponents[name];
+            for (var i = 0; i < comps.length; i++) {
+                if (comps[i].type === 'script' && comps[i].enabled) {
+                    try {
+                        var fn = new Function('delta', 'object', 'transform', 'Engine', comps[i].code);
+                        var obj = objects[name];
+                        if (obj) {
+                            var transform = {
+                                position: obj.position,
+                                rotation: obj.rotation,
+                                scale: obj.scale
+                            };
+                            fn(delta, obj, transform, SashaEngineAPI);
+                        }
+                    } catch(e) {
+                        // Silently skip script errors during play
+                    }
+                }
+            }
+        }
+    }
 
     function animate() {
         animFrameId = requestAnimationFrame(animate);
         if (!initialized) return;
         var delta = clock ? clock.getDelta() : 0.016;
         var t = Date.now() * 0.001;
+
+        // Play mode: run physics and scripts
+        if (playState === 'playing') {
+            updatePhysics(delta);
+            stepScripts(delta);
+        }
 
         // Process animations
         for (var i = animations.length - 1; i >= 0; i--) {
@@ -5330,7 +5688,14 @@ var SashaEngineAPI = (function() {
         addCylinder: addCylinder, addLight: addLight, loadModel: loadModel,
         removeObject: removeObject, setCameraPos: setCameraPos, setCameraTarget: setCameraTarget,
         setBgColor: setBgColor, animate: animateObj, onFrame: onFrame, getScene: getScene,
-        clear: clear, getObjects: getObjects, log: log
+        clear: clear, getObjects: getObjects, log: log,
+        addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
+        getAllObjectNames: getAllObjectNames, getObjectTypes: getObjectTypes,
+        getObjectComponent: getObjectComponent, getAllComponents: getAllComponents,
+        addObjectComponent: addObjectComponent, removeObjectComponent: removeObjectComponent,
+        getPlayState: getPlayState, setPlayState: setPlayState,
+        savePlayState: savePlayState, restorePlayState: restorePlayState,
+        updatePhysics: updatePhysics, stepScripts: stepScripts
     };
 })();
 
@@ -5343,12 +5708,13 @@ var EngineApp = (function() {
     var liveMode = false;
     var liveTimer = null;
     var initialized = false;
-    var defaultCode = '// SashaAI Engine — write Three.js code here\n' +
-        '// Available: Engine.addCube, Engine.addSphere, Engine.addPlane,\n' +
-        '// Engine.addCylinder, Engine.addLight, Engine.loadModel,\n' +
-        '// Engine.setCameraPos, Engine.setCameraTarget, Engine.setBgColor,\n' +
-        '// Engine.removeObject, Engine.animate, Engine.onFrame\n\n' +
-        '// Example:\nEngine.addCube(0, 0.5, 0, 1, 0x6366f1);\nEngine.addSphere(3, 0.5, 0, 0.5, 0xec4899);\nEngine.addCylinder(-3, 0.5, 0, 0.3, 0.3, 1, 0x06b6d4);\nEngine.addLight("point", 0, 5, 0, 0xffffff, 2);\nEngine.log("Scene created!");';
+    var currentTab = 'console';
+    var defaultCode = '// SashaAI Engine — Unity-like game engine\n' +
+        '// Use toolbar to add objects, or write code below\n\n' +
+        '// Example: create objects via code\n' +
+        'Engine.addCube(0, 0.5, 0, 1, 0x6366f1);\n' +
+        'Engine.addSphere(3, 0.5, 0, 0.5, 0xec4899);\n' +
+        'Engine.log("Scene created!");';
 
     function init() {
         if (initialized) return;
@@ -5395,9 +5761,377 @@ var EngineApp = (function() {
         var engineSec = document.getElementById('engine');
         if (engineSec) { observer.observe(engineSec, { attributes: true, attributeFilter: ['class'] }); }
 
-        log('Engine ready. Write code and press Run.', 'info');
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Delete' && !e.target.closest('#engine-monaco') && !e.target.closest('input') && !e.target.closest('textarea')) {
+                deleteSelected();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && !e.target.closest('#engine-monaco') && !e.target.closest('input') && !e.target.closest('textarea')) {
+                e.preventDefault();
+                duplicateSelected();
+            }
+        });
+
+        log('Engine ready. Unity-like editor loaded.', 'info');
         initialized = true;
+
+        // Initial hierarchy refresh
+        setTimeout(function() { refreshHierarchy(); }, 200);
     }
+
+    // --- Play/Pause/Stop ---
+
+    function play() {
+        if (SashaEngineAPI.getPlayState() === 'playing') return;
+        if (SashaEngineAPI.getPlayState() === 'stopped') {
+            SashaEngineAPI.savePlayState();
+        }
+        SashaEngineAPI.setPlayState('playing');
+        log('▶ Play mode', 'info');
+    }
+
+    function pause() {
+        if (SashaEngineAPI.getPlayState() !== 'playing') return;
+        SashaEngineAPI.setPlayState('paused');
+        log('⏸ Paused', 'info');
+    }
+
+    function stop() {
+        SashaEngineAPI.restorePlayState();
+        SashaEngineAPI.setPlayState('stopped');
+        refreshInspector();
+        log('⏹ Stopped', 'info');
+    }
+
+    // --- Object management ---
+
+    function addObject(type) {
+        var name = SashaEngineAPI.addObject(type);
+        if (name) {
+            refreshHierarchy();
+            refreshInspector();
+            log('Added: ' + name, 'log');
+        }
+    }
+
+    function deleteSelected() {
+        var name = SashaEngineAPI.getSelectedObject();
+        if (!name) return;
+        SashaEngineAPI.removeObject(name);
+        refreshHierarchy();
+        refreshInspector();
+        log('Deleted: ' + name, 'log');
+    }
+
+    function duplicateSelected() {
+        var name = SashaEngineAPI.getSelectedObject();
+        if (!name) return;
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[name];
+        if (!obj) return;
+        var types = SashaEngineAPI.getObjectTypes();
+        var type = types[name] || 'cube';
+        var pos = obj.position;
+        var newName = SashaEngineAPI.addObject(type);
+        if (newName) {
+            var newObjs = SashaEngineAPI.getObjects();
+            var newObj = newObjs[newName];
+            if (newObj) {
+                newObj.position.set(pos.x + 1, pos.y, pos.z);
+            }
+            refreshHierarchy();
+            refreshInspector();
+            log('Duplicated: ' + newName, 'log');
+        }
+    }
+
+    // --- Hierarchy ---
+
+    function refreshHierarchy() {
+        var container = document.getElementById('eng-hierarchy');
+        if (!container) return;
+        var html = '';
+        var objs = SashaEngineAPI.getObjects();
+        var types = SashaEngineAPI.getObjectTypes();
+        var selected = SashaEngineAPI.getSelectedObject();
+
+        // Built-in objects
+        for (var n in objs) {
+            if (!objs.hasOwnProperty(n)) continue;
+            if (n.indexOf('__builtin') !== 0) continue;
+            var icon = 'fa-cube';
+            if (n === '__builtin_ambient') icon = 'fa-sun';
+            else if (n === '__builtin_dir') icon = 'fa-arrow-down';
+            else if (n === '__builtin_grid') icon = 'fa-th';
+            var label = n.replace('__builtin_', '');
+            html += '<div class="hier-item builtin" onclick="event.stopPropagation()">' +
+                '<span class="hier-icon"><i class="fas ' + icon + '"></i></span>' +
+                '<span class="hier-name">' + label + '</span>' +
+                '</div>';
+        }
+
+        // User objects
+        var names = SashaEngineAPI.getAllObjectNames();
+        for (var i = 0; i < names.length; i++) {
+            var name = names[i];
+            var obj = objs[name];
+            var type = types[name] || 'cube';
+            var ico = 'fa-cube';
+            if (type === 'sphere') ico = 'fa-circle';
+            else if (type === 'cylinder') ico = 'fa-database';
+            else if (type === 'plane') ico = 'fa-square';
+            else if (type === 'light') ico = 'fa-lightbulb';
+            else if (type === 'model') ico = 'fa-file';
+
+            var selClass = (name === selected) ? ' selected' : '';
+            var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
+            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name + '\')">' +
+                '<span class="hier-icon"><i class="fas ' + ico + '"></i></span>' +
+                '<span class="hier-name">' + name + '</span>' +
+                '<button class="hier-vis" onclick="event.stopPropagation(); EngineApp.toggleVis(\'' + name + '\')"><i class="fas ' + visIcon + '"></i></button>' +
+                '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function selectHierItem(name) {
+        SashaEngineAPI.selectObject(name);
+        refreshHierarchy();
+        refreshInspector();
+    }
+
+    function toggleVis(name) {
+        var objs = SashaEngineAPI.getObjects();
+        if (objs[name]) {
+            objs[name].visible = !objs[name].visible;
+            refreshHierarchy();
+        }
+    }
+
+    // --- Inspector ---
+
+    function refreshInspector() {
+        var container = document.getElementById('eng-inspector');
+        if (!container) return;
+        var selected = SashaEngineAPI.getSelectedObject();
+        if (!selected) {
+            container.innerHTML = '<div style="color:var(--text-secondary);font-size:0.8rem;text-align:center;padding:20px;">Select an object</div>';
+            return;
+        }
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[selected];
+        if (!obj) {
+            container.innerHTML = '<div style="color:var(--text-secondary);font-size:0.8rem;text-align:center;padding:20px;">Select an object</div>';
+            return;
+        }
+        var types = SashaEngineAPI.getObjectTypes();
+        var type = types[selected] || 'cube';
+        var html = '';
+
+        // Object name header
+        html += '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);">' + selected + '</div>';
+
+        // --- Transform Section ---
+        html += '<div class="insp-section">';
+        html += '<div class="insp-section-header"><i class="fas fa-arrows-alt"></i> Transform</div>';
+        html += '<div class="insp-section-body">';
+        html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Position</div>';
+        html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + obj.position.x.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'px\',this.value)"></div>';
+        html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + obj.position.y.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'py\',this.value)"></div>';
+        html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + obj.position.z.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'pz\',this.value)"></div>';
+        html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Rotation</div>';
+        html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + obj.rotation.x.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'rx\',this.value)"></div>';
+        html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + obj.rotation.y.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'ry\',this.value)"></div>';
+        html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + obj.rotation.z.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'rz\',this.value)"></div>';
+        html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Scale</div>';
+        html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + obj.scale.x.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'sx\',this.value)"></div>';
+        html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + obj.scale.y.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'sy\',this.value)"></div>';
+        html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + obj.scale.z.toFixed(2) + '" onchange="EngineApp.setTransform(\'' + selected + '\',\'sz\',this.value)"></div>';
+        html += '</div></div>';
+
+        // --- Mesh Section (only for mesh objects) ---
+        if (obj.isMesh || obj.isLight === undefined) {
+            html += '<div class="insp-section">';
+            html += '<div class="insp-section-header"><i class="fas fa-shapes"></i> Mesh</div>';
+            html += '<div class="insp-section-body">';
+            html += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:50px;">Type</span><span style="font-size:0.72rem;color:#fff;">' + type + '</span></div>';
+            if (obj.material && obj.material.color) {
+                var colHex = '#' + obj.material.color.getHexString();
+                html += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:50px;">Color</span><input class="insp-color-input" type="color" value="' + colHex + '" onchange="EngineApp.setColor(\'' + selected + '\',this.value)"></div>';
+            }
+            html += '</div></div>';
+        }
+
+        // --- Components Section ---
+        html += '<div class="insp-section">';
+        html += '<div class="insp-section-header"><i class="fas fa-puzzle-piece"></i> Components</div>';
+        html += '<div class="insp-section-body">';
+        var comps = SashaEngineAPI.getAllComponents(selected);
+        if (comps.length === 0) {
+            html += '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>';
+        } else {
+            for (var i = 0; i < comps.length; i++) {
+                var comp = comps[i];
+                var compIcon = 'fa-file-code';
+                var compName = comp.type;
+                if (comp.type === 'script') { compIcon = 'fa-file-code'; compName = (comp.name || 'Script'); }
+                else if (comp.type === 'rigidbody') { compIcon = 'fa-atom'; compName = 'RigidBody'; }
+                else if (comp.type === 'boxcollider') { compIcon = 'fa-vector-square'; compName = 'BoxCollider'; }
+                else if (comp.type === 'spherecollider') { compIcon = 'fa-circle'; compName = 'SphereCollider'; }
+
+                html += '<div class="comp-item">';
+                html += '<i class="fas ' + compIcon + '"></i>';
+                html += '<span class="comp-name">' + compName;
+                if (comp.type === 'rigidbody') { html += '<span class="phys-badge">PHYS</span>'; }
+                html += '</span>';
+                html += '<button class="comp-del" onclick="EngineApp.removeComp(\'' + selected + '\',\'' + comp.type + '\',\'' + (comp.name || '') + '\')"><i class="fas fa-times"></i></button>';
+                html += '</div>';
+
+                // Script textarea
+                if (comp.type === 'script') {
+                    var code = (comp.code || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    html += '<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\'' + selected + '\',\'' + (comp.name || '') + '\',this.value)">' + code + '</textarea>';
+                }
+
+                // RigidBody fields
+                if (comp.type === 'rigidbody') {
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Mass</span>';
+                    html += '<input class="insp-input" type="number" step="0.1" value="' + comp.mass + '" onchange="EngineApp.setRBField(\'' + selected + '\',\'mass\',this.value)">';
+                    html += '</div>';
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Gravity</span>';
+                    html += '<input type="checkbox" class="insp-checkbox" ' + (comp.useGravity ? 'checked' : '') + ' onchange="EngineApp.setRBField(\'' + selected + '\',\'useGravity\',this.checked)">';
+                    html += '</div>';
+                    html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Velocity</div>';
+                    html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + (comp.velocity ? comp.velocity.x : 0).toFixed(2) + '" onchange="EngineApp.setRBVel(\'' + selected + '\',\'x\',this.value)"></div>';
+                    html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + (comp.velocity ? comp.velocity.y : 0).toFixed(2) + '" onchange="EngineApp.setRBVel(\'' + selected + '\',\'y\',this.value)"></div>';
+                    html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + (comp.velocity ? comp.velocity.z : 0).toFixed(2) + '" onchange="EngineApp.setRBVel(\'' + selected + '\',\'z\',this.value)"></div>';
+                }
+            }
+        }
+        html += '</div></div>';
+
+        // --- Add Component ---
+        html += '<div class="insp-section">';
+        html += '<div class="insp-section-body" style="padding:4px 10px;">';
+        html += '<select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;">';
+        html += '<option value="">Add Component...</option>';
+        html += '<option value="script">Script</option>';
+        html += '<option value="rigidbody">RigidBody</option>';
+        html += '<option value="boxcollider">BoxCollider</option>';
+        html += '<option value="spherecollider">SphereCollider</option>';
+        html += '</select>';
+        html += '<button class="insp-btn" onclick="EngineApp.addComp(\'' + selected + '\')" style="width:100%;margin-top:2px;">Add</button>';
+        html += '</div></div>';
+
+        // Delete/Duplicate buttons
+        html += '<div style="display:flex;gap:4px;padding:4px 8px;">';
+        html += '<button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button>';
+        html += '<button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button>';
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    // --- Inspector setters ---
+
+    function setTransform(name, prop, val) {
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[name];
+        if (!obj) return;
+        var v = parseFloat(val) || 0;
+        if (prop === 'px') obj.position.x = v;
+        else if (prop === 'py') obj.position.y = v;
+        else if (prop === 'pz') obj.position.z = v;
+        else if (prop === 'rx') obj.rotation.x = v;
+        else if (prop === 'ry') obj.rotation.y = v;
+        else if (prop === 'rz') obj.rotation.z = v;
+        else if (prop === 'sx') obj.scale.x = v;
+        else if (prop === 'sy') obj.scale.y = v;
+        else if (prop === 'sz') obj.scale.z = v;
+    }
+
+    function setColor(name, hex) {
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[name];
+        if (obj && obj.material) {
+            obj.material.color.set(hex);
+        }
+    }
+
+    function addComp(name) {
+        var sel = document.getElementById('insp-add-comp');
+        if (!sel || !sel.value) return;
+        var compType = sel.value;
+        if (compType === 'script') {
+            SashaEngineAPI.addObjectComponent(name, 'script', {
+                name: 'Script_' + Date.now(),
+                code: 'function onUpdate(delta, obj) {\n  // Your code here\n  obj.rotation.y += delta;\n}',
+                enabled: true
+            });
+        } else {
+            SashaEngineAPI.addObjectComponent(name, compType, {});
+        }
+        refreshInspector();
+        log('Added component: ' + compType + ' to ' + name, 'log');
+    }
+
+    function removeComp(name, compType, compName) {
+        SashaEngineAPI.removeObjectComponent(name, compType);
+        refreshInspector();
+        log('Removed component: ' + compType + ' from ' + name, 'log');
+    }
+
+    function updateScriptCode(name, compName, code) {
+        var comps = SashaEngineAPI.getAllComponents(name);
+        for (var i = 0; i < comps.length; i++) {
+            if (comps[i].type === 'script') {
+                comps[i].code = code;
+                break;
+            }
+        }
+    }
+
+    function setRBField(name, field, val) {
+        var rb = SashaEngineAPI.getObjectComponent(name, 'rigidbody');
+        if (!rb) return;
+        if (field === 'mass') rb.mass = parseFloat(val) || 1;
+        else if (field === 'useGravity') rb.useGravity = !!val;
+    }
+
+    function setRBVel(name, axis, val) {
+        var rb = SashaEngineAPI.getObjectComponent(name, 'rigidbody');
+        if (!rb || !rb.velocity) return;
+        rb.velocity[axis] = parseFloat(val) || 0;
+    }
+
+    // --- Tab switching ---
+
+    function switchTab(tabName) {
+        currentTab = tabName;
+        var tabs = document.querySelectorAll('.engine-bottom-tabs .eng-tab');
+        for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.remove('active');
+        }
+        var tabMap = { console: 'Console', code: 'Code', ai: 'AI Agent' };
+        for (var j = 0; j < tabs.length; j++) {
+            if (tabs[j].textContent.indexOf(tabMap[tabName]) !== -1) {
+                tabs[j].classList.add('active');
+            }
+        }
+        var contents = document.querySelectorAll('.eng-tab-content');
+        for (var k = 0; k < contents.length; k++) {
+            contents[k].style.display = 'none';
+        }
+        var target = document.getElementById('eng-tab-' + tabName);
+        if (target) { target.style.display = 'block'; }
+        // Trigger Monaco layout refresh when switching to code tab
+        if (tabName === 'code' && editor) {
+            setTimeout(function() { editor.layout(); }, 50);
+        }
+    }
+
+    // --- Code execution ---
 
     function runCode() {
         if (!editor) return;
@@ -5406,10 +6140,14 @@ var EngineApp = (function() {
 
         // Clear previous user objects (keep builtins)
         var objs = SashaEngineAPI.getObjects();
+        var toRemove = [];
         for (var name in objs) {
             if (objs.hasOwnProperty(name) && name.indexOf('__builtin') !== 0) {
-                SashaEngineAPI.removeObject(name);
+                toRemove.push(name);
             }
+        }
+        for (var r = 0; r < toRemove.length; r++) {
+            SashaEngineAPI.removeObject(toRemove[r]);
         }
 
         // Build sandbox with Engine API
@@ -5436,18 +6174,21 @@ var EngineApp = (function() {
             log(e.name + ': ' + e.message, 'error');
             log('Failed after ' + elapsed + 'ms', 'error');
         }
+
+        refreshHierarchy();
+        refreshInspector();
     }
 
     function toggleLive() {
         liveMode = !liveMode;
-        var btn = document.getElementById('eng-live-btn');
-        if (btn) { btn.classList.toggle('active', liveMode); }
         if (liveMode) { runCode(); }
         log(liveMode ? 'Live mode ON' : 'Live mode OFF', 'info');
     }
 
     function clearScene() {
         SashaEngineAPI.clear();
+        refreshHierarchy();
+        refreshInspector();
         log('Scene cleared', 'info');
     }
 
@@ -5512,7 +6253,7 @@ var EngineApp = (function() {
         addAIChat('user', prompt);
 
         if (!SashaWebLLM.isReady()) {
-            addAIChat('ai', 'Load an AI model first (click Load AI button).');
+            addAIChat('ai', 'Load an AI model first (click AI button).');
             return;
         }
 
@@ -5644,7 +6385,16 @@ var EngineApp = (function() {
         init: init, runCode: runCode, toggleLive: toggleLive,
         clearScene: clearScene, loadModelFromURL: loadModelFromURL,
         showModelPicker: showModelPicker, sendAIToEditor: sendAIToEditor,
-        log: log, saveProject: saveProject, exportGame: exportGame
+        log: log, saveProject: saveProject, exportGame: exportGame,
+        play: play, pause: pause, stop: stop,
+        addObject: addObject, deleteSelected: deleteSelected, duplicateSelected: duplicateSelected,
+        refreshHierarchy: refreshHierarchy, refreshInspector: refreshInspector,
+        selectHierItem: selectHierItem, toggleVis: toggleVis,
+        switchTab: switchTab,
+        setTransform: setTransform, setColor: setColor,
+        addComp: addComp, removeComp: removeComp,
+        updateScriptCode: updateScriptCode,
+        setRBField: setRBField, setRBVel: setRBVel
     };
 })();
 </script>
