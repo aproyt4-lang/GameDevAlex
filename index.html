@@ -1384,15 +1384,11 @@
         .engine-console .con-line.info { color: #06b6d4; }
         .engine-console .con-line.result { color: #22c55e; }
 
-        /* AI panel in bottom tab */
-        .engine-ai-chat { height: 100%; overflow-y: auto; padding: 8px; font-size: 0.78rem; }
-        .engine-ai-msg { padding: 6px 10px; margin-bottom: 6px; border-radius: 8px; max-width: 95%; }
-        .engine-ai-msg.user { background: var(--bg-hover); margin-left: auto; text-align: right; }
-        .engine-ai-msg.ai { background: var(--bg-card); border: 1px solid var(--border); }
-        .engine-ai-input-row { display: flex; padding: 8px; gap: 6px; border-top: 1px solid var(--border); background: var(--bg-dark); }
+        /* AI panel styles are in the new .engine-ai-panel block below */
+        .engine-ai-chat { /* see new styles below */ }
+        .engine-ai-msg { /* see new styles below */ }
+        .engine-ai-input-row { /* see new styles below */ }
         .engine-ai-input-row input {
-            flex: 1; background: var(--bg-card); border: 1px solid var(--border); color: #fff;
-            padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; outline: none;
         }
         .engine-ai-input-row input:focus { border-color: var(--primary); }
         .engine-ai-input-row button {
@@ -1464,6 +1460,154 @@
         .game-mode .engine-toolbar .engine-model-status,
         .game-mode .viewport-gizmo-info { display: none !important; }
         .game-mode .engine-main-grid { grid-template-columns: 0px 1fr 0px; }
+
+        /* Asset Browser */
+        .asset-browser { display: flex; flex-direction: column; height: 100%; background: var(--bg-card); }
+        .asset-toolbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); position: relative; }
+        .asset-create-btn, .asset-btn {
+            background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 0.72rem;
+            display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+        }
+        .asset-create-btn:hover, .asset-btn:hover { border-color: var(--primary); color: #fff; }
+        .asset-create-dropdown {
+            position: absolute; top: 100%; left: 0; z-index: 100;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+            padding: 4px 0; min-width: 160px; box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        .asset-tree { flex: 1; overflow-y: auto; padding: 4px; }
+        .asset-item {
+            display: flex; align-items: center; gap: 6px; padding: 3px 8px;
+            font-size: 0.75rem; color: var(--text-secondary); cursor: pointer;
+            border-radius: 4px; transition: all 0.1s; border-left: 2px solid transparent;
+        }
+        .asset-item:hover { background: var(--bg-hover); color: #fff; }
+        .asset-item.selected { background: var(--bg-hover); color: #fff; border-left-color: var(--primary); }
+        .asset-item .asset-icon { width: 16px; text-align: center; font-size: 0.7rem; }
+        .asset-item.folder .asset-icon { color: #f59e0b; }
+        .asset-item.script .asset-icon { color: #06b6d4; }
+        .asset-item.material .asset-icon { color: #ec4899; }
+        .asset-item.prefab .asset-icon { color: #22c55e; }
+        .asset-item.scene .asset-icon { color: #6366f1; }
+        .asset-item.shader .asset-icon { color: #8b5cf6; }
+        .asset-item .asset-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .asset-item .asset-actions { display: none; gap: 2px; }
+        .asset-item:hover .asset-actions { display: flex; }
+        .asset-item .asset-actions button {
+            background: none; border: none; color: var(--text-muted); cursor: pointer;
+            font-size: 0.68rem; padding: 1px 3px; border-radius: 2px;
+        }
+        .asset-item .asset-actions button:hover { color: var(--primary); background: var(--bg-hover); }
+        .asset-preview { height: 60px; border-top: 1px solid var(--border); padding: 8px; overflow-y: auto; font-size: 0.72rem; color: var(--text-secondary); }
+
+        /* UI Canvas */
+        .ui-canvas-toolbar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: var(--bg-dark); }
+        .ui-canvas-area {
+            flex: 1; position: relative; background: repeating-conic-gradient(#1a1a2e 0% 25%, #0f0f23 0% 50%) 50% / 20px 20px;
+            overflow: auto; min-height: 100%;
+        }
+        .ui-element {
+            position: absolute; min-width: 40px; min-height: 20px;
+            border: 2px solid transparent; cursor: move; user-select: none;
+            font-size: 0.78rem; transition: border-color 0.1s;
+        }
+        .ui-element:hover { border-color: var(--primary); }
+        .ui-element.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+        .ui-element.ui-text { color: #fff; padding: 4px 8px; background: transparent; }
+        .ui-element.ui-button {
+            background: var(--primary); color: #fff; padding: 6px 16px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .ui-element.ui-image { background: var(--bg-card); border: 1px dashed var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+        .ui-element.ui-panel { background: rgba(26,26,46,0.8); border: 1px solid var(--border); border-radius: 8px; }
+        .ui-element.ui-input {
+            background: var(--bg-card); border: 1px solid var(--border); color: #fff;
+            padding: 6px 10px; border-radius: 4px; font-size: 0.78rem;
+        }
+        .ui-element .ui-resize-handle {
+            position: absolute; bottom: 0; right: 0; width: 10px; height: 10px;
+            cursor: nwse-resize; background: var(--accent); border-radius: 2px 0 4px 0; opacity: 0.5;
+        }
+        .ui-element .ui-resize-handle:hover { opacity: 1; }
+        .ui-element .ui-label {
+            position: absolute; top: -16px; left: 0; font-size: 0.6rem;
+            color: var(--accent); background: rgba(0,0,0,0.7); padding: 1px 4px; border-radius: 2px;
+            white-space: nowrap; pointer-events: none;
+        }
+        .engine-ai-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 4px;
+        }
+        .engine-ai-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-dark);
+        }
+        .engine-ai-chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .engine-ai-msg {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            max-width: 90%;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        .engine-ai-msg.user {
+            align-self: flex-end;
+            background: var(--primary);
+            color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+        .engine-ai-msg.ai {
+            align-self: flex-start;
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-bottom-left-radius: 2px;
+        }
+        .engine-ai-input-row {
+            display: flex;
+            gap: 6px;
+            padding: 6px 8px;
+            border-top: 1px solid var(--border);
+        }
+        .engine-ai-input-row input {
+            flex: 1;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            outline: none;
+            font-family: inherit;
+        }
+        .engine-ai-input-row input:focus {
+            border-color: var(--primary);
+        }
+        .engine-ai-input-row button {
+            padding: 8px 14px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+        }
+        .engine-ai-input-row button:hover {
+            background: var(--primary-dark);
+        }
     </style>
 </head>
 <body>
@@ -1772,6 +1916,12 @@
                         <option value="cone">Cone</option>
                         <option value="torus">Torus</option>
                         <option value="capsule">Capsule</option>
+                        <option value="torusknot">Torus Knot</option>
+                        <option value="icosahedron">Icosahedron</option>
+                        <option value="dodecahedron">Dodecahedron</option>
+                        <option value="octahedron">Octahedron</option>
+                        <option value="terrain">Terrain</option>
+                        <option value="text3d">3D Text</option>
                     </select>
                     <button class="eng-btn" onclick="EngineApp.addFromDropdown()" title="Add"><i class="fas fa-plus"></i></button>
                     <div class="eng-separator"></div>
@@ -1847,23 +1997,74 @@
                 <!-- Bottom: Tabs (Console / Code / AI) -->
                 <div class="engine-bottom-grid">
                     <div class="engine-bottom-tabs">
-                        <button class="eng-tab active" onclick="EngineApp.switchTab('console')"><i class="fas fa-terminal"></i> Console</button>
+                        <button class="eng-tab active" onclick="EngineApp.switchTab('assets')"><i class="fas fa-folder"></i> Assets</button>
+                        <button class="eng-tab" onclick="EngineApp.switchTab('console')"><i class="fas fa-terminal"></i> Console</button>
                         <button class="eng-tab" onclick="EngineApp.switchTab('code')"><i class="fas fa-code"></i> Code</button>
                         <button class="eng-tab" onclick="EngineApp.switchTab('ai')"><i class="fas fa-robot"></i> AI Agent</button>
+                        <button class="eng-tab" onclick="EngineApp.switchTab('ui')"><i class="fas fa-window-maximize"></i> UI Canvas</button>
                     </div>
                     <div class="engine-bottom-content">
-                        <div class="eng-tab-content" id="eng-tab-console" style="display:block;">
+                        <div class="eng-tab-content" id="eng-tab-assets" style="display:block;">
+                            <div class="asset-browser">
+                                <div class="asset-toolbar">
+                                    <button class="asset-create-btn" onclick="EngineApp.createAsset()"><i class="fas fa-plus"></i> Create</button>
+                                    <div class="asset-create-dropdown" id="asset-create-menu" style="display:none;">
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('folder')"><i class="fas fa-folder"></i> Folder</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('script')"><i class="fas fa-file-code"></i> Script</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('material')"><i class="fas fa-palette"></i> Material</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('prefab')"><i class="fas fa-cube"></i> Prefab</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('scene')"><i class="fas fa-film"></i> Scene</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('shader')"><i class="fas fa-magic"></i> Shader Material</div>
+                                    </div>
+                                    <button class="asset-btn" onclick="EngineApp.importAsset()"><i class="fas fa-file-import"></i> Import</button>
+                                    <button class="asset-btn" onclick="EngineApp.saveAllAssets()"><i class="fas fa-save"></i> Save All</button>
+                                </div>
+                                <div class="asset-tree" id="asset-tree"></div>
+                                <div class="asset-preview" id="asset-preview">
+                                    <div style="color:var(--text-muted);font-size:0.78rem;text-align:center;padding:20px;">Select an asset</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="eng-tab-content" id="eng-tab-console" style="display:none;">
                             <div class="engine-console" id="eng-console"></div>
                         </div>
                         <div class="eng-tab-content" id="eng-tab-code" style="display:none;">
                             <div id="engine-monaco" style="width:100%;height:100%;"></div>
                         </div>
                         <div class="eng-tab-content" id="eng-tab-ai" style="display:none;">
-                            <div class="engine-ai-chat" id="eng-ai-chat"></div>
-                            <div class="engine-ai-input-row">
-                                <input type="text" id="eng-ai-input" placeholder="Ask AI to write code..." onkeydown="if(event.key==='Enter')EngineApp.sendAIToEditor()">
-                                <button onclick="EngineApp.sendAIToEditor()">Apply</button>
+                            <div class="engine-ai-panel">
+                                <div class="engine-ai-toolbar">
+                                    <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
+                                        <option value="">-- Model --</option>
+                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
+                                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
+                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
+                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B</option>
+                                    </select>
+                                    <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
+                                    <button class="eng-tab" onclick="EngineApp.clearAIChat()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-trash"></i> Clear</button>
+                                    <div style="flex:1"></div>
+                                    <span class="mode-indicator" id="eng-ai-status">offline</span>
+                                </div>
+                                <div class="engine-ai-chat" id="eng-ai-chat"></div>
+                                <div class="engine-ai-input-row">
+                                    <input type="text" id="eng-ai-input" placeholder="Ask AI to write code or build scenes..." onkeydown="if(event.key==='Enter')EngineApp.sendAIToEditor()">
+                                    <button onclick="EngineApp.sendAIToEditor()"><i class="fas fa-paper-plane"></i></button>
+                                </div>
                             </div>
+                        </div>
+                        <div class="eng-tab-content" id="eng-tab-ui" style="display:none;">
+                            <div class="ui-canvas-toolbar">
+                                <button class="eng-tab active" onclick="EngineApp.addUIElement('text')"><i class="fas fa-font"></i> Text</button>
+                                <button class="eng-tab" onclick="EngineApp.addUIElement('button')"><i class="fas fa-square"></i> Button</button>
+                                <button class="eng-tab" onclick="EngineApp.addUIElement('image')"><i class="fas fa-image"></i> Image</button>
+                                <button class="eng-tab" onclick="EngineApp.addUIElement('panel')"><i class="fas fa-window-maximize"></i> Panel</button>
+                                <button class="eng-tab" onclick="EngineApp.addUIElement('input')"><i class="fas fa-keyboard"></i> Input</button>
+                                <div style="flex:1"></div>
+                                <button class="eng-tab" onclick="EngineApp.toggleUICanvas()" id="ui-toggle-btn"><i class="fas fa-eye"></i> Show/Hide</button>
+                                <button class="eng-tab" onclick="EngineApp.clearUICanvas()"><i class="fas fa-trash"></i> Clear UI</button>
+                            </div>
+                            <div class="ui-canvas-area" id="ui-canvas-area"></div>
                         </div>
                     </div>
                 </div>
@@ -5350,6 +5551,8 @@ var SashaEngineAPI = (function() {
     var onSelectionChange = null;
     var objectRenames = {};
     var inspectorAutoRefresh = false;
+    var scriptStarted = {};
+    var savedConstraintPositions = {};
 
     function init() {
         canvas = document.getElementById('engine-canvas');
@@ -5761,6 +5964,99 @@ var SashaEngineAPI = (function() {
             objects[name] = empty;
             objectTypes[name] = 'empty';
         }
+        else if (type === 'torusknot') {
+            if (!initialized) return null;
+            var geo = new THREE.TorusKnotGeometry(0.5, 0.15, 100, 16);
+            var mat = new THREE.MeshStandardMaterial({ color: 0xe879f9, metalness: 0.3, roughness: 0.4 });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            name = getUniqueName('torusknot');
+            mesh.name = name;
+            mesh.position.set(0, 0.5, 0);
+            scene.add(mesh);
+            objects[name] = mesh;
+            objectTypes[name] = 'torusknot';
+        }
+        else if (type === 'icosahedron') {
+            if (!initialized) return null;
+            var geo = new THREE.IcosahedronGeometry(0.5, 0);
+            var mat = new THREE.MeshStandardMaterial({ color: 0x34d399, metalness: 0.3, roughness: 0.4 });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            name = getUniqueName('icosahedron');
+            mesh.name = name;
+            mesh.position.set(0, 0.5, 0);
+            scene.add(mesh);
+            objects[name] = mesh;
+            objectTypes[name] = 'icosahedron';
+        }
+        else if (type === 'dodecahedron') {
+            if (!initialized) return null;
+            var geo = new THREE.DodecahedronGeometry(0.5, 0);
+            var mat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.3, roughness: 0.4 });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            name = getUniqueName('dodecahedron');
+            mesh.name = name;
+            mesh.position.set(0, 0.5, 0);
+            scene.add(mesh);
+            objects[name] = mesh;
+            objectTypes[name] = 'dodecahedron';
+        }
+        else if (type === 'octahedron') {
+            if (!initialized) return null;
+            var geo = new THREE.OctahedronGeometry(0.5, 0);
+            var mat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, metalness: 0.3, roughness: 0.4 });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            name = getUniqueName('octahedron');
+            mesh.name = name;
+            mesh.position.set(0, 0.5, 0);
+            scene.add(mesh);
+            objects[name] = mesh;
+            objectTypes[name] = 'octahedron';
+        }
+        else if (type === 'terrain') {
+            if (!initialized) return null;
+            var geo = new THREE.PlaneGeometry(10, 10, 32, 32);
+            var verts = geo.attributes.position.array;
+            for (var vi = 0; vi < verts.length; vi += 3) {
+                verts[vi + 2] = Math.random() * 0.5;
+            }
+            geo.computeVertexNormals();
+            var mat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.9, flatShading: true });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.receiveShadow = true;
+            name = getUniqueName('terrain');
+            mesh.name = name;
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.set(0, 0, 0);
+            scene.add(mesh);
+            objects[name] = mesh;
+            objectTypes[name] = 'terrain';
+        }
+        else if (type === 'text3d') {
+            if (!initialized) return null;
+            var textStr = prompt('Text:') || 'Hello';
+            var cvs = document.createElement('canvas');
+            cvs.width = 512; cvs.height = 128;
+            var ctx = cvs.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 64px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(textStr, 256, 64);
+            var tex = new THREE.CanvasTexture(cvs);
+            var mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true });
+            var geo = new THREE.PlaneGeometry(4, 1);
+            var mesh = new THREE.Mesh(geo, mat);
+            name = getUniqueName('text3d');
+            mesh.name = name;
+            mesh.position.set(0, 1.5, 0);
+            scene.add(mesh);
+            objects[name] = mesh;
+            objectTypes[name] = 'text3d';
+        }
         if (name) {
             selectObject(name);
         }
@@ -5864,17 +6160,26 @@ var SashaEngineAPI = (function() {
         var comp = { type: compType };
         if (compType === 'script') {
             comp.name = (data && data.name) || 'NewScript';
-            comp.code = (data && data.code) || 'function onUpdate(delta, obj) {\n  // Your code here\n}';
+            comp.code = (data && data.code) || 'function onStart(obj, Engine) {\n  // Called once on play start\n}\nfunction onUpdate(delta, obj, Engine) {\n  // Called every frame\n}\nfunction onCollision(other, Engine) {\n  // Called on collision\n}\nfunction onDestroy(obj, Engine) {\n  // Called on stop\n}';
             comp.enabled = (data && data.enabled !== undefined) ? data.enabled : true;
         } else if (compType === 'rigidbody') {
+            comp.type = 'rigidbody';
             comp.mass = (data && data.mass !== undefined) ? data.mass : 1;
             comp.useGravity = (data && data.useGravity !== undefined) ? data.useGravity : true;
-            comp.velocity = { x: 0, y: 0, z: 0 };
+            comp.drag = (data && data.drag !== undefined) ? data.drag : 0;
+            comp.angularDrag = (data && data.angularDrag !== undefined) ? data.angularDrag : 0.05;
+            comp.velocity = (data && data.velocity) ? { x: data.velocity.x || 0, y: data.velocity.y || 0, z: data.velocity.z || 0 } : { x: 0, y: 0, z: 0 };
+            comp.angularVelocity = (data && data.angularVelocity) ? { x: data.angularVelocity.x || 0, y: data.angularVelocity.y || 0, z: data.angularVelocity.z || 0 } : { x: 0, y: 0, z: 0 };
+            comp.constraints = (data && data.constraints) ? data.constraints : { freezeX: false, freezeY: false, freezeZ: false };
             physicsObjects[name] = comp;
         } else if (compType === 'boxcollider') {
-            comp.size = { x: 1, y: 1, z: 1 };
+            comp.size = (data && data.size) ? data.size : { x: 1, y: 1, z: 1 };
+            comp.center = (data && data.center) ? data.center : { x: 0, y: 0, z: 0 };
         } else if (compType === 'spherecollider') {
-            comp.radius = 0.5;
+            comp.radius = (data && data.radius !== undefined) ? data.radius : 0.5;
+            comp.center = (data && data.center) ? data.center : { x: 0, y: 0, z: 0 };
+        } else if (compType === 'meshcollider') {
+            comp.convex = (data && data.convex !== undefined) ? data.convex : false;
         }
         objectComponents[name].push(comp);
     }
@@ -6081,17 +6386,50 @@ var SashaEngineAPI = (function() {
     function updatePhysics(delta) {
         var dt = Math.min(delta, 0.05);
         var physNames = [];
+        var collisionPairs = [];
         for (var pn in physicsObjects) {
             if (!physicsObjects.hasOwnProperty(pn)) continue;
             physNames.push(pn);
+        }
+        // Save constraint positions on first frame
+        if (Object.keys(savedConstraintPositions).length === 0) {
+            for (var ci = 0; ci < physNames.length; ci++) {
+                var cn = physNames[ci];
+                var cobj = objects[cn];
+                var crb = physicsObjects[cn];
+                if (cobj && crb && crb.constraints) {
+                    savedConstraintPositions[cn] = {
+                        x: cobj.position.x,
+                        y: cobj.position.y,
+                        z: cobj.position.z
+                    };
+                }
+            }
         }
         for (var pi = 0; pi < physNames.length; pi++) {
             var name = physNames[pi];
             var rb = physicsObjects[name];
             var obj = objects[name];
-            if (!obj || !rb.useGravity) continue;
+            if (!obj) continue;
             // Apply gravity
-            rb.velocity.y += GRAVITY * dt;
+            if (rb.useGravity) {
+                rb.velocity.y += GRAVITY * dt;
+            }
+            // Apply linear drag
+            var speed = Math.sqrt(rb.velocity.x * rb.velocity.x + rb.velocity.y * rb.velocity.y + rb.velocity.z * rb.velocity.z);
+            if (speed > 0.001) {
+                var dragForce = 1 - (rb.drag || 0) * dt;
+                if (dragForce < 0) dragForce = 0;
+                rb.velocity.x *= dragForce;
+                rb.velocity.y *= dragForce;
+                rb.velocity.z *= dragForce;
+            }
+            // Angular drag on rotation
+            var angDragForce = 1 - (rb.angularDrag || 0.05) * dt;
+            if (angDragForce < 0) angDragForce = 0;
+            obj.rotation.x *= angDragForce;
+            obj.rotation.y *= angDragForce;
+            obj.rotation.z *= angDragForce;
             // Integrate position
             obj.position.x += rb.velocity.x * dt;
             obj.position.y += rb.velocity.y * dt;
@@ -6101,10 +6439,15 @@ var SashaEngineAPI = (function() {
             if (obj.position.y < minY) {
                 obj.position.y = minY;
                 rb.velocity.y = -rb.velocity.y * 0.4;
-                // Friction
                 rb.velocity.x *= 0.95;
                 rb.velocity.z *= 0.95;
                 if (Math.abs(rb.velocity.y) < 0.1) { rb.velocity.y = 0; }
+            }
+            // Constraints
+            if (rb.constraints) {
+                if (rb.constraints.freezeX) { rb.velocity.x = 0; if (savedConstraintPositions[name]) { obj.position.x = savedConstraintPositions[name].x; } }
+                if (rb.constraints.freezeY) { rb.velocity.y = 0; }
+                if (rb.constraints.freezeZ) { rb.velocity.z = 0; }
             }
         }
         // Simple sphere-sphere collision between physics objects
@@ -6121,7 +6464,6 @@ var SashaEngineAPI = (function() {
                 var dz = objB.position.z - objA.position.z;
                 var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 var minDist = 1.0;
-                // Estimate radius from bounding box
                 if (objA.geometry) {
                     objA.geometry.computeBoundingSphere();
                     minDist = objA.geometry.boundingSphere.radius || 0.5;
@@ -6133,11 +6475,10 @@ var SashaEngineAPI = (function() {
                 }
                 minDist = minDist + minDistB;
                 if (dist < minDist && dist > 0.001) {
-                    // Collision response
+                    collisionPairs.push({ a: physNames[a], b: physNames[b] });
                     var nx = dx / dist;
                     var ny = dy / dist;
                     var nz = dz / dist;
-                    // Relative velocity
                     var relVx = rbA.velocity.x - rbB.velocity.x;
                     var relVy = rbA.velocity.y - rbB.velocity.y;
                     var relVz = rbA.velocity.z - rbB.velocity.z;
@@ -6153,7 +6494,6 @@ var SashaEngineAPI = (function() {
                         rbB.velocity.y += impulse * massA * ny * 0.8;
                         rbB.velocity.z += impulse * massA * nz * 0.8;
                     }
-                    // Separate objects
                     var overlap = minDist - dist;
                     objA.position.x -= nx * overlap * 0.5;
                     objA.position.y -= ny * overlap * 0.5;
@@ -6164,6 +6504,7 @@ var SashaEngineAPI = (function() {
                 }
             }
         }
+        return collisionPairs;
     }
 
     function savePlayState() {
@@ -6205,29 +6546,94 @@ var SashaEngineAPI = (function() {
 
     // --- Script execution ---
 
-    function stepScripts(delta) {
+    function callScriptFunction(scriptCode, fnName, args) {
+        try {
+            var fn = new Function(fnName + 'Fn', 'return ' + fnName + ';')(function() {
+                return function() {
+                    var wrapper = new Function(args._argNames.join(','), scriptCode + '\nreturn ' + fnName + '(' + args._argNames.join(',') + ');');
+                    return wrapper.apply(null, args._argVals);
+                };
+            });
+            fn();
+        } catch(e) {
+            // Silently skip
+        }
+    }
+
+    function stepScripts(delta, collisionPairs) {
+        collisionPairs = collisionPairs || [];
         for (var name in objectComponents) {
             if (!objectComponents.hasOwnProperty(name)) continue;
             var comps = objectComponents[name];
             for (var i = 0; i < comps.length; i++) {
                 if (comps[i].type === 'script' && comps[i].enabled) {
-                    try {
-                        var fn = new Function('delta', 'object', 'transform', 'Engine', comps[i].code);
-                        var obj = objects[name];
-                        if (obj) {
-                            var transform = {
-                                position: obj.position,
-                                rotation: obj.rotation,
-                                scale: obj.scale
-                            };
-                            fn(delta, obj, transform, SashaEngineAPI);
-                        }
-                    } catch(e) {
-                        // Silently skip script errors during play
+                    var code = comps[i].code || '';
+                    var obj = objects[name];
+                    if (!obj) continue;
+                    var scriptId = name + '_' + i;
+                    // Call onStart once
+                    if (!scriptStarted[scriptId]) {
+                        scriptStarted[scriptId] = true;
+                        try {
+                            var startFn = new Function('obj', 'Engine', code + '\nif(typeof onStart==="function") onStart(obj, Engine);');
+                            startFn(obj, SashaEngineAPI);
+                        } catch(e) {}
                     }
+                    // Call onUpdate every frame
+                    try {
+                        var hasUpdate = code.indexOf('function onUpdate') !== -1;
+                        if (hasUpdate) {
+                            var updateFn = new Function('delta', 'obj', 'Engine', code + '\nif(typeof onUpdate==="function") onUpdate(delta, obj, Engine);');
+                            updateFn(delta, obj, SashaEngineAPI);
+                        }
+                    } catch(e) {}
                 }
             }
         }
+        // Call onCollision for collision pairs
+        for (var ci = 0; ci < collisionPairs.length; ci++) {
+            var pair = collisionPairs[ci];
+            callCollisionCallbacks(pair.a, pair.b);
+            callCollisionCallbacks(pair.b, pair.a);
+        }
+    }
+
+    function callCollisionCallbacks(name, otherName) {
+        var comps = objectComponents[name];
+        if (!comps) return;
+        var otherObj = objects[otherName];
+        if (!otherObj) return;
+        for (var i = 0; i < comps.length; i++) {
+            if (comps[i].type === 'script' && comps[i].enabled) {
+                var code = comps[i].code || '';
+                var obj = objects[name];
+                if (!obj) continue;
+                try {
+                    var collFn = new Function('other', 'Engine', code + '\nif(typeof onCollision==="function") onCollision(other, Engine);');
+                    collFn(otherObj, SashaEngineAPI);
+                } catch(e) {}
+            }
+        }
+    }
+
+    function destroyScripts() {
+        for (var name in objectComponents) {
+            if (!objectComponents.hasOwnProperty(name)) continue;
+            var comps = objectComponents[name];
+            for (var i = 0; i < comps.length; i++) {
+                if (comps[i].type === 'script' && comps[i].enabled) {
+                    var code = comps[i].code || '';
+                    var obj = objects[name];
+                    if (!obj) continue;
+                    try {
+                        var destroyFn = new Function('obj', 'Engine', code + '\nif(typeof onDestroy==="function") onDestroy(obj, Engine);');
+                        destroyFn(obj, SashaEngineAPI);
+                    } catch(e) {}
+                }
+            }
+        }
+        scriptStarted = {};
+        savedConstraintPositions = {};
     }
 
     function animate() {
@@ -6241,8 +6647,8 @@ var SashaEngineAPI = (function() {
 
         // Play mode: run physics and scripts
         if (playState === 'playing') {
-            updatePhysics(delta);
-            stepScripts(delta);
+            var collisionPairs = updatePhysics(delta);
+            stepScripts(delta, collisionPairs);
             // Auto-refresh inspector during play
             if (inspectorAutoRefresh && selectedObject) {
                 EngineApp.refreshInspector();
@@ -6305,7 +6711,7 @@ var SashaEngineAPI = (function() {
         addObjectComponent: addObjectComponent, removeObjectComponent: removeObjectComponent,
         getPlayState: getPlayState, setPlayState: setPlayState,
         savePlayState: savePlayState, restorePlayState: restorePlayState,
-        updatePhysics: updatePhysics, stepScripts: stepScripts,
+        updatePhysics: updatePhysics, stepScripts: stepScripts, destroyScripts: destroyScripts,
         setGizmoMode: setGizmoMode, getGizmoMode: getGizmoMode,
         setOnSelectionChange: setOnSelectionChange, setInspectorAutoRefresh: setInspectorAutoRefresh,
         renameObject: renameObject,
@@ -6319,6 +6725,161 @@ var SashaEngineAPI = (function() {
 
 
 // ================================================================
+// ============ SashaAssetManager — Asset Browser, Folders, Materials, Prefabs, Scenes ============
+var SashaAssetManager = (function() {
+    var assets = [
+        { id: 'folder_scripts', type: 'folder', name: 'Scripts', parent: null },
+        { id: 'folder_materials', type: 'folder', name: 'Materials', parent: null },
+        { id: 'folder_prefabs', type: 'folder', name: 'Prefabs', parent: null },
+        { id: 'folder_scenes', type: 'folder', name: 'Scenes', parent: null },
+        { id: 'folder_shaders', type: 'folder', name: 'Shaders', parent: null }
+    ];
+
+    var scriptTemplates = {
+        'PlayerController': 'function onUpdate(delta, obj, Engine) {\n  var speed = 5 * delta;\n  if (Engine._keys && Engine._keys[\'ArrowRight\']) obj.position.x += speed;\n  if (Engine._keys && Engine._keys[\'ArrowLeft\']) obj.position.x -= speed;\n  if (Engine._keys && Engine._keys[\'ArrowUp\']) obj.position.z -= speed;\n  if (Engine._keys && Engine._keys[\'ArrowDown\']) obj.position.z += speed;\n}',
+        'EnemyAI': 'function onUpdate(delta, obj, Engine) {\n  obj.rotation.y += delta * 2;\n  var t = Date.now() * 0.001;\n  obj.position.y = 1 + Math.sin(t * 3) * 0.3;\n}',
+        'HealthSystem': 'function onUpdate(delta, obj, Engine) {\n  if (!obj._hp) obj._hp = 100;\n  if (!obj._hpText) {\n    Engine.log(obj.name + " HP: " + obj._hp);\n    obj._hpText = true;\n  }\n}',
+        'Rotate': 'function onUpdate(delta, obj, Engine) {\n  obj.rotation.y += delta * 1.5;\n  obj.rotation.x += delta * 0.5;\n}',
+        'Bounce': 'function onUpdate(delta, obj, Engine) {\n  var t = Date.now() * 0.001;\n  obj.position.y = 1 + Math.abs(Math.sin(t * 2)) * 2;\n}',
+        'Orbit': 'function onUpdate(delta, obj, Engine) {\n  var t = Date.now() * 0.001;\n  var radius = 3;\n  obj.position.x = Math.cos(t) * radius;\n  obj.position.z = Math.sin(t) * radius;\n  obj.rotation.y = -t + Math.PI / 2;\n}',
+        'Pulse': 'function onUpdate(delta, obj, Engine) {\n  var t = Date.now() * 0.001;\n  var s = 1 + Math.sin(t * 4) * 0.2;\n  obj.scale.set(s, s, s);\n}',
+        'Follow': 'function onUpdate(delta, obj, Engine) {\n  // Follows the first cube\n  var objs = Engine.getObjects();\n  var names = Engine.getAllObjectNames();\n  for (var i = 0; i < names.length; i++) {\n    if (names[i] !== obj.name && objs[names[i]].isMesh) {\n      var target = objs[names[i]].position;\n      obj.position.x += (target.x - obj.position.x) * delta * 2;\n      obj.position.z += (target.z - obj.position.z) * delta * 2;\n      break;\n    }\n  }\n}'
+    };
+
+    var materialPresets = {
+        'NeonBlue': { color: '#3b82f6', metalness: 0.8, roughness: 0.2, emissive: '#1a3a6a' },
+        'NeonPink': { color: '#ec4899', metalness: 0.7, roughness: 0.3, emissive: '#6a1a3a' },
+        'Gold': { color: '#f59e0b', metalness: 1.0, roughness: 0.1, emissive: '#3a2a00' },
+        'Chrome': { color: '#c0c0c0', metalness: 1.0, roughness: 0.05, emissive: '#000000' },
+        'Rubber': { color: '#333333', metalness: 0.0, roughness: 0.95, emissive: '#000000' },
+        'Glass': { color: '#88ccff', metalness: 0.1, roughness: 0.0, emissive: '#000000', opacity: 0.3 },
+        'Grass': { color: '#22c55e', metalness: 0.0, roughness: 0.9, emissive: '#0a3a1a' },
+        'Lava': { color: '#ff4400', metalness: 0.3, roughness: 0.6, emissive: '#ff2200' },
+        'Ice': { color: '#aaddff', metalness: 0.2, roughness: 0.1, emissive: '#224466' },
+        'Wood': { color: '#8B4513', metalness: 0.0, roughness: 0.85, emissive: '#000000' }
+    };
+
+    var _idCounter = 1;
+    function genId() { return 'asset_' + Date.now() + '_' + (_idCounter++); }
+
+    function getAll() { return assets; }
+    function getScripts() { return assets.filter(function(a) { return a.type === 'script'; }); }
+    function getMaterials() { return assets.filter(function(a) { return a.type === 'material'; }); }
+    function getPrefabs() { return assets.filter(function(a) { return a.type === 'prefab'; }); }
+    function getScenes() { return assets.filter(function(a) { return a.type === 'scene'; }); }
+    function getScriptTemplates() { return scriptTemplates; }
+    function getMaterialPresets() { return materialPresets; }
+
+    function addAsset(type, name, parent, data) {
+        var asset = { id: genId(), type: type, name: name, parent: parent || null, data: data || {} };
+        if (type === 'script') { asset.data.code = data.code || 'function onUpdate(delta, obj, Engine) {\n  // Your code\n}'; }
+        if (type === 'material') { asset.data = data || { color: '#ffffff', metalness: 0, roughness: 0.5 }; }
+        if (type === 'prefab') { asset.data = data || {}; }
+        if (type === 'scene') { asset.data = data || {}; }
+        if (type === 'shader') { asset.data = data || { vertex: '', fragment: '' }; }
+        assets.push(asset);
+        save();
+        return asset;
+    }
+
+    function removeAsset(id) {
+        assets = assets.filter(function(a) { return a.id !== id && a.parent !== id; });
+        save();
+    }
+
+    function renameAsset(id, newName) {
+        for (var i = 0; i < assets.length; i++) {
+            if (assets[i].id === id) { assets[i].name = newName; break; }
+        }
+        save();
+    }
+
+    function getAsset(id) {
+        for (var i = 0; i < assets.length; i++) {
+            if (assets[i].id === id) return assets[i];
+        }
+        return null;
+    }
+
+    function getChildren(parentId) {
+        return assets.filter(function(a) { return a.parent === parentId; });
+    }
+
+    function save() {
+        try { localStorage.setItem('sasha_engine_assets', JSON.stringify(assets)); } catch(e) {}
+    }
+
+    function load() {
+        try {
+            var saved = localStorage.getItem('sasha_engine_assets');
+            if (saved) { assets = JSON.parse(saved); }
+        } catch(e) {}
+        // Ensure root folders exist
+        var folders = ['Scripts', 'Materials', 'Prefabs', 'Scenes', 'Shaders'];
+        var icons = { 'Scripts': 'fa-file-code', 'Materials': 'fa-palette', 'Prefabs': 'fa-cube', 'Scenes': 'fa-film', 'Shaders': 'fa-magic' };
+        for (var i = 0; i < folders.length; i++) {
+            var exists = false;
+            for (var j = 0; j < assets.length; j++) {
+                if (assets[j].type === 'folder' && assets[j].name === folders[i] && !assets[j].parent) { exists = true; break; }
+            }
+            if (!exists) {
+                assets.push({ id: 'folder_' + folders[i].toLowerCase(), type: 'folder', name: folders[i], parent: null, icon: icons[folders[i]] });
+            }
+        }
+    }
+
+    return {
+        getAll: getAll, getScripts: getScripts, getMaterials: getMaterials, getPrefabs: getPrefabs,
+        getScenes: getScenes, getScriptTemplates: getScriptTemplates, getMaterialPresets: getMaterialPresets,
+        addAsset: addAsset, removeAsset: removeAsset, renameAsset: renameAsset, getAsset: getAsset,
+        getChildren: getChildren, save: save, load: load
+    };
+})();
+
+// ============ SashaUISystem — UI Canvas for game UI ============
+var SashaUISystem = (function() {
+    var elements = [];
+    var visible = false;
+    var _idCounter = 1;
+
+    function addElement(type, props) {
+        var el = {
+            id: 'ui_' + Date.now() + '_' + (_idCounter++),
+            type: type,
+            x: props.x || 20, y: props.y || 20,
+            width: props.width || (type === 'button' ? 120 : type === 'panel' ? 200 : 100),
+            height: props.height || (type === 'button' ? 36 : type === 'panel' ? 150 : 30),
+            text: props.text || (type === 'text' ? 'New Text' : type === 'button' ? 'Button' : type === 'input' ? 'Input...' : ''),
+            color: props.color || '#ffffff',
+            bgColor: props.bgColor || '',
+            fontSize: props.fontSize || 14,
+            visible: true
+        };
+        elements.push(el);
+        return el;
+    }
+
+    function removeElement(id) {
+        elements = elements.filter(function(e) { return e.id !== id; });
+    }
+
+    function getElement(id) {
+        for (var i = 0; i < elements.length; i++) { if (elements[i].id === id) return elements[i]; }
+        return null;
+    }
+
+    function getAll() { return elements; }
+    function clear() { elements = []; }
+    function isVisible() { return visible; }
+    function setVisible(v) { visible = !!v; }
+    function toggle() { visible = !visible; }
+
+    return {
+        addElement: addElement, removeElement: removeElement, getElement: getElement,
+        getAll: getAll, clear: clear, isVisible: isVisible, setVisible: setVisible, toggle: toggle
+    };
+})();
+
 // ============ EngineApp — Editor/Engine/AI Integration ============
 // ================================================================
 var EngineApp = (function() {
@@ -6326,7 +6887,7 @@ var EngineApp = (function() {
     var liveMode = false;
     var liveTimer = null;
     var initialized = false;
-    var currentTab = 'console';
+    var currentTab = 'assets';
     var defaultCode = '// SashaAI Engine — Unity-like game engine\n' +
         '// Use toolbar to add objects, or write code below\n\n' +
         '// Example: create objects via code\n' +
@@ -6339,6 +6900,8 @@ var EngineApp = (function() {
 
         // Init 3D engine
         SashaEngineAPI.init();
+        // Load assets from localStorage
+        SashaAssetManager.load();
         // Set selection change callback to refresh UI
         SashaEngineAPI.setOnSelectionChange(function(name) {
             refreshHierarchy();
@@ -6498,6 +7061,7 @@ var EngineApp = (function() {
     }
 
     function stop() {
+        SashaEngineAPI.destroyScripts();
         SashaEngineAPI.restorePlayState();
         SashaEngineAPI.setPlayState('stopped');
         refreshInspector();
@@ -6589,6 +7153,12 @@ var EngineApp = (function() {
             else if (type === 'light') ico = 'fa-lightbulb';
             else if (type === 'model') ico = 'fa-file';
             else if (type === 'empty') ico = 'fa-dot-circle';
+            else if (type === 'torusknot') ico = 'fa-ring';
+            else if (type === 'icosahedron') ico = 'fa-gem';
+            else if (type === 'dodecahedron') ico = 'fa-gem';
+            else if (type === 'octahedron') ico = 'fa-diamond';
+            else if (type === 'terrain') ico = 'fa-mountain';
+            else if (type === 'text3d') ico = 'fa-font';
 
             var selClass = (name === selected) ? ' selected' : '';
             var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
@@ -6912,6 +7482,7 @@ var EngineApp = (function() {
                 else if (comp.type === 'rigidbody') { compIcon = 'fa-atom'; compName = 'RigidBody'; }
                 else if (comp.type === 'boxcollider') { compIcon = 'fa-vector-square'; compName = 'BoxCollider'; }
                 else if (comp.type === 'spherecollider') { compIcon = 'fa-circle'; compName = 'SphereCollider'; }
+                else if (comp.type === 'meshcollider') { compIcon = 'fa-draw-polygon'; compName = 'MeshCollider'; }
 
                 html += '<div class="comp-item">';
                 html += '<i class="fas ' + compIcon + '"></i>';
@@ -6930,7 +7501,13 @@ var EngineApp = (function() {
                 // RigidBody fields
                 if (comp.type === 'rigidbody') {
                     html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Mass</span>';
-                    html += '<input class="insp-input" type="number" step="0.1" value="' + comp.mass + '" onchange="EngineApp.setRBField(\'' + selected + '\',\'mass\',this.value)">';
+                    html += '<input class="insp-input" type="number" step="0.1" value="' + (comp.mass || 1) + '" onchange="EngineApp.setRBField(\'' + selected + '\',\'mass\',this.value)">';
+                    html += '</div>';
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Drag</span>';
+                    html += '<input class="insp-input" type="number" step="0.01" min="0" max="1" value="' + (comp.drag || 0) + '" onchange="EngineApp.setRBField(\'' + selected + '\',\'drag\',this.value)">';
+                    html += '</div>';
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Ang Drag</span>';
+                    html += '<input class="insp-input" type="number" step="0.01" min="0" max="1" value="' + (comp.angularDrag || 0.05) + '" onchange="EngineApp.setRBField(\'' + selected + '\',\'angularDrag\',this.value)">';
                     html += '</div>';
                     html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Gravity</span>';
                     html += '<input type="checkbox" class="insp-checkbox" ' + (comp.useGravity ? 'checked' : '') + ' onchange="EngineApp.setRBField(\'' + selected + '\',\'useGravity\',this.checked)">';
@@ -6939,6 +7516,37 @@ var EngineApp = (function() {
                     html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + (comp.velocity ? comp.velocity.x : 0).toFixed(2) + '" onchange="EngineApp.setRBVel(\'' + selected + '\',\'x\',this.value)"></div>';
                     html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + (comp.velocity ? comp.velocity.y : 0).toFixed(2) + '" onchange="EngineApp.setRBVel(\'' + selected + '\',\'y\',this.value)"></div>';
                     html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + (comp.velocity ? comp.velocity.z : 0).toFixed(2) + '" onchange="EngineApp.setRBVel(\'' + selected + '\',\'z\',this.value)"></div>';
+                    html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Constraints</div>';
+                    var cfx = (comp.constraints && comp.constraints.freezeX) ? 'checked' : '';
+                    var cfy = (comp.constraints && comp.constraints.freezeY) ? 'checked' : '';
+                    var cfz = (comp.constraints && comp.constraints.freezeZ) ? 'checked' : '';
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Freeze X</span><input type="checkbox" class="insp-checkbox" ' + cfx + ' onchange="EngineApp.setRBConstraint(\'' + selected + '\',\'freezeX\',this.checked)"></div>';
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Freeze Y</span><input type="checkbox" class="insp-checkbox" ' + cfy + ' onchange="EngineApp.setRBConstraint(\'' + selected + '\',\'freezeY\',this.checked)"></div>';
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Freeze Z</span><input type="checkbox" class="insp-checkbox" ' + cfz + ' onchange="EngineApp.setRBConstraint(\'' + selected + '\',\'freezeZ\',this.checked)"></div>';
+                }
+                // BoxCollider fields
+                if (comp.type === 'boxcollider') {
+                    var bs = comp.size || { x: 1, y: 1, z: 1 };
+                    var bc = comp.center || { x: 0, y: 0, z: 0 };
+                    html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Size</div>';
+                    html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + bs.x + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'boxcollider\',\'size_x\',this.value)"></div>';
+                    html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + bs.y + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'boxcollider\',\'size_y\',this.value)"></div>';
+                    html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + bs.z + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'boxcollider\',\'size_z\',this.value)"></div>';
+                    html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Center</div>';
+                    html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + bc.x + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'boxcollider\',\'center_x\',this.value)"></div>';
+                    html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + bc.y + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'boxcollider\',\'center_y\',this.value)"></div>';
+                    html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + bc.z + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'boxcollider\',\'center_z\',this.value)"></div>';
+                }
+                // SphereCollider fields
+                if (comp.type === 'spherecollider') {
+                    var sc = comp.center || { x: 0, y: 0, z: 0 };
+                    html += '<div class="insp-row"><span style="font-size:0.7rem;color:var(--text-muted);width:50px;">Radius</span>';
+                    html += '<input class="insp-input" type="number" step="0.1" value="' + (comp.radius || 0.5) + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'spherecollider\',\'radius\',this.value)">';
+                    html += '</div>';
+                    html += '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Center</div>';
+                    html += '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="' + sc.x + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'spherecollider\',\'center_x\',this.value)"></div>';
+                    html += '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="' + sc.y + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'spherecollider\',\'center_y\',this.value)"></div>';
+                    html += '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="' + sc.z + '" onchange="EngineApp.setColliderField(\'' + selected + '\',\'spherecollider\',\'center_z\',this.value)"></div>';
                 }
             }
         }
@@ -6953,6 +7561,7 @@ var EngineApp = (function() {
         html += '<option value="rigidbody">RigidBody</option>';
         html += '<option value="boxcollider">BoxCollider</option>';
         html += '<option value="spherecollider">SphereCollider</option>';
+        html += '<option value="meshcollider">MeshCollider</option>';
         html += '</select>';
         html += '<button class="insp-btn" onclick="EngineApp.addComp(\'' + selected + '\')" style="width:100%;margin-top:2px;">Add</button>';
         html += '</div></div>';
@@ -7052,6 +7661,27 @@ var EngineApp = (function() {
         if (!rb) return;
         if (field === 'mass') rb.mass = parseFloat(val) || 1;
         else if (field === 'useGravity') rb.useGravity = !!val;
+        else if (field === 'drag') rb.drag = parseFloat(val) || 0;
+        else if (field === 'angularDrag') rb.angularDrag = parseFloat(val) || 0.05;
+    }
+
+    function setRBConstraint(name, axis, val) {
+        var rb = SashaEngineAPI.getObjectComponent(name, 'rigidbody');
+        if (!rb || !rb.constraints) return;
+        rb.constraints[axis] = !!val;
+    }
+
+    function setColliderField(name, compType, field, val) {
+        var comp = SashaEngineAPI.getObjectComponent(name, compType);
+        if (!comp) return;
+        var v = parseFloat(val) || 0;
+        if (field === 'radius') { comp.radius = v; }
+        else if (field === 'size_x') { if (!comp.size) comp.size = {x:1,y:1,z:1}; comp.size.x = v; }
+        else if (field === 'size_y') { if (!comp.size) comp.size = {x:1,y:1,z:1}; comp.size.y = v; }
+        else if (field === 'size_z') { if (!comp.size) comp.size = {x:1,y:1,z:1}; comp.size.z = v; }
+        else if (field === 'center_x') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.x = v; }
+        else if (field === 'center_y') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.y = v; }
+        else if (field === 'center_z') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.z = v; }
     }
 
     function setRBVel(name, axis, val) {
@@ -7068,7 +7698,7 @@ var EngineApp = (function() {
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove('active');
         }
-        var tabMap = { console: 'Console', code: 'Code', ai: 'AI Agent' };
+        var tabMap = { assets: 'Assets', console: 'Console', code: 'Code', ai: 'AI Agent', ui: 'UI Canvas' };
         for (var j = 0; j < tabs.length; j++) {
             if (tabs[j].textContent.indexOf(tabMap[tabName]) !== -1) {
                 tabs[j].classList.add('active');
@@ -7080,10 +7710,459 @@ var EngineApp = (function() {
         }
         var target = document.getElementById('eng-tab-' + tabName);
         if (target) { target.style.display = 'block'; }
-        // Trigger Monaco layout refresh when switching to code tab
         if (tabName === 'code' && editor) {
             setTimeout(function() { editor.layout(); }, 50);
         }
+        if (tabName === 'assets') { refreshAssetBrowser(); }
+        if (tabName === 'ui') { renderUICanvas(); }
+    }
+
+    // ============ Asset Browser ============
+
+    var selectedAsset = null;
+    var openFolders = {};
+
+    function refreshAssetBrowser() {
+        var tree = document.getElementById('asset-tree');
+        if (!tree) return;
+        var html = '';
+        var allAssets = SashaAssetManager.getAll();
+        // Render root folders first
+        for (var i = 0; i < allAssets.length; i++) {
+            var a = allAssets[i];
+            if (a.parent !== null) continue;
+            var isOpen = openFolders[a.id];
+            var icon = 'fa-folder';
+            if (a.icon) icon = a.icon;
+            html += '<div class="asset-item folder' + (selectedAsset === a.id ? ' selected' : '') + '" onclick="EngineApp.selectAsset(\'' + a.id + '\')" ondblclick="EngineApp.toggleFolder(\'' + a.id + '\')">';
+            html += '<span class="asset-icon"><i class="fas ' + icon + '"></i></span>';
+            html += '<span class="asset-name">' + a.name + '</span>';
+            html += '</div>';
+            // Render children if open
+            if (isOpen) {
+                var children = SashaAssetManager.getChildren(a.id);
+                for (var c = 0; c < children.length; c++) {
+                    var child = children[c];
+                    var cIcon = 'fa-file';
+                    if (child.type === 'script') cIcon = 'fa-file-code';
+                    else if (child.type === 'material') cIcon = 'fa-palette';
+                    else if (child.type === 'prefab') cIcon = 'fa-cube';
+                    else if (child.type === 'scene') cIcon = 'fa-film';
+                    else if (child.type === 'shader') cIcon = 'fa-magic';
+                    else if (child.type === 'folder') cIcon = 'fa-folder';
+                    html += '<div class="asset-item ' + child.type + (selectedAsset === child.id ? ' selected' : '') + '" style="padding-left:24px;" onclick="EngineApp.selectAsset(\'' + child.id + '\')">';
+                    html += '<span class="asset-icon"><i class="fas ' + cIcon + '"></i></span>';
+                    html += '<span class="asset-name">' + child.name + '</span>';
+                    html += '<div class="asset-actions"><button onclick="event.stopPropagation();EngineApp.deleteAsset(\'' + child.id + '\')"><i class="fas fa-trash"></i></button></div>';
+                    html += '</div>';
+                }
+            }
+        }
+        // Also render orphan assets (no parent)
+        for (var o = 0; o < allAssets.length; o++) {
+            var oa = allAssets[o];
+            if (oa.parent === null && oa.type !== 'folder') {
+                var oIcon = 'fa-file';
+                if (oa.type === 'script') oIcon = 'fa-file-code';
+                else if (oa.type === 'material') oIcon = 'fa-palette';
+                html += '<div class="asset-item ' + oa.type + '">' + '<span class="asset-icon"><i class="fas ' + oIcon + '"></i></span><span class="asset-name">' + oa.name + '</span></div>';
+            }
+        }
+        tree.innerHTML = html;
+    }
+
+    function selectAsset(id) {
+        selectedAsset = id;
+        refreshAssetBrowser();
+        showAssetPreview(id);
+    }
+
+    function toggleFolder(id) {
+        openFolders[id] = !openFolders[id];
+        refreshAssetBrowser();
+    }
+
+    function showAssetPreview(id) {
+        var preview = document.getElementById('asset-preview');
+        if (!preview) return;
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) { preview.innerHTML = ''; return; }
+        var html = '<b>' + asset.name + '</b> (' + asset.type + ')<br>';
+        if (asset.type === 'script' && asset.data.code) {
+            var lines = asset.data.code.split('\n').length;
+            html += lines + ' lines of code. <button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.editScriptAsset(\'' + id + '\')">Edit</button> ';
+            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.applyScriptToSelected(\'' + id + '\')">Apply to Selected</button>';
+        } else if (asset.type === 'material') {
+            html += 'Color: <span style="display:inline-block;width:12px;height:12px;background:' + (asset.data.color || '#fff') + ';border-radius:2px;vertical-align:middle;"></span> ';
+            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.applyMaterialToSelected(\'' + id + '\')">Apply to Selected</button>';
+        } else if (asset.type === 'prefab') {
+            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.instantiatePrefab(\'' + id + '\')">Instantiate</button>';
+        } else if (asset.type === 'scene') {
+            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.loadScene(\'' + id + '\')">Load Scene</button>';
+        } else if (asset.type === 'folder') {
+            html += SashaAssetManager.getChildren(id).length + ' items';
+        }
+        preview.innerHTML = html;
+    }
+
+    function createAsset() {
+        var menu = document.getElementById('asset-create-menu');
+        if (menu) { menu.style.display = menu.style.display === 'none' ? 'block' : 'none'; }
+    }
+
+    function createAssetItem(type) {
+        var menu = document.getElementById('asset-create-menu');
+        if (menu) menu.style.display = 'none';
+        var name = prompt('Name:');
+        if (!name) return;
+        var parentFolder = null;
+        var folderMap = { script: 'folder_scripts', material: 'folder_materials', prefab: 'folder_prefabs', scene: 'folder_scenes', shader: 'folder_shaders', folder: null };
+        parentFolder = folderMap[type] || null;
+        if (type === 'script') {
+            var templates = SashaAssetManager.getScriptTemplates();
+            var templateNames = Object.keys(templates);
+            var tplChoice = prompt('Template (' + templateNames.join(', ') + '):');
+            var code = templates[tplChoice] || templates['Rotate'] || 'function onUpdate(delta, obj, Engine) {\n  // Your code\n}';
+            SashaAssetManager.addAsset('script', name, parentFolder, { code: code });
+        } else if (type === 'material') {
+            var presets = SashaAssetManager.getMaterialPresets();
+            var presetNames = Object.keys(presets);
+            var matChoice = prompt('Preset (' + presetNames.join(', ') + '):');
+            var data = presets[matChoice] || { color: '#ffffff', metalness: 0, roughness: 0.5 };
+            SashaAssetManager.addAsset('material', name, parentFolder, data);
+        } else if (type === 'prefab') {
+            var selObj = SashaEngineAPI.getSelectedObject();
+            if (selObj) {
+                var objs = SashaEngineAPI.getObjects();
+                var obj = objs[selObj];
+                if (obj) {
+                    var prefabData = {
+                        type: SashaEngineAPI.getObjectTypes()[selObj],
+                        px: obj.position.x, py: obj.position.y, pz: obj.position.z,
+                        rx: obj.rotation.x, ry: obj.rotation.y, rz: obj.rotation.z,
+                        sx: obj.scale.x, sy: obj.scale.y, sz: obj.scale.z
+                    };
+                    if (obj.material && obj.material.color) prefabData.color = '#' + obj.material.color.getHexString();
+                    var comps = SashaEngineAPI.getAllComponents(selObj);
+                    if (comps.length > 0) prefabData.components = comps;
+                    SashaAssetManager.addAsset('prefab', name, parentFolder, prefabData);
+                    log('Prefab saved: ' + name, 'result');
+                }
+            } else {
+                log('Select an object first to create prefab', 'warn');
+                SashaAssetManager.addAsset('prefab', name, parentFolder, {});
+            }
+        } else if (type === 'scene') {
+            var sceneData = saveSceneData();
+            SashaAssetManager.addAsset('scene', name, parentFolder, sceneData);
+            log('Scene saved: ' + name, 'result');
+        } else if (type === 'shader') {
+            SashaAssetManager.addAsset('shader', name, parentFolder, { vertex: '', fragment: '' });
+        } else if (type === 'folder') {
+            SashaAssetManager.addAsset('folder', name, null);
+        }
+        openFolders[parentFolder || ''] = true;
+        refreshAssetBrowser();
+    }
+
+    function deleteAsset(id) {
+        SashaAssetManager.removeAsset(id);
+        selectedAsset = null;
+        refreshAssetBrowser();
+        log('Asset deleted', 'log');
+    }
+
+    function editScriptAsset(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset || !asset.data.code) return;
+        switchTab('code');
+        if (editor) {
+            editor.setValue(asset.data.code);
+        }
+    }
+
+    function applyScriptToSelected(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset || !asset.data.code) return;
+        var sel = SashaEngineAPI.getSelectedObject();
+        if (!sel) { log('Select an object first', 'warn'); return; }
+        SashaEngineAPI.addObjectComponent(sel, 'script', {
+            name: asset.name,
+            code: asset.data.code,
+            enabled: true
+        });
+        refreshInspector();
+        log('Script "' + asset.name + '" applied to ' + sel, 'result');
+    }
+
+    function applyMaterialToSelected(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset || !asset.data) return;
+        var sel = SashaEngineAPI.getSelectedObject();
+        if (!sel) { log('Select an object first', 'warn'); return; }
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[sel];
+        if (obj && obj.material) {
+            if (asset.data.color) obj.material.color.set(asset.data.color);
+            if (asset.data.metalness !== undefined) obj.material.metalness = asset.data.metalness;
+            if (asset.data.roughness !== undefined) obj.material.roughness = asset.data.roughness;
+            if (asset.data.opacity !== undefined) {
+                obj.material.opacity = asset.data.opacity;
+                obj.material.transparent = asset.data.opacity < 1;
+            }
+            if (asset.data.emissive) {
+                obj.material.emissive = new THREE.Color(asset.data.emissive);
+                obj.material.emissiveIntensity = 0.3;
+            }
+        }
+        refreshInspector();
+        log('Material "' + asset.name + '" applied to ' + sel, 'result');
+    }
+
+    function instantiatePrefab(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset || !asset.data) return;
+        var type = asset.data.type || 'cube';
+        var name = SashaEngineAPI.addObject(type);
+        if (name && asset.data.px !== undefined) {
+            var objs = SashaEngineAPI.getObjects();
+            var obj = objs[name];
+            if (obj) {
+                obj.position.set(asset.data.px, asset.data.py, asset.data.pz);
+                if (asset.data.rx !== undefined) obj.rotation.set(asset.data.rx, asset.data.ry, asset.data.rz);
+                if (asset.data.sx !== undefined) obj.scale.set(asset.data.sx, asset.data.sy, asset.data.sz);
+                if (asset.data.color && obj.material) obj.material.color.set(asset.data.color);
+            }
+            if (asset.data.components) {
+                for (var i = 0; i < asset.data.components.length; i++) {
+                    var comp = asset.data.components[i];
+                    SashaEngineAPI.addObjectComponent(name, comp.type, comp);
+                }
+            }
+        }
+        refreshHierarchy();
+        refreshInspector();
+        log('Prefab "' + asset.name + '" instantiated', 'result');
+    }
+
+    function importAsset() { log('Import: paste URL or drag file (coming soon)', 'info'); }
+
+    function saveAllAssets() {
+        SashaAssetManager.save();
+        // Also save current scene
+        saveSceneData();
+        log('All assets saved', 'result');
+    }
+
+    // ============ Scene Save/Load ============
+
+    function saveSceneData() {
+        var objs = SashaEngineAPI.getObjects();
+        var types = SashaEngineAPI.getObjectTypes();
+        var names = SashaEngineAPI.getAllObjectNames();
+        var sceneData = { objects: [], bgColor: '#0a0a1a' };
+        var sc = SashaEngineAPI.getScene();
+        if (sc && sc.background) { sceneData.bgColor = '#' + sc.background.getHexString(); }
+        for (var i = 0; i < names.length; i++) {
+            var n = names[i];
+            var obj = objs[n];
+            if (!obj) continue;
+            var entry = {
+                name: n, type: types[n],
+                px: obj.position.x, py: obj.position.y, pz: obj.position.z,
+                rx: obj.rotation.x, ry: obj.rotation.y, rz: obj.rotation.z,
+                sx: obj.scale.x, sy: obj.scale.y, sz: obj.scale.z,
+                visible: obj.visible
+            };
+            if (obj.material && obj.material.color) entry.color = '#' + obj.material.color.getHexString();
+            if (obj.material) {
+                entry.metalness = obj.material.metalness || 0;
+                entry.roughness = obj.material.roughness || 0.5;
+            }
+            var comps = SashaEngineAPI.getAllComponents(n);
+            if (comps.length > 0) entry.components = comps;
+            sceneData.objects.push(entry);
+        }
+        return sceneData;
+    }
+
+    function loadScene(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset || !asset.data) return;
+        var data = asset.data;
+        SashaEngineAPI.clear();
+        if (data.bgColor) { SashaEngineAPI.setBgColor(parseInt(data.bgColor.substr(1,2),16)/255, parseInt(data.bgColor.substr(3,2),16)/255, parseInt(data.bgColor.substr(5,2),16)/255); }
+        if (data.objects) {
+            for (var i = 0; i < data.objects.length; i++) {
+                var entry = data.objects[i];
+                var name = SashaEngineAPI.addObject(entry.type);
+                if (name) {
+                    var objs = SashaEngineAPI.getObjects();
+                    var obj = objs[name];
+                    if (obj) {
+                        obj.position.set(entry.px || 0, entry.py || 0, entry.pz || 0);
+                        if (entry.rx !== undefined) obj.rotation.set(entry.rx, entry.ry, entry.rz);
+                        if (entry.sx !== undefined) obj.scale.set(entry.sx, entry.sy, entry.sz);
+                        if (entry.color && obj.material) obj.material.color.set(entry.color);
+                        if (entry.metalness !== undefined && obj.material) obj.material.metalness = entry.metalness;
+                        if (entry.roughness !== undefined && obj.material) obj.material.roughness = entry.roughness;
+                    }
+                    if (entry.components) {
+                        for (var j = 0; j < entry.components.length; j++) {
+                            SashaEngineAPI.addObjectComponent(name, entry.components[j].type, entry.components[j]);
+                        }
+                    }
+                }
+            }
+        }
+        refreshHierarchy();
+        refreshInspector();
+        log('Scene "' + asset.name + '" loaded', 'result');
+    }
+
+    // ============ UI Canvas ============
+
+    var selectedUIElement = null;
+    var uiDragOffset = { x: 0, y: 0 };
+
+    function addUIElement(type) {
+        var el = SashaUISystem.addElement(type, {
+            x: 30 + Math.random() * 200,
+            y: 30 + Math.random() * 100
+        });
+        renderUICanvas();
+        log('UI ' + type + ' added', 'log');
+    }
+
+    function renderUICanvas() {
+        var area = document.getElementById('ui-canvas-area');
+        if (!area) return;
+        var html = '';
+        var elements = SashaUISystem.getAll();
+        for (var i = 0; i < elements.length; i++) {
+            var el = elements[i];
+            var sel = selectedUIElement === el.id ? ' selected' : '';
+            html += '<div class="ui-element ui-' + el.type + sel + '" data-ui-id="' + el.id + '" ';
+            html += 'style="left:' + el.x + 'px;top:' + el.y + 'px;width:' + el.width + 'px;height:' + el.height + 'px;';
+            if (el.fontSize) html += 'font-size:' + el.fontSize + 'px;';
+            if (el.color) html += 'color:' + el.color + ';';
+            if (el.bgColor) html += 'background-color:' + el.bgColor + ';';
+            html += '"';
+            html += ' onmousedown="EngineApp.startUIDrag(event,\'' + el.id + '\')" onclick="EngineApp.selectUIElement(\'' + el.id + '\')">';
+            html += '<span class="ui-label">' + el.type + ': ' + el.id + '</span>';
+            if (el.type === 'text') html += el.text;
+            else if (el.type === 'button') html += el.text;
+            else if (el.type === 'image') html += '<i class="fas fa-image"></i> ' + el.width + 'x' + el.height;
+            else if (el.type === 'input') html += '';
+            else if (el.type === 'panel') html += '';
+            html += '<div class="ui-resize-handle" onmousedown="event.stopPropagation();EngineApp.startUIResize(event,\'' + el.id + '\')"></div>';
+            html += '</div>';
+        }
+        area.innerHTML = html;
+    }
+
+    function selectUIElement(id) {
+        selectedUIElement = id;
+        renderUICanvas();
+        // Show in inspector
+        var el = SashaUISystem.getElement(id);
+        if (el) {
+            var container = document.getElementById('eng-inspector');
+            if (container) {
+                var h = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);">UI: ' + el.type + '</div>';
+                h += '<div class="insp-section"><div class="insp-section-body">';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Text</span><input class="insp-input" value="' + (el.text || '').replace(/"/g, '&quot;') + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'text\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">X</span><input class="insp-input" type="number" value="' + el.x + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'x\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Y</span><input class="insp-input" type="number" value="' + el.y + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'y\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">W</span><input class="insp-input" type="number" value="' + el.width + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'width\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">H</span><input class="insp-input" type="number" value="' + el.height + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'height\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Size</span><input class="insp-input" type="number" value="' + el.fontSize + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'fontSize\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Color</span><input class="insp-color-input" type="color" value="' + (el.color || '#ffffff') + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'color\',this.value)"></div>';
+                h += '<div style="padding:4px 8px;"><button class="insp-btn danger" onclick="EngineApp.removeUIElement(\'' + id + '\')" style="width:100%;"><i class="fas fa-trash"></i> Delete</button></div>';
+                h += '</div></div>';
+                container.innerHTML = h;
+            }
+        }
+    }
+
+    function updateUIProp(id, prop, val) {
+        var el = SashaUISystem.getElement(id);
+        if (!el) return;
+        if (prop === 'width' || prop === 'height' || prop === 'x' || prop === 'y' || prop === 'fontSize') {
+            el[prop] = parseFloat(val) || 0;
+        } else {
+            el[prop] = val;
+        }
+        renderUICanvas();
+    }
+
+    function removeUIElement(id) {
+        SashaUISystem.removeElement(id);
+        selectedUIElement = null;
+        renderUICanvas();
+        refreshInspector();
+        log('UI element removed', 'log');
+    }
+
+    function startUIDrag(e, id) {
+        e.preventDefault();
+        var el = SashaUISystem.getElement(id);
+        if (!el) return;
+        selectedUIElement = id;
+        var area = document.getElementById('ui-canvas-area');
+        var rect = area.getBoundingClientRect();
+        uiDragOffset.x = e.clientX - rect.left - el.x;
+        uiDragOffset.y = e.clientY - rect.top - el.y;
+        function onMove(ev) {
+            var el2 = SashaUISystem.getElement(id);
+            if (!el2) return;
+            var r = area.getBoundingClientRect();
+            el2.x = Math.max(0, ev.clientX - r.left - uiDragOffset.x);
+            el2.y = Math.max(0, ev.clientY - r.top - uiDragOffset.y);
+            renderUICanvas();
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }
+
+    function startUIResize(e, id) {
+        e.preventDefault();
+        var el = SashaUISystem.getElement(id);
+        if (!el) return;
+        var startX = e.clientX, startY = e.clientY;
+        var startW = el.width, startH = el.height;
+        function onMove(ev) {
+            var el2 = SashaUISystem.getElement(id);
+            if (!el2) return;
+            el2.width = Math.max(20, startW + ev.clientX - startX);
+            el2.height = Math.max(20, startH + ev.clientY - startY);
+            renderUICanvas();
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }
+
+    function toggleUICanvas() {
+        SashaUISystem.toggle();
+        var btn = document.getElementById('ui-toggle-btn');
+        if (btn) {
+            btn.innerHTML = SashaUISystem.isVisible() ? '<i class="fas fa-eye"></i> Hide' : '<i class="fas fa-eye-slash"></i> Show';
+        }
+    }
+
+    function clearUICanvas() {
+        SashaUISystem.clear();
+        selectedUIElement = null;
+        renderUICanvas();
+        log('UI Canvas cleared', 'log');
     }
 
     // --- Code execution ---
@@ -7158,8 +8237,10 @@ var EngineApp = (function() {
 
     async function showModelPicker() {
         if (_isLoading) { log('Already loading a model...', 'warn'); return; }
-        var select = document.getElementById('eng-model-select');
-        var modelId = select ? select.value : '';
+        // Try AI tab select first, then toolbar select
+        var aiSelect = document.getElementById('eng-ai-model-select');
+        var toolbarSelect = document.getElementById('eng-model-select');
+        var modelId = aiSelect && aiSelect.value ? aiSelect.value : (toolbarSelect ? toolbarSelect.value : '');
         if (!modelId) {
             log('Select a model from dropdown first', 'warn');
             return;
@@ -7254,6 +8335,19 @@ var EngineApp = (function() {
         div.textContent = text;
         chat.appendChild(div);
         chat.scrollTop = chat.scrollHeight;
+        // Update status indicator
+        var status = document.getElementById('eng-ai-status');
+        if (status) {
+            if (SashaWebLLM && SashaWebLLM.isReady && SashaWebLLM.isReady()) status.textContent = 'ready';
+            else status.textContent = 'offline';
+        }
+    }
+
+    function clearAIChat() {
+        var chat = document.getElementById('eng-ai-chat');
+        if (chat) chat.innerHTML = '';
+        if (SashaWebLLM && SashaWebLLM.clearHistory) SashaWebLLM.clearHistory();
+        log('AI chat cleared', 'info');
     }
 
     function log(text, type) {
@@ -7357,10 +8451,26 @@ var EngineApp = (function() {
         undo: undo, redo: redo, copySelected: copySelected, pasteSelected: pasteSelected,
         setCameraPreset: setCameraPreset, toggleSnap: toggleSnap,
         showContextMenu: showContextMenu, hideContextMenu: hideContextMenu,
-        refreshStats: refreshStats, setSceneBg: setSceneBg
+        refreshStats: refreshStats, setSceneBg: setSceneBg,
+        // Asset browser
+        refreshAssetBrowser: refreshAssetBrowser, selectAsset: selectAsset, toggleFolder: toggleFolder,
+        createAsset: createAsset, createAssetItem: createAssetItem, deleteAsset: deleteAsset,
+        editScriptAsset: editScriptAsset, applyScriptToSelected: applyScriptToSelected,
+        applyMaterialToSelected: applyMaterialToSelected, instantiatePrefab: instantiatePrefab,
+        importAsset: importAsset, saveAllAssets: saveAllAssets,
+        // Scene
+        saveSceneData: saveSceneData, loadScene: loadScene,
+        // UI Canvas
+        addUIElement: addUIElement, renderUICanvas: renderUICanvas, selectUIElement: selectUIElement,
+        updateUIProp: updateUIProp, removeUIElement: removeUIElement,
+        startUIDrag: startUIDrag, startUIResize: startUIResize,
+        toggleUICanvas: toggleUICanvas, clearUICanvas: clearUICanvas,
+        // AI chat
+        clearAIChat: clearAIChat,
+        // Inspector helpers
+        setRBConstraint: setRBConstraint, setColliderField: setColliderField
     };
 })();
 </script>
 </body>
 </html>
-
