@@ -4172,13 +4172,15 @@ var SashaWebLLM = (function() {
         gpuDead = false;
         try {
             var mod = await importWebLLM();
-            if (engine) {
-                try { await engine.unload(); } catch(e) {}
-            }
-
-            // Check WebGPU support before trying to create engine
             if (!navigator.gpu) {
-                throw new Error('WebGPU not supported in this browser. Use Chrome 113+ or Edge 113+ with WebGPU enabled (chrome://flags/#enable-unsafe-webgpu).');
+                throw new Error('WebGPU not supported. Use Chrome 113+ or Edge 113+.');
+            }
+            // Destroy old engine to free VRAM before creating new one
+            if (engine) {
+                try { await engine.unload(); } catch(e) { console.warn('Unload error:', e); }
+                try { engine = null; } catch(e) {}
+                // Give GPU a moment to release memory
+                await new Promise(function(r) { setTimeout(r, 500); });
             }
 
             engine = new mod.MLCEngine({
@@ -4268,25 +4270,27 @@ var SashaWebLLM = (function() {
 
     var _codeMode = false;
     var _codeSystemPrompt = 'You are a game engine code assistant. You write Three.js JavaScript code.\n' +
-        'The user has a 3D scene with these available functions:\n' +
+        'Available Engine functions:\n' +
         'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
-        'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,rt,rb,h,color)\n' +
-        'Engine.addLight(type,x,y,z,color,intensity) Engine.setCameraPos(x,y,z)\n' +
-        'Engine.setCameraTarget(x,y,z) Engine.loadModel(url,x,y,z,scale)\n' +
-        'Engine.removeObject(name) Engine.setBgColor(r,g,b)\n' +
-        'Engine.animate(obj,prop,from,to,dur) Engine.onFrame(cb) Engine.getScene() Engine.log(text)\n\n' +
+        'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,radiusTop,radiusBottom,height,color)\n' +
+        'Engine.addCone(x,y,z,radius,height,color) Engine.addTorus(x,y,z,radius,tube,color)\n' +
+        'Engine.addCapsule(x,y,z,radius,height,color) Engine.addObject(type) - type: cube/sphere/cylinder/cone/torus/capsule/plane/light/dirlight/spotlight/empty/torusknot/icosahedron/dodecahedron/octahedron/terrain/text3d\n' +
+        'Engine.addLight(type,x,y,z,color,intensity) - type: "ambient","point","directional","spot"\n' +
+        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z)\n' +
+        'Engine.loadModel(url,x,y,z,scale) Engine.removeObject(name)\n' +
+        'Engine.setBgColor(r,g,b) Engine.animate(objName,prop,from,to,duration)\n' +
+        'Engine.onFrame(callback) - callback(delta) every frame\n' +
+        'Engine.getScene() Engine.log(text) Engine.selectObject(name)\n' +
+        'Engine.getAllObjectNames() Engine.getObjects()\n' +
         'Respond ONLY with executable JavaScript code. No explanations, no markdown fences.\n' +
         'Code runs inside async function with THREE and Engine objects.\n';
 
-    var _chatSystemPrompt = 'You are Sasha, a friendly AI assistant inside a 3D game engine.\n' +
-        'You speak Russian and English. You are helpful, creative and concise.\n' +
-        'When user greets you, greet them back warmly and ask what they want to create.\n' +
-        'When user asks what you can do, explain: you can build 3D scenes with cubes, spheres, planes,\n' +
-        'cylinders, lights, animations, load GLB models, write scripts, and run code.\n' +
-        'You can discuss ideas, suggest approaches, answer questions about 3D/game dev.\n' +
-        'When user wants to build something, discuss the task first: ask about details, suggest options,\n' +
-        'then tell them to switch to Build mode (click the Build button) to generate code.\n' +
-        'Keep responses short (2-4 sentences). Do NOT write code in chat mode.\n';
+    var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
+        'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
+        'загружать GLB модели, писать скрипты, запускать код. ' +
+        'Когда спрашивают что умеешь — перечисли возможности. ' +
+        'Когда просят что-то создать — обсуди задачу и скажи переключиться на режим Build. ' +
+        'Не пиши код. Только разговор.';
 
     function setCodeMode(v) { _codeMode = !!v; }
     function isCodeMode() { return _codeMode; }
@@ -4306,6 +4310,7 @@ var SashaWebLLM = (function() {
     function clearHistory() { chatHistory = []; }
 
     function getStatus() { return status; }
+    function getLoadedModelId() { return modelId; }
     function getModelId() { return modelId; }
     function isReady() { return status === 'ready'; }
 
@@ -4332,7 +4337,8 @@ var SashaWebLLM = (function() {
 
     return {
         loadModel: loadModel, generate: generate, chat: chat, generateCode: generateCode,
-        isReady: isReady, getStatus: getStatus, unload: unload, clearHistory: clearHistory,
+        isReady: isReady, getStatus: getStatus, getLoadedModelId: getLoadedModelId,
+        unload: unload, clearHistory: clearHistory,
         setCodeMode: setCodeMode, isCodeMode: isCodeMode
     };
 })();
@@ -5898,7 +5904,22 @@ var EngineApp = (function() {
     function deleteSelected() {
         var name = SashaEngineAPI.getSelectedObject();
         if (!name) return;
-        // Simple delete - undo for delete is complex with current architecture
+        // Serialize state using engine's own format for proper undo/redo
+        var objs = SashaEngineAPI.getObjects();
+        if (objs[name]) {
+            var state = {
+                name: name,
+                type: SashaEngineAPI.getObjectTypes()[name] || 'cube',
+                px: objs[name].position.x, py: objs[name].position.y, pz: objs[name].position.z,
+                rx: objs[name].rotation.x, ry: objs[name].rotation.y, rz: objs[name].rotation.z,
+                sx: objs[name].scale.x, sy: objs[name].scale.y, sz: objs[name].scale.z,
+                visible: objs[name].visible
+            };
+            if (objs[name].material && objs[name].material.color) {
+                state.color = '#' + objs[name].material.color.getHexString();
+            }
+            SashaEngineAPI.pushUndo({ type: 'delete', name: name, state: state });
+        }
         SashaEngineAPI.removeObject(name);
         refreshHierarchy();
         refreshInspector();
@@ -5914,13 +5935,23 @@ var EngineApp = (function() {
         var types = SashaEngineAPI.getObjectTypes();
         var type = types[name] || 'cube';
         var pos = obj.position;
+        var rot = obj.rotation;
+        var scl = obj.scale;
+        var colorHex = (obj.material && obj.material.color) ? '#' + obj.material.color.getHexString() : null;
         var newName = SashaEngineAPI.addObject(type);
         if (newName) {
             var newObjs = SashaEngineAPI.getObjects();
             var newObj = newObjs[newName];
             if (newObj) {
                 newObj.position.set(pos.x + 1, pos.y, pos.z);
+                newObj.rotation.set(rot.x, rot.y, rot.z);
+                newObj.scale.set(scl.x, scl.y, scl.z);
+                if (colorHex && newObj.material && newObj.material.color) {
+                    newObj.material.color.set(colorHex);
+                }
+                SashaEngineAPI.selectObject(newName);
             }
+            SashaEngineAPI.pushUndo({ type: 'add', name: newName, objType: type });
             refreshHierarchy();
             refreshInspector();
             log('Duplicated: ' + newName, 'log');
@@ -6898,10 +6929,16 @@ var EngineApp = (function() {
             log('Select a model from dropdown first', 'warn');
             return;
         }
-        if (SashaWebLLM.isReady() && SashaWebLLM.getStatus() === 'ready') {
-            log('Model already loaded: ' + modelId, 'info');
-            addAIChat('ai', 'Model already loaded: ' + modelId + '. Just type what you want.');
-            return;
+        // Allow switching: if same model is already loaded, skip; if different, reload
+        if (SashaWebLLM.isReady()) {
+            var loadedId = SashaWebLLM.getLoadedModelId();
+            if (loadedId === modelId) {
+                log('Model already loaded: ' + modelId, 'info');
+                addAIChat('ai', 'Модель уже загружена. Привет! Чем могу помочь?');
+                return;
+            }
+            log('Switching model: ' + loadedId + ' -> ' + modelId, 'info');
+            addAIChat('ai', 'Переключаю модель на ' + modelId.split('-Instruct')[0] + '...');
         }
 
         _isLoading = true;
@@ -6932,6 +6969,17 @@ var EngineApp = (function() {
     var _aiBusy = false;
     var _aiMode = 'chat'; // 'chat' or 'build'
 
+    // Auto-detect build intent from keywords
+    var _buildKeywords = ['создай','построй','сделай','добавь','поставь','нарисуй','построить','добавить','сделать','create','build','make','add','spawn','generate','помести','размести','поместить','разместить','персонажа','куб','сферу','плоскость','свет','сцену','модель','дом','комнату','мир','игру','здание','дерево','машин','трасс'];
+
+    function isBuildIntent(text) {
+        var low = text.toLowerCase();
+        for (var i = 0; i < _buildKeywords.length; i++) {
+            if (low.indexOf(_buildKeywords[i]) !== -1) return true;
+        }
+        return false;
+    }
+
     function setAIMode(mode) {
         _aiMode = mode;
         var chatBtn = document.getElementById('ai-mode-chat');
@@ -6956,6 +7004,12 @@ var EngineApp = (function() {
         if (!SashaWebLLM.isReady()) {
             addAIChat('ai', 'Сначала загрузи модель (кнопка Load).');
             return;
+        }
+        // Auto-detect: if in chat mode but user wants to build something, auto-switch
+        var forceBuild = _aiMode !== 'build' && isBuildIntent(prompt);
+        if (forceBuild) {
+            setAIMode('build');
+            addAIChat('ai', 'Определил что хочешь что-то создать — переключаюсь в Build режим.');
         }
         _aiBusy = true;
         var isBuild = _aiMode === 'build';
@@ -7048,7 +7102,7 @@ var EngineApp = (function() {
             '<style>*{margin:0;padding:0;box-sizing:border-box}body{overflow:hidden;background:#0a0a1a}canvas{display:block;width:100vw;height:100vh}</style>\n' +
             '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>\n' +
             '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>\n' +
-            '<script src="https://cdn.jsdelivr.net/npm/three-0.128.0/examples/js/controls/OrbitControls.js"><\/script>\n' +
+            '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\/script>\n' +
             '</head>\n<body>\n<canvas id="c"></canvas>\n' +
             '<script>\n' +
             'var Engine = (function(){\n' +
@@ -7079,7 +7133,10 @@ var EngineApp = (function() {
             '  function setCameraTarget(x,y,z){ controls.target.set(x||0,y||0,z||0); }\n' +
             '  function setBgColor(r,g,b){ scene.background=new THREE.Color(r||0,g||0,b||0); }\n' +
             '  function getScene(){ return scene; }\n' +
-            '  return {addCube:addCube,addSphere:addSphere,addCylinder:addCylinder,addPlane:addPlane,addLight:addLight,loadModel:loadModel,removeObject:removeObject,setCameraPos:setCameraPos,setCameraTarget:setCameraTarget,setBgColor:setBgColor,getScene:getScene};\n' +
+            '  function log(t){ console.log(t); }\n' +
+            '  function onFrame(cb){ (function loop(){ requestAnimationFrame(loop); cb(0.016); })(); }\n' +
+            '  function animateObj(n,p,f,t,d){ var o=objects[n]; if(!o)return; var s={v:f}, start=Date.now(); (function tick(){ var e=Math.min((Date.now()-start)/(d||1000),1); o[p]=f+(t-f)*e; if(e<1)requestAnimationFrame(tick); })(); }\n' +
+            '  return {addCube:addCube,addSphere:addSphere,addCylinder:addCylinder,addPlane:addPlane,addLight:addLight,loadModel:loadModel,removeObject:removeObject,setCameraPos:setCameraPos,setCameraTarget:setCameraTarget,setBgColor:setBgColor,getScene:getScene,log:log,onFrame:onFrame,animate:animateObj};\n' +
             '})();\n' +
             'Engine.init();\n' +
             '(function(){\n' + code + '\n})();\n' +
