@@ -1781,12 +1781,10 @@
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- AI --</option>
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 3B</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 0.5B</option>
                         <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
-                        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 (1B)</option>
+                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
                         <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B</option>
-                        <option value="Llama-3.1-8B-Instruct-q4f16_1-MLC">Llama 3 (8B)</option>
                     </select>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
@@ -5132,16 +5130,25 @@ var SashaWebLLM = (function() {
     var onProgress = null;
     var webllmModule = null;
 
-    // Dynamic import WebLLM from CDN
+    // Dynamic import WebLLM from CDN — try multiple CDNs for reliability
     async function importWebLLM() {
         if (webllmModule) return webllmModule;
-        try {
-            webllmModule = await import('https://esm.run/@mlc-ai/web-llm');
-            return webllmModule;
-        } catch(e) {
-            console.error('Failed to import WebLLM:', e);
-            throw e;
+        var cdnUrls = [
+            'https://esm.run/@mlc-ai/web-llm',
+            'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/lib/index.min.mjs',
+            'https://unpkg.com/@mlc-ai/web-llm/lib/index.min.mjs'
+        ];
+        for (var i = 0; i < cdnUrls.length; i++) {
+            try {
+                console.log('Trying WebLLM CDN ' + (i + 1) + ': ' + cdnUrls[i]);
+                webllmModule = await import(cdnUrls[i]);
+                console.log('WebLLM loaded from: ' + cdnUrls[i]);
+                return webllmModule;
+            } catch(e) {
+                console.warn('CDN ' + (i + 1) + ' failed:', e.message);
+            }
         }
+        throw new Error('All WebLLM CDNs failed. Check your internet connection and browser support for ES modules.');
     }
 
     async function loadModel(selectedModelId, progressCallback) {
@@ -5158,6 +5165,12 @@ var SashaWebLLM = (function() {
             if (engine) {
                 try { await engine.unload(); } catch(e) {}
             }
+
+            // Check WebGPU support before trying to create engine
+            if (!navigator.gpu) {
+                throw new Error('WebGPU not supported in this browser. Use Chrome 113+ or Edge 113+ with WebGPU enabled (chrome://flags/#enable-unsafe-webgpu).');
+            }
+
             engine = new mod.MLCEngine({
                 initProgressCallback: function(report) {
                     if (onProgress) {
@@ -7350,3 +7363,4 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
