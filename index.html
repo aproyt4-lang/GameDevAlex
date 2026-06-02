@@ -4220,6 +4220,8 @@ var SashaWebLLM = (function() {
     }
 
     var gpuDead = false;
+    var gpuRetries = 0;
+    var maxGpuRetries = 2;
 
     function isGPUDead(errMsg) {
         return errMsg.indexOf('DXGI_ERROR_DEVICE_REMOVED') !== -1 ||
@@ -4232,39 +4234,64 @@ var SashaWebLLM = (function() {
     }
 
     async function generate(prompt, systemPrompt) {
-        if (gpuDead) return 'Error: GPU device lost. Click AI button to reload a smaller model.';
         if (status !== 'ready' || !engine) return 'AI model not loaded.';
+        // If GPU was dead, try to recover with increasing delays
+        if (gpuDead && gpuRetries < maxGpuRetries) {
+            gpuRetries++;
+            var waitTime = gpuRetries * 4000; // 4s first, 8s second
+            try {
+                gpuDead = false;
+                status = 'loading';
+                updateStatus();
+                addAIChat && addAIChat('ai', 'GPU восстанавливается... подожди ' + (waitTime/1000) + ' сек');
+                if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
+                await new Promise(function(r) { setTimeout(r, waitTime); });
+                var mod = await importWebLLM();
+                engine = new mod.MLCEngine({ initProgressCallback: function() {} });
+                await engine.reload(modelId);
+                status = 'ready';
+                updateStatus();
+            } catch(recoverErr) {
+                gpuDead = true;
+                status = 'error';
+                updateStatus();
+                if (gpuRetries >= maxGpuRetries) {
+                    return 'GPU не восстановился. Перезагрузи страницу (F5).';
+                }
+                return 'GPU ещё перезагружается... Попробуй снова через 10 сек.';
+            }
+        }
+        if (gpuDead) return 'GPU мёртв. Перезагрузи страницу (F5).';
+        gpuRetries = 0; // reset on success path
 
         chatHistory.push({ role: 'user', content: prompt });
 
         var messages = [];
-        if (systemPrompt) {
-            messages.push({ role: 'system', content: systemPrompt });
-        }
-        for (var i = 0; i < chatHistory.length; i++) {
+        if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+        // Short history for 3B to reduce VRAM
+        var maxHist = modelId.indexOf('3B') !== -1 ? 3 : 6;
+        var startIdx = Math.max(0, chatHistory.length - maxHist);
+        for (var i = startIdx; i < chatHistory.length; i++) {
             messages.push(chatHistory[i]);
         }
 
         var text = '';
         try {
-            // NON-STREAMING mode — avoids mapAsync GPUBuffer race condition on GTX 1660
+            var maxTok = 96;
+            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
+            else if (modelId.indexOf('1.5B') !== -1) maxTok = 192;
+
             var result = await engine.chat.completions.create({
-                messages: messages,
-                max_tokens: 256,
-                temperature: 0.7,
-                top_p: 0.9,
-                stream: false
+                messages: messages, max_tokens: maxTok,
+                temperature: 0.7, top_p: 0.9, stream: false
             });
 
             if (result && result.choices && result.choices[0] && result.choices[0].message) {
                 text = result.choices[0].message.content || '';
             }
-
             if (!text || text.length < 1) text = 'Error: empty response';
             chatHistory.push({ role: 'assistant', content: text });
-            if (chatHistory.length > 20) {
-                chatHistory = chatHistory.slice(chatHistory.length - 10);
-            }
+            if (chatHistory.length > 20) chatHistory = chatHistory.slice(chatHistory.length - 10);
             return text;
         } catch(e) {
             var errMsg = String(e.message || e);
@@ -4273,25 +4300,31 @@ var SashaWebLLM = (function() {
                 gpuDead = true;
                 status = 'error';
                 updateStatus();
-                return 'Error: GPU device lost. Try: (1) select a smaller model (0.5B/1.5B/3B), (2) close other tabs, (3) click AI to reload.';
+                return 'GPU упал (DXGI_ERROR). Подожди 5-10 сек и отправь запрос снова — попробую восстановить.';
             }
             return 'Error: ' + errMsg;
         }
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are a THREE.JS JAVASCRIPT code generator. Write ONLY JavaScript code. NEVER Python, NEVER any other language.\n' +
-        'You create 3D objects using Engine API functions:\n' +
+    var _codeSystemPrompt = 'You are a THREE.JS JAVASCRIPT code generator. Write ONLY JavaScript code. NEVER Python.\n' +
+        'API — all functions return object wrappers with .addChild(child), .setPosition(x,y,z), .setRotation(x,y,z), .setScale(x,y,z), .setColor(color), .remove():\n' +
         'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
-        'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,radiusTop,radiusBottom,height,color)\n' +
-        'Engine.addCone(x,y,z,radius,height,color) Engine.addTorus(x,y,z,radius,tube,color)\n' +
-        'Engine.addCapsule(x,y,z,radius,height,color) Engine.addObject(type) - type: cube/sphere/cylinder/cone/torus/capsule/plane/light/dirlight/spotlight/empty/torusknot/icosahedron/dodecahedron/octahedron\n' +
-        'Engine.addLight(type,x,y,z,color,intensity) - type: "ambient","point","directional","spot"\n' +
-        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z)\n' +
-        'Engine.loadModel(url,x,y,z,scale) Engine.removeObject(name)\n' +
-        'Engine.setBgColor(r,g,b) Engine.animate(objName,prop,from,to,duration)\n' +
-        'Engine.onFrame(callback) Engine.getScene() Engine.log(text)\n' +
-        'Use var NOT let/const. Use Engine.addCube etc NOT raw Three.js.\n' +
+        'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\n' +
+        'Engine.addCone(x,y,z,radius,h,color) Engine.addTorus(x,y,z,radius,tube,color)\n' +
+        'Engine.addCapsule(x,y,z,radius,h,color) Engine.addTorusKnot(x,y,z,radius,tube,color)\n' +
+        'Engine.addIcosahedron(x,y,z,radius,color) Engine.addDodecahedron(x,y,z,radius,color)\n' +
+        'Engine.addObject(type) — type: cube/sphere/cylinder/cone/torus/capsule/plane/light/dirlight/spotlight/empty/torusknot/icosahedron/dodecahedron/octahedron/terrain/text3d (or any custom string = empty group)\n' +
+        'Engine.addLight(type,x,y,z,color,intensity) — type: "ambient"/"point"/"directional"/"spot"\n' +
+        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity)\n' +
+        'Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
+        'Engine.addChild(parentName,childName) Engine.setParent(childName,parentName)\n' +
+        'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z)\n' +
+        'Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz)\n' +
+        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b)\n' +
+        'Engine.loadModel(url,x,y,z,scale) Engine.removeObject(name) Engine.getObject(name)\n' +
+        'Engine.animate(objName,prop,from,to,duration) Engine.onFrame(callback) Engine.log(text)\n' +
+        'Use var NOT let/const. Objects returned by add* have .addChild(), .setPosition(), .setColor() methods.\n' +
         'RESPOND ONLY WITH JAVASCRIPT CODE. No explanations. No markdown fences. No Python.\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
@@ -4753,6 +4786,108 @@ var SashaEngineAPI = (function() {
         frameCallbacks.push(callback);
     }
 
+    // --- Convenience API functions that AI models commonly generate ---
+
+    function addPointLight(x, y, z, intensity, color, distance) {
+        return addLight('point', x || 0, y || 5, z || 0, color || 0xffffff, intensity !== undefined ? intensity : 1);
+    }
+    function addDirectionalLight(x, y, z, color, intensity) {
+        return addLight('directional', x || 5, y || 10, z || 5, color || 0xffffff, intensity || 0.8);
+    }
+    function addSpotLight(x, y, z, color, intensity) {
+        return addLight('spot', x || 0, y || 8, z || 0, color || 0xffffff, intensity || 1);
+    }
+    function addAmbientLight(color, intensity) {
+        return addLight('ambient', 0, 0, 0, color || 0xffffff, intensity || 0.5);
+    }
+
+    function addTorusKnot(x, y, z, radius, tube, color) {
+        if (!initialized) return null;
+        var r = Math.max(0.01, radius || 0.5);
+        var t = Math.max(0.01, tube || 0.15);
+        var geo = new THREE.TorusKnotGeometry(r, t, 100, 16);
+        var mat = new THREE.MeshStandardMaterial({ color: color || 0xe879f9, metalness: 0.3, roughness: 0.4 });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        var name = getUniqueName('torusknot');
+        mesh.name = name;
+        mesh.position.set(x || 0, y || r + t, z || 0);
+        scene.add(mesh);
+        objects[name] = mesh;
+        objectTypes[name] = 'torusknot';
+        return name;
+    }
+
+    function addIcosahedron(x, y, z, radius, color) {
+        if (!initialized) return null;
+        var r = Math.max(0.01, radius || 0.5);
+        var geo = new THREE.IcosahedronGeometry(r, 0);
+        var mat = new THREE.MeshStandardMaterial({ color: color || 0x34d399, metalness: 0.3, roughness: 0.4 });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        var name = getUniqueName('ico');
+        mesh.name = name;
+        mesh.position.set(x || 0, y || r, z || 0);
+        scene.add(mesh);
+        objects[name] = mesh;
+        objectTypes[name] = 'icosahedron';
+        return name;
+    }
+
+    function addDodecahedron(x, y, z, radius, color) {
+        if (!initialized) return null;
+        var r = Math.max(0.01, radius || 0.5);
+        var geo = new THREE.DodecahedronGeometry(r, 0);
+        var mat = new THREE.MeshStandardMaterial({ color: color || 0xfbbf24, metalness: 0.3, roughness: 0.4 });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        var name = getUniqueName('dodeca');
+        mesh.name = name;
+        mesh.position.set(x || 0, y || r, z || 0);
+        scene.add(mesh);
+        objects[name] = mesh;
+        objectTypes[name] = 'dodecahedron';
+        return name;
+    }
+
+    function addObject_(parentName, childName) {
+        var parent = objects[parentName];
+        var child = objects[childName];
+        if (parent && child) {
+            scene.remove(child);
+            parent.add(child);
+            log('Added ' + childName + ' to ' + parentName);
+        } else {
+            log('addChild: object not found', 'error');
+        }
+    }
+    function setParent_(childName, parentName) { addObject_(parentName, childName); }
+
+    function setPosition(name, x, y, z) {
+        var obj = objects[name];
+        if (obj) { obj.position.set(x || 0, y || 0, z || 0); }
+    }
+    function setRotation(name, x, y, z) {
+        var obj = objects[name];
+        if (obj) { obj.rotation.set(x || 0, y || 0, z || 0); }
+    }
+    function setScale(name, x, y, z) {
+        var obj = objects[name];
+        if (obj) { obj.scale.set(x || 1, y !== undefined ? y : x || 1, z !== undefined ? z : x || 1); }
+    }
+    function setObjectColor(name, color) {
+        var obj = objects[name];
+        if (obj && obj.material) { obj.material.color.set(color || 0xffffff); }
+        else if (obj) {
+            obj.traverse(function(c) { if (c.material) c.material.color.set(color || 0xffffff); });
+        }
+    }
+    function moveObject(name, dx, dy, dz) {
+        var obj = objects[name];
+        if (obj) { obj.position.x += (dx || 0); obj.position.y += (dy || 0); obj.position.z += (dz || 0); }
+    }
+    function getObject(name) { return objects[name] || null; }
+
     function getScene() { return scene; }
 
     function clear() {
@@ -4886,6 +5021,16 @@ var SashaEngineAPI = (function() {
             scene.add(mesh);
             objects[name] = mesh;
             objectTypes[name] = 'text3d';
+        }
+        // Unknown type -> create empty Object3D
+        if (!name && type) {
+            if (!initialized) return null;
+            var emptyObj = new THREE.Object3D();
+            name = getUniqueName(type);
+            emptyObj.name = name;
+            scene.add(emptyObj);
+            objects[name] = emptyObj;
+            objectTypes[name] = 'empty';
         }
         if (name) {
             selectObject(name);
@@ -5549,7 +5694,13 @@ var SashaEngineAPI = (function() {
         pushUndo: pushUndo, undo: undo, redo: redo, getUndoCount: getUndoCount, getRedoCount: getRedoCount,
         copyObject: copyObject, pasteObject: pasteObject, hasClipboard: hasClipboard,
         setSnapEnabled: setSnapEnabled, isSnapEnabled: isSnapEnabled, setSnapSize: setSnapSize, getSnapSize: getSnapSize, snapValue: snapValue,
-        updateFPS: updateFPS, getFPS: getFPS, getStats: getStats
+        updateFPS: updateFPS, getFPS: getFPS, getStats: getStats,
+        // Convenience API for AI-generated code
+        addPointLight: addPointLight, addDirectionalLight: addDirectionalLight, addSpotLight: addSpotLight, addAmbientLight: addAmbientLight,
+        addTorusKnot: addTorusKnot, addIcosahedron: addIcosahedron, addDodecahedron: addDodecahedron,
+        addChild: addObject_, setParent: setParent_,
+        setPosition: setPosition, setRotation: setRotation, setScale: setScale, setObjectColor: setObjectColor,
+        moveObject: moveObject, getObject: getObject
     };
 })();
 
@@ -6860,10 +7011,13 @@ var EngineApp = (function() {
 
     // --- Code execution ---
 
+    var _lastRunError = null;
+
     function runCode() {
         if (!editor) return;
         var code = editor.getValue();
         if (!code.trim()) return;
+        _lastRunError = null;
 
         // Clear previous user objects (keep builtins)
         var objs = SashaEngineAPI.getObjects();
@@ -6877,29 +7031,78 @@ var EngineApp = (function() {
             SashaEngineAPI.removeObject(toRemove[r]);
         }
 
-        // Build sandbox with Engine API
-        var Engine = SashaEngineAPI;
+        // Build smart sandbox — wraps Engine so returned names behave like objects
+        var api = SashaEngineAPI;
         var THREE_REF = THREE;
         var logFn = function(text) { log(String(text), 'log'); };
 
-        var sandbox = {
-            Engine: Engine,
-            THREE: THREE_REF,
-            console: { log: logFn, warn: function(t) { log(String(t), 'warn'); }, error: function(t) { log(String(t), 'error'); } },
-            log: logFn
-        };
+        // Wrapper: turns a name string into an object with .addChild(), .setPosition() etc.
+        function wrapObj(name) {
+            if (!name || typeof name !== 'string') return name;
+            var realObj = api.getObject(name);
+            if (!realObj) return name;
+            return {
+                _name: name,
+                name: name,
+                // Allow reading actual Three.js properties via proxy
+                get position() { return realObj.position; },
+                get rotation() { return realObj.rotation; },
+                get scale() { return realObj.scale; },
+                get x() { return realObj.position.x; },
+                set x(v) { realObj.position.x = v; },
+                get y() { return realObj.position.y; },
+                set y(v) { realObj.position.y = v; },
+                get z() { return realObj.position.z; },
+                set z(v) { realObj.position.z = v; },
+                addChild: function(child) {
+                    var childName = (child && child._name) ? child._name : String(child);
+                    api.addChild(name, childName);
+                },
+                setPosition: function(x, y, z) { api.setPosition(name, x, y, z); },
+                setRotation: function(x, y, z) { api.setRotation(name, x, y, z); },
+                setScale: function(x, y, z) { api.setScale(name, x, y, z); },
+                setColor: function(c) { api.setObjectColor(name, c); },
+                remove: function() { api.removeObject(name); }
+            };
+        }
+
+        // Wrap Engine API functions that return name strings
+        var _createFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addTorus','addCapsule',
+            'addLight','addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
+            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel'];
+
+        var wrappedEngine = {};
+        for (var key in api) {
+            if (!api.hasOwnProperty(key)) continue;
+            (function(k) {
+                if (typeof api[k] === 'function') {
+                    wrappedEngine[k] = function() {
+                        var result = api[k].apply(api, arguments);
+                        // Wrap string results from create functions
+                        if (typeof result === 'string' && _createFns.indexOf(k) !== -1) {
+                            return wrapObj(result);
+                        }
+                        return result;
+                    };
+                } else {
+                    wrappedEngine[k] = api[k];
+                }
+            })(key);
+        }
 
         var start = Date.now();
         try {
             var fn = new Function('Engine', 'THREE', 'console', 'log', code);
-            var result = fn(sandbox.Engine, sandbox.THREE, sandbox.console, sandbox.log);
+            var result = fn(wrappedEngine, THREE_REF, { log: logFn, warn: function(t) { log(String(t), 'warn'); }, error: function(t) { log(String(t), 'error'); } }, logFn);
             var elapsed = Date.now() - start;
             log('Executed in ' + elapsed + 'ms', 'result');
             if (result !== undefined) { log('Result: ' + String(result), 'result'); }
         } catch(e) {
             var elapsed = Date.now() - start;
-            log(e.name + ': ' + e.message, 'error');
+            var errMsg = e.name + ': ' + e.message;
+            log(errMsg, 'error');
             log('Failed after ' + elapsed + 'ms', 'error');
+            _lastRunError = errMsg;
         }
 
         refreshHierarchy();
@@ -7056,9 +7259,19 @@ var EngineApp = (function() {
                     return;
                 }
                 if (editor) editor.setValue(text);
-                addAIChat('ai', 'Код сгенерирован (' + text.length + ' символов). Применено к редактору.');
+                addAIChat('ai', 'Код сгенерирован (' + text.length + ' символов). Выполняю...');
                 log('AI code applied (' + text.length + ' chars)', 'result');
-                setTimeout(runCode, 300);
+                setTimeout(function() {
+                    runCode();
+                    // Check for execution errors and report in AI chat
+                    setTimeout(function() {
+                        if (_lastRunError) {
+                            addAIChat('ai', 'Ошибка выполнения: ' + _lastRunError);
+                        } else {
+                            addAIChat('ai', 'Код выполнен на сцене!');
+                        }
+                    }, 400);
+                }, 300);
             } else {
                 text = await SashaWebLLM.chat(prompt);
                 if (!text || text.indexOf('Error:') === 0) {
@@ -7159,14 +7372,29 @@ var EngineApp = (function() {
             '  function addLight(t,x,y,z,c,i){ var l; if(t==="point")l=new THREE.PointLight(c||0xffffff,i||1,50); else if(t==="ambient")l=new THREE.AmbientLight(c||0xffffff,i||1); else l=new THREE.DirectionalLight(c||0xffffff,i||1); l.position.set(x||0,y||5,z||0); var n=gn("light"); l.name=n; scene.add(l); objects[n]=l; return n; }\n' +
             '  function loadModel(url,x,y,z,s){ var loader=new THREE.GLTFLoader(); var n=gn("model"); loader.load(url,function(gltf){ var m=gltf.scene; m.position.set(x||0,y||0,z||0); if(s)m.scale.set(s,s,s); m.name=n; scene.add(m); objects[n]=m; }); return n; }\n' +
             '  function removeObject(n){ if(objects[n]){scene.remove(objects[n]);delete objects[n];} }\n' +
+            '  function setPosition(n,x,y,z){ if(objects[n]) objects[n].position.set(x||0,y||0,z||0); }\n' +
+            '  function setRotation(n,x,y,z){ if(objects[n]) objects[n].rotation.set(x||0,y||0,z||0); }\n' +
+            '  function setScale(n,x,y,z){ if(objects[n]) objects[n].scale.set(x||1,y!==undefined?y:x||1,z!==undefined?z:x||1); }\n' +
+            '  function setObjectColor(n,c){ if(objects[n]&&objects[n].material) objects[n].material.color.set(c||0xffffff); }\n' +
+            '  function moveObject(n,dx,dy,dz){ if(objects[n]){objects[n].position.x+=(dx||0);objects[n].position.y+=(dy||0);objects[n].position.z+=(dz||0);} }\n' +
+            '  function getObject(n){ return objects[n]||null; }\n' +
+            '  function addChild_(pn,cn){ var p=objects[pn],c=objects[cn]; if(p&&c){scene.remove(c);p.add(c);} }\n' +
             '  function setCameraPos(x,y,z){ camera.position.set(x||0,y||5,z||5); }\n' +
             '  function setCameraTarget(x,y,z){ controls.target.set(x||0,y||0,z||0); }\n' +
             '  function setBgColor(r,g,b){ scene.background=new THREE.Color(r||0,g||0,b||0); }\n' +
             '  function getScene(){ return scene; }\n' +
             '  function log(t){ console.log(t); }\n' +
             '  function onFrame(cb){ (function loop(){ requestAnimationFrame(loop); cb(0.016); })(); }\n' +
-            '  function animateObj(n,p,f,t,d){ var o=objects[n]; if(!o)return; var s={v:f}, start=Date.now(); (function tick(){ var e=Math.min((Date.now()-start)/(d||1000),1); o[p]=f+(t-f)*e; if(e<1)requestAnimationFrame(tick); })(); }\n' +
-            '  return {addCube:addCube,addSphere:addSphere,addCylinder:addCylinder,addPlane:addPlane,addLight:addLight,loadModel:loadModel,removeObject:removeObject,setCameraPos:setCameraPos,setCameraTarget:setCameraTarget,setBgColor:setBgColor,getScene:getScene,log:log,onFrame:onFrame,animate:animateObj};\n' +
+            '  function animateObj(n,p,f,t,d){ var o=objects[n]; if(!o)return; var start=Date.now(); (function tick(){ var e=Math.min((Date.now()-start)/(d||1000),1); o[p]=f+(t-f)*e; if(e<1)requestAnimationFrame(tick); })(); }\n' +
+            '  function addPointLight(x,y,z,i,c){ return addLight("point",x||0,y||5,z||0,c||0xffffff,i||1); }\n' +
+            '  function addAmbientLight(c,i){ return addLight("ambient",0,0,0,c||0xffffff,i||0.5); }\n' +
+            '  function addObject(type){ if(type==="cube")return addCube(); if(type==="sphere")return addSphere(); if(type==="plane")return addPlane(); if(type==="light")return addLight("point",0,5,0); var e=new THREE.Object3D(); var n=gn(type); e.name=n; scene.add(e); objects[n]=e; return n; }\n' +
+            '  function wrapObj(nm){ if(!nm||!objects[nm])return nm; var o=objects[nm]; return {_name:nm,name:nm,addChild:function(ch){var cn=ch&&ch._name?ch._name:String(ch);addChild_(nm,cn);},setPosition:function(x,y,z){setPosition(nm,x,y,z);},setColor:function(c){setObjectColor(nm,c);}}; }\n' +
+            '  var _cf=["addCube","addSphere","addCylinder","addPlane","addLight","addPointLight","addAmbientLight","addObject","loadModel"];\n' +
+            '  var origAddCube=addCube,origAddSphere=addSphere,origAddCylinder=addCylinder,origAddPlane=addPlane,origAddLight=addLight,origAddPointLight=addPointLight,origAddAmbientLight=addAmbientLight,origAddObject=addObject,origLoadModel=loadModel;\n' +
+            '  function wrapFn(fn){ return function(){ var r=fn.apply(null,arguments); if(typeof r==="string")return wrapObj(r); return r; }; }\n' +
+            '  addCube=wrapFn(origAddCube);addSphere=wrapFn(origAddSphere);addCylinder=wrapFn(origAddCylinder);addPlane=wrapFn(origAddPlane);addLight=wrapFn(origAddLight);addPointLight=wrapFn(origAddPointLight);addAmbientLight=wrapFn(origAddAmbientLight);addObject=wrapFn(origAddObject);loadModel=wrapFn(origLoadModel);\n' +
+            '  return {addCube:addCube,addSphere:addSphere,addCylinder:addCylinder,addPlane:addPlane,addLight:addLight,addPointLight:addPointLight,addAmbientLight:addAmbientLight,addObject:addObject,loadModel:loadModel,removeObject:removeObject,setCameraPos:setCameraPos,setCameraTarget:setCameraTarget,setBgColor:setBgColor,getScene:getScene,log:log,onFrame:onFrame,animate:animateObj,setPosition:setPosition,setRotation:setRotation,setScale:setScale,setObjectColor:setObjectColor,moveObject:moveObject,getObject:getObject,addChild:addChild_,setParent:function(cn,pn){addChild_(pn,cn);}};\n' +
             '})();\n' +
             'Engine.init();\n' +
             '(function(){\n' + code + '\n})();\n' +
