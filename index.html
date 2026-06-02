@@ -4172,15 +4172,26 @@ var SashaWebLLM = (function() {
         gpuDead = false;
         try {
             var mod = await importWebLLM();
+
+            // WebGPU check — detailed diagnostics
             if (!navigator.gpu) {
-                throw new Error('WebGPU not supported. Use Chrome 113+ or Edge 113+.');
+                throw new Error('WebGPU отключён в браузере. Открой chrome://flags/#enable-unsafe-webgpu и включи "Unsafe WebGPU", потом перезапусти браузер.');
             }
+            var adapter = null;
+            try {
+                adapter = await navigator.gpu.requestAdapter();
+            } catch(adapterErr) {
+                throw new Error('GPU адаптер недоступен: ' + adapterErr.message + '. Попробуй: (1) chrome://flags/#enable-unsafe-webgpu включить, (2) перезапустить браузер, (3) обновить драйвера видеокарты.');
+            }
+            if (!adapter) {
+                throw new Error('Не найден совместимый GPU адаптер. Попробуй включить WebGPU в chrome://flags/#enable-unsafe-webgpu и перезапустить браузер.');
+            }
+
             // Destroy old engine to free VRAM before creating new one
             if (engine) {
                 try { await engine.unload(); } catch(e) { console.warn('Unload error:', e); }
-                try { engine = null; } catch(e) {}
-                // Give GPU a moment to release memory
-                await new Promise(function(r) { setTimeout(r, 500); });
+                engine = null;
+                await new Promise(function(r) { setTimeout(r, 800); });
             }
 
             engine = new mod.MLCEngine({
@@ -4269,21 +4280,19 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are a game engine code assistant. You write Three.js JavaScript code.\n' +
-        'Available Engine functions:\n' +
+    var _codeSystemPrompt = 'You are a THREE.JS JAVASCRIPT code generator. Write ONLY JavaScript code. NEVER Python, NEVER any other language.\n' +
+        'You create 3D objects using Engine API functions:\n' +
         'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
         'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,radiusTop,radiusBottom,height,color)\n' +
         'Engine.addCone(x,y,z,radius,height,color) Engine.addTorus(x,y,z,radius,tube,color)\n' +
-        'Engine.addCapsule(x,y,z,radius,height,color) Engine.addObject(type) - type: cube/sphere/cylinder/cone/torus/capsule/plane/light/dirlight/spotlight/empty/torusknot/icosahedron/dodecahedron/octahedron/terrain/text3d\n' +
+        'Engine.addCapsule(x,y,z,radius,height,color) Engine.addObject(type) - type: cube/sphere/cylinder/cone/torus/capsule/plane/light/dirlight/spotlight/empty/torusknot/icosahedron/dodecahedron/octahedron\n' +
         'Engine.addLight(type,x,y,z,color,intensity) - type: "ambient","point","directional","spot"\n' +
         'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z)\n' +
         'Engine.loadModel(url,x,y,z,scale) Engine.removeObject(name)\n' +
         'Engine.setBgColor(r,g,b) Engine.animate(objName,prop,from,to,duration)\n' +
-        'Engine.onFrame(callback) - callback(delta) every frame\n' +
-        'Engine.getScene() Engine.log(text) Engine.selectObject(name)\n' +
-        'Engine.getAllObjectNames() Engine.getObjects()\n' +
-        'Respond ONLY with executable JavaScript code. No explanations, no markdown fences.\n' +
-        'Code runs inside async function with THREE and Engine objects.\n';
+        'Engine.onFrame(callback) Engine.getScene() Engine.log(text)\n' +
+        'Use var NOT let/const. Use Engine.addCube etc NOT raw Three.js.\n' +
+        'RESPOND ONLY WITH JAVASCRIPT CODE. No explanations. No markdown fences. No Python.\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
         'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
@@ -6993,6 +7002,21 @@ var EngineApp = (function() {
         if (SashaWebLLM && SashaWebLLM.setCodeMode) SashaWebLLM.setCodeMode(mode === 'build');
     }
 
+    // Detect if AI generated Python instead of JavaScript
+    function isPythonCode(code) {
+        var pyIndicators = ['def ', 'class ', 'self.', 'import ', 'print(f', 'elif ', '    def', '# '];
+        var pyCount = 0;
+        var jsIndicators = ['var ', 'function ', 'const ', 'let ', 'Engine.', 'THREE.', 'new THREE'];
+        var jsCount = 0;
+        for (var i = 0; i < pyIndicators.length; i++) {
+            if (code.indexOf(pyIndicators[i]) !== -1) pyCount++;
+        }
+        for (var j = 0; j < jsIndicators.length; j++) {
+            if (code.indexOf(jsIndicators[j]) !== -1) jsCount++;
+        }
+        return pyCount > 2 && jsCount < 2;
+    }
+
     async function sendAI() {
         var input = document.getElementById('eng-ai-input');
         if (!input) return;
@@ -7025,6 +7049,12 @@ var EngineApp = (function() {
                     return;
                 }
                 text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
+                // Language check: reject Python and non-JS code
+                if (isPythonCode(text)) {
+                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй: (1) загрузить модель 3B+, (2) перефразировать запрос точнее.');
+                    log('AI generated Python instead of JS — rejected', 'error');
+                    return;
+                }
                 if (editor) editor.setValue(text);
                 addAIChat('ai', 'Код сгенерирован (' + text.length + ' символов). Применено к редактору.');
                 log('AI code applied (' + text.length + ' chars)', 'result');
