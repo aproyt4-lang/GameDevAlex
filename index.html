@@ -463,6 +463,8 @@
         .engine-ai-msg { padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; max-width: 90%; line-height: 1.4; word-wrap: break-word; }
         .engine-ai-msg.user { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 2px; }
         .engine-ai-msg.ai { align-self: flex-start; background: var(--bg-hover); color: var(--text-primary); border-bottom-left-radius: 2px; }
+        .engine-ai-msg.ai.streaming { color: var(--primary); animation: streamPulse 1s ease-in-out infinite; }
+        @keyframes streamPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
         .engine-ai-input-row { display: flex; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--border); align-items: center; }
         .ai-mode-toggle { display: flex; gap: 2px; background: var(--bg-dark); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
         .ai-mode-btn { padding: 6px 10px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 0.7rem; font-family: inherit; transition: all 0.2s; }
@@ -4307,25 +4309,28 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are a THREE.JS JAVASCRIPT code generator. Write ONLY JavaScript code. NEVER Python.\n' +
-        'API — all functions return object wrappers with .addChild(child), .setPosition(x,y,z), .setRotation(x,y,z), .setScale(x,y,z), .setColor(color), .remove():\n' +
+    var _codeSystemPrompt = 'You generate JavaScript 3D code. ONLY code, no explanations, no markdown.\n' +
+        'API — add* functions return objects with .addChild(child), .setPosition(x,y,z), .setColor(color):\n' +
         'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
         'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\n' +
-        'Engine.addCone(x,y,z,radius,h,color) Engine.addTorus(x,y,z,radius,tube,color)\n' +
-        'Engine.addCapsule(x,y,z,radius,h,color) Engine.addTorusKnot(x,y,z,radius,tube,color)\n' +
-        'Engine.addIcosahedron(x,y,z,radius,color) Engine.addDodecahedron(x,y,z,radius,color)\n' +
-        'Engine.addObject(type) — type: cube/sphere/cylinder/cone/torus/capsule/plane/light/dirlight/spotlight/empty/torusknot/icosahedron/dodecahedron/octahedron/terrain/text3d (or any custom string = empty group)\n' +
-        'Engine.addLight(type,x,y,z,color,intensity) — type: "ambient"/"point"/"directional"/"spot"\n' +
-        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity)\n' +
-        'Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
-        'Engine.addChild(parentName,childName) Engine.setParent(childName,parentName)\n' +
-        'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z)\n' +
-        'Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz)\n' +
+        'Engine.addCone(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color)\n' +
+        'Engine.addCapsule(x,y,z,r,h,color) Engine.addTorusKnot(x,y,z,r,tube,color)\n' +
+        'Engine.addObject(type) — cube/sphere/plane/light/dirlight/spotlight/empty (or any name = group)\n' +
+        'Engine.addLight(type,x,y,z,color,intensity) — ambient/point/directional/spot\n' +
+        'Engine.addPointLight(x,y,z,intensity,color) Engine.addAmbientLight(color,intensity)\n' +
+        'Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity)\n' +
+        'Engine.addChild(parent,child) Engine.setPosition(n,x,y,z) Engine.setObjectColor(n,color)\n' +
         'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b)\n' +
-        'Engine.loadModel(url,x,y,z,scale) Engine.removeObject(name) Engine.getObject(name)\n' +
-        'Engine.animate(objName,prop,from,to,duration) Engine.onFrame(callback) Engine.log(text)\n' +
-        'Use var NOT let/const. Objects returned by add* have .addChild(), .setPosition(), .setColor() methods.\n' +
-        'RESPOND ONLY WITH JAVASCRIPT CODE. No explanations. No markdown fences. No Python.\n';
+        'Engine.removeObject(name) Engine.animate(name,prop,from,to,duration) Engine.log(text)\n' +
+        'Use var NOT let/const. Colors are hex: 0xff0000.\n' +
+        'Examples:\n' +
+        'Engine.addCube(0, 0.5, 0, 1, 0x6366f1);\n' +
+        'var s = Engine.addSphere(3, 0.5, 0, 0.5, 0xec4899);\n' +
+        'var group = Engine.addObject("myGroup");\n' +
+        'group.addChild(s);\n' +
+        'Engine.addPointLight(0, 5, 0, 1, 0xffffff);\n' +
+        'Engine.setCameraPos(5, 5, 5);\n' +
+        'Engine.addCube(-2, 0.5, 0, 0.5, 0x10b981);\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
         'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
@@ -4347,6 +4352,95 @@ var SashaWebLLM = (function() {
             sys += '\nCurrent code:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
         }
         return await generate(prompt, sys);
+    }
+
+    // Streaming code generation — calls onToken(text) for each chunk, returns full text
+    async function generateCodeStream(prompt, currentCode, onToken) {
+        if (status !== 'ready' || !engine) {
+            if (onToken) onToken('AI model not loaded.');
+            return '';
+        }
+        if (gpuDead) {
+            if (onToken) onToken('GPU мёртв. Перезагрузи страницу (F5).');
+            return '';
+        }
+        gpuRetries = 0;
+
+        var sys = _codeSystemPrompt;
+        if (currentCode && currentCode.trim().length > 0) {
+            sys += '\nCurrent code:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
+        }
+
+        chatHistory.push({ role: 'user', content: prompt });
+
+        var messages = [];
+        messages.push({ role: 'system', content: sys });
+        var maxHist = modelId.indexOf('3B') !== -1 ? 3 : 6;
+        var startIdx = Math.max(0, chatHistory.length - maxHist);
+        for (var i = startIdx; i < chatHistory.length; i++) {
+            messages.push(chatHistory[i]);
+        }
+
+        var fullText = '';
+        try {
+            var maxTok = 96;
+            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
+            else if (modelId.indexOf('1.5B') !== -1) maxTok = 192;
+            else if (modelId.indexOf('3B') !== -1) maxTok = 128;
+
+            var result = await engine.chat.completions.create({
+                messages: messages, max_tokens: maxTok,
+                temperature: 0.7, top_p: 0.9,
+                stream: true
+            });
+
+            // WebLLM streaming: result is async generator
+            if (result && typeof result[Symbol.asyncIterator] === 'function') {
+                var iter = result;
+                try {
+                    while (true) {
+                        var chunk = await iter.next();
+                        if (chunk.done) break;
+                        var delta = '';
+                        if (chunk.value && chunk.value.choices && chunk.value.choices[0]) {
+                            delta = chunk.value.choices[0].delta ? (chunk.value.choices[0].delta.content || '') : '';
+                        }
+                        if (delta) {
+                            fullText += delta;
+                            if (onToken) onToken(fullText, delta);
+                        }
+                    }
+                } catch(iterErr) {
+                    // Fallback: maybe result is not an async iterator but has .then or .message
+                    if (!fullText && result && result.choices && result.choices[0] && result.choices[0].message) {
+                        fullText = result.choices[0].message.content || '';
+                        if (onToken) onToken(fullText, '');
+                    }
+                }
+            }
+            // Non-streaming fallback (some WebLLM versions ignore stream:true)
+            else if (result && result.choices && result.choices[0] && result.choices[0].message) {
+                fullText = result.choices[0].message.content || '';
+                if (onToken) onToken(fullText, '');
+            }
+
+            if (!fullText || fullText.length < 1) fullText = '';
+            chatHistory.push({ role: 'assistant', content: fullText });
+            if (chatHistory.length > 20) chatHistory = chatHistory.slice(chatHistory.length - 10);
+            return fullText;
+        } catch(e) {
+            var errMsg = String(e.message || e);
+            chatHistory.pop();
+            if (isGPUDead(errMsg)) {
+                gpuDead = true;
+                status = 'error';
+                updateStatus();
+                if (onToken) onToken(fullText, '\n[GPU CRASH — перезагрузи страницу]');
+                return fullText;
+            }
+            if (onToken) onToken(fullText, '\n[Error: ' + errMsg + ']');
+            return fullText;
+        }
     }
 
     function clearHistory() { chatHistory = []; }
@@ -4379,6 +4473,7 @@ var SashaWebLLM = (function() {
 
     return {
         loadModel: loadModel, generate: generate, chat: chat, generateCode: generateCode,
+        generateCodeStream: generateCodeStream,
         isReady: isReady, getStatus: getStatus, getLoadedModelId: getLoadedModelId,
         unload: unload, clearHistory: clearHistory,
         setCodeMode: setCodeMode, isCodeMode: isCodeMode
@@ -7031,69 +7126,14 @@ var EngineApp = (function() {
             SashaEngineAPI.removeObject(toRemove[r]);
         }
 
-        // Build smart sandbox — wraps Engine so returned names behave like objects
-        var api = SashaEngineAPI;
-        var THREE_REF = THREE;
+        // Build smart sandbox
+        var wrappedEngine = _buildSandbox();
         var logFn = function(text) { log(String(text), 'log'); };
-
-        // Wrapper: turns a name string into an object with .addChild(), .setPosition() etc.
-        function wrapObj(name) {
-            if (!name || typeof name !== 'string') return name;
-            var realObj = api.getObject(name);
-            if (!realObj) return name;
-            return {
-                _name: name,
-                name: name,
-                // Allow reading actual Three.js properties via proxy
-                get position() { return realObj.position; },
-                get rotation() { return realObj.rotation; },
-                get scale() { return realObj.scale; },
-                get x() { return realObj.position.x; },
-                set x(v) { realObj.position.x = v; },
-                get y() { return realObj.position.y; },
-                set y(v) { realObj.position.y = v; },
-                get z() { return realObj.position.z; },
-                set z(v) { realObj.position.z = v; },
-                addChild: function(child) {
-                    var childName = (child && child._name) ? child._name : String(child);
-                    api.addChild(name, childName);
-                },
-                setPosition: function(x, y, z) { api.setPosition(name, x, y, z); },
-                setRotation: function(x, y, z) { api.setRotation(name, x, y, z); },
-                setScale: function(x, y, z) { api.setScale(name, x, y, z); },
-                setColor: function(c) { api.setObjectColor(name, c); },
-                remove: function() { api.removeObject(name); }
-            };
-        }
-
-        // Wrap Engine API functions that return name strings
-        var _createFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addTorus','addCapsule',
-            'addLight','addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
-            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel'];
-
-        var wrappedEngine = {};
-        for (var key in api) {
-            if (!api.hasOwnProperty(key)) continue;
-            (function(k) {
-                if (typeof api[k] === 'function') {
-                    wrappedEngine[k] = function() {
-                        var result = api[k].apply(api, arguments);
-                        // Wrap string results from create functions
-                        if (typeof result === 'string' && _createFns.indexOf(k) !== -1) {
-                            return wrapObj(result);
-                        }
-                        return result;
-                    };
-                } else {
-                    wrappedEngine[k] = api[k];
-                }
-            })(key);
-        }
 
         var start = Date.now();
         try {
             var fn = new Function('Engine', 'THREE', 'console', 'log', code);
-            var result = fn(wrappedEngine, THREE_REF, { log: logFn, warn: function(t) { log(String(t), 'warn'); }, error: function(t) { log(String(t), 'error'); } }, logFn);
+            var result = fn(wrappedEngine, THREE, { log: logFn, warn: function(t) { log(String(t), 'warn'); }, error: function(t) { log(String(t), 'error'); } }, logFn);
             var elapsed = Date.now() - start;
             log('Executed in ' + elapsed + 'ms', 'result');
             if (result !== undefined) { log('Result: ' + String(result), 'result'); }
@@ -7107,6 +7147,156 @@ var EngineApp = (function() {
 
         refreshHierarchy();
         refreshInspector();
+    }
+
+    // --- Incremental executor: objects appear one-by-one as code streams ---
+    var _liveRunState = {
+        active: false,
+        executedLineCount: 0,
+        liveVars: {},      // persistent var storage across line executions
+        varDeclarations: '' // accumulated "var x = value" lines for scope persistence
+    };
+
+    function _buildSandbox() {
+        var api = SashaEngineAPI;
+        var logFn = function(text) { log(String(text), 'log'); };
+        function wrapObj(name) {
+            if (!name || typeof name !== 'string') return name;
+            var realObj = api.getObject(name);
+            if (!realObj) return name;
+            return {
+                _name: name, name: name,
+                get position() { return realObj.position; },
+                get rotation() { return realObj.rotation; },
+                get scale() { return realObj.scale; },
+                get x() { return realObj.position.x; }, set x(v) { realObj.position.x = v; },
+                get y() { return realObj.position.y; }, set y(v) { realObj.position.y = v; },
+                get z() { return realObj.position.z; }, set z(v) { realObj.position.z = v; },
+                addChild: function(child) {
+                    var childName = (child && child._name) ? child._name : String(child);
+                    api.addChild(name, childName);
+                },
+                setPosition: function(x, y, z) { api.setPosition(name, x, y, z); },
+                setRotation: function(x, y, z) { api.setRotation(name, x, y, z); },
+                setScale: function(x, y, z) { api.setScale(name, x, y, z); },
+                setColor: function(c) { api.setObjectColor(name, c); },
+                remove: function() { api.removeObject(name); }
+            };
+        }
+        var _createFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addTorus','addCapsule',
+            'addLight','addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
+            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel'];
+        var wrappedEngine = {};
+        for (var key in api) {
+            if (!api.hasOwnProperty(key)) continue;
+            (function(k) {
+                if (typeof api[k] === 'function') {
+                    wrappedEngine[k] = function() {
+                        var result = api[k].apply(api, arguments);
+                        if (typeof result === 'string' && _createFns.indexOf(k) !== -1) return wrapObj(result);
+                        return result;
+                    };
+                } else { wrappedEngine[k] = api[k]; }
+            })(key);
+        }
+        return wrappedEngine;
+    }
+
+    function executeIncremental(fullCode) {
+        var st = _liveRunState;
+        if (!st.active) return;
+        fullCode = fullCode.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
+
+        var allLines = fullCode.split('\n');
+        // Find which lines are "complete" (end with ; or } or { or are comments or empty)
+        var completeCount = 0;
+        for (var i = 0; i < allLines.length; i++) {
+            var trimmed = allLines[i].trim();
+            if (trimmed === '' || trimmed.indexOf('//') === 0 ||
+                trimmed.endsWith(';') || trimmed.endsWith('{') || trimmed.endsWith('}') || trimmed.endsWith(')')) {
+                completeCount++;
+            }
+        }
+
+        // No new complete lines since last execution
+        if (completeCount <= st.executedLineCount) return;
+
+        // Get only the NEW complete lines
+        var newLines = [];
+        var currentLineIdx = 0;
+        for (var i = 0; i < allLines.length; i++) {
+            var trimmed = allLines[i].trim();
+            var isComplete = trimmed === '' || trimmed.indexOf('//') === 0 ||
+                trimmed.endsWith(';') || trimmed.endsWith('{') || trimmed.endsWith('}') || trimmed.endsWith(')');
+            if (isComplete) {
+                currentLineIdx++;
+                if (currentLineIdx > st.executedLineCount && trimmed !== '' && trimmed.indexOf('//') !== 0) {
+                    newLines.push(allLines[i]);
+                }
+            }
+        }
+
+        if (newLines.length === 0) { st.executedLineCount = completeCount; return; }
+
+        // Execute each new line independently — objects appear one by one
+        var wrappedEngine = _buildSandbox();
+        var vars = st.liveVars;
+        for (var i = 0; i < newLines.length; i++) {
+            var line = newLines[i].trim();
+            if (!line || line.indexOf('//') === 0) continue;
+
+            // Transform: var name = Engine.addXxx(...) → execute and store result in vars
+            var varMatch = line.match(/^var\s+(\w+)\s*=\s*(.+)$/);
+            if (varMatch) {
+                var varName = varMatch[1];
+                var expr = varMatch[2];
+                try {
+                    var fn = new Function('Engine', 'THREE', 'console', 'log', '_v',
+                        'var ' + varName + ' = ' + expr + '; _v["' + varName + '"] = ' + varName + '; return ' + varName + ';');
+                    var result = fn(wrappedEngine, THREE, { log: function(t){log(t,'log');}, warn: function(t){log(t,'warn');}, error: function(t){log(t,'error');} }, function(t){log(t,'log');}, vars);
+                    vars[varName] = result;
+                    log('+ ' + varName, 'result');
+                } catch(e) { /* line not ready yet, skip */ }
+            } else {
+                // Execute line with access to all previously stored vars
+                try {
+                    var varNames = Object.keys(vars);
+                    var varDefs = '';
+                    for (var v = 0; v < varNames.length; v++) {
+                        varDefs += 'var ' + varNames[v] + ' = _v["' + varNames[v] + '"]; ';
+                    }
+                    var fn = new Function('Engine', 'THREE', 'console', 'log', '_v',
+                        varDefs + line);
+                    fn(wrappedEngine, THREE, { log: function(t){log(t,'log');}, warn: function(t){log(t,'warn');}, error: function(t){log(t,'error');} }, function(t){log(t,'log');}, vars);
+                } catch(e) { /* skip failed lines silently during streaming */ }
+            }
+        }
+
+        st.executedLineCount = completeCount;
+        refreshHierarchy();
+        refreshInspector();
+    }
+
+    function startLiveGeneration() {
+        _liveRunState.active = true;
+        _liveRunState.executedLineCount = 0;
+        _liveRunState.liveVars = {};
+        _liveRunState.varDeclarations = '';
+        // Clear only non-builtin objects (fresh start for new generation)
+        var objs = SashaEngineAPI.getObjects();
+        var toRemove = [];
+        for (var name in objs) {
+            if (objs.hasOwnProperty(name) && name.indexOf('__builtin') !== 0) toRemove.push(name);
+        }
+        for (var i = 0; i < toRemove.length; i++) SashaEngineAPI.removeObject(toRemove[i]);
+        refreshHierarchy();
+    }
+
+    function stopLiveGeneration() {
+        _liveRunState.active = false;
+        _liveRunState.executedLineCount = 0;
+        _liveRunState.liveVars = {};
+        _liveRunState.varDeclarations = '';
     }
 
     function toggleLive() {
@@ -7240,38 +7430,66 @@ var EngineApp = (function() {
         }
         _aiBusy = true;
         var isBuild = _aiMode === 'build';
+        var _streamStartTime = Date.now();
         addAIChat('ai', isBuild ? 'Генерирую код...' : 'Думаю...');
         log('AI: ' + (isBuild ? 'generating code...' : 'chatting...'), 'info');
         try {
             var text;
             if (isBuild) {
+                // === LIVE STREAMING CODE GENERATION ===
+                startLiveGeneration();
                 var currentCode = editor ? editor.getValue() : '';
-                text = await SashaWebLLM.generateCode(prompt, currentCode);
-                if (!text || text.length < 5 || text.indexOf('Error:') === 0) {
-                    addAIChat('ai', text || 'Пустой ответ. Попробуй снова.');
+                var _genMsgEl = null;
+                var _tokenCount = 0;
+                var _debounceTimer = null;
+
+                text = await SashaWebLLM.generateCodeStream(prompt, currentCode, function(fullText, delta) {
+                    _tokenCount++;
+                    // Update editor in real-time
+                    var clean = fullText.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '');
+                    if (editor) editor.setValue(clean);
+
+                    // Execute incrementally every ~3 tokens (debounce)
+                    if (_debounceTimer) clearTimeout(_debounceTimer);
+                    _debounceTimer = setTimeout(function() {
+                        executeIncremental(fullText);
+                    }, 150);
+
+                    // Update AI chat message with live status
+                    var chatDiv = document.getElementById('eng-ai-chat');
+                    if (chatDiv && chatDiv.lastChild) {
+                        var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
+                        chatDiv.lastChild.textContent = 'streaming... ' + fullText.length + ' chars (' + elapsed + 's)';
+                        chatDiv.lastChild.className = 'engine-ai-msg ai streaming';
+                    }
+                });
+
+                // Generation finished — stop live mode
+                stopLiveGeneration();
+                if (_debounceTimer) clearTimeout(_debounceTimer);
+
+                if (!text || text.length < 5) {
+                    addAIChat('ai', 'Пустой ответ. Попробуй снова.');
+                    return;
+                }
+                if (text.indexOf('Error:') === 0 && text.length < 100) {
+                    addAIChat('ai', 'Ошибка: ' + text);
                     return;
                 }
                 text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
-                // Language check: reject Python and non-JS code
+                // Language check: reject Python
                 if (isPythonCode(text)) {
-                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй: (1) загрузить модель 3B+, (2) перефразировать запрос точнее.');
-                    log('AI generated Python instead of JS — rejected', 'error');
+                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй другую модель или перефразируй.');
+                    log('AI generated Python — rejected', 'error');
                     return;
                 }
+                // Final: code already executed incrementally, just clean up
                 if (editor) editor.setValue(text);
-                addAIChat('ai', 'Код сгенерирован (' + text.length + ' символов). Выполняю...');
-                log('AI code applied (' + text.length + ' chars)', 'result');
-                setTimeout(function() {
-                    runCode();
-                    // Check for execution errors and report in AI chat
-                    setTimeout(function() {
-                        if (_lastRunError) {
-                            addAIChat('ai', 'Ошибка выполнения: ' + _lastRunError);
-                        } else {
-                            addAIChat('ai', 'Код выполнен на сцене!');
-                        }
-                    }, 400);
-                }, 300);
+                refreshHierarchy();
+                refreshInspector();
+                var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
+                addAIChat('ai', 'Готово за ' + elapsed + 's! Все объекты на сцене.');
+                log('AI stream done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
             } else {
                 text = await SashaWebLLM.chat(prompt);
                 if (!text || text.indexOf('Error:') === 0) {
