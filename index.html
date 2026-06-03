@@ -4304,46 +4304,58 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You generate JavaScript 3D code. ONLY code, no explanations, no markdown.\n' +
-        'API — add* functions return object NAME (string). Store it: var head = Engine.addCube(...);\n' +
-        '3D OBJECTS: Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
-        'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\n' +
-        'Engine.addCone(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color)\n' +
-        'Engine.addCapsule(x,y,z,r,h,color) Engine.addTorusKnot(x,y,z,r,tube,color)\n' +
-        'LIGHT: Engine.addLight(type,x,y,z,color,intensity) — ambient/point/directional/spot\n' +
-        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity)\n' +
+    var _codeSystemPrompt = 'You generate ONLY JavaScript code. No text, no markdown, no explanations.\n' +
+        'Use var NEVER const or let. Colors are hex: 0xff0000.\n' +
+        'OBJECTS (return name string):\n' +
+        'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
+        'Engine.addCylinder(x,y,z,rTop,rBot,height,color) Engine.addCone(x,y,z,radius,height,color)\n' +
+        'Engine.addCapsule(x,y,z,radius,height,color) Engine.addTorus(x,y,z,radius,tube,color)\n' +
+        'Engine.addPlane(width,height,color) Engine.addTorusKnot(x,y,z,radius,tube,color)\n' +
+        'Engine.addIcosahedron(x,y,z,radius,color) Engine.addDodecahedron(x,y,z,radius,color)\n' +
+        'LIGHT: Engine.addLight(type,x,y,z,color,intensity) Engine.addPointLight(x,y,z,intensity,color)\n' +
+        'Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity)\n' +
+        'Engine.addAmbientLight(color,intensity)\n' +
         'TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z)\n' +
-        'Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child)\n' +
+        'Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parentName,childName)\n' +
         'CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b)\n' +
-        'Engine.removeObject(name) Engine.animate(name,prop,from,to,duration) Engine.log(text)\n' +
-        'PHYSICS (add to object AFTER creating it, works in Play mode):\n' +
-        'Engine.addRigidBody(name,mass,drag,useGravity) Engine.setVelocity(name,vx,vy,vz) Engine.applyForce(name,fx,fy,fz)\n' +
-        'Engine.addBoxCollider(name,sx,sy,sz,isTrigger) Engine.addSphereCollider(name,radius,isTrigger)\n' +
-        'Engine.addCapsuleCollider(name,radius,height,isTrigger) Engine.addCylinderCollider(name,radius,height,isTrigger)\n' +
-        'Engine.addWheelCollider(name,radius,suspDist) Engine.addPlaneCollider(name,isTrigger)\n' +
-        'Engine.addTerrainCollider(name) Engine.addMeshCollider(name,convex,isTrigger)\n' +
-        'UI CANVAS: Engine.addUI(type, {x,y,width,height,text,color,bgColor,fontSize,src,borderRadius,opacity})\n' +
-        'Types: text, button, image, panel, input. Engine.showUI() Engine.hideUI() Engine.setUIText(id,text) Engine.setUIPosition(id,x,y)\n' +
-        'IMPORTANT: Always use var, NEVER const or let. Colors are hex numbers: 0xff0000.\n' +
-        'IMPORTANT: To build a character use addCube/addSphere/addCylinder — each creates a visible mesh.\n' +
-        'DO NOT use addObject("character") — it creates invisible empty group.\n' +
-        'Examples — Humanoid character:\n' +
-        'var head = Engine.addCube(0, 2.5, 0, 0.5, 0xffdbac);\n' +
-        'var body = Engine.addCube(0, 1.5, 0, 0.8, 0x3b82f6);\n' +
-        'var armL = Engine.addCylinder(-0.6, 1.5, 0, 0.12, 0.12, 0.8, 0x3b82f6);\n' +
-        'var armR = Engine.addCylinder(0.6, 1.5, 0, 0.12, 0.12, 0.8, 0x3b82f6);\n' +
-        'var legL = Engine.addCylinder(-0.2, 0.5, 0, 0.15, 0.15, 1, 0x1e3a5f);\n' +
-        'var legR = Engine.addCylinder(0.2, 0.5, 0, 0.15, 0.15, 1, 0x1e3a5f);\n' +
+        'REMOVE: Engine.removeObject(name)\n' +
+        'ANIMATE: Engine.animate(name,prop,from,to,duration)\n' +
+        'PHYSICS (Play mode): Engine.addRigidBody(name,mass,drag,useGravity) Engine.setVelocity(name,vx,vy,vz)\n' +
+        'Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,radius)\n' +
+        'Engine.addCapsuleCollider(name,radius,height) Engine.addCylinderCollider(name,radius,height)\n' +
+        'Engine.addWheelCollider(name,radius,suspDist) Engine.addPlaneCollider(name) Engine.addMeshCollider(name)\n' +
+        'UI: Engine.addUI(type,{x,y,width,height,text,color,bgColor,fontSize,src,borderRadius}) Engine.showUI()\n' +
+        'RULES: When user asks for "character" or "person" or "humanoid" or "man" or "woman" or "robot":\n' +
+        'ALWAYS build from primitives: head(sphere), body(cube), arms(cylinders), legs(cylinders).\n' +
+        'NEVER use addObject("character"). Copy this exact pattern changing colors/size:\n' +
+        'var head = Engine.addSphere(0, 2.6, 0, 0.35, 0xffdbac);\n' +
+        'var body = Engine.addCube(0, 1.6, 0, 0.9, 0.3, 0.6, 0x3b82f6);\n' +
+        'var armL = Engine.addCube(-0.7, 1.6, 0, 0.25, 0.7, 0.25, 0x3b82f6);\n' +
+        'var armR = Engine.addCube(0.7, 1.6, 0, 0.25, 0.7, 0.25, 0x3b82f6);\n' +
+        'var legL = Engine.addCube(-0.25, 0.5, 0, 0.3, 1.0, 0.3, 0x1e3a5f);\n' +
+        'var legR = Engine.addCube(0.25, 0.5, 0, 0.3, 1.0, 0.3, 0x1e3a5f);\n' +
         'Engine.setCameraPos(3, 3, 3);\n' +
-        'Example — Physics ball falling:\n' +
+        'RULES: When user asks for "house" or "building":\n' +
+        'ALWAYS build: floor(plane), 4 walls(cubes), roof(cone or cube).\n' +
+        'var floor = Engine.addCube(0, 0, 0, 4, 0.2, 4, 0x8B4513);\n' +
+        'var wall1 = Engine.addCube(0, 1.5, 2, 4, 3, 0.2, 0xd4a574);\n' +
+        'var wall2 = Engine.addCube(0, 1.5, -2, 4, 3, 0.2, 0xd4a574);\n' +
+        'var wall3 = Engine.addCube(-2, 1.5, 0, 0.2, 3, 4, 0xd4a574);\n' +
+        'var wall4 = Engine.addCube(2, 1.5, 0, 0.2, 3, 4, 0xd4a574);\n' +
+        'var roof = Engine.addCone(0, 3.5, 0, 2.5, 2, 0xcc3333);\n' +
+        'RULES: When user asks for "car" or "vehicle":\n' +
+        'ALWAYS build: body(cube), wheels(spheres), windows.\n' +
+        'RULES: When user asks for "tree":\n' +
+        'ALWAYS build: trunk(cylinder), leaves(sphere or cone).\n' +
+        'RULES: When user asks for "city" or "town":\n' +
+        'ALWAYS build multiple houses with different positions, add road(plane), trees.\n' +
+        'RULES: When user asks for "ball" or "physics":\n' +
         'var ball = Engine.addSphere(0, 5, 0, 0.5, 0xff4444);\n' +
         'Engine.addRigidBody(ball, 1, 0, true);\n' +
         'Engine.addSphereCollider(ball, 0.5);\n' +
-        'var ground = Engine.addCube(0, -0.5, 0, 10, 0x444444);\n' +
+        'var ground = Engine.addCube(0, -0.5, 0, 10, 1, 10, 0x444444);\n' +
         'Engine.addBoxCollider(ground, 10, 1, 10);\n' +
-        'Example — UI button:\n' +
-        'var btn = Engine.addUI("button", {x:100,y:100,width:150,height:40,text:"Start",bgColor:"#6366f1",color:"#fff",borderRadius:8});\n' +
-        'Engine.showUI();\n';
+        'ALWAYS end with Engine.setCameraPos(3, 3, 3); so user can see the scene.\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
         'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
@@ -4670,14 +4682,24 @@ var SashaEngineAPI = (function() {
 
     // --- Public API ---
 
-    function addCube(x, y, z, size, color) {
+    function addCube(x, y, z, w, h, d, color) {
         if (!initialized) return null;
-        var s = Math.max(0.01, size || 1);
-        var c = color || 0x6366f1;
-        var geo = new THREE.BoxGeometry(s, s, s);
+        // Support both addCube(x,y,z,size,color) and addCube(x,y,z,w,h,d,color)
+        var ww, hh, dd, c;
+        if (typeof d === 'number') {
+            ww = Math.max(0.01, w || 1);
+            hh = Math.max(0.01, h || 1);
+            dd = Math.max(0.01, d || 1);
+            c = color || 0x6366f1;
+        } else {
+            ww = Math.max(0.01, w || 1);
+            hh = ww; dd = ww;
+            c = h || 0x6366f1;
+        }
+        var geo = new THREE.BoxGeometry(ww, hh, dd);
         var mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, metalness: 0.1 });
         var mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(x || 0, y || s / 2, z || 0);
+        mesh.position.set(x || 0, y || hh / 2, z || 0);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         var name = getUniqueName('cube');
@@ -7874,3 +7896,4 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
