@@ -4310,26 +4310,29 @@ var SashaWebLLM = (function() {
 
     var _codeMode = false;
     var _codeSystemPrompt = 'You generate JavaScript 3D code. ONLY code, no explanations, no markdown.\n' +
-        'API — add* functions return objects with .addChild(child), .setPosition(x,y,z), .setColor(color):\n' +
+        'API — add* functions return objects with .addChild(child), .setPosition(x,y,z), .setRotation(x,y,z), .setScale(x,y,z), .setColor(color), .moveObject(dx,dy,dz):\n' +
         'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
         'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\n' +
         'Engine.addCone(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color)\n' +
         'Engine.addCapsule(x,y,z,r,h,color) Engine.addTorusKnot(x,y,z,r,tube,color)\n' +
-        'Engine.addObject(type) — cube/sphere/plane/light/dirlight/spotlight/empty (or any name = group)\n' +
+        'Engine.addObject(type) — cube/sphere/plane/light/dirlight/spotlight/empty\n' +
         'Engine.addLight(type,x,y,z,color,intensity) — ambient/point/directional/spot\n' +
         'Engine.addPointLight(x,y,z,intensity,color) Engine.addAmbientLight(color,intensity)\n' +
         'Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity)\n' +
         'Engine.addChild(parent,child) Engine.setPosition(n,x,y,z) Engine.setObjectColor(n,color)\n' +
         'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b)\n' +
         'Engine.removeObject(name) Engine.animate(name,prop,from,to,duration) Engine.log(text)\n' +
-        'Use var NOT let/const. Colors are hex: 0xff0000.\n' +
-        'Examples:\n' +
-        'Engine.addCube(0, 0.5, 0, 1, 0x6366f1);\n' +
-        'var s = Engine.addSphere(3, 0.5, 0, 0.5, 0xec4899);\n' +
-        'var group = Engine.addObject("myGroup");\n' +
-        'group.addChild(s);\n' +
-        'Engine.addPointLight(0, 5, 0, 1, 0xffffff);\n' +
-        'Engine.setCameraPos(5, 5, 5);\n' +
+        'IMPORTANT: Always use var, NEVER const or let. Colors are hex: 0xff0000.\n' +
+        'IMPORTANT: To build a character use addCube/addSphere/addCylinder — each creates a visible mesh.\n' +
+        'DO NOT use addObject("character") — it creates invisible empty group.\n' +
+        'Examples of building a humanoid from primitives:\n' +
+        'var head = Engine.addCube(0, 2.5, 0, 0.5, 0xffdbac);\n' +
+        'var body = Engine.addCube(0, 1.5, 0, 0.8, 0x3b82f6);\n' +
+        'var armL = Engine.addCylinder(-0.6, 1.5, 0, 0.12, 0.12, 0.8, 0x3b82f6);\n' +
+        'var armR = Engine.addCylinder(0.6, 1.5, 0, 0.12, 0.12, 0.8, 0x3b82f6);\n' +
+        'var legL = Engine.addCylinder(-0.2, 0.5, 0, 0.15, 0.15, 1, 0x1e3a5f);\n' +
+        'var legR = Engine.addCylinder(0.2, 0.5, 0, 0.15, 0.15, 1, 0x1e3a5f);\n' +
+        'Engine.setCameraPos(3, 3, 3);\n' +
         'Engine.addCube(-2, 0.5, 0, 0.5, 0x10b981);\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
@@ -4383,10 +4386,10 @@ var SashaWebLLM = (function() {
 
         var fullText = '';
         try {
-            var maxTok = 96;
-            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
-            else if (modelId.indexOf('1.5B') !== -1) maxTok = 192;
-            else if (modelId.indexOf('3B') !== -1) maxTok = 128;
+            var maxTok = 128;
+            if (modelId.indexOf('0.5B') !== -1) maxTok = 512;
+            else if (modelId.indexOf('1.5B') !== -1) maxTok = 384;
+            else if (modelId.indexOf('3B') !== -1) maxTok = 256;
 
             var result = await engine.chat.completions.create({
                 messages: messages, max_tokens: maxTok,
@@ -7180,6 +7183,7 @@ var EngineApp = (function() {
                 setRotation: function(x, y, z) { api.setRotation(name, x, y, z); },
                 setScale: function(x, y, z) { api.setScale(name, x, y, z); },
                 setColor: function(c) { api.setObjectColor(name, c); },
+                moveObject: function(dx, dy, dz) { api.moveObject(name, dx||0, dy||0, dz||0); },
                 remove: function() { api.removeObject(name); }
             };
         }
@@ -7245,6 +7249,8 @@ var EngineApp = (function() {
             var line = newLines[i].trim();
             if (!line || line.indexOf('//') === 0) continue;
 
+            // Pre-clean: strip const/let to var for consistent handling
+            line = line.replace(/^(const|let)\s+/, 'var ');
             // Transform: var name = Engine.addXxx(...) → execute and store result in vars
             var varMatch = line.match(/^var\s+(\w+)\s*=\s*(.+)$/);
             if (varMatch) {
@@ -7256,7 +7262,7 @@ var EngineApp = (function() {
                     var result = fn(wrappedEngine, THREE, { log: function(t){log(t,'log');}, warn: function(t){log(t,'warn');}, error: function(t){log(t,'error');} }, function(t){log(t,'log');}, vars);
                     vars[varName] = result;
                     log('+ ' + varName, 'result');
-                } catch(e) { /* line not ready yet, skip */ }
+                } catch(e) { log('skip line: ' + e.message, 'warn'); }
             } else {
                 // Execute line with access to all previously stored vars
                 try {
@@ -7268,7 +7274,7 @@ var EngineApp = (function() {
                     var fn = new Function('Engine', 'THREE', 'console', 'log', '_v',
                         varDefs + line);
                     fn(wrappedEngine, THREE, { log: function(t){log(t,'log');}, warn: function(t){log(t,'warn');}, error: function(t){log(t,'error');} }, function(t){log(t,'log');}, vars);
-                } catch(e) { /* skip failed lines silently during streaming */ }
+                } catch(e) { log('skip: ' + e.message, 'warn'); }
             }
         }
 
