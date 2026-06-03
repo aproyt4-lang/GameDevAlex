@@ -7147,7 +7147,7 @@ var EngineApp = (function() {
             else if (el.type === 'button') html += '<span style="pointer-events:none;display:flex;align-items:center;justify-content:center;width:100%;height:100%;">' + el.text + '</span>';
             else if (el.type === 'image') {
                 if (el.src) {
-                    html += '<img src="' + el.src + '" style="width:100%;height:100%;object-fit:cover;border-radius:' + (el.borderRadius||0) + 'px;pointer-events:none;" onerror="this.style.display=\'none\';this.parentElement.innerHTML+=\'<i class=\\'fas fa-image\\' style=\\'opacity:0.3;font-size:2rem\\'></i>\'">';
+                    html += '<img src="' + el.src + '" style="width:100%;height:100%;object-fit:cover;border-radius:' + (el.borderRadius||0) + 'px;pointer-events:none;" onerror="this.outerHTML=\'<div style=display:flex;align-items:center;justify-content:center;width:100%;height:100%;opacity:0.3><i class=fas fa-image style=font-size:1.5rem></i></div>\'">';
                 } else {
                     html += '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;opacity:0.3;"><div style="text-align:center;"><i class="fas fa-image" style="font-size:1.5rem;display:block;margin-bottom:4px;"></i><span style="font-size:0.65rem;">Set src in Inspector</span></div></div>';
                 }
