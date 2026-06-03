@@ -2681,62 +2681,56 @@ var SashaScene3D = (function() {
     }
 
     function loadAvatar() {
+        // Show placeholder immediately as fallback
+        createPlaceholder();
         var loader = new THREE.GLTFLoader();
-        loader.load(
-            'SashaAI.glb',
-            function(gltf) {
-                avatar = gltf.scene;
-
-                // Auto-scale and center the model
-                var box = new THREE.Box3().setFromObject(avatar);
-                var size = box.getSize(new THREE.Vector3());
-                var center = box.getCenter(new THREE.Vector3());
-
-                // Scale model to fit ~3 units tall
-                var maxDim = Math.max(size.x, size.y, size.z);
-                if (maxDim > 0) {
-                    avatarScale = 3.0 / maxDim;
-                }
-                avatar.scale.set(avatarScale, avatarScale, avatarScale);
-
-                // Center model
-                avatar.position.sub(center.multiplyScalar(avatarScale));
-                avatar.position.y += 1.5;
-
-                // Enable shadows
-                avatar.traverse(function(child) {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
+        var timeout = setTimeout(function() {
+            console.log('SashaAI.glb: load timeout, using placeholder');
+        }, 15000);
+        try {
+            loader.load(
+                'SashaAI.glb',
+                function(gltf) {
+                    clearTimeout(timeout);
+                    // Remove placeholder
+                    if (avatar) { scene.remove(avatar); avatar = null; }
+                    avatar = gltf.scene;
+                    var box = new THREE.Box3().setFromObject(avatar);
+                    var size = box.getSize(new THREE.Vector3());
+                    var center = box.getCenter(new THREE.Vector3());
+                    var maxDim = Math.max(size.x, size.y, size.z);
+                    if (maxDim > 0) { avatarScale = 3.0 / maxDim; }
+                    avatar.scale.set(avatarScale, avatarScale, avatarScale);
+                    avatar.position.sub(center.multiplyScalar(avatarScale));
+                    avatar.position.y += 1.5;
+                    avatar.traverse(function(child) {
+                        if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+                    });
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        mixer = new THREE.AnimationMixer(avatar);
+                        for (var i = 0; i < gltf.animations.length; i++) {
+                            mixer.clipAction(gltf.animations[i]).play();
+                        }
                     }
-                });
-
-                // Play animations if any
-                if (gltf.animations && gltf.animations.length > 0) {
-                    mixer = new THREE.AnimationMixer(avatar);
-                    for (var i = 0; i < gltf.animations.length; i++) {
-                        mixer.clipAction(gltf.animations[i]).play();
+                    scene.add(avatar);
+                    avatarLoaded = true;
+                    controls.target.set(0, 1.5, 0);
+                    camera.position.set(0, 2, 5);
+                },
+                function(progress) {
+                    if (progress.lengthComputable) {
+                        var pct = Math.round(progress.loaded / progress.total * 100);
+                        console.log('Loading SashaAI.glb: ' + pct + '%');
                     }
+                },
+                function(error) {
+                    clearTimeout(timeout);
+                    // Placeholder already visible, just log silently
                 }
-
-                scene.add(avatar);
-                avatarLoaded = true;
-
-                // Update camera target to model center
-                controls.target.set(0, 1.5, 0);
-                camera.position.set(0, 2, 5);
-            },
-            function(progress) {
-                if (progress.lengthComputable) {
-                    var pct = Math.round(progress.loaded / progress.total * 100);
-                    console.log('Loading SashaAI.glb: ' + pct + '%');
-                }
-            },
-            function(error) {
-                console.error('Error loading SashaAI.glb:', error);
-                createPlaceholder();
-            }
-        );
+            );
+        } catch(e) {
+            clearTimeout(timeout);
+        }
     }
 
     function createPlaceholder() {
@@ -4279,9 +4273,10 @@ var SashaWebLLM = (function() {
 
         var text = '';
         try {
-            var maxTok = 96;
-            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
-            else if (modelId.indexOf('1.5B') !== -1) maxTok = 192;
+            var maxTok = 1024;
+            if (modelId.indexOf('0.5B') !== -1) maxTok = 512;
+            else if (modelId.indexOf('1.5B') !== -1) maxTok = 1024;
+            else if (modelId.indexOf('3B') !== -1) maxTok = 2048;
 
             var result = await engine.chat.completions.create({
                 messages: messages, max_tokens: maxTok,
@@ -4310,22 +4305,29 @@ var SashaWebLLM = (function() {
 
     var _codeMode = false;
     var _codeSystemPrompt = 'You generate JavaScript 3D code. ONLY code, no explanations, no markdown.\n' +
-        'API — add* functions return objects with .addChild(child), .setPosition(x,y,z), .setRotation(x,y,z), .setScale(x,y,z), .setColor(color), .moveObject(dx,dy,dz):\n' +
-        'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
+        'API — add* functions return object NAME (string). Store it: var head = Engine.addCube(...);\n' +
+        '3D OBJECTS: Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
         'Engine.addPlane(w,h,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\n' +
         'Engine.addCone(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color)\n' +
         'Engine.addCapsule(x,y,z,r,h,color) Engine.addTorusKnot(x,y,z,r,tube,color)\n' +
-        'Engine.addObject(type) — cube/sphere/plane/light/dirlight/spotlight/empty\n' +
-        'Engine.addLight(type,x,y,z,color,intensity) — ambient/point/directional/spot\n' +
-        'Engine.addPointLight(x,y,z,intensity,color) Engine.addAmbientLight(color,intensity)\n' +
-        'Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity)\n' +
-        'Engine.addChild(parent,child) Engine.setPosition(n,x,y,z) Engine.setObjectColor(n,color)\n' +
-        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b)\n' +
+        'LIGHT: Engine.addLight(type,x,y,z,color,intensity) — ambient/point/directional/spot\n' +
+        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity)\n' +
+        'TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z)\n' +
+        'Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child)\n' +
+        'CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b)\n' +
         'Engine.removeObject(name) Engine.animate(name,prop,from,to,duration) Engine.log(text)\n' +
-        'IMPORTANT: Always use var, NEVER const or let. Colors are hex: 0xff0000.\n' +
+        'PHYSICS (add to object AFTER creating it, works in Play mode):\n' +
+        'Engine.addRigidBody(name,mass,drag,useGravity) Engine.setVelocity(name,vx,vy,vz) Engine.applyForce(name,fx,fy,fz)\n' +
+        'Engine.addBoxCollider(name,sx,sy,sz,isTrigger) Engine.addSphereCollider(name,radius,isTrigger)\n' +
+        'Engine.addCapsuleCollider(name,radius,height,isTrigger) Engine.addCylinderCollider(name,radius,height,isTrigger)\n' +
+        'Engine.addWheelCollider(name,radius,suspDist) Engine.addPlaneCollider(name,isTrigger)\n' +
+        'Engine.addTerrainCollider(name) Engine.addMeshCollider(name,convex,isTrigger)\n' +
+        'UI CANVAS: Engine.addUI(type, {x,y,width,height,text,color,bgColor,fontSize,src,borderRadius,opacity})\n' +
+        'Types: text, button, image, panel, input. Engine.showUI() Engine.hideUI() Engine.setUIText(id,text) Engine.setUIPosition(id,x,y)\n' +
+        'IMPORTANT: Always use var, NEVER const or let. Colors are hex numbers: 0xff0000.\n' +
         'IMPORTANT: To build a character use addCube/addSphere/addCylinder — each creates a visible mesh.\n' +
         'DO NOT use addObject("character") — it creates invisible empty group.\n' +
-        'Examples of building a humanoid from primitives:\n' +
+        'Examples — Humanoid character:\n' +
         'var head = Engine.addCube(0, 2.5, 0, 0.5, 0xffdbac);\n' +
         'var body = Engine.addCube(0, 1.5, 0, 0.8, 0x3b82f6);\n' +
         'var armL = Engine.addCylinder(-0.6, 1.5, 0, 0.12, 0.12, 0.8, 0x3b82f6);\n' +
@@ -4333,7 +4335,15 @@ var SashaWebLLM = (function() {
         'var legL = Engine.addCylinder(-0.2, 0.5, 0, 0.15, 0.15, 1, 0x1e3a5f);\n' +
         'var legR = Engine.addCylinder(0.2, 0.5, 0, 0.15, 0.15, 1, 0x1e3a5f);\n' +
         'Engine.setCameraPos(3, 3, 3);\n' +
-        'Engine.addCube(-2, 0.5, 0, 0.5, 0x10b981);\n';
+        'Example — Physics ball falling:\n' +
+        'var ball = Engine.addSphere(0, 5, 0, 0.5, 0xff4444);\n' +
+        'Engine.addRigidBody(ball, 1, 0, true);\n' +
+        'Engine.addSphereCollider(ball, 0.5);\n' +
+        'var ground = Engine.addCube(0, -0.5, 0, 10, 0x444444);\n' +
+        'Engine.addBoxCollider(ground, 10, 1, 10);\n' +
+        'Example — UI button:\n' +
+        'var btn = Engine.addUI("button", {x:100,y:100,width:150,height:40,text:"Start",bgColor:"#6366f1",color:"#fff",borderRadius:8});\n' +
+        'Engine.showUI();\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
         'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
@@ -4386,10 +4396,10 @@ var SashaWebLLM = (function() {
 
         var fullText = '';
         try {
-            var maxTok = 128;
+            var maxTok = 1024;
             if (modelId.indexOf('0.5B') !== -1) maxTok = 512;
-            else if (modelId.indexOf('1.5B') !== -1) maxTok = 384;
-            else if (modelId.indexOf('3B') !== -1) maxTok = 256;
+            else if (modelId.indexOf('1.5B') !== -1) maxTok = 1024;
+            else if (modelId.indexOf('3B') !== -1) maxTok = 2048;
 
             var result = await engine.chat.completions.create({
                 messages: messages, max_tokens: maxTok,
@@ -5244,15 +5254,43 @@ var SashaEngineAPI = (function() {
             comp.velocity = (data && data.velocity) ? { x: data.velocity.x || 0, y: data.velocity.y || 0, z: data.velocity.z || 0 } : { x: 0, y: 0, z: 0 };
             comp.angularVelocity = (data && data.angularVelocity) ? { x: data.angularVelocity.x || 0, y: data.angularVelocity.y || 0, z: data.angularVelocity.z || 0 } : { x: 0, y: 0, z: 0 };
             comp.constraints = (data && data.constraints) ? data.constraints : { freezeX: false, freezeY: false, freezeZ: false };
+            comp.bounciness = (data && data.bounciness !== undefined) ? data.bounciness : 0.4;
+            comp.friction = (data && data.friction !== undefined) ? data.friction : 0.6;
             physicsObjects[name] = comp;
         } else if (compType === 'boxcollider') {
             comp.size = (data && data.size) ? data.size : { x: 1, y: 1, z: 1 };
             comp.center = (data && data.center) ? data.center : { x: 0, y: 0, z: 0 };
+            comp.isTrigger = (data && data.isTrigger) ? data.isTrigger : false;
         } else if (compType === 'spherecollider') {
             comp.radius = (data && data.radius !== undefined) ? data.radius : 0.5;
             comp.center = (data && data.center) ? data.center : { x: 0, y: 0, z: 0 };
+            comp.isTrigger = (data && data.isTrigger) ? data.isTrigger : false;
         } else if (compType === 'meshcollider') {
             comp.convex = (data && data.convex !== undefined) ? data.convex : false;
+            comp.isTrigger = (data && data.isTrigger) ? data.isTrigger : false;
+        } else if (compType === 'capsulecollider') {
+            comp.radius = (data && data.radius !== undefined) ? data.radius : 0.25;
+            comp.height = (data && data.height !== undefined) ? data.height : 2;
+            comp.center = (data && data.center) ? data.center : { x: 0, y: 0, z: 0 };
+            comp.isTrigger = (data && data.isTrigger) ? data.isTrigger : false;
+        } else if (compType === 'cylindercollider') {
+            comp.radius = (data && data.radius !== undefined) ? data.radius : 0.5;
+            comp.height = (data && data.height !== undefined) ? data.height : 1;
+            comp.center = (data && data.center) ? data.center : { x: 0, y: 0, z: 0 };
+            comp.isTrigger = (data && data.isTrigger) ? data.isTrigger : false;
+            comp.axis = (data && data.axis) ? data.axis : 'y';
+        } else if (compType === 'wheelcollider') {
+            comp.radius = (data && data.radius !== undefined) ? data.radius : 0.3;
+            comp.suspensionDistance = (data && data.suspensionDistance !== undefined) ? data.suspensionDistance : 0.3;
+            comp.suspensionSpring = (data && data.suspensionSpring) ? data.suspensionSpring : { spring: 35000, damper: 4500, targetPosition: 0.5 };
+            comp.center = (data && data.center) ? data.center : { x: 0, y: -0.5, z: 0 };
+            comp.isTrigger = false;
+        } else if (compType === 'planecollider') {
+            comp.normal = (data && data.normal) ? data.normal : { x: 0, y: 1, z: 0 };
+            comp.offset = (data && data.offset !== undefined) ? data.offset : 0;
+            comp.isTrigger = (data && data.isTrigger) ? data.isTrigger : false;
+        } else if (compType === 'terraincollider') {
+            comp.isTrigger = false;
         }
         objectComponents[name].push(comp);
     }
@@ -5455,6 +5493,52 @@ var SashaEngineAPI = (function() {
         return { fps: currentFPS, objects: objCount, triangles: Math.round(tris) };
     }
 
+    function _getBounciness(name) {
+        var rb = physicsObjects[name];
+        return (rb && rb.bounciness !== undefined) ? rb.bounciness : 0.4;
+    }
+
+    function _getColliderRadius(name) {
+        var comps = objectComponents[name];
+        if (!comps) {
+            // Fallback: use geometry bounding sphere
+            var obj = objects[name];
+            if (obj && obj.geometry) { obj.geometry.computeBoundingSphere(); return obj.geometry.boundingSphere ? (obj.geometry.boundingSphere.radius || 0.5) : 0.5; }
+            return 0.5;
+        }
+        for (var i = 0; i < comps.length; i++) {
+            var c = comps[i];
+            if (c.type === 'spherecollider') return c.radius || 0.5;
+            if (c.type === 'capsulecollider') return Math.max(c.radius || 0.25, (c.height || 2) / 2);
+            if (c.type === 'cylindercollider') return Math.max(c.radius || 0.5, (c.height || 1) / 2);
+            if (c.type === 'wheelcollider') return c.radius || 0.3;
+            if (c.type === 'boxcollider') {
+                var s = c.size || { x: 1, y: 1, z: 1 };
+                return Math.sqrt(s.x * s.x + s.y * s.y + s.z * s.z) / 2;
+            }
+        }
+        var obj = objects[name];
+        if (obj && obj.geometry) { obj.geometry.computeBoundingSphere(); return obj.geometry.boundingSphere ? (obj.geometry.boundingSphere.radius || 0.5) : 0.5; }
+        return 0.5;
+    }
+
+    function _isTrigger(nameA, nameB) {
+        var compA = _getComponentOf(nameA, ['boxcollider','spherecollider','capsulecollider','cylindercollider','wheelcollider','meshcollider','planecollider','terraincollider']);
+        var compB = _getComponentOf(nameB, ['boxcollider','spherecollider','capsulecollider','cylindercollider','wheelcollider','meshcollider','planecollider','terraincollider']);
+        return (compA && compA.isTrigger) || (compB && compB.isTrigger);
+    }
+
+    function _getComponentOf(name, types) {
+        var comps = objectComponents[name];
+        if (!comps) return null;
+        for (var i = 0; i < comps.length; i++) {
+            for (var t = 0; t < types.length; t++) {
+                if (comps[i].type === types[t]) return comps[i];
+            }
+        }
+        return null;
+    }
+
     // --- Physics with collisions ---
     function updatePhysics(delta) {
         var dt = Math.min(delta, 0.05);
@@ -5523,7 +5607,7 @@ var SashaEngineAPI = (function() {
                 if (rb.constraints.freezeZ) { rb.velocity.z = 0; }
             }
         }
-        // Simple sphere-sphere collision between physics objects
+        // Collider-based collision detection between physics objects
         for (var a = 0; a < physNames.length; a++) {
             for (var b = a + 1; b < physNames.length; b++) {
                 var objA = objects[physNames[a]];
@@ -5536,19 +5620,13 @@ var SashaEngineAPI = (function() {
                 var dy = objB.position.y - objA.position.y;
                 var dz = objB.position.z - objA.position.z;
                 var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                var minDist = 1.0;
-                if (objA.geometry) {
-                    objA.geometry.computeBoundingSphere();
-                    minDist = objA.geometry.boundingSphere.radius || 0.5;
-                }
-                var minDistB = minDist;
-                if (objB.geometry) {
-                    objB.geometry.computeBoundingSphere();
-                    minDistB = objB.geometry.boundingSphere.radius || 0.5;
-                }
-                minDist = minDist + minDistB;
+                // Get collider radii from components if available
+                var radA = _getColliderRadius(physNames[a]);
+                var radB = _getColliderRadius(physNames[b]);
+                var minDist = radA + radB;
                 if (dist < minDist && dist > 0.001) {
-                    collisionPairs.push({ a: physNames[a], b: physNames[b] });
+                    var isTrig = _isTrigger(physNames[a], physNames[b]);
+                    collisionPairs.push({ a: physNames[a], b: physNames[b], isTrigger: isTrig });
                     var nx = dx / dist;
                     var ny = dy / dist;
                     var nz = dz / dist;
@@ -5556,24 +5634,29 @@ var SashaEngineAPI = (function() {
                     var relVy = rbA.velocity.y - rbB.velocity.y;
                     var relVz = rbA.velocity.z - rbB.velocity.z;
                     var relDot = relVx * nx + relVy * ny + relVz * nz;
-                    if (relDot > 0) {
+                    if (!isTrig && relDot > 0) {
                         var massA = rbA.mass || 1;
                         var massB = rbB.mass || 1;
-                        var impulse = (2 * relDot) / (massA + massB);
-                        rbA.velocity.x -= impulse * massB * nx * 0.8;
-                        rbA.velocity.y -= impulse * massB * ny * 0.8;
-                        rbA.velocity.z -= impulse * massB * nz * 0.8;
-                        rbB.velocity.x += impulse * massA * nx * 0.8;
-                        rbB.velocity.y += impulse * massA * ny * 0.8;
-                        rbB.velocity.z += impulse * massA * nz * 0.8;
+                        var bounceA = _getBounciness(physNames[a]);
+                        var bounceB = _getBounciness(physNames[b]);
+                        var bounce = (bounceA + bounceB) / 2;
+                        var impulse = ((1 + bounce) * relDot) / (massA + massB);
+                        rbA.velocity.x -= impulse * massB * nx;
+                        rbA.velocity.y -= impulse * massB * ny;
+                        rbA.velocity.z -= impulse * massB * nz;
+                        rbB.velocity.x += impulse * massA * nx;
+                        rbB.velocity.y += impulse * massA * ny;
+                        rbB.velocity.z += impulse * massA * nz;
                     }
-                    var overlap = minDist - dist;
-                    objA.position.x -= nx * overlap * 0.5;
-                    objA.position.y -= ny * overlap * 0.5;
-                    objA.position.z -= nz * overlap * 0.5;
-                    objB.position.x += nx * overlap * 0.5;
-                    objB.position.y += ny * overlap * 0.5;
-                    objB.position.z += nz * overlap * 0.5;
+                    if (!isTrig) {
+                        var overlap = minDist - dist;
+                        objA.position.x -= nx * overlap * 0.5;
+                        objA.position.y -= ny * overlap * 0.5;
+                        objA.position.z -= nz * overlap * 0.5;
+                        objB.position.x += nx * overlap * 0.5;
+                        objB.position.y += ny * overlap * 0.5;
+                        objB.position.z += nz * overlap * 0.5;
+                    }
                 }
             }
         }
@@ -5798,7 +5881,66 @@ var SashaEngineAPI = (function() {
         addTorusKnot: addTorusKnot, addIcosahedron: addIcosahedron, addDodecahedron: addDodecahedron,
         addChild: addObject_, setParent: setParent_,
         setPosition: setPosition, setRotation: setRotation, setScale: setScale, setObjectColor: setObjectColor,
-        moveObject: moveObject, getObject: getObject
+        moveObject: moveObject, getObject: getObject,
+        // Physics API for AI-generated code
+        addRigidBody: function(name, mass, drag, useGravity) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'rigidbody', { mass: mass||1, drag: drag||0, useGravity: useGravity !== false });
+        },
+        addBoxCollider: function(name, sx, sy, sz, isTrigger) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'boxcollider', { size: { x: sx||1, y: sy||1, z: sz||1 }, isTrigger: !!isTrigger });
+        },
+        addSphereCollider: function(name, radius, isTrigger) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'spherecollider', { radius: radius||0.5, isTrigger: !!isTrigger });
+        },
+        addCapsuleCollider: function(name, radius, height, isTrigger) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'capsulecollider', { radius: radius||0.25, height: height||2, isTrigger: !!isTrigger });
+        },
+        addCylinderCollider: function(name, radius, height, isTrigger) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'cylindercollider', { radius: radius||0.5, height: height||1, isTrigger: !!isTrigger });
+        },
+        addWheelCollider: function(name, radius, suspDist) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'wheelcollider', { radius: radius||0.3, suspensionDistance: suspDist||0.3 });
+        },
+        addPlaneCollider: function(name, isTrigger) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'planecollider', { isTrigger: !!isTrigger });
+        },
+        addTerrainCollider: function(name) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'terraincollider', {});
+        },
+        addMeshCollider: function(name, convex, isTrigger) {
+            if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
+            addObjectComponent(name, 'meshcollider', { convex: !!convex, isTrigger: !!isTrigger });
+        },
+        setVelocity: function(name, vx, vy, vz) {
+            if (physicsObjects[name]) {
+                physicsObjects[name].velocity = { x: vx||0, y: vy||0, z: vz||0 };
+            }
+        },
+        applyForce: function(name, fx, fy, fz) {
+            if (physicsObjects[name]) {
+                physicsObjects[name].velocity.x += (fx||0);
+                physicsObjects[name].velocity.y += (fy||0);
+                physicsObjects[name].velocity.z += (fz||0);
+            }
+        },
+        // UI Canvas API for AI-generated code
+        addUI: function(type, props) { return SashaUISystem.addElement(type, props || {}); },
+        removeUI: function(id) { SashaUISystem.removeElement(id); },
+        showUI: function() { SashaUISystem.setVisible(true); },
+        hideUI: function() { SashaUISystem.setVisible(false); },
+        getUIElement: function(id) { return SashaUISystem.getElement(id); },
+        setUIText: function(id, text) { var el = SashaUISystem.getElement(id); if (el) { el.text = text; EngineApp.renderUICanvas(); } },
+        setUIPosition: function(id, x, y) { var el = SashaUISystem.getElement(id); if (el) { el.x = x; el.y = y; EngineApp.renderUICanvas(); } },
+        setUIColor: function(id, color) { var el = SashaUISystem.getElement(id); if (el) { el.color = color; EngineApp.renderUICanvas(); } },
+        setUIBgColor: function(id, bgColor) { var el = SashaUISystem.getElement(id); if (el) { el.bgColor = bgColor; EngineApp.renderUICanvas(); } }
     };
 })();
 
@@ -5926,12 +6068,15 @@ var SashaUISystem = (function() {
             id: 'ui_' + Date.now() + '_' + (_idCounter++),
             type: type,
             x: props.x || 20, y: props.y || 20,
-            width: props.width || (type === 'button' ? 120 : type === 'panel' ? 200 : 100),
-            height: props.height || (type === 'button' ? 36 : type === 'panel' ? 150 : 30),
+            width: props.width || (type === 'button' ? 120 : type === 'panel' ? 200 : type === 'image' ? 200 : 100),
+            height: props.height || (type === 'button' ? 36 : type === 'panel' ? 150 : type === 'image' ? 150 : 30),
             text: props.text || (type === 'text' ? 'New Text' : type === 'button' ? 'Button' : type === 'input' ? 'Input...' : ''),
             color: props.color || '#ffffff',
-            bgColor: props.bgColor || '',
+            bgColor: props.bgColor || (type === 'button' ? '#6366f1' : type === 'panel' ? '#1a1a2e' : ''),
             fontSize: props.fontSize || 14,
+            src: props.src || '',
+            borderRadius: props.borderRadius || (type === 'button' ? 6 : 0),
+            opacity: props.opacity !== undefined ? props.opacity : 1,
             visible: true
         };
         elements.push(el);
@@ -6130,6 +6275,8 @@ var EngineApp = (function() {
             SashaEngineAPI.savePlayState();
         }
         SashaEngineAPI.setPlayState('playing');
+        var sec = document.getElementById('engine');
+        if (sec) sec.classList.add('game-mode');
         log('▶ Play mode', 'info');
     }
 
@@ -6143,6 +6290,8 @@ var EngineApp = (function() {
         SashaEngineAPI.destroyScripts();
         SashaEngineAPI.restorePlayState();
         SashaEngineAPI.setPlayState('stopped');
+        var sec = document.getElementById('engine');
+        if (sec) sec.classList.remove('game-mode');
         refreshInspector();
         log('⏹ Stopped', 'info');
     }
@@ -6513,8 +6662,8 @@ var EngineApp = (function() {
             if (obj.isDirectionalLight || obj.isSpotLight) { lbody += iRow('Shadows', '<input type="checkbox" class="insp-checkbox" '+(obj.castShadow?'checked':'')+' onchange="EngineApp.setLightProp(\''+selected+'\',\'castShadow\',this.checked)">'); }
             html += iSection('fa-lightbulb', 'Light', lbody);
         }
-        html += iSection('fa-puzzle-piece', 'Components', (function(){ var chtml=''; var comps=SashaEngineAPI.getAllComponents(selected); if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; } for(var i=0;i<comps.length;i++){ var comp=comps[i]; var compIcon='fa-file-code'; var compName=comp.type; if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';} chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';} chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>'; if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';} if(comp.type==='rigidbody'){chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');chtml+=sh('Velocity');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';chtml+=sh('Constraints');chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');} if(comp.type==='boxcollider'){var bs=comp.size||{x:1,y:1,z:1};var bc=comp.center||{x:0,y:0,z:0};chtml+=sh('Size');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';} if(comp.type==='spherecollider'){var sc2=comp.center||{x:0,y:0,z:0};chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';} } return chtml; })());
-        html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
+        html += iSection('fa-puzzle-piece', 'Components', (function(){ var chtml=''; var comps=SashaEngineAPI.getAllComponents(selected); if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; } for(var i=0;i<comps.length;i++){ var comp=comps[i]; var compIcon='fa-file-code'; var compName=comp.type; if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';}else if(comp.type==='capsulecollider'){compIcon='fa-capsules';compName='CapsuleCollider';}else if(comp.type==='cylindercollider'){compIcon='fa-database';compName='CylinderCollider';}else if(comp.type==='wheelcollider'){compIcon='fa-circle-notch';compName='WheelCollider';}else if(comp.type==='planecollider'){compIcon='fa-minus';compName='PlaneCollider';}else if(comp.type==='terraincollider'){compIcon='fa-mountain';compName='TerrainCollider';} chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';} chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>'; if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';} if(comp.type==='rigidbody'){chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');chtml+=sh('Velocity');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';chtml+=sh('Constraints');chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');chtml+=iRField('RBField','Bounce',0.05,0,1,(comp.bounciness!==undefined?comp.bounciness:0.4),selected);chtml+=iRField('RBField','Friction',0.05,0,1,(comp.friction!==undefined?comp.friction:0.6),selected);} if(comp.type==='boxcollider'){var bs=comp.size||{x:1,y:1,z:1};var bc=comp.center||{x:0,y:0,z:0};chtml+=sh('Size');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';} if(comp.type==='spherecollider'){var sc2=comp.center||{x:0,y:0,z:0};chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='meshcollider'){chtml+=iRow('Convex','<input type="checkbox" class="insp-checkbox" '+(comp.convex?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'convex\',this.checked)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='capsulecollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.25)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||2)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='cylindercollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||1)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'isTrigger\',this.checked)">');} if(comp.type==='wheelcollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'radius\',this.value)">');chtml+=iRow('Susp Dist','<input class="insp-input" type="number" step="0.1" value="'+(comp.suspensionDistance||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'suspensionDistance\',this.value)">');} if(comp.type==='boxcollider'){chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'isTrigger\',this.checked)">');} } return chtml; })());
+        html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
         html += '<div style="display:flex;gap:4px;padding:4px 8px;"><button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button><button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button></div>';
         container.innerHTML = html;
     }
@@ -6989,12 +7138,20 @@ var EngineApp = (function() {
             if (el.fontSize) html += 'font-size:' + el.fontSize + 'px;';
             if (el.color) html += 'color:' + el.color + ';';
             if (el.bgColor) html += 'background-color:' + el.bgColor + ';';
+            if (el.borderRadius) html += 'border-radius:' + el.borderRadius + 'px;';
+            if (el.opacity !== undefined && el.opacity !== 1) html += 'opacity:' + el.opacity + ';';
             html += '"';
             html += ' onmousedown="EngineApp.startUIDrag(event,\'' + el.id + '\')" onclick="EngineApp.selectUIElement(\'' + el.id + '\')">';
             html += '<span class="ui-label">' + el.type + ': ' + el.id + '</span>';
-            if (el.type === 'text') html += el.text;
-            else if (el.type === 'button') html += el.text;
-            else if (el.type === 'image') html += '<i class="fas fa-image"></i> ' + el.width + 'x' + el.height;
+            if (el.type === 'text') html += '<span style="pointer-events:none;">' + el.text + '</span>';
+            else if (el.type === 'button') html += '<span style="pointer-events:none;display:flex;align-items:center;justify-content:center;width:100%;height:100%;">' + el.text + '</span>';
+            else if (el.type === 'image') {
+                if (el.src) {
+                    html += '<img src="' + el.src + '" style="width:100%;height:100%;object-fit:cover;border-radius:' + (el.borderRadius||0) + 'px;pointer-events:none;" onerror="this.style.display=\'none\';this.parentElement.innerHTML+=\'<i class=\\'fas fa-image\\' style=\\'opacity:0.3;font-size:2rem\\'></i>\'">';
+                } else {
+                    html += '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;opacity:0.3;"><div style="text-align:center;"><i class="fas fa-image" style="font-size:1.5rem;display:block;margin-bottom:4px;"></i><span style="font-size:0.65rem;">Set src in Inspector</span></div></div>';
+                }
+            }
             else if (el.type === 'input') html += '';
             else if (el.type === 'panel') html += '';
             html += '<div class="ui-resize-handle" onmousedown="event.stopPropagation();EngineApp.startUIResize(event,\'' + el.id + '\')"></div>';
@@ -7020,6 +7177,12 @@ var EngineApp = (function() {
                 h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">H</span><input class="insp-input" type="number" value="' + el.height + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'height\',this.value)"></div>';
                 h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Size</span><input class="insp-input" type="number" value="' + el.fontSize + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'fontSize\',this.value)"></div>';
                 h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Color</span><input class="insp-color-input" type="color" value="' + (el.color || '#ffffff') + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'color\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">BG</span><input class="insp-color-input" type="color" value="' + (el.bgColor || '#000000') + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'bgColor\',this.value)"></div>';
+                if (el.type === 'image') {
+                    h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Src</span><input class="insp-input" value="' + (el.src || '').replace(/"/g, '&quot;') + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'src\',this.value)" placeholder="https://..."></div>';
+                }
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Radius</span><input class="insp-input" type="number" value="' + (el.borderRadius || 0) + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'borderRadius\',this.value)"></div>';
+                h += '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:40px;">Alpha</span><input class="insp-input" type="number" step="0.05" min="0" max="1" value="' + (el.opacity !== undefined ? el.opacity : 1) + '" onchange="EngineApp.updateUIProp(\'' + id + '\',\'opacity\',this.value)"></div>';
                 h += '<div style="padding:4px 8px;"><button class="insp-btn danger" onclick="EngineApp.removeUIElement(\'' + id + '\')" style="width:100%;"><i class="fas fa-trash"></i> Delete</button></div>';
                 h += '</div></div>';
                 container.innerHTML = h;
@@ -7115,6 +7278,8 @@ var EngineApp = (function() {
         if (!editor) return;
         var code = editor.getValue();
         if (!code.trim()) return;
+        console.log('[SashaAI] runCode() called, code length:', code.length);
+        console.log('[SashaAI] code preview:', code.substring(0, 200));
         _lastRunError = null;
 
         // Clear previous user objects (keep builtins)
@@ -7133,14 +7298,19 @@ var EngineApp = (function() {
         var wrappedEngine = _buildSandbox();
         var logFn = function(text) { log(String(text), 'log'); };
 
+        // Rewrite const/let to var for new Function() compatibility
+        code = code.replace(/^(const|let)\s+/gm, 'var ');
+
         var start = Date.now();
         try {
             var fn = new Function('Engine', 'THREE', 'console', 'log', code);
             var result = fn(wrappedEngine, THREE, { log: logFn, warn: function(t) { log(String(t), 'warn'); }, error: function(t) { log(String(t), 'error'); } }, logFn);
+            console.log('[SashaAI] runCode() executed successfully');
             var elapsed = Date.now() - start;
             log('Executed in ' + elapsed + 'ms', 'result');
             if (result !== undefined) { log('Result: ' + String(result), 'result'); }
         } catch(e) {
+            console.error('[SashaAI] runCode() ERROR:', e.message);
             var elapsed = Date.now() - start;
             var errMsg = e.name + ': ' + e.message;
             log(errMsg, 'error');
@@ -7459,7 +7629,7 @@ var EngineApp = (function() {
                     if (_debounceTimer) clearTimeout(_debounceTimer);
                     _debounceTimer = setTimeout(function() {
                         executeIncremental(fullText);
-                    }, 150);
+                    }, 80);
 
                     // Update AI chat message with live status
                     var chatDiv = document.getElementById('eng-ai-chat');
@@ -7470,32 +7640,58 @@ var EngineApp = (function() {
                     }
                 });
 
-                // Generation finished — stop live mode
-                stopLiveGeneration();
-                if (_debounceTimer) clearTimeout(_debounceTimer);
+                // Cancel pending debounce timer
+                if (_debounceTimer) { clearTimeout(_debounceTimer); _debounceTimer = null; }
 
                 if (!text || text.length < 5) {
-                    addAIChat('ai', 'Пустой ответ. Попробуй снова.');
-                    return;
+                    // Try to get text from editor (streaming may have updated it even if return was empty)
+                    var editorText = editor ? editor.getValue().trim() : '';
+                    if (editorText.length > 10) {
+                        console.log('[SashaAI] Streaming returned empty but editor has', editorText.length, 'chars, using editor text');
+                        text = editorText;
+                    } else {
+                        // STREAMING FAILED — fallback to non-streaming generation
+                        log('Stream returned empty, trying non-streaming fallback...', 'warn');
+                        addAIChat('ai', 'Стриминг пустой, пробую обычную генерацию...');
+                        stopLiveGeneration();
+                        text = await SashaWebLLM.generateCode(prompt, currentCode);
+                        if (!text || text.length < 5) {
+                            addAIChat('ai', 'Пустой ответ. Попробуй снова или перезагрузи страницу.');
+                            return;
+                        }
+                    }
                 }
+
                 if (text.indexOf('Error:') === 0 && text.length < 100) {
                     addAIChat('ai', 'Ошибка: ' + text);
+                    stopLiveGeneration();
                     return;
                 }
                 text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
-                // Language check: reject Python
+
                 if (isPythonCode(text)) {
-                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй другую модель или перефразируй.');
+                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй другую модель.');
                     log('AI generated Python — rejected', 'error');
+                    stopLiveGeneration();
                     return;
                 }
-                // Final: code already executed incrementally, just clean up
+
+                // Clean code in editor
                 if (editor) editor.setValue(text);
+
+                // === CRITICAL: Execute ALL the code on the scene ===
+                if (_liveRunState.active) {
+                    executeIncremental(text);
+                }
+                stopLiveGeneration();
+                runCode();
+                log('Full execution complete', 'result');
+
                 refreshHierarchy();
                 refreshInspector();
                 var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
-                addAIChat('ai', 'Готово за ' + elapsed + 's! Все объекты на сцене.');
-                log('AI stream done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
+                addAIChat('ai', 'Готово за ' + elapsed + 's! Объекты на сцене.');
+                log('AI done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
             } else {
                 text = await SashaWebLLM.chat(prompt);
                 if (!text || text.indexOf('Error:') === 0) {
