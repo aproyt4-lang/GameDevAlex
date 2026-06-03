@@ -5906,47 +5906,58 @@ var SashaEngineAPI = (function() {
         moveObject: moveObject, getObject: getObject,
         // Physics API for AI-generated code
         addRigidBody: function(name, mass, drag, useGravity) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'rigidbody', { mass: mass||1, drag: drag||0, useGravity: useGravity !== false });
         },
         addBoxCollider: function(name, sx, sy, sz, isTrigger) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'boxcollider', { size: { x: sx||1, y: sy||1, z: sz||1 }, isTrigger: !!isTrigger });
         },
         addSphereCollider: function(name, radius, isTrigger) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'spherecollider', { radius: radius||0.5, isTrigger: !!isTrigger });
         },
         addCapsuleCollider: function(name, radius, height, isTrigger) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'capsulecollider', { radius: radius||0.25, height: height||2, isTrigger: !!isTrigger });
         },
         addCylinderCollider: function(name, radius, height, isTrigger) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'cylindercollider', { radius: radius||0.5, height: height||1, isTrigger: !!isTrigger });
         },
         addWheelCollider: function(name, radius, suspDist) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'wheelcollider', { radius: radius||0.3, suspensionDistance: suspDist||0.3 });
         },
         addPlaneCollider: function(name, isTrigger) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'planecollider', { isTrigger: !!isTrigger });
         },
         addTerrainCollider: function(name) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'terraincollider', {});
         },
         addMeshCollider: function(name, convex, isTrigger) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (!objects[name]) { log('Object not found: ' + name, 'error'); return; }
             addObjectComponent(name, 'meshcollider', { convex: !!convex, isTrigger: !!isTrigger });
         },
         setVelocity: function(name, vx, vy, vz) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (physicsObjects[name]) {
                 physicsObjects[name].velocity = { x: vx||0, y: vy||0, z: vz||0 };
             }
         },
         applyForce: function(name, fx, fy, fz) {
+            if (typeof name === 'object' && name._name) name = name._name;
             if (physicsObjects[name]) {
                 physicsObjects[name].velocity.x += (fx||0);
                 physicsObjects[name].velocity.y += (fy||0);
@@ -7896,4 +7907,5 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
 
