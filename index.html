@@ -4312,49 +4312,15 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are a 3D scene builder. Write ONLY JavaScript code using Engine API. No text, no markdown, no explanations.\n' +
-        'Use var (never const/let). All functions return object name string. Save in var. Colors are hex like 0xff0000.\n' +
-        '\n' +
-        '=== API ===\n' +
-        'Shapes: addCube(x,y,z,w,h,d,color) addSphere(x,y,z,r,color) addCylinder(x,y,z,rT,rB,h,color) addCone(x,y,z,r,h,color) addCapsule(x,y,z,r,h,color) addTorus(x,y,z,r,tube,color) addTorusKnot(x,y,z,r,tube,color) addIcosahedron(x,y,z,r,color) addPlane(w,h,color)\n' +
-        'Lights: addPointLight(x,y,z,intensity,color) addDirectionalLight(x,y,z,color,intensity) addSpotLight(x,y,z,color,intensity) addAmbientLight(color,intensity)\n' +
-        'Transforms (need object name from var): setPosition(n,x,y,z) setRotation(n,x,y,z) setScale(n,x,y,z) setObjectColor(n,color) moveObject(n,dx,dy,dz) addChild(parent,child) removeObject(n)\n' +
-        'Camera: setCameraPos(x,y,z) setCameraTarget(x,y,z) setBgColor(r,g,b)\n' +
-        'Animate: animate(n,prop,from,to,dur) — prop can be "x","y","z","rotX","rotY","rotZ"\n' +
-        'Physics: addRigidBody(n,mass,drag,gravity) setVelocity(n,vx,vy,vz) addBoxCollider(n,sx,sy,sz) addSphereCollider(n,r) addCapsuleCollider(n,r,h) addPlaneCollider(n) addWheelCollider(n,r,susp)\n' +
-        '\n' +
-        '=== COMPOSITION PATTERNS ===\n' +
-        'To build ANYTHING, think about what shapes it consists of. Every complex object = multiple primitives.\n' +
-        'Humanoid: sphere head (y=2.5) + cube torso (y=1.5) + 2 cubes arms + 2 cubes legs + 2 sphere eyes\n' +
-        'Robot: cube head with sphere eyes + cylinder antenna, cube body, cube arms, cube legs\n' +
-        'Animal: sphere body + smaller sphere head + 4 cylinder legs + sphere eyes\n' +
-        'House: flat cube floor + 4 thin tall cubes as walls + large flat cube/cone roof + cube door\n' +
-        'Car: wide flat cube body + smaller cube cabin + 4 sphere wheels\n' +
-        'Tree: cylinder trunk + cone/sphere crown\n' +
-        'Table: wide flat cube top + 4 thin tall cubes as legs\n' +
-        'Chair: flat cube seat + thin tall cube back + 4 thin legs\n' +
-        'Sword: thin tall cube blade + cube handle + small cube crossguard\n' +
-        '\n' +
-        '=== EXAMPLE (blue robot) ===\n' +
-        'var rHead = Engine.addCube(0,2.8,0,0.5,0.5,0.5,0x666666);\n' +
-        'var rEyeL = Engine.addSphere(-0.15,2.85,0.26,0.08,0xff0000);\n' +
-        'var rEyeR = Engine.addSphere(0.15,2.85,0.26,0.08,0xff0000);\n' +
-        'var rAntenna = Engine.addCylinder(0,3.3,0,0.03,0.03,0.4,0x00ff00);\n' +
-        'var rBody = Engine.addCube(0,1.8,0,0.7,0.8,0.5,0x4444ff);\n' +
-        'var rArmL = Engine.addCube(-0.55,1.8,0,0.2,0.7,0.2,0x4444ff);\n' +
-        'var rArmR = Engine.addCube(0.55,1.8,0,0.2,0.7,0.2,0x4444ff);\n' +
-        'var rLegL = Engine.addCube(-0.2,0.6,0,0.25,1.0,0.25,0x333333);\n' +
-        'var rLegR = Engine.addCube(0.2,0.6,0,0.25,1.0,0.25,0x333333);\n' +
-        'Engine.setCameraPos(3,3,3);\n' +
-        '\n' +
-        '=== RULES ===\n' +
-        '1. ALWAYS generate at least 8-20 lines of code. More is better.\n' +
-        '2. ALWAYS use multiple primitives. Person=7+ parts, house=6+, car=6+.\n' +
-        '3. Colors: red=0xff0000 blue=0x0000ff green=0x00ff00 yellow=0xffff00 orange=0xff8800 purple=0x8800ff pink=0xff88cc white=0xffffff black=0x111111 gray=0x888888\n' +
-        '4. Read user description carefully. "blue"=use blue. "two antennas"=add two. "big eyes"=big radius.\n' +
-        '5. ALWAYS end with setCameraPos(3,3,3).\n' +
-        '6. NEVER output just 1-3 lines. NEVER output just sphere+cube.\n' +
-        '7. NEVER write explanatory text or markdown.\n';
+    var _codeSystemPrompt = 'You are a 3D scene builder. Write ONLY JavaScript code. No text, no markdown.\n' +
+        'Use var. All functions return object name. Save in var. Colors hex: red=0xff0000 blue=0x0000ff green=0x00ff00 yellow=0xffff00 orange=0xff8800 purple=0x8800ff pink=0xff88cc white=0xffffff gray=0x888888 black=0x111111\n' +
+        'addCube(x,y,z,w,h,d,c) addSphere(x,y,z,r,c) addCylinder(x,y,z,rT,rB,h,c) addCone(x,y,z,r,h,c) addCapsule(x,y,z,r,h,c) addTorus(x,y,z,r,tube,c) addTorusKnot(x,y,z,r,tube,c) addIcosahedron(x,y,z,r,c) addPlane(w,h,c)\n' +
+        'addPointLight(x,y,z,i,c) addDirectionalLight(x,y,z,c,i) addSpotLight(x,y,z,c,i) addAmbientLight(c,i)\n' +
+        'setPosition(n,x,y,z) setRotation(n,x,y,z) setScale(n,x,y,z) setObjectColor(n,c) moveObject(n,dx,dy,dz) addChild(p,c) removeObject(n)\n' +
+        'setCameraPos(x,y,z) setCameraTarget(x,y,z) setBgColor(r,g,b) animate(n,prop,from,to,dur)\n' +
+        'addRigidBody(n,m,d,g) setVelocity(n,vx,vy,vz) addBoxCollider(n,sx,sy,sz) addSphereCollider(n,r)\n' +
+        'Build complex objects from many primitives. A helicopter=body(cube)+rotors(cylinders)+tail(cylinder)+skids(cylinders). A person=head(sphere)+body(cube)+arms(cubes)+legs(cubes).\n' +
+        'ALWAYS generate 8-20+ lines. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER output just 1-3 lines or just sphere+cube. NEVER write text.\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
         'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
@@ -7668,13 +7634,14 @@ var EngineApp = (function() {
         if (SashaWebLLM && SashaWebLLM.setCodeMode) SashaWebLLM.setCodeMode(mode === 'build');
     }
 
-    // Detect if AI generated garbage code (only 1-2 primitives — means model didn't understand)
+    // Detect if AI generated garbage code (too few primitives = model didn't understand)
     function isGarbageCode(code) {
-        if (!code || code.length < 20) return true;
+        if (!code || code.length < 30) return true;
+        var lines = code.split('\n').filter(function(l) { return l.trim().length > 5; });
+        if (lines.length <= 2) return true;
         var addCalls = code.match(/Engine\.(addCube|addSphere|addCylinder|addCone|addCapsule|addTorus|addPlane|addTorusKnot|addIcosahedron|addDodecahedron|addPointLight|addDirectionalLight|addSpotLight|addAmbientLight)/g);
         var count = addCalls ? addCalls.length : 0;
-        // Only truly garbage: 0 or 1 shape calls (model output nothing useful)
-        return count <= 1;
+        return count <= 2;
     }
 
     // Detect if AI generated Python instead of JavaScript
@@ -7914,12 +7881,11 @@ var EngineApp = (function() {
                 if (editor) editor.setValue(text);
 
                 // === CRITICAL: Execute ALL the code on the scene ===
-                if (_liveRunState.active) {
-                    executeIncremental(text);
-                }
                 stopLiveGeneration();
                 runCode();
-                log('Full execution complete', 'result');
+
+                // Let GPU cool down to prevent crash on next request
+                await new Promise(function(r) { setTimeout(r, 1500); });
 
                 refreshHierarchy();
                 refreshInspector();
