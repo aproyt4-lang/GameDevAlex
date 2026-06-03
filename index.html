@@ -4265,7 +4265,7 @@ var SashaWebLLM = (function() {
         var messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
         // Short history for 3B to reduce VRAM
-        var maxHist = modelId.indexOf('3B') !== -1 ? 3 : 6;
+        var maxHist = modelId.indexOf('0.5B') !== -1 ? 1 : (modelId.indexOf('1.5B') !== -1 ? 2 : (modelId.indexOf('3B') !== -1 ? 3 : 6));
         var startIdx = Math.max(0, chatHistory.length - maxHist);
         for (var i = startIdx; i < chatHistory.length; i++) {
             messages.push(chatHistory[i]);
@@ -4305,58 +4305,43 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You generate ONLY JavaScript code. No text, no markdown, no explanations.\n' +
-        'Use var NEVER const or let. Colors are hex: 0xff0000.\n' +
-        'OBJECTS (return name string):\n' +
-        'Engine.addCube(x,y,z,size,color) Engine.addSphere(x,y,z,radius,color)\n' +
-        'Engine.addCylinder(x,y,z,rTop,rBot,height,color) Engine.addCone(x,y,z,radius,height,color)\n' +
-        'Engine.addCapsule(x,y,z,radius,height,color) Engine.addTorus(x,y,z,radius,tube,color)\n' +
-        'Engine.addPlane(width,height,color) Engine.addTorusKnot(x,y,z,radius,tube,color)\n' +
-        'Engine.addIcosahedron(x,y,z,radius,color) Engine.addDodecahedron(x,y,z,radius,color)\n' +
-        'LIGHT: Engine.addLight(type,x,y,z,color,intensity) Engine.addPointLight(x,y,z,intensity,color)\n' +
-        'Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity)\n' +
-        'Engine.addAmbientLight(color,intensity)\n' +
-        'TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z)\n' +
-        'Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parentName,childName)\n' +
-        'CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b)\n' +
-        'REMOVE: Engine.removeObject(name)\n' +
-        'ANIMATE: Engine.animate(name,prop,from,to,duration)\n' +
-        'PHYSICS (Play mode): Engine.addRigidBody(name,mass,drag,useGravity) Engine.setVelocity(name,vx,vy,vz)\n' +
-        'Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,radius)\n' +
-        'Engine.addCapsuleCollider(name,radius,height) Engine.addCylinderCollider(name,radius,height)\n' +
-        'Engine.addWheelCollider(name,radius,suspDist) Engine.addPlaneCollider(name) Engine.addMeshCollider(name)\n' +
-        'UI: Engine.addUI(type,{x,y,width,height,text,color,bgColor,fontSize,src,borderRadius}) Engine.showUI()\n' +
-        'RULES: When user asks for "character" or "person" or "humanoid" or "man" or "woman" or "robot":\n' +
-        'ALWAYS build from primitives: head(sphere), body(cube), arms(cylinders), legs(cylinders).\n' +
-        'NEVER use addObject("character"). Copy this exact pattern changing colors/size:\n' +
-        'var head = Engine.addSphere(0, 2.6, 0, 0.35, 0xffdbac);\n' +
-        'var body = Engine.addCube(0, 1.6, 0, 0.9, 0.3, 0.6, 0x3b82f6);\n' +
-        'var armL = Engine.addCube(-0.7, 1.6, 0, 0.25, 0.7, 0.25, 0x3b82f6);\n' +
-        'var armR = Engine.addCube(0.7, 1.6, 0, 0.25, 0.7, 0.25, 0x3b82f6);\n' +
-        'var legL = Engine.addCube(-0.25, 0.5, 0, 0.3, 1.0, 0.3, 0x1e3a5f);\n' +
-        'var legR = Engine.addCube(0.25, 0.5, 0, 0.3, 1.0, 0.3, 0x1e3a5f);\n' +
-        'Engine.setCameraPos(3, 3, 3);\n' +
-        'RULES: When user asks for "house" or "building":\n' +
-        'ALWAYS build: floor(plane), 4 walls(cubes), roof(cone or cube).\n' +
-        'var floor = Engine.addCube(0, 0, 0, 4, 0.2, 4, 0x8B4513);\n' +
-        'var wall1 = Engine.addCube(0, 1.5, 2, 4, 3, 0.2, 0xd4a574);\n' +
-        'var wall2 = Engine.addCube(0, 1.5, -2, 4, 3, 0.2, 0xd4a574);\n' +
-        'var wall3 = Engine.addCube(-2, 1.5, 0, 0.2, 3, 4, 0xd4a574);\n' +
-        'var wall4 = Engine.addCube(2, 1.5, 0, 0.2, 3, 4, 0xd4a574);\n' +
-        'var roof = Engine.addCone(0, 3.5, 0, 2.5, 2, 0xcc3333);\n' +
-        'RULES: When user asks for "car" or "vehicle":\n' +
-        'ALWAYS build: body(cube), wheels(spheres), windows.\n' +
-        'RULES: When user asks for "tree":\n' +
-        'ALWAYS build: trunk(cylinder), leaves(sphere or cone).\n' +
-        'RULES: When user asks for "city" or "town":\n' +
-        'ALWAYS build multiple houses with different positions, add road(plane), trees.\n' +
-        'RULES: When user asks for "ball" or "physics":\n' +
-        'var ball = Engine.addSphere(0, 5, 0, 0.5, 0xff4444);\n' +
-        'Engine.addRigidBody(ball, 1, 0, true);\n' +
-        'Engine.addSphereCollider(ball, 0.5);\n' +
-        'var ground = Engine.addCube(0, -0.5, 0, 10, 1, 10, 0x444444);\n' +
-        'Engine.addBoxCollider(ground, 10, 1, 10);\n' +
-        'ALWAYS end with Engine.setCameraPos(3, 3, 3); so user can see the scene.\n';
+    var _codeSystemPrompt = 'You are a 3D scene code generator. Write ONLY JavaScript code. No text, no markdown, no explanations.\n' +
+        'Use var (never const/let). Colors are hex numbers like 0xff0000.\n' +
+        'All functions return a name string. Save it in var to use later.\n' +
+        'SHAPE FUNCTIONS:\n' +
+        'addCube(x,y,z,w,h,d,color) — w=width h=height d=depth\n' +
+        'addSphere(x,y,z,radius,color)\n' +
+        'addCylinder(x,y,z,radiusTop,radiusBot,height,color)\n' +
+        'addCone(x,y,z,radius,height,color)\n' +
+        'addCapsule(x,y,z,radius,height,color)\n' +
+        'addTorus(x,y,z,radius,tube,color)\n' +
+        'addPlane(width,height,color)\n' +
+        'addTorusKnot(x,y,z,radius,tube,color)\n' +
+        'addIcosahedron(x,y,z,radius,color)\n' +
+        'LIGHT FUNCTIONS:\n' +
+        'addPointLight(x,y,z,intensity,color)\n' +
+        'addDirectionalLight(x,y,z,color,intensity)\n' +
+        'addSpotLight(x,y,z,color,intensity)\n' +
+        'addAmbientLight(color,intensity)\n' +
+        'TRANSFORM FUNCTIONS (take object name from var):\n' +
+        'setPosition(name,x,y,z) setRotation(name,x,y,z) setScale(name,x,y,z)\n' +
+        'setObjectColor(name,color) moveObject(name,dx,dy,dz)\n' +
+        'addChild(parentName,childName) removeObject(name)\n' +
+        'CAMERA: setCameraPos(x,y,z) setCameraTarget(x,y,z) setBgColor(r,g,b)\n' +
+        'ANIMATE: animate(name,property,from,to,duration)\n' +
+        'PHYSICS: addRigidBody(name,mass,drag,useGravity) setVelocity(name,vx,vy,vz)\n' +
+        'addBoxCollider(name,sx,sy,sz) addSphereCollider(name,radius)\n' +
+        'addCapsuleCollider(name,radius,height) addCylinderCollider(name,radius,height)\n' +
+        'addWheelCollider(name,radius,suspensionDistance) addPlaneCollider(name)\n' +
+        'UI: addUI(type,{x,y,width,height,text,color,bgColor,fontSize,src}) showUI()\n' +
+        'IMPORTANT RULES:\n' +
+        '1. Build complex objects from multiple primitives (cubes, spheres, cylinders etc).\n' +
+        '2. A character = head(sphere) + body(cube) + arms(cubes/cylinders) + legs(cubes/cylinders).\n' +
+        '3. A house = floor + 4 walls + roof(cone).\n' +
+        '4. A car = body + top + 4 wheels(spheres).\n' +
+        '5. Always end with setCameraPos(3,3,3) so camera shows the scene.\n' +
+        '6. Output MANY lines of code (at least 6-15 lines for any object).\n' +
+        '7. NEVER write explanatory text. NEVER use addObject("character").\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
         'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
@@ -4375,7 +4360,7 @@ var SashaWebLLM = (function() {
     async function generateCode(prompt, currentCode) {
         var sys = _codeSystemPrompt;
         if (currentCode && currentCode.trim().length > 0) {
-            sys += '\nCurrent code:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
+            sys += '\nCurrent code in editor:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
         }
         return await generate(prompt, sys);
     }
@@ -4394,14 +4379,14 @@ var SashaWebLLM = (function() {
 
         var sys = _codeSystemPrompt;
         if (currentCode && currentCode.trim().length > 0) {
-            sys += '\nCurrent code:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
+            sys += '\nCurrent code in editor:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
         }
 
         chatHistory.push({ role: 'user', content: prompt });
 
         var messages = [];
         messages.push({ role: 'system', content: sys });
-        var maxHist = modelId.indexOf('3B') !== -1 ? 3 : 6;
+        var maxHist = modelId.indexOf('0.5B') !== -1 ? 1 : (modelId.indexOf('1.5B') !== -1 ? 2 : (modelId.indexOf('3B') !== -1 ? 3 : 6));
         var startIdx = Math.max(0, chatHistory.length - maxHist);
         for (var i = startIdx; i < chatHistory.length; i++) {
             messages.push(chatHistory[i]);
@@ -7663,11 +7648,19 @@ var EngineApp = (function() {
         if (SashaWebLLM && SashaWebLLM.setCodeMode) SashaWebLLM.setCodeMode(mode === 'build');
     }
 
+    // Detect if AI generated garbage code (only 1-2 primitives — means model didn't understand)
+    function isGarbageCode(code) {
+        if (!code || code.length < 20) return true;
+        var addCalls = code.match(/Engine\.(addCube|addSphere|addCylinder|addCone|addCapsule|addTorus|addPlane|addTorusKnot|addIcosahedron|addDodecahedron|addPointLight|addDirectionalLight|addSpotLight|addAmbientLight)/g);
+        var count = addCalls ? addCalls.length : 0;
+        return count <= 2;
+    }
+
     // Detect if AI generated Python instead of JavaScript
     function isPythonCode(code) {
         var pyIndicators = ['def ', 'class ', 'self.', 'import ', 'print(f', 'elif ', '    def', '# '];
-        var pyCount = 0;
         var jsIndicators = ['var ', 'function ', 'const ', 'let ', 'Engine.', 'THREE.', 'new THREE'];
+        var pyCount = 0;
         var jsCount = 0;
         for (var i = 0; i < pyIndicators.length; i++) {
             if (code.indexOf(pyIndicators[i]) !== -1) pyCount++;
@@ -7675,10 +7668,23 @@ var EngineApp = (function() {
         for (var j = 0; j < jsIndicators.length; j++) {
             if (code.indexOf(jsIndicators[j]) !== -1) jsCount++;
         }
-        return pyCount > 2 && jsCount < 2;
+        return pyCount > jsCount;
     }
 
-    // Built-in templates — guaranteed to work regardless of model quality
+    // Detect what user wants to build — used for template fallback when AI fails
+    function _detectTemplate(prompt) {
+        var p = prompt.toLowerCase();
+        if (/персонаж|character|человек|humanoid|man|woman|человечк|чел|фигур|игрок|герой|hero|мальчик|девочк|парен|девуш|баб|дед|солда|воин|рыцар|ниндзя|самурай|маг|ведьм|эльф|гном|орк|тролл|зомби|скелет|мутант|монстр/.test(p)) return 'character';
+        if (/робот|robot|мех|андроид|кибер|terminator|киборг|droid|железн/.test(p)) return 'robot';
+        if (/дом|house|building|здание|домик|доми|хата|изб|шалаш|замк|castle|бункер|башн|tower|церков|храм|ферм|сарай|гараж/.test(p)) return 'house';
+        if (/машин|car|авто|vehicle|грузовик|мотоцикл|мото|танк|фургон|автобус/.test(p)) return 'car';
+        if (/дерев|tree|лес|куст|цвет|flower|гриб|mushroom|кактус|cactus|пальм|ель|сосн|дуб|берез/.test(p)) return 'tree';
+        if (/город|city|town|деревн|село|посел|улиц|мегаполис/.test(p)) return 'city';
+        if (/мяч|ball|физик|physics|падени|прыг|bounce|подбрас|шар/.test(p)) return 'ball';
+        return null;
+    }
+
+    // Built-in templates — used ONLY as fallback when AI model fails or gives garbage
     var _templates = {
         character: function() {
             return [
@@ -7764,19 +7770,6 @@ var EngineApp = (function() {
         }
     };
 
-    // Detect what user wants and return template key or null
-    function _detectTemplate(prompt) {
-        var p = prompt.toLowerCase();
-        if (/персонаж|character|человек|humanoid|man|woman|человечк|чел|фигур|игрок/.test(p)) return 'character';
-        if (/робот|robot|мех|андроид|кибер/.test(p)) return 'robot';
-        if (/дом|house|building|здание|домик|доми|хата|изб|шалаш/.test(p)) return 'house';
-        if (/машин|car|авто|vehicle|грузовик|спорткар/.test(p)) return 'car';
-        if (/дерев|tree|лес|куст|растени/.test(p)) return 'tree';
-        if (/город|city|town|деревн|село|посел|улиц/.test(p)) return 'city';
-        if (/мяч|ball|физик|physics|падени|прыг|bounce/.test(p)) return 'ball';
-        return null;
-    }
-
     async function sendAI() {
         var input = document.getElementById('eng-ai-input');
         if (!input) return;
@@ -7803,20 +7796,7 @@ var EngineApp = (function() {
         try {
             var text;
             if (isBuild) {
-                // === CHECK BUILT-IN TEMPLATES FIRST (guaranteed to work) ===
-                var tmplKey = _detectTemplate(prompt);
-                if (tmplKey && _templates[tmplKey]) {
-                    var tmplCode = _templates[tmplKey]();
-                    if (editor) editor.setValue(tmplCode);
-                    runCode();
-                    var names = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
-                    addAIChat('ai', (names[tmplKey]||tmplKey) + ' создан на сцене!');
-                    log('Template used: ' + tmplKey, 'result');
-                    _aiBusy = false;
-                    return;
-                }
-
-                // === LIVE STREAMING CODE GENERATION ===
+                // === AI GENERATES CODE — model decides what to create ===
                 startLiveGeneration();
                 var currentCode = editor ? editor.getValue() : '';
                 var _genMsgEl = null;
@@ -7851,7 +7831,6 @@ var EngineApp = (function() {
                     // Streaming returned empty — check if editor was actually updated by streaming callback
                     var editorText = editor ? editor.getValue().trim() : '';
                     if (editorText !== currentCode && editorText.length > 20) {
-                        // Editor content changed during streaming — use it
                         console.log('[SashaAI] Streaming return empty but editor changed, using editor text');
                         text = editorText;
                     } else {
@@ -7861,6 +7840,17 @@ var EngineApp = (function() {
                         stopLiveGeneration();
                         text = await SashaWebLLM.generateCode(prompt, currentCode);
                         if (!text || text.length < 5) {
+                            // Both streaming and non-streaming failed — try template fallback
+                            var tmplKey2 = _detectTemplate(prompt);
+                            if (tmplKey2 && _templates[tmplKey2]) {
+                                text = _templates[tmplKey2]();
+                                if (editor) editor.setValue(text);
+                                runCode();
+                                var fbNames2 = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
+                                addAIChat('ai', 'AI не ответил, использовал шаблон: ' + (fbNames2[tmplKey2]||tmplKey2));
+                                refreshHierarchy(); refreshInspector();
+                                return;
+                            }
                             addAIChat('ai', 'Пустой ответ. Попробуй снова.');
                             return;
                         }
@@ -7875,9 +7865,34 @@ var EngineApp = (function() {
                 text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
 
                 if (isPythonCode(text)) {
-                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй другую модель.');
-                    log('AI generated Python — rejected', 'error');
+                    addAIChat('ai', 'Модель выдала не JS. Пробую шаблон...');
+                    log('AI generated Python — trying template fallback', 'warn');
                     stopLiveGeneration();
+                    var tmplKeyPy = _detectTemplate(prompt);
+                    if (tmplKeyPy && _templates[tmplKeyPy]) {
+                        text = _templates[tmplKeyPy]();
+                        if (editor) editor.setValue(text);
+                        runCode();
+                        var fbNamesPy = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
+                        addAIChat('ai', 'Использовал шаблон: ' + (fbNamesPy[tmplKeyPy]||tmplKeyPy));
+                        refreshHierarchy(); refreshInspector();
+                        return;
+                    }
+                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй другую модель.');
+                    return;
+                }
+
+                // === Check if AI generated garbage (only 1-2 primitives) — fallback to template ===
+                var tmplKeyGarbage = _detectTemplate(prompt);
+                if (isGarbageCode(text) && tmplKeyGarbage && _templates[tmplKeyGarbage]) {
+                    log('AI output too simple (' + (text.match(/Engine\.add/g)||[]).length + ' calls), using template fallback', 'warn');
+                    text = _templates[tmplKeyGarbage]();
+                    if (editor) editor.setValue(text);
+                    stopLiveGeneration();
+                    runCode();
+                    var fbNamesG = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
+                    addAIChat('ai', 'AI выдал простой код, шаблон: ' + (fbNamesG[tmplKeyGarbage]||tmplKeyGarbage));
+                    refreshHierarchy(); refreshInspector();
                     return;
                 }
 
@@ -8079,6 +8094,3 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
-
-
-
