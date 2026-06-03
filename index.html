@@ -7307,15 +7307,58 @@ var EngineApp = (function() {
 
     var _lastRunError = null;
 
+    // Extract clean JS code from model output (strip markdown, text, explanations)
+    function _extractCode(raw) {
+        if (!raw) return '';
+        var text = raw;
+        // Try to extract from ```javascript ... ``` blocks
+        var blockMatch = text.match(/```(?:javascript|js)?\n([\s\S]*?)```/);
+        if (blockMatch && blockMatch[1] && blockMatch[1].trim().length > 5) {
+            text = blockMatch[1];
+        } else {
+            text = text.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '');
+        }
+        var lines = text.split('\n');
+        var codeLines = [];
+        for (var i = 0; i < lines.length; i++) {
+            var ln = lines[i].trim();
+            if (!ln) { codeLines.push(''); continue; }
+            if (ln.indexOf('# ') === 0) continue;
+            var isCode = false;
+            if (ln.indexOf('var ') !== -1 || ln.indexOf('Engine.') === 0 ||
+                ln.indexOf('//') === 0 || ln.indexOf('/*') === 0 || ln.indexOf('*') === 0 ||
+                ln.indexOf('{') === 0 || ln.indexOf('}') === 0 ||
+                ln.indexOf('if ') === 0 || ln.indexOf('for ') === 0 || ln.indexOf('while ') === 0 ||
+                ln.indexOf('function ') === 0 || ln.indexOf('return ') === 0 ||
+                ln.indexOf('=') !== -1 || ln.indexOf('(') !== -1 ||
+                ln.indexOf('try') === 0 || ln.indexOf('catch') === 0 ||
+                ln.indexOf('new ') === 0 || ln.indexOf('this.') === 0 ||
+                ln.indexOf('Math.') === 0 || ln.indexOf('THREE.') === 0 ||
+                ln.match(/^\s*[}\]);]/)) {
+                isCode = true;
+            }
+            if (!isCode && ln.length < 40 && /^[A-Z][a-z]+$/.test(ln)) continue;
+            if (!isCode && /[а-яА-ЯёЁ]/.test(ln)) continue;
+            codeLines.push(lines[i]);
+        }
+        return codeLines.join('\n').trim();
+    }
+
     function runCode() {
         if (!editor) return;
         var code = editor.getValue();
         if (!code.trim()) return;
         console.log('[SashaAI] runCode() called, code length:', code.length);
-        console.log('[SashaAI] code preview:', code.substring(0, 200));
         _lastRunError = null;
 
-        // Clear previous user objects (keep builtins)
+        // Extract clean JS code from possible markdown/explanations
+        code = _extractCode(code);
+        if (!code.trim()) { log('No valid code found', 'warn'); return; }
+
+        // Rewrite const/let to var
+        code = code.replace(/^(const|let)\s+/gm, 'var ');
+
+        // Clear previous user objects
         var objs = SashaEngineAPI.getObjects();
         var toRemove = [];
         for (var name in objs) {
@@ -7327,28 +7370,42 @@ var EngineApp = (function() {
             SashaEngineAPI.removeObject(toRemove[r]);
         }
 
-        // Build smart sandbox
         var wrappedEngine = _buildSandbox();
         var logFn = function(text) { log(String(text), 'log'); };
-
-        // Rewrite const/let to var for new Function() compatibility
-        code = code.replace(/^(const|let)\s+/gm, 'var ');
 
         var start = Date.now();
         try {
             var fn = new Function('Engine', 'THREE', 'console', 'log', code);
-            var result = fn(wrappedEngine, THREE, { log: logFn, warn: function(t) { log(String(t), 'warn'); }, error: function(t) { log(String(t), 'error'); } }, logFn);
-            console.log('[SashaAI] runCode() executed successfully');
-            var elapsed = Date.now() - start;
-            log('Executed in ' + elapsed + 'ms', 'result');
-            if (result !== undefined) { log('Result: ' + String(result), 'result'); }
+            fn(wrappedEngine, THREE, { log: logFn, warn: function(t) { log(String(t), 'warn'); }, error: function(t) { log(String(t), 'error'); } }, logFn);
+            console.log('[SashaAI] runCode() OK');
+            log('Executed in ' + (Date.now() - start) + 'ms', 'result');
         } catch(e) {
-            console.error('[SashaAI] runCode() ERROR:', e.message);
-            var elapsed = Date.now() - start;
-            var errMsg = e.name + ': ' + e.message;
-            log(errMsg, 'error');
-            log('Failed after ' + elapsed + 'ms', 'error');
-            _lastRunError = errMsg;
+            // Full exec failed — try line by line so some objects still appear
+            console.error('[SashaAI] Full exec failed:', e.message, '— line by line fallback');
+            log('Trying line-by-line...', 'warn');
+            var allLines = code.split('\n');
+            var vars = {};
+            var skipped = 0;
+            for (var i = 0; i < allLines.length; i++) {
+                var line = allLines[i].trim();
+                if (!line || line.indexOf('//') === 0) continue;
+                try {
+                    var vm = line.match(/^var\s+(\w+)\s*=\s*(.+)$/);
+                    if (vm) {
+                        var fn2 = new Function('Engine', 'THREE', 'console', 'log', '_v',
+                            'var ' + vm[1] + ' = ' + vm[2] + '; _v["' + vm[1] + '"] = ' + vm[1] + ';');
+                        fn2(wrappedEngine, THREE, { log: logFn, warn: function(t){log(t,'warn');}, error: function(t){log(t,'error');} }, logFn, vars);
+                    } else {
+                        var vn = Object.keys(vars);
+                        var vd = '';
+                        for (var v = 0; v < vn.length; v++) { vd += 'var ' + vn[v] + ' = _v["' + vn[v] + '"]; '; }
+                        var fn3 = new Function('Engine', 'THREE', 'console', 'log', '_v', vd + line);
+                        fn3(wrappedEngine, THREE, { log: logFn, warn: function(t){log(t,'warn');}, error: function(t){log(t,'error');} }, logFn, vars);
+                    }
+                } catch(le) { skipped++; }
+            }
+            log('Line-by-line done in ' + (Date.now() - start) + 'ms' + (skipped > 0 ? ', ' + skipped + ' skipped' : ''), skipped > 0 ? 'warn' : 'result');
+            _lastRunError = e.name + ': ' + e.message;
         }
 
         refreshHierarchy();
@@ -7619,6 +7676,105 @@ var EngineApp = (function() {
         return pyCount > 2 && jsCount < 2;
     }
 
+    // Built-in templates — guaranteed to work regardless of model quality
+    var _templates = {
+        character: function() {
+            return [
+                'var head = Engine.addSphere(0, 2.6, 0, 0.35, 0xffdbac);',
+                'var body = Engine.addCube(0, 1.6, 0, 0.9, 0.3, 0.6, 0x3b82f6);',
+                'var armL = Engine.addCube(-0.7, 1.6, 0, 0.25, 0.7, 0.25, 0x3b82f6);',
+                'var armR = Engine.addCube(0.7, 1.6, 0, 0.25, 0.7, 0.25, 0x3b82f6);',
+                'var legL = Engine.addCube(-0.25, 0.5, 0, 0.3, 1.0, 0.3, 0x1e3a5f);',
+                'var legR = Engine.addCube(0.25, 0.5, 0, 0.3, 1.0, 0.3, 0x1e3a5f);',
+                'Engine.setCameraPos(3, 3, 3);'
+            ].join('\n');
+        },
+        robot: function() {
+            return [
+                'var head = Engine.addCube(0, 2.8, 0, 0.5, 0.5, 0.5, 0x888888);',
+                'var eyeL = Engine.addSphere(-0.12, 2.85, 0.26, 0.06, 0xff0000);',
+                'var eyeR = Engine.addSphere(0.12, 2.85, 0.26, 0.06, 0xff0000);',
+                'var body = Engine.addCube(0, 1.6, 0, 0.8, 1.0, 0.5, 0x555555);',
+                'var armL = Engine.addCube(-0.65, 1.6, 0, 0.25, 0.8, 0.25, 0x777777);',
+                'var armR = Engine.addCube(0.65, 1.6, 0, 0.25, 0.8, 0.25, 0x777777);',
+                'var legL = Engine.addCube(-0.2, 0.5, 0, 0.3, 1.0, 0.3, 0x444444);',
+                'var legR = Engine.addCube(0.2, 0.5, 0, 0.3, 1.0, 0.3, 0x444444);',
+                'Engine.setCameraPos(3, 3, 3);'
+            ].join('\n');
+        },
+        house: function() {
+            return [
+                'var floor = Engine.addCube(0, 0.05, 0, 4, 0.1, 4, 0x8B4513);',
+                'var wall1 = Engine.addCube(0, 1.5, 2, 4, 3, 0.2, 0xd4a574);',
+                'var wall2 = Engine.addCube(0, 1.5, -2, 4, 3, 0.2, 0xd4a574);',
+                'var wall3 = Engine.addCube(-2, 1.5, 0, 0.2, 3, 4, 0xd4a574);',
+                'var wall4 = Engine.addCube(2, 1.5, 0, 0.2, 3, 4, 0xd4a574);',
+                'var roof = Engine.addCone(0, 3.5, 0, 2.5, 1.5, 0xcc3333);',
+                'var door = Engine.addCube(0.8, 0.8, 2.01, 0.6, 1.4, 0.05, 0x654321);',
+                'Engine.setCameraPos(5, 4, 5);'
+            ].join('\n');
+        },
+        car: function() {
+            return [
+                'var body = Engine.addCube(0, 0.5, 0, 2.0, 0.4, 1.2, 0xff0000);',
+                'var top = Engine.addCube(-0.2, 0.9, 0, 1.0, 0.35, 1.0, 0xcc0000);',
+                'var wFL = Engine.addSphere(0.7, 0.2, 0.7, 0.22, 0x222222);',
+                'var wFR = Engine.addSphere(0.7, 0.2, -0.7, 0.22, 0x222222);',
+                'var wBL = Engine.addSphere(-0.7, 0.2, 0.7, 0.22, 0x222222);',
+                'var wBR = Engine.addSphere(-0.7, 0.2, -0.7, 0.22, 0x222222);',
+                'var headL = Engine.addPointLight(1.0, 0.5, 0.4, 2, 0xffff00);',
+                'var headR = Engine.addPointLight(1.0, 0.5, -0.4, 2, 0xffff00);',
+                'Engine.setCameraPos(3, 2, 3);'
+            ].join('\n');
+        },
+        tree: function() {
+            return [
+                'var trunk = Engine.addCylinder(0, 0.8, 0, 0.15, 0.15, 1.6, 0x8B4513);',
+                'var leaves = Engine.addSphere(0, 2.0, 0, 0.8, 0x228B22);',
+                'Engine.setCameraPos(2, 2, 2);'
+            ].join('\n');
+        },
+        city: function() {
+            return [
+                'var road = Engine.addCube(0, 0.01, 0, 20, 0.02, 3, 0x333333);',
+                'var h1 = Engine.addCube(-4, 2, 4, 3, 4, 3, 0xaabbcc);',
+                'var h2 = Engine.addCube(4, 1.5, 4, 2, 3, 2, 0xccbbaa);',
+                'var h3 = Engine.addCube(-4, 3, -4, 2.5, 6, 2.5, 0xbbaacc);',
+                'var h4 = Engine.addCube(4, 2.5, -4, 2, 5, 2, 0xccaabb);',
+                'var r1 = Engine.addCone(-4, 4.2, 4, 1.8, 1, 0xcc3333);',
+                'var r2 = Engine.addCone(4, 3.2, 4, 1.3, 0.8, 0xcc3333);',
+                'var t1 = Engine.addCylinder(-6, 0.6, 3, 0.1, 0.1, 1.2, 0x8B4513);',
+                'var t1l = Engine.addSphere(-6, 1.5, 3, 0.5, 0x228B22);',
+                'var t2 = Engine.addCylinder(6, 0.6, -3, 0.1, 0.1, 1.2, 0x8B4513);',
+                'var t2l = Engine.addSphere(6, 1.5, -3, 0.5, 0x228B22);',
+                'Engine.setCameraPos(8, 6, 8);'
+            ].join('\n');
+        },
+        ball: function() {
+            return [
+                'var ball = Engine.addSphere(0, 5, 0, 0.5, 0xff4444);',
+                'Engine.addRigidBody(ball, 1, 0, true);',
+                'Engine.addSphereCollider(ball, 0.5);',
+                'var ground = Engine.addCube(0, -0.5, 0, 10, 1, 10, 0x444444);',
+                'Engine.addBoxCollider(ground, 10, 1, 10);',
+                'Engine.setCameraPos(3, 3, 3);'
+            ].join('\n');
+        }
+    };
+
+    // Detect what user wants and return template key or null
+    function _detectTemplate(prompt) {
+        var p = prompt.toLowerCase();
+        if (/персонаж|character|человек|humanoid|man|woman|человечк|чел|фигур|игрок/.test(p)) return 'character';
+        if (/робот|robot|мех|андроид|кибер/.test(p)) return 'robot';
+        if (/дом|house|building|здание|домик|доми|хата|изб|шалаш/.test(p)) return 'house';
+        if (/машин|car|авто|vehicle|грузовик|спорткар/.test(p)) return 'car';
+        if (/дерев|tree|лес|куст|растени/.test(p)) return 'tree';
+        if (/город|city|town|деревн|село|посел|улиц/.test(p)) return 'city';
+        if (/мяч|ball|физик|physics|падени|прыг|bounce/.test(p)) return 'ball';
+        return null;
+    }
+
     async function sendAI() {
         var input = document.getElementById('eng-ai-input');
         if (!input) return;
@@ -7645,6 +7801,19 @@ var EngineApp = (function() {
         try {
             var text;
             if (isBuild) {
+                // === CHECK BUILT-IN TEMPLATES FIRST (guaranteed to work) ===
+                var tmplKey = _detectTemplate(prompt);
+                if (tmplKey && _templates[tmplKey]) {
+                    var tmplCode = _templates[tmplKey]();
+                    if (editor) editor.setValue(tmplCode);
+                    runCode();
+                    var names = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
+                    addAIChat('ai', (names[tmplKey]||tmplKey) + ' создан на сцене!');
+                    log('Template used: ' + tmplKey, 'result');
+                    _aiBusy = false;
+                    return;
+                }
+
                 // === LIVE STREAMING CODE GENERATION ===
                 startLiveGeneration();
                 var currentCode = editor ? editor.getValue() : '';
@@ -7677,19 +7846,20 @@ var EngineApp = (function() {
                 if (_debounceTimer) { clearTimeout(_debounceTimer); _debounceTimer = null; }
 
                 if (!text || text.length < 5) {
-                    // Try to get text from editor (streaming may have updated it even if return was empty)
+                    // Streaming returned empty — check if editor was actually updated by streaming callback
                     var editorText = editor ? editor.getValue().trim() : '';
-                    if (editorText.length > 10) {
-                        console.log('[SashaAI] Streaming returned empty but editor has', editorText.length, 'chars, using editor text');
+                    if (editorText !== currentCode && editorText.length > 20) {
+                        // Editor content changed during streaming — use it
+                        console.log('[SashaAI] Streaming return empty but editor changed, using editor text');
                         text = editorText;
                     } else {
-                        // STREAMING FAILED — fallback to non-streaming generation
+                        // Editor still has old code — do non-streaming fallback
                         log('Stream returned empty, trying non-streaming fallback...', 'warn');
                         addAIChat('ai', 'Стриминг пустой, пробую обычную генерацию...');
                         stopLiveGeneration();
                         text = await SashaWebLLM.generateCode(prompt, currentCode);
                         if (!text || text.length < 5) {
-                            addAIChat('ai', 'Пустой ответ. Попробуй снова или перезагрузи страницу.');
+                            addAIChat('ai', 'Пустой ответ. Попробуй снова.');
                             return;
                         }
                     }
@@ -7907,5 +8077,6 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
 
 
