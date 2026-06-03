@@ -4273,11 +4273,11 @@ var SashaWebLLM = (function() {
 
         var text = '';
         try {
-            var maxTok = 1024;
-            if (modelId.indexOf('0.5B') !== -1) maxTok = 512;
-            else if (modelId.indexOf('1.5B') !== -1) maxTok = 1024;
-            else if (modelId.indexOf('3B') !== -1) maxTok = 2048;
-            else if (modelId.indexOf('7B') !== -1) maxTok = 4096;
+            var maxTok = 512;
+            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
+            else if (modelId.indexOf('1.5B') !== -1) maxTok = 512;
+            else if (modelId.indexOf('3B') !== -1) maxTok = 1024;
+            else if (modelId.indexOf('7B') !== -1) maxTok = 1024;
 
             var result = await engine.chat.completions.create({
                 messages: messages, max_tokens: maxTok,
@@ -4374,11 +4374,11 @@ var SashaWebLLM = (function() {
 
         var fullText = '';
         try {
-            var maxTok = 1024;
-            if (modelId.indexOf('0.5B') !== -1) maxTok = 512;
-            else if (modelId.indexOf('1.5B') !== -1) maxTok = 1024;
-            else if (modelId.indexOf('3B') !== -1) maxTok = 2048;
-            else if (modelId.indexOf('7B') !== -1) maxTok = 4096;
+            var maxTok = 512;
+            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
+            else if (modelId.indexOf('1.5B') !== -1) maxTok = 512;
+            else if (modelId.indexOf('3B') !== -1) maxTok = 1024;
+            else if (modelId.indexOf('7B') !== -1) maxTok = 1024;
 
             var result = await engine.chat.completions.create({
                 messages: messages, max_tokens: maxTok,
@@ -4470,11 +4470,47 @@ var SashaWebLLM = (function() {
         updateStatus();
     }
 
+    // Recover model after GPU crash - scene stays intact
+    var _recovering = false;
+    async function recoverModel() {
+        if (_recovering) return 'already recovering';
+        _recovering = true;
+        var savedModelId = modelId;
+        console.log('[SashaWebLLM] Recovering model:', savedModelId);
+        try {
+            if (engine) {
+                try { await engine.unload(); } catch(e) {}
+                engine = null;
+            }
+            gpuDead = false;
+            status = 'loading';
+            updateStatus();
+            await new Promise(function(r) { setTimeout(r, 3000); });
+            var mod = await importWebLLM();
+            engine = new mod.MLCEngine({ initProgressCallback: function() {} });
+            await engine.reload(savedModelId);
+            status = 'ready';
+            gpuDead = false;
+            chatHistory = [];
+            updateStatus();
+            _recovering = false;
+            return 'ok';
+        } catch(e) {
+            console.error('[SashaWebLLM] Recovery failed:', e.message);
+            status = 'error';
+            gpuDead = true;
+            updateStatus();
+            _recovering = false;
+            return 'failed: ' + e.message;
+        }
+    }
+
     return {
         loadModel: loadModel, generate: generate, chat: chat, generateCode: generateCode,
         generateCodeStream: generateCodeStream,
         isReady: isReady, getStatus: getStatus, getLoadedModelId: getLoadedModelId,
         unload: unload, clearHistory: clearHistory,
+        recoverModel: recoverModel,
         setCodeMode: setCodeMode, isCodeMode: isCodeMode
     };
 })();
@@ -7880,8 +7916,20 @@ var EngineApp = (function() {
                 log('AI chat response', 'info');
             }
         } catch(e) {
-            addAIChat('ai', 'Ошибка: ' + e.message);
-            log('AI error: ' + e.message, 'error');
+            var errMsg = String(e.message || e);
+            addAIChat('ai', 'Ошибка: ' + errMsg);
+            log('AI error: ' + errMsg, 'error');
+            // Auto-recover model on GPU crash (scene stays intact)
+            if (errMsg.indexOf('DXGI_ERROR') !== -1 || errMsg.indexOf('DEVICE_REMOVED') !== -1 ||
+                errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('requestDevice') !== -1) {
+                addAIChat('ai', 'GPU сброшен. Перезапускаю модель (сцена сохранена)...');
+                var recovery = await SashaWebLLM.recoverModel();
+                if (recovery === 'ok') {
+                    addAIChat('ai', 'Модель восстановлена! Попробуй снова.');
+                } else {
+                    addAIChat('ai', 'Не удалось восстановить модель. Перезагрузи страницу (F5).');
+                }
+            }
         } finally {
             _aiBusy = false;
         }
