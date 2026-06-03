@@ -4294,6 +4294,13 @@ var SashaWebLLM = (function() {
         } catch(e) {
             var errMsg = String(e.message || e);
             chatHistory.pop();
+            // Handle "disposed" error — GPU object was garbage collected or lost
+            if (errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('Disposed') !== -1) {
+                gpuDead = true;
+                status = 'error';
+                updateStatus();
+                return 'Error: GPU объект удалён. Перезагрузи страницу (F5) и попробуй снова.';
+            }
             if (isGPUDead(errMsg)) {
                 gpuDead = true;
                 status = 'error';
@@ -4449,6 +4456,13 @@ var SashaWebLLM = (function() {
         } catch(e) {
             var errMsg = String(e.message || e);
             chatHistory.pop();
+            if (errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('Disposed') !== -1) {
+                gpuDead = true;
+                status = 'error';
+                updateStatus();
+                if (onToken) onToken(fullText, '\n[GPU disposed — перезагрузи страницу]');
+                return fullText;
+            }
             if (isGPUDead(errMsg)) {
                 gpuDead = true;
                 status = 'error';
@@ -7803,65 +7817,58 @@ var EngineApp = (function() {
         try {
             var text;
             if (isBuild) {
-                // === AI GENERATES CODE — model decides what to create ===
-                startLiveGeneration();
+                // === AI GENERATES CODE — non-streaming first (reliable), then try streaming as bonus ===
                 var currentCode = editor ? editor.getValue() : '';
-                var _genMsgEl = null;
-                var _tokenCount = 0;
-                var _debounceTimer = null;
 
-                text = await SashaWebLLM.generateCodeStream(prompt, currentCode, function(fullText, delta) {
-                    _tokenCount++;
-                    // Update editor in real-time
-                    var clean = fullText.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '');
-                    if (editor) editor.setValue(clean);
+                // === STEP 1: Non-streaming generation (most reliable, doesn't kill GPU) ===
+                log('Trying non-streaming code generation...', 'info');
+                text = await SashaWebLLM.generateCode(prompt, currentCode);
 
-                    // Execute incrementally every ~3 tokens (debounce)
-                    if (_debounceTimer) clearTimeout(_debounceTimer);
-                    _debounceTimer = setTimeout(function() {
-                        executeIncremental(fullText);
-                    }, 80);
+                if (!text || text.length < 5 || (text.indexOf('Error:') === 0 && text.length < 100)) {
+                    log('Non-streaming failed, trying streaming...', 'warn');
+                    // === STEP 2: Try streaming as fallback ===
+                    startLiveGeneration();
+                    var _debounceTimer = null;
+                    text = await SashaWebLLM.generateCodeStream(prompt, currentCode, function(fullText, delta) {
+                        var clean = fullText.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '');
+                        if (editor) editor.setValue(clean);
+                        if (_debounceTimer) clearTimeout(_debounceTimer);
+                        _debounceTimer = setTimeout(function() {
+                            executeIncremental(fullText);
+                        }, 80);
+                        var chatDiv = document.getElementById('eng-ai-chat');
+                        if (chatDiv && chatDiv.lastChild) {
+                            var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
+                            chatDiv.lastChild.textContent = 'streaming... ' + fullText.length + ' chars (' + elapsed + 's)';
+                        }
+                    });
+                    if (_debounceTimer) { clearTimeout(_debounceTimer); _debounceTimer = null; }
 
-                    // Update AI chat message with live status
-                    var chatDiv = document.getElementById('eng-ai-chat');
-                    if (chatDiv && chatDiv.lastChild) {
-                        var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
-                        chatDiv.lastChild.textContent = 'streaming... ' + fullText.length + ' chars (' + elapsed + 's)';
-                        chatDiv.lastChild.className = 'engine-ai-msg ai streaming';
-                    }
-                });
-
-                // Cancel pending debounce timer
-                if (_debounceTimer) { clearTimeout(_debounceTimer); _debounceTimer = null; }
-
-                if (!text || text.length < 5) {
-                    // Streaming returned empty — check if editor was actually updated by streaming callback
-                    var editorText = editor ? editor.getValue().trim() : '';
-                    if (editorText !== currentCode && editorText.length > 20) {
-                        console.log('[SashaAI] Streaming return empty but editor changed, using editor text');
-                        text = editorText;
-                    } else {
-                        // Editor still has old code — do non-streaming fallback
-                        log('Stream returned empty, trying non-streaming fallback...', 'warn');
-                        addAIChat('ai', 'Стриминг пустой, пробую обычную генерацию...');
-                        stopLiveGeneration();
-                        text = await SashaWebLLM.generateCode(prompt, currentCode);
-                        if (!text || text.length < 5) {
-                            // Both streaming and non-streaming failed — try template fallback
-                            var tmplKey2 = _detectTemplate(prompt);
-                            if (tmplKey2 && _templates[tmplKey2]) {
-                                text = _templates[tmplKey2]();
-                                if (editor) editor.setValue(text);
-                                runCode();
-                                var fbNames2 = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
-                                addAIChat('ai', 'AI не ответил, использовал шаблон: ' + (fbNames2[tmplKey2]||tmplKey2));
-                                refreshHierarchy(); refreshInspector();
-                                return;
-                            }
-                            addAIChat('ai', 'Пустой ответ. Попробуй снова.');
-                            return;
+                    // Check if streaming callback updated editor even though return was empty
+                    if ((!text || text.length < 5) && editor) {
+                        var editorText = editor.getValue().trim();
+                        if (editorText !== currentCode && editorText.length > 20) {
+                            text = editorText;
                         }
                     }
+                }
+
+                // === STEP 3: Both methods failed — template fallback ===
+                if (!text || text.length < 5) {
+                    stopLiveGeneration();
+                    addAIChat('ai', 'AI не ответил. Пробую шаблон...');
+                    var tmplKey2 = _detectTemplate(prompt);
+                    if (tmplKey2 && _templates[tmplKey2]) {
+                        text = _templates[tmplKey2]();
+                        if (editor) editor.setValue(text);
+                        runCode();
+                        var fbNames2 = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
+                        addAIChat('ai', 'AI не ответил, использовал шаблон: ' + (fbNames2[tmplKey2]||tmplKey2));
+                        refreshHierarchy(); refreshInspector();
+                        return;
+                    }
+                    addAIChat('ai', 'Пустой ответ. Попробуй снова.');
+                    return;
                 }
 
                 if (text.indexOf('Error:') === 0 && text.length < 100) {
@@ -8101,4 +8108,3 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
-
