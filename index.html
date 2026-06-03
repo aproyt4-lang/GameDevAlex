@@ -4312,15 +4312,16 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are a 3D scene builder. Write ONLY JavaScript code. No text, no markdown.\n' +
-        'Use var. All functions return object name. Save in var. Colors hex: red=0xff0000 blue=0x0000ff green=0x00ff00 yellow=0xffff00 orange=0xff8800 purple=0x8800ff pink=0xff88cc white=0xffffff gray=0x888888 black=0x111111\n' +
-        'addCube(x,y,z,w,h,d,c) addSphere(x,y,z,r,c) addCylinder(x,y,z,rT,rB,h,c) addCone(x,y,z,r,h,c) addCapsule(x,y,z,r,h,c) addTorus(x,y,z,r,tube,c) addTorusKnot(x,y,z,r,tube,c) addIcosahedron(x,y,z,r,c) addPlane(w,h,c)\n' +
-        'addPointLight(x,y,z,i,c) addDirectionalLight(x,y,z,c,i) addSpotLight(x,y,z,c,i) addAmbientLight(c,i)\n' +
-        'setPosition(n,x,y,z) setRotation(n,x,y,z) setScale(n,x,y,z) setObjectColor(n,c) moveObject(n,dx,dy,dz) addChild(p,c) removeObject(n)\n' +
-        'setCameraPos(x,y,z) setCameraTarget(x,y,z) setBgColor(r,g,b) animate(n,prop,from,to,dur)\n' +
-        'addRigidBody(n,m,d,g) setVelocity(n,vx,vy,vz) addBoxCollider(n,sx,sy,sz) addSphereCollider(n,r)\n' +
-        'Build complex objects from many primitives. A helicopter=body(cube)+rotors(cylinders)+tail(cylinder)+skids(cylinders). A person=head(sphere)+body(cube)+arms(cubes)+legs(cubes).\n' +
-        'ALWAYS generate 8-20+ lines. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER output just 1-3 lines or just sphere+cube. NEVER write text.\n';
+    var _codeSystemPrompt = 'You are a 3D scene generator. Return ONLY JavaScript using Engine API.\n' +
+        'Use var. Colors hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xff88cc=pink 0xffffff=white 0x888888=gray 0x111111=black\n' +
+        'ALLOWED (all prefixed with Engine.):\n' +
+        'Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)\n' +
+        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
+        'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name)\n' +
+        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b) Engine.animate(name,prop,from,to,dur)\n' +
+        'Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)\n' +
+        'FORBIDDEN: document. window. fetch eval localStorage XMLHttpRequest innerHTML\n' +
+        'Build complex objects from many primitives. ALWAYS create 5+ objects. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER write text or markdown.\n';
 
     var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
         'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
@@ -7332,26 +7333,6 @@ var EngineApp = (function() {
         // Rewrite const/let to var
         code = code.replace(/^(const|let)\s+/gm, 'var ');
 
-        // Auto-fix: if model generated code without Engine. prefix, add it
-        if (code.indexOf('Engine.') === -1) {
-            console.log('[SashaAI] No Engine. prefix found, auto-fixing...');
-            var apiFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addCapsule','addTorus',
-                'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel',
-                'addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
-                'setPosition','setRotation','setScale','setObjectColor','moveObject',
-                'addChild','removeObject','setCameraPos','setCameraTarget','setBgColor',
-                'animate','addRigidBody','setVelocity','addBoxCollider','addSphereCollider',
-                'addCapsuleCollider','addCylinderCollider','addPlaneCollider','addWheelCollider',
-                'addUI','showUI'];
-            for (var fi = 0; fi < apiFns.length; fi++) {
-                var fn = apiFns[fi];
-                code = code.replace(new RegExp('([^\\w.])' + fn + '\\(', 'g'), '$1Engine.' + fn + '(');
-                // Fix start-of-line case
-                code = code.replace(new RegExp('^' + fn + '\\(', 'gm'), 'Engine.' + fn + '(');
-            }
-            console.log('[SashaAI] After auto-fix:', code.substring(0, 300));
-        }
-
         // Clear previous user objects
         var objs = SashaEngineAPI.getObjects();
         var toRemove = [];
@@ -7655,6 +7636,27 @@ var EngineApp = (function() {
         if (SashaWebLLM && SashaWebLLM.setCodeMode) SashaWebLLM.setCodeMode(mode === 'build');
     }
 
+    // === CODE VALIDATION ===
+    function validateCode(code) {
+        if (!code || code.length < 20 || code.length > 30000) return false;
+        // Dangerous patterns
+        if (/while\s*\(\s*true\s*\)/.test(code)) return false;
+        if (/for\s*\(\s*;\s*;\s*\)/.test(code)) return false;
+        if (/document\./.test(code)) return false;
+        if (/window\./.test(code)) return false;
+        if (/\beval\s*\(/.test(code)) return false;
+        if (/\bfetch\s*\(/.test(code)) return false;
+        if (/localStorage/.test(code)) return false;
+        if (/XMLHttpRequest/.test(code)) return false;
+        if (/innerHTML/.test(code)) return false;
+        // Must use Engine API
+        if (!/Engine\./.test(code)) return false;
+        // Must have at least 3 Engine calls
+        var calls = code.match(/Engine\.\w+/g);
+        if (!calls || calls.length < 3) return false;
+        return true;
+    }
+
     // Detect if AI generated garbage code (too few primitives = model didn't understand)
     function isGarbageCode(code) {
         if (!code || code.length < 30) return true;
@@ -7805,115 +7807,69 @@ var EngineApp = (function() {
         try {
             var text;
             if (isBuild) {
-                // === AI GENERATES CODE — non-streaming first (reliable), then try streaming as bonus ===
+                // === SCHEME: LLM -> validateCode -> runCode / template fallback ===
                 var currentCode = editor ? editor.getValue() : '';
 
-                // === STEP 1: Non-streaming generation (most reliable, doesn't kill GPU) ===
-                log('Trying non-streaming code generation...', 'info');
+                // === STEP 1: Try LLM generation (non-streaming, reliable) ===
+                log('LLM generating...', 'info');
                 text = await SashaWebLLM.generateCode(prompt, currentCode);
+                console.log('[SashaAI] LLM raw output (' + (text ? text.length : 0) + ' chars):', text);
 
-                if (!text || text.length < 5 || (text.indexOf('Error:') === 0 && text.length < 100)) {
-                    log('Non-streaming failed, trying streaming...', 'warn');
-                    // === STEP 2: Try streaming as fallback ===
-                    startLiveGeneration();
-                    var _debounceTimer = null;
-                    text = await SashaWebLLM.generateCodeStream(prompt, currentCode, function(fullText, delta) {
-                        var clean = fullText.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '');
-                        if (editor) editor.setValue(clean);
-                        if (_debounceTimer) clearTimeout(_debounceTimer);
-                        _debounceTimer = setTimeout(function() {
-                            executeIncremental(fullText);
-                        }, 80);
-                        var chatDiv = document.getElementById('eng-ai-chat');
-                        if (chatDiv && chatDiv.lastChild) {
-                            var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
-                            chatDiv.lastChild.textContent = 'streaming... ' + fullText.length + ' chars (' + elapsed + 's)';
-                        }
-                    });
-                    if (_debounceTimer) { clearTimeout(_debounceTimer); _debounceTimer = null; }
-
-                    // Check if streaming callback updated editor even though return was empty
-                    if ((!text || text.length < 5) && editor) {
-                        var editorText = editor.getValue().trim();
-                        if (editorText !== currentCode && editorText.length > 20) {
-                            text = editorText;
-                        }
-                    }
+                // Clean markdown wrappers
+                if (text && text.length > 5) {
+                    text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
                 }
 
-                // === STEP 3: Both methods failed — template fallback ===
-                if (!text || text.length < 5) {
-                    stopLiveGeneration();
-                    addAIChat('ai', 'AI не ответил. Пробую шаблон...');
-                    var tmplKey2 = _detectTemplate(prompt);
-                    if (tmplKey2 && _templates[tmplKey2]) {
-                        text = _templates[tmplKey2]();
-                        if (editor) editor.setValue(text);
-                        runCode();
-                        var fbNames2 = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
-                        addAIChat('ai', 'AI не ответил, использовал шаблон: ' + (fbNames2[tmplKey2]||tmplKey2));
-                        refreshHierarchy(); refreshInspector();
+                // === STEP 2: Validate code ===
+                var llmSuccess = false;
+                if (text && text.indexOf('Error:') !== 0 && validateCode(text) && !isPythonCode(text)) {
+                    console.log('[SashaAI] Code validated OK:', text.length, 'chars');
+                    llmSuccess = true;
+                } else {
+                    if (text && text.indexOf('Error:') === 0) {
+                        log('LLM returned error: ' + text, 'warn');
+                    } else if (text && !validateCode(text)) {
+                        console.log('[SashaAI] Code validation failed. Has Engine.:', /Engine\./.test(text), 'Length:', text.length);
+                        log('LLM code invalid, trying template...', 'warn');
+                    } else if (text && isPythonCode(text)) {
+                        log('LLM output Python, trying template...', 'warn');
+                    }
+                    llmSuccess = false;
+                }
+
+                // === STEP 3: If LLM failed -> template fallback ===
+                if (!llmSuccess) {
+                    var tmplKey = _detectTemplate(prompt);
+                    if (tmplKey && _templates[tmplKey]) {
+                        text = _templates[tmplKey]();
+                        console.log('[SashaAI] Using template:', tmplKey);
+                        var fbNames = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
+                        addAIChat('ai', 'Использую шаблон: ' + (fbNames[tmplKey]||tmplKey));
+                    } else if (!text || text.length < 10) {
+                        addAIChat('ai', 'Не получилось сгенерировать. Попробуй другую модель.');
                         return;
+                    } else {
+                        console.log('[SashaAI] No template match, running LLM code as-is');
+                        addAIChat('ai', 'Код сгенерирован (без шаблона).');
                     }
-                    addAIChat('ai', 'Пустой ответ. Попробуй снова.');
-                    return;
                 }
 
-                if (text.indexOf('Error:') === 0 && text.length < 100) {
-                    addAIChat('ai', 'Ошибка: ' + text);
-                    stopLiveGeneration();
-                    return;
-                }
-                text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
-                console.log('[SashaAI] AI generated code (' + text.length + ' chars):', text);
-
-                if (isPythonCode(text)) {
-                    addAIChat('ai', 'Модель выдала не JS. Пробую шаблон...');
-                    log('AI generated Python — trying template fallback', 'warn');
-                    stopLiveGeneration();
-                    var tmplKeyPy = _detectTemplate(prompt);
-                    if (tmplKeyPy && _templates[tmplKeyPy]) {
-                        text = _templates[tmplKeyPy]();
-                        if (editor) editor.setValue(text);
-                        runCode();
-                        var fbNamesPy = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
-                        addAIChat('ai', 'Использовал шаблон: ' + (fbNamesPy[tmplKeyPy]||tmplKeyPy));
-                        refreshHierarchy(); refreshInspector();
-                        return;
-                    }
-                    addAIChat('ai', 'Модель сгенерировала Python вместо JavaScript. Попробуй другую модель.');
-                    return;
-                }
-
-                // === Check if AI generated garbage (0-1 primitives) — fallback to template ===
-                var tmplKeyGarbage = _detectTemplate(prompt);
-                if (isGarbageCode(text) && tmplKeyGarbage && _templates[tmplKeyGarbage]) {
-                    log('AI output too simple (' + (text.match(/Engine\.add/g)||[]).length + ' calls), using template fallback', 'warn');
-                    text = _templates[tmplKeyGarbage]();
-                    if (editor) editor.setValue(text);
-                    stopLiveGeneration();
-                    runCode();
-                    var fbNamesG = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
-                    addAIChat('ai', 'AI выдал простой код, шаблон: ' + (fbNamesG[tmplKeyGarbage]||tmplKeyGarbage));
-                    refreshHierarchy(); refreshInspector();
-                    return;
-                }
-
-                // Clean code in editor
+                // === STEP 4: Run code on scene ===
                 if (editor) editor.setValue(text);
-
-                // === CRITICAL: Execute ALL the code on the scene ===
                 stopLiveGeneration();
                 runCode();
 
-                // Let GPU cool down to prevent crash on next request
-                await new Promise(function(r) { setTimeout(r, 1500); });
+                // GPU cooldown
+                await new Promise(function(r) { setTimeout(r, 3000); });
 
                 refreshHierarchy();
                 refreshInspector();
                 var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
-                addAIChat('ai', 'Готово за ' + elapsed + 's! Объекты на сцене.');
-                log('AI done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
+                if (llmSuccess) {
+                    addAIChat('ai', 'Сгенерировано за ' + elapsed + 's!');
+                }
+                log('Done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
+
             } else {
                 text = await SashaWebLLM.chat(prompt);
                 if (!text || text.indexOf('Error:') === 0) {
