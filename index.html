@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
    <meta charset="UTF-8">
@@ -7331,6 +7331,26 @@ var EngineApp = (function() {
 
         // Rewrite const/let to var
         code = code.replace(/^(const|let)\s+/gm, 'var ');
+
+        // Auto-fix: if model generated code without Engine. prefix, add it
+        if (code.indexOf('Engine.') === -1) {
+            console.log('[SashaAI] No Engine. prefix found, auto-fixing...');
+            var apiFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addCapsule','addTorus',
+                'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel',
+                'addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
+                'setPosition','setRotation','setScale','setObjectColor','moveObject',
+                'addChild','removeObject','setCameraPos','setCameraTarget','setBgColor',
+                'animate','addRigidBody','setVelocity','addBoxCollider','addSphereCollider',
+                'addCapsuleCollider','addCylinderCollider','addPlaneCollider','addWheelCollider',
+                'addUI','showUI'];
+            for (var fi = 0; fi < apiFns.length; fi++) {
+                var fn = apiFns[fi];
+                code = code.replace(new RegExp('([^\\w.])' + fn + '\\(', 'g'), '$1Engine.' + fn + '(');
+                // Fix start-of-line case
+                code = code.replace(new RegExp('^' + fn + '\\(', 'gm'), 'Engine.' + fn + '(');
+            }
+            console.log('[SashaAI] After auto-fix:', code.substring(0, 300));
+        }
 
         // Clear previous user objects
         var objs = SashaEngineAPI.getObjects();
