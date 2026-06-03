@@ -790,6 +790,7 @@
                         <option value="octahedron">Octahedron</option>
                         <option value="terrain">Terrain</option>
                         <option value="text3d">3D Text</option>
+                        <option value="camera">Camera</option>
                     </select>
                     <button class="eng-btn" onclick="EngineApp.addFromDropdown()" title="Add"><i class="fas fa-plus"></i></button>
                     <div class="eng-separator"></div>
@@ -4317,7 +4318,7 @@ var SashaWebLLM = (function() {
     var _codeSystemPrompt = 'You are a 3D scene generator. Return ONLY JavaScript using Engine API.\n' +
         'Use var. Colors hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xff88cc=pink 0xffffff=white 0x888888=gray 0x111111=black\n' +
         'ALLOWED (all prefixed with Engine.):\n' +
-        'Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)\n' +
+        'Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color) Engine.addCamera(fov,near,far)\n' +
         'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
         'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name)\n' +
         'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b) Engine.animate(name,prop,from,to,dur)\n' +
@@ -4325,12 +4326,12 @@ var SashaWebLLM = (function() {
         'FORBIDDEN: document. window. fetch eval localStorage XMLHttpRequest innerHTML\n' +
         'Build complex objects from many primitives. ALWAYS create 5+ objects. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER write text or markdown.\n';
 
-    var _chatSystemPrompt = 'Ты Sasha, дружелюбный AI ассистент в 3D движке. Отвечай кратко на русском (2-3 предложения). ' +
-        'Ты умеешь: создавать 3D сцены (кубы, сферы, плоскости, цилиндры, свет, анимации), ' +
-        'загружать GLB модели, писать скрипты, запускать код. ' +
-        'Когда спрашивают что умеешь — перечисли возможности. ' +
-        'Когда просят что-то создать — обсуди задачу и скажи переключиться на режим Build. ' +
-        'Не пиши код. Только разговор.';
+    var _chatSystemPrompt = 'You are Sasha, a friendly AI assistant in a 3D engine. Respond in Russian.\n' +
+        'You can generate code as text in chat. Use Engine API: Engine.addCube, Engine.addSphere, Engine.addCylinder, Engine.addCone, Engine.addCapsule, Engine.addTorus, Engine.addPlane, Engine.addIcosahedron, Engine.addTorusKnot, Engine.addPointLight, Engine.addDirectionalLight, Engine.addSpotLight, Engine.addAmbientLight, Engine.setPosition, Engine.setRotation, Engine.setScale, Engine.setCameraPos, Engine.setCameraTarget, Engine.animate, Engine.addRigidBody, Engine.setVelocity, Engine.moveObject, Engine.addChild, Engine.setObjectColor, Engine.removeObject.\n' +
+        'When user asks for code (movement, animation, scripts, any logic) — generate JavaScript code using Engine API. Show code in chat as text between ```javascript and ``` markers.\n' +
+        'When user asks to create 3D objects — suggest switching to Build mode.\n' +
+        'Keep responses concise. Discuss code when asked. Explain how the code works.\n' +
+        'Colors are hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.\n';
 
     function setCodeMode(v) { _codeMode = !!v; }
     function isCodeMode() { return _codeMode; }
@@ -4690,6 +4691,27 @@ var SashaEngineAPI = (function() {
     function getUniqueName(prefix) {
         objCounter++;
         return (prefix || 'obj') + '_' + objCounter;
+    }
+
+    function addCamera(fov, near, far) {
+        fov = fov || 60;
+        near = near || 0.1;
+        far = far || 1000;
+        var cam = new THREE.PerspectiveCamera(fov, canvas.clientWidth / canvas.clientHeight, near, far);
+        var name = getUniqueName('camera');
+        cam.name = name;
+        cam.position.set(0, 3, 8);
+        scene.add(cam);
+        objects[name] = cam;
+        objectTypes[name] = 'camera';
+        // Add a helper cube to make camera visible in viewport
+        var helper = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.2, 0.4),
+            new THREE.MeshBasicMaterial({ color: 0x44aaff, wireframe: true })
+        );
+        helper.name = name + '_helper';
+        cam.add(helper);
+        return name;
     }
 
     // --- Public API ---
@@ -5163,6 +5185,9 @@ var SashaEngineAPI = (function() {
             scene.add(mesh);
             objects[name] = mesh;
             objectTypes[name] = 'text3d';
+        }
+        else if (type === 'camera') {
+            return addCamera();
         }
         // Unknown type -> create empty Object3D
         if (!name && type) {
@@ -5913,6 +5938,7 @@ var SashaEngineAPI = (function() {
         // Convenience API for AI-generated code
         addPointLight: addPointLight, addDirectionalLight: addDirectionalLight, addSpotLight: addSpotLight, addAmbientLight: addAmbientLight,
         addTorusKnot: addTorusKnot, addIcosahedron: addIcosahedron, addDodecahedron: addDodecahedron,
+        addCamera: addCamera,
         addChild: addObject_, setParent: setParent_,
         setPosition: setPosition, setRotation: setRotation, setScale: setScale, setObjectColor: setObjectColor,
         moveObject: moveObject, getObject: getObject,
@@ -6457,6 +6483,7 @@ var EngineApp = (function() {
             else if (type === 'octahedron') ico = 'fa-diamond';
             else if (type === 'terrain') ico = 'fa-mountain';
             else if (type === 'text3d') ico = 'fa-font';
+            else if (type === 'camera') ico = 'fa-video';
 
             var selClass = (name === selected) ? ' selected' : '';
             var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
@@ -8146,4 +8173,5 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
 
