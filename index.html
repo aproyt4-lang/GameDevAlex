@@ -799,7 +799,7 @@
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- AI --</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 0.5B</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
                         <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
                         <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
                         <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B</option>
@@ -4277,6 +4277,7 @@ var SashaWebLLM = (function() {
             if (modelId.indexOf('0.5B') !== -1) maxTok = 512;
             else if (modelId.indexOf('1.5B') !== -1) maxTok = 1024;
             else if (modelId.indexOf('3B') !== -1) maxTok = 2048;
+            else if (modelId.indexOf('7B') !== -1) maxTok = 4096;
 
             var result = await engine.chat.completions.create({
                 messages: messages, max_tokens: maxTok,
@@ -4412,6 +4413,7 @@ var SashaWebLLM = (function() {
             if (modelId.indexOf('0.5B') !== -1) maxTok = 512;
             else if (modelId.indexOf('1.5B') !== -1) maxTok = 1024;
             else if (modelId.indexOf('3B') !== -1) maxTok = 2048;
+            else if (modelId.indexOf('7B') !== -1) maxTok = 4096;
 
             var result = await engine.chat.completions.create({
                 messages: messages, max_tokens: maxTok,
