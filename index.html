@@ -7326,6 +7326,7 @@ var EngineApp = (function() {
 
         // Extract clean JS code from possible markdown/explanations
         code = _extractCode(code);
+        console.log('[SashaAI] After extractCode, length:', code.length, 'code:', code.substring(0, 500));
         if (!code.trim()) { log('No valid code found', 'warn'); return; }
 
         // Rewrite const/let to var
@@ -7844,6 +7845,7 @@ var EngineApp = (function() {
                     return;
                 }
                 text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
+                console.log('[SashaAI] AI generated code (' + text.length + ' chars):', text);
 
                 if (isPythonCode(text)) {
                     addAIChat('ai', 'Модель выдала не JS. Пробую шаблон...');
