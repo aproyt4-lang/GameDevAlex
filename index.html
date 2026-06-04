@@ -4635,6 +4635,7 @@ var SashaEngineAPI = (function() {
     var scene, camera, renderer, controls;
     var transformCtrl = null;
     var _transformDragging = false;
+    var _lastTransformEnd = 0;
     var selectionHelper = null;
     var objects = {};
     var objCounter = 0;
@@ -4845,8 +4846,8 @@ var SashaEngineAPI = (function() {
         objectRenames[mainCameraName] = mainCameraName;
 
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -4861,6 +4862,8 @@ var SashaEngineAPI = (function() {
         transformCtrl.addEventListener('dragging-changed', function(event) {
             controls.enabled = !event.value;
             _transformDragging = event.value;
+            // Record time when drag ends — prevents click-to-select race condition
+            if (!event.value) { _lastTransformEnd = Date.now(); }
         });
         transformCtrl.addEventListener('objectChange', function() {
             if (inspectorAutoRefresh && selectedObject) {
@@ -4923,7 +4926,9 @@ var SashaEngineAPI = (function() {
 
     function onPointerUp(e) {
         if (!this._pointerDownPos) return;
-        // Don't select during TransformControls drag
+        // Don't select right after TransformControls interaction (race condition fix)
+        if (Date.now() - _lastTransformEnd < 100) { this._pointerDownPos = null; return; }
+        // Don't select during active drag
         if (_transformDragging) { this._pointerDownPos = null; return; }
         var dx = e.clientX - this._pointerDownPos.x;
         var dy = e.clientY - this._pointerDownPos.y;
@@ -4943,7 +4948,7 @@ var SashaEngineAPI = (function() {
         var meshes = [];
         for (var name in objects) {
             if (!objects.hasOwnProperty(name)) continue;
-            if (name.indexOf('__builtin') === 0 || name === '__selection_helper') continue;
+            if (name.indexOf('__builtin') === 0 || name === '__selection_helper' || name === mainCameraName) continue;
             var obj = objects[name];
             if (obj.isMesh) { meshes.push(obj); }
             else if (obj.isGroup || obj.isObject3D) {
@@ -5922,7 +5927,7 @@ var SashaEngineAPI = (function() {
     }
 
     function _getColliderAABB(name) {
-        // Returns {minX,minY,minZ,maxX,maxY,maxZ} in world space
+        // Returns {minX,minY,minZ,maxX,maxY,maxZ} in world space using Three.js Box3
         var obj = objects[name];
         if (!obj) return null;
         var comps = objectComponents[name];
@@ -5949,35 +5954,27 @@ var SashaEngineAPI = (function() {
             } else if (collider.type === 'wheelcollider') {
                 var r4 = collider.radius || 0.3;
                 hx = r4; hy = r4; hz = r4;
-            } else {
-                // meshcollider — use bounding box
-                if (obj.geometry) {
-                    obj.geometry.computeBoundingBox();
-                    var bb = obj.geometry.boundingBox;
-                    if (bb) {
-                        var sz = new THREE.Vector3();
-                        bb.getSize(sz);
-                        var ct = new THREE.Vector3();
-                        bb.getCenter(ct);
-                        hx = sz.x/2; hy = sz.y/2; hz = sz.z/2;
-                        cx = ct.x; cy = ct.y; cz = ct.z;
-                    }
-                }
             }
+            // Apply object's world matrix (rotation + scale + position) to compute accurate AABB
+            obj.updateMatrixWorld(true);
+            var box = new THREE.Box3(
+                new THREE.Vector3(cx - hx, cy - hy, cz - hz),
+                new THREE.Vector3(cx + hx, cy + hy, cz + hz)
+            );
+            box.applyMatrix4(obj.matrixWorld);
             return {
-                minX: obj.position.x + cx - hx, minY: obj.position.y + cy - hy, minZ: obj.position.z + cz - hz,
-                maxX: obj.position.x + cx + hx, maxY: obj.position.y + cy + hy, maxZ: obj.position.z + cz + hz
+                minX: box.min.x, minY: box.min.y, minZ: box.min.z,
+                maxX: box.max.x, maxY: box.max.y, maxZ: box.max.z
             };
         }
-        // No collider component — use geometry bounding box
+        // No collider component — use geometry bounding box with world transform
         if (obj.geometry) {
-            obj.geometry.computeBoundingBox();
-            var bb2 = obj.geometry.boundingBox;
-            if (bb2) {
-                var wmin = new THREE.Vector3(); bb2.min.clone(wmin).applyMatrix4(obj.matrixWorld);
-                var wmax = new THREE.Vector3(); bb2.max.clone(wmax).applyMatrix4(obj.matrixWorld);
-                return { minX: wmin.x, minY: wmin.y, minZ: wmin.z, maxX: wmax.x, maxY: wmax.y, maxZ: wmax.z };
-            }
+            obj.updateMatrixWorld(true);
+            var worldBox = new THREE.Box3().setFromObject(obj);
+            return {
+                minX: worldBox.min.x, minY: worldBox.min.y, minZ: worldBox.min.z,
+                maxX: worldBox.max.x, maxY: worldBox.max.y, maxZ: worldBox.max.z
+            };
         }
         return null;
     }
@@ -6460,8 +6457,11 @@ var SashaEngineAPI = (function() {
         // === Main Camera Follow Update (only when follow target set and NOT in FPS mode) ===
         if (!fpsMode) updateMainCamera(delta);
 
-        // Controls: disabled in FPS mode, disabled in game mode with follow target, enabled otherwise
+        // Controls: disabled in FPS mode, during gizmo drag, or in game mode with follow target
         if (fpsMode) {
+            if (controls) controls.enabled = false;
+        } else if (_transformDragging) {
+            // TransformControls is dragging — keep OrbitControls OFF
             if (controls) controls.enabled = false;
         } else if (playState === 'playing' && followTarget) {
             if (controls) controls.enabled = false;
@@ -6474,7 +6474,8 @@ var SashaEngineAPI = (function() {
         if (renderer && scene && camera) {
             var w = canvas ? canvas.clientWidth : 0;
             var h = canvas ? canvas.clientHeight : 0;
-            if (w > 0 && h > 0 && (w !== renderer.domElement.width || h !== renderer.domElement.height)) {
+            var pr = renderer.getPixelRatio();
+            if (w > 0 && h > 0 && (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height)) {
                 camera.aspect = w / h;
                 camera.updateProjectionMatrix();
                 renderer.setSize(w, h);
@@ -8863,6 +8864,7 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
 
 
 
