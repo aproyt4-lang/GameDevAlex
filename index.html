@@ -428,7 +428,8 @@
         .asset-create-btn, .asset-btn { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; display: flex; align-items: center; gap: 4px; transition: all 0.15s; }
         .asset-create-btn:hover, .asset-btn:hover { border-color: var(--primary); color: #fff; }
         .asset-create-dropdown { position: absolute; top: 100%; left: 0; z-index: 100; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 4px 0; min-width: 160px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
-        .asset-tree { flex: 1; overflow-y: auto; padding: 4px; }
+        .asset-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+        .asset-tree { width: 200px; min-width: 150px; overflow-y: auto; padding: 4px; border-right: 1px solid var(--border); flex-shrink: 0; }
         .asset-item { display: flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all 0.1s; border-left: 2px solid transparent; }
         .asset-item:hover { background: var(--bg-hover); color: #fff; }
         .asset-item.selected { background: var(--bg-hover); color: #fff; border-left-color: var(--primary); }
@@ -444,7 +445,17 @@
         .asset-item:hover .asset-actions { display: flex; }
         .asset-item .asset-actions button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.68rem; padding: 1px 3px; border-radius: 2px; }
         .asset-item .asset-actions button:hover { color: var(--primary); background: var(--bg-hover); }
-        .asset-preview { height: 60px; border-top: 1px solid var(--border); padding: 8px; overflow-y: auto; font-size: 0.72rem; color: var(--text-secondary); }
+        .asset-content { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+        .asset-content-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-dark); }
+        .asset-content-header .asset-ch-name { flex: 1; font-weight: 600; color: #fff; }
+        .asset-content-header button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 0.68rem; display: flex; align-items: center; gap: 4px; }
+        .asset-content-header button:hover { border-color: var(--primary); color: #fff; }
+        .asset-content-body { flex: 1; overflow: auto; padding: 8px; font-size: 0.75rem; }
+        .asset-content-body pre { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin: 0; white-space: pre-wrap; word-wrap: break-word; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; line-height: 1.5; max-height: 100%; overflow: auto; }
+        .asset-content-body textarea { width: 100%; height: 100%; min-height: 120px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; line-height: 1.5; resize: none; outline: none; box-sizing: border-box; }
+        .asset-content-body textarea:focus { border-color: var(--primary); }
+        .asset-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 0.78rem; flex-direction: column; gap: 8px; }
+        .asset-empty i { font-size: 2rem; opacity: 0.3; }
         .ui-canvas-toolbar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: var(--bg-dark); }
         .ui-canvas-area { flex: 1; position: relative; background: repeating-conic-gradient(#1a1a2e 0% 25%, #0f0f23 0% 50%) 50% / 20px 20px; overflow: auto; min-height: 100%; }
         .ui-element { position: absolute; min-width: 40px; min-height: 20px; border: 2px solid transparent; cursor: move; user-select: none; font-size: 0.78rem; transition: border-color 0.1s; }
@@ -897,9 +908,15 @@
                                     <button class="asset-btn" onclick="EngineApp.importAsset()"><i class="fas fa-file-import"></i> Import</button>
                                     <button class="asset-btn" onclick="EngineApp.saveAllAssets()"><i class="fas fa-save"></i> Save All</button>
                                 </div>
-                                <div class="asset-tree" id="asset-tree"></div>
-                                <div class="asset-preview" id="asset-preview">
-                                    <div style="color:var(--text-muted);font-size:0.78rem;text-align:center;padding:20px;">Select an asset</div>
+                                <div class="asset-body">
+                                    <div class="asset-tree" id="asset-tree"></div>
+                                    <div class="asset-content" id="asset-content">
+                                        <div class="asset-empty">
+                                            <i class="fas fa-folder-open"></i>
+                                            <div>Select an asset to view content</div>
+                                            <div style="font-size:0.68rem;opacity:0.5">Create scripts, scenes, prefabs & more</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -7292,26 +7309,73 @@ var EngineApp = (function() {
     }
 
     function showAssetPreview(id) {
-        var preview = document.getElementById('asset-preview');
-        if (!preview) return;
+        var content = document.getElementById('asset-content');
+        if (!content) return;
         var asset = SashaAssetManager.getAsset(id);
-        if (!asset) { preview.innerHTML = ''; return; }
-        var html = '<b>' + asset.name + '</b> (' + asset.type + ')<br>';
-        if (asset.type === 'script' && asset.data.code) {
-            var lines = asset.data.code.split('\n').length;
-            html += lines + ' lines of code. <button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.editScriptAsset(\'' + id + '\')">Edit</button> ';
-            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.applyScriptToSelected(\'' + id + '\')">Apply to Selected</button>';
+        if (!asset) { content.innerHTML = '<div class="asset-empty"><i class="fas fa-folder-open"></i><div>Select an asset</div></div>'; return; }
+
+        var typeIcons = { script: 'fa-file-code', material: 'fa-palette', prefab: 'fa-cube', scene: 'fa-film', shader: 'fa-magic', folder: 'fa-folder' };
+        var icon = typeIcons[asset.type] || 'fa-file';
+        var html = '<div class="asset-content-header"><i class="fas ' + icon + '"></i><span class="asset-ch-name">' + asset.name + '</span>';
+
+        if (asset.type === 'script') {
+            html += '<button onclick="EngineApp.editScriptAsset(\'' + id + '\')"><i class="fas fa-edit"></i> Edit in Code Tab</button>';
+            html += '<button onclick="EngineApp.applyScriptToSelected(\'' + id + '\')"><i class="fas fa-play"></i> Apply to Selected</button>';
+            html += '</div><div class="asset-content-body">';
+            var code = (asset.data.code || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            var lines = code.split('\n').length;
+            html += '<pre>' + code + '</pre>';
+            html += '<div style="margin-top:6px;color:var(--text-muted);font-size:0.68rem">' + lines + ' lines | Double-click to edit</div>';
         } else if (asset.type === 'material') {
-            html += 'Color: <span style="display:inline-block;width:12px;height:12px;background:' + (asset.data.color || '#fff') + ';border-radius:2px;vertical-align:middle;"></span> ';
-            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.applyMaterialToSelected(\'' + id + '\')">Apply to Selected</button>';
+            html += '<button onclick="EngineApp.applyMaterialToSelected(\'' + id + '\')"><i class="fas fa-play"></i> Apply</button>';
+            html += '</div><div class="asset-content-body" style="display:flex;align-items:center;gap:12px;">';
+            html += '<div style="width:60px;height:60px;border-radius:8px;background:' + (asset.data.color || '#fff') + ';border:1px solid var(--border);"></div>';
+            var props = asset.data || {};
+            html += '<div style="font-size:0.72rem;color:var(--text-secondary)">';
+            html += 'Color: ' + (props.color || '#ffffff') + '<br>';
+            html += 'Roughness: ' + (props.roughness !== undefined ? props.roughness : 0.5) + '<br>';
+            html += 'Metalness: ' + (props.metalness !== undefined ? props.metalness : 0) + '<br>';
+            if (props.emissive) html += 'Emissive: ' + props.emissive;
+            html += '</div></div>';
         } else if (asset.type === 'prefab') {
-            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.instantiatePrefab(\'' + id + '\')">Instantiate</button>';
+            html += '<button onclick="EngineApp.instantiatePrefab(\'' + id + '\')"><i class="fas fa-plus"></i> Instantiate</button>';
+            html += '</div><div class="asset-content-body">';
+            var data = asset.data || {};
+            html += '<div style="color:var(--text-secondary);font-size:0.72rem">';
+            html += '<b>Prefab data:</b><br>';
+            if (data.type) html += 'Type: ' + data.type + '<br>';
+            if (data.position) html += 'Position: ' + JSON.stringify(data.position) + '<br>';
+            if (data.components) html += 'Components: ' + Object.keys(data.components).join(', ') + '<br>';
+            html += '</div></div>';
         } else if (asset.type === 'scene') {
-            html += '<button class="insp-btn" style="margin-top:4px;" onclick="EngineApp.loadScene(\'' + id + '\')">Load Scene</button>';
+            html += '<button onclick="EngineApp.loadScene(\'' + id + '\')"><i class="fas fa-play"></i> Load Scene</button>';
+            html += '</div><div class="asset-content-body">';
+            var data = asset.data || {};
+            html += '<div style="color:var(--text-secondary);font-size:0.72rem">';
+            html += '<b>Scene data:</b><br>';
+            if (data.objects) html += 'Objects: ' + Object.keys(data.objects).length + '<br>';
+            if (data.components) html += 'Components: ' + Object.keys(data.components).length + '<br>';
+            html += '</div></div>';
+        } else if (asset.type === 'shader') {
+            html += '<button onclick="EngineApp.editScriptAsset(\'' + id + '\')"><i class="fas fa-edit"></i> Edit</button>';
+            html += '</div><div class="asset-content-body">';
+            var vcode = (asset.data.vertex || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+            var fcode = (asset.data.fragment || '').replace(/&/g,'&amp;').replace(/</g,'&gt;');
+            if (vcode) html += '<div style="margin-bottom:6px;color:var(--text-muted);font-size:0.68rem">Vertex Shader:</div><pre>' + vcode + '</pre>';
+            if (fcode) html += '<div style="margin:6px 0;color:var(--text-muted);font-size:0.68rem">Fragment Shader:</div><pre>' + fcode + '</pre>';
+            if (!vcode && !fcode) html += '<div style="color:var(--text-muted)">Empty shader</div>';
+            html += '</div>';
         } else if (asset.type === 'folder') {
-            html += SashaAssetManager.getChildren(id).length + ' items';
+            var children = SashaAssetManager.getChildren(id);
+            html += '</div><div class="asset-content-body">';
+            html += '<div style="color:var(--text-muted);font-size:0.78rem">' + children.length + ' items in folder</div>';
+            html += '</div>';
+        } else {
+            html += '</div><div class="asset-content-body"><div style="color:var(--text-muted)">No preview available</div></div>';
         }
-        preview.innerHTML = html;
+
+        html += '</div>'; // close asset-content
+        content.innerHTML = html;
     }
 
     function createAsset() {
@@ -8521,5 +8585,6 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
 
 
