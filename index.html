@@ -4634,6 +4634,7 @@ var SashaWebLLM = (function() {
 var SashaEngineAPI = (function() {
     var scene, camera, renderer, controls;
     var transformCtrl = null;
+    var _transformDragging = false;
     var selectionHelper = null;
     var objects = {};
     var objCounter = 0;
@@ -4707,26 +4708,42 @@ var SashaEngineAPI = (function() {
         }
     }
 
-    // Keyboard input
+    // Keyboard input — works in BOTH FPS mode and edit mode
+    var editKeys = { w: false, a: false, s: false, d: false, shift: false, space: false };
     function onFPSKeyDown(e) {
-        if (!fpsMode) return;
+        // Don't capture WASD when typing in editor/input
+        var inEditor = e.target.closest('#engine-monaco') || e.target.closest('input') || e.target.closest('textarea') || e.target.closest('.monaco-editor');
+        if (inEditor) return;
         var key = e.key.toLowerCase();
-        if (key === 'w' || key === 'ц') fpsKeys.w = true;      // W / Ц (russian layout)
-        else if (key === 'a' || key === 'ф') fpsKeys.a = true;  // A / Ф
-        else if (key === 's' || key === 'ы' || key === 'і') fpsKeys.s = true; // S / Ы / І
-        else if (key === 'd' || key === 'в') fpsKeys.d = true;  // D / В
-        else if (key === 'shift') fpsKeys.shift = true;
-        else if (key === ' ') { fpsKeys.space = true; e.preventDefault(); }
+        // Russian keyboard support
+        var mapped = key;
+        if (key === 'ц') mapped = 'w';
+        else if (key === 'ф') mapped = 'a';
+        else if (key === 'ы' || key === 'і') mapped = 's';
+        else if (key === 'в') mapped = 'd';
+
+        if (mapped === 'w') { fpsKeys.w = true; editKeys.w = true; }
+        else if (mapped === 'a') { fpsKeys.a = true; editKeys.a = true; }
+        else if (mapped === 's') { fpsKeys.s = true; editKeys.s = true; }
+        else if (mapped === 'd') { fpsKeys.d = true; editKeys.d = true; }
+        else if (key === 'shift') { fpsKeys.shift = true; editKeys.shift = true; }
+        else if (key === ' ') { fpsKeys.space = true; editKeys.space = true; if (!fpsMode) e.preventDefault(); }
     }
 
     function onFPSKeyUp(e) {
         var key = e.key.toLowerCase();
-        if (key === 'w' || key === 'ц') fpsKeys.w = false;
-        else if (key === 'a' || key === 'ф') fpsKeys.a = false;
-        else if (key === 's' || key === 'ы' || key === 'і') fpsKeys.s = false;
-        else if (key === 'd' || key === 'в') fpsKeys.d = false;
-        else if (key === 'shift') fpsKeys.shift = false;
-        else if (key === ' ') fpsKeys.space = false;
+        var mapped = key;
+        if (key === 'ц') mapped = 'w';
+        else if (key === 'ф') mapped = 'a';
+        else if (key === 'ы' || key === 'і') mapped = 's';
+        else if (key === 'в') mapped = 'd';
+
+        if (mapped === 'w') { fpsKeys.w = false; editKeys.w = false; }
+        else if (mapped === 'a') { fpsKeys.a = false; editKeys.a = false; }
+        else if (mapped === 's') { fpsKeys.s = false; editKeys.s = false; }
+        else if (mapped === 'd') { fpsKeys.d = false; editKeys.d = false; }
+        else if (key === 'shift') { fpsKeys.shift = false; editKeys.shift = false; }
+        else if (key === ' ') { fpsKeys.space = false; editKeys.space = false; }
     }
 
     // Mouse look via pointer lock
@@ -4741,6 +4758,27 @@ var SashaEngineAPI = (function() {
     function onFPSPointerLockChange() {
         fpsPointerLocked = (document.pointerLockElement === canvas);
     }
+
+    // Edit mode WASD — pans camera in OrbitControls mode (no mouse look)
+    var editMoveSpeed = 5;
+    function updateEditCamera(delta) {
+        if (fpsMode || !camera) return;
+        var speed = editMoveSpeed * delta;
+        if (editKeys.shift) speed *= 2.5;
+        // Get camera's horizontal direction from its current orientation
+        var forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+        var right = new THREE.Vector3();
+        right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+        if (editKeys.w) { camera.position.addScaledVector(forward, speed); if (controls) controls.target.addScaledVector(forward, speed); }
+        if (editKeys.s) { camera.position.addScaledVector(forward, -speed); if (controls) controls.target.addScaledVector(forward, -speed); }
+        if (editKeys.d) { camera.position.addScaledVector(right, speed); if (controls) controls.target.addScaledVector(right, speed); }
+        if (editKeys.a) { camera.position.addScaledVector(right, -speed); if (controls) controls.target.addScaledVector(right, -speed); }
+        if (editKeys.space) { camera.position.y += speed; if (controls) controls.target.y += speed; }
+    }
+    function setEditMoveSpeed(s) { editMoveSpeed = s; }
 
     // Click canvas to capture mouse in FPS mode
     function onFPSCanvasClick(e) {
@@ -4822,6 +4860,7 @@ var SashaEngineAPI = (function() {
         transformCtrl.setSize(0.8);
         transformCtrl.addEventListener('dragging-changed', function(event) {
             controls.enabled = !event.value;
+            _transformDragging = event.value;
         });
         transformCtrl.addEventListener('objectChange', function() {
             if (inspectorAutoRefresh && selectedObject) {
@@ -4884,12 +4923,15 @@ var SashaEngineAPI = (function() {
 
     function onPointerUp(e) {
         if (!this._pointerDownPos) return;
+        // Don't select during TransformControls drag
+        if (_transformDragging) { this._pointerDownPos = null; return; }
         var dx = e.clientX - this._pointerDownPos.x;
         var dy = e.clientY - this._pointerDownPos.y;
         // Only select if it's a click (not drag)
         if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
             onClickSelect(e);
         }
+        this._pointerDownPos = null;
     }
 
     function onClickSelect(e) {
@@ -5209,6 +5251,10 @@ var SashaEngineAPI = (function() {
         // Protect Main Camera from deletion
         if (name === mainCameraName) { log('Cannot delete Main Camera'); return; }
         if (objects[name]) {
+            // Detach TransformControls if this object was selected
+            if (selectedObject === name && transformCtrl) {
+                transformCtrl.detach();
+            }
             scene.remove(objects[name]);
             if (objects[name].geometry) objects[name].geometry.dispose();
             if (objects[name].material) {
@@ -5356,6 +5402,8 @@ var SashaEngineAPI = (function() {
     function getScene() { return scene; }
 
     function clear() {
+        // Detach TransformControls before removing objects
+        if (transformCtrl) transformCtrl.detach();
         // Save Main Camera before clearing
         var mcObj = objects[mainCameraName];
         var mcType = objectTypes[mainCameraName];
@@ -5523,8 +5571,10 @@ var SashaEngineAPI = (function() {
 
         if (name && objects[name]) {
             var obj = objects[name];
-            // Attach gizmo
-            transformCtrl.attach(obj);
+            // Attach gizmo only if object is in the scene
+            if (obj.parent) {
+                transformCtrl.attach(obj);
+            }
 
             // Show selection highlight
             if (obj.isMesh) {
@@ -5866,11 +5916,75 @@ var SashaEngineAPI = (function() {
         var rb = physicsObjects[name];
         return (rb && rb.bounciness !== undefined) ? rb.bounciness : 0.4;
     }
+    function _getFriction(name) {
+        var rb = physicsObjects[name];
+        return (rb && rb.friction !== undefined) ? rb.friction : 0.6;
+    }
+
+    function _getColliderAABB(name) {
+        // Returns {minX,minY,minZ,maxX,maxY,maxZ} in world space
+        var obj = objects[name];
+        if (!obj) return null;
+        var comps = objectComponents[name];
+        var collider = _getComponentOf(name, ['boxcollider','spherecollider','capsulecollider','cylindercollider','wheelcollider','meshcollider']);
+        if (collider) {
+            var cx = (collider.center ? collider.center.x : 0);
+            var cy = (collider.center ? collider.center.y : 0);
+            var cz = (collider.center ? collider.center.z : 0);
+            var hx = 0.5, hy = 0.5, hz = 0.5;
+            if (collider.type === 'boxcollider') {
+                var s = collider.size || {x:1,y:1,z:1};
+                hx = s.x / 2; hy = s.y / 2; hz = s.z / 2;
+            } else if (collider.type === 'spherecollider') {
+                var r = collider.radius || 0.5;
+                hx = r; hy = r; hz = r;
+            } else if (collider.type === 'capsulecollider') {
+                var r2 = collider.radius || 0.25;
+                var h2 = (collider.height || 2) / 2;
+                hx = r2; hy = h2 + r2; hz = r2;
+            } else if (collider.type === 'cylindercollider') {
+                var r3 = collider.radius || 0.5;
+                var h3 = (collider.height || 1) / 2;
+                hx = r3; hy = h3; hz = r3;
+            } else if (collider.type === 'wheelcollider') {
+                var r4 = collider.radius || 0.3;
+                hx = r4; hy = r4; hz = r4;
+            } else {
+                // meshcollider — use bounding box
+                if (obj.geometry) {
+                    obj.geometry.computeBoundingBox();
+                    var bb = obj.geometry.boundingBox;
+                    if (bb) {
+                        var sz = new THREE.Vector3();
+                        bb.getSize(sz);
+                        var ct = new THREE.Vector3();
+                        bb.getCenter(ct);
+                        hx = sz.x/2; hy = sz.y/2; hz = sz.z/2;
+                        cx = ct.x; cy = ct.y; cz = ct.z;
+                    }
+                }
+            }
+            return {
+                minX: obj.position.x + cx - hx, minY: obj.position.y + cy - hy, minZ: obj.position.z + cz - hz,
+                maxX: obj.position.x + cx + hx, maxY: obj.position.y + cy + hy, maxZ: obj.position.z + cz + hz
+            };
+        }
+        // No collider component — use geometry bounding box
+        if (obj.geometry) {
+            obj.geometry.computeBoundingBox();
+            var bb2 = obj.geometry.boundingBox;
+            if (bb2) {
+                var wmin = new THREE.Vector3(); bb2.min.clone(wmin).applyMatrix4(obj.matrixWorld);
+                var wmax = new THREE.Vector3(); bb2.max.clone(wmax).applyMatrix4(obj.matrixWorld);
+                return { minX: wmin.x, minY: wmin.y, minZ: wmin.z, maxX: wmax.x, maxY: wmax.y, maxZ: wmax.z };
+            }
+        }
+        return null;
+    }
 
     function _getColliderRadius(name) {
         var comps = objectComponents[name];
         if (!comps) {
-            // Fallback: use geometry bounding sphere
             var obj = objects[name];
             if (obj && obj.geometry) { obj.geometry.computeBoundingSphere(); return obj.geometry.boundingSphere ? (obj.geometry.boundingSphere.radius || 0.5) : 0.5; }
             return 0.5;
@@ -5908,7 +6022,12 @@ var SashaEngineAPI = (function() {
         return null;
     }
 
-    // --- Physics with collisions ---
+    // Check if an object has any collider component
+    function _hasCollider(name) {
+        return !!_getComponentOf(name, ['boxcollider','spherecollider','capsulecollider','cylindercollider','wheelcollider','meshcollider','planecollider','terraincollider']);
+    }
+
+    // --- Physics with AABB collisions + static collider support ---
     function updatePhysics(delta) {
         var dt = Math.min(delta, 0.05);
         var physNames = [];
@@ -5917,6 +6036,16 @@ var SashaEngineAPI = (function() {
             if (!physicsObjects.hasOwnProperty(pn)) continue;
             physNames.push(pn);
         }
+
+        // Gather all objects with colliders (including static — no RigidBody)
+        var staticColliderNames = [];
+        for (var on in objects) {
+            if (!objects.hasOwnProperty(on)) continue;
+            if (on.indexOf('__builtin') === 0) continue;
+            if (physicsObjects[on]) continue; // already in physNames
+            if (_hasCollider(on)) staticColliderNames.push(on);
+        }
+
         // Save constraint positions on first frame
         if (Object.keys(savedConstraintPositions).length === 0) {
             for (var ci = 0; ci < physNames.length; ci++) {
@@ -5925,23 +6054,21 @@ var SashaEngineAPI = (function() {
                 var crb = physicsObjects[cn];
                 if (cobj && crb && crb.constraints) {
                     savedConstraintPositions[cn] = {
-                        x: cobj.position.x,
-                        y: cobj.position.y,
-                        z: cobj.position.z
+                        x: cobj.position.x, y: cobj.position.y, z: cobj.position.z
                     };
                 }
             }
         }
+
+        // --- Step 1: Apply forces (gravity, drag) ---
         for (var pi = 0; pi < physNames.length; pi++) {
             var name = physNames[pi];
             var rb = physicsObjects[name];
             var obj = objects[name];
             if (!obj) continue;
-            // Apply gravity
             if (rb.useGravity) {
                 rb.velocity.y += GRAVITY * dt;
             }
-            // Apply linear drag
             var speed = Math.sqrt(rb.velocity.x * rb.velocity.x + rb.velocity.y * rb.velocity.y + rb.velocity.z * rb.velocity.z);
             if (speed > 0.001) {
                 var dragForce = 1 - (rb.drag || 0) * dt;
@@ -5950,7 +6077,6 @@ var SashaEngineAPI = (function() {
                 rb.velocity.y *= dragForce;
                 rb.velocity.z *= dragForce;
             }
-            // Angular drag on rotation
             var angDragForce = 1 - (rb.angularDrag || 0.05) * dt;
             if (angDragForce < 0) angDragForce = 0;
             obj.rotation.x *= angDragForce;
@@ -5960,15 +6086,6 @@ var SashaEngineAPI = (function() {
             obj.position.x += rb.velocity.x * dt;
             obj.position.y += rb.velocity.y * dt;
             obj.position.z += rb.velocity.z * dt;
-            // Ground collision (y = 0)
-            var minY = 0;
-            if (obj.position.y < minY) {
-                obj.position.y = minY;
-                rb.velocity.y = -rb.velocity.y * 0.4;
-                rb.velocity.x *= 0.95;
-                rb.velocity.z *= 0.95;
-                if (Math.abs(rb.velocity.y) < 0.1) { rb.velocity.y = 0; }
-            }
             // Constraints
             if (rb.constraints) {
                 if (rb.constraints.freezeX) { rb.velocity.x = 0; if (savedConstraintPositions[name]) { obj.position.x = savedConstraintPositions[name].x; } }
@@ -5976,7 +6093,25 @@ var SashaEngineAPI = (function() {
                 if (rb.constraints.freezeZ) { rb.velocity.z = 0; }
             }
         }
-        // Collider-based collision detection between physics objects
+
+        // --- Step 2: Ground collision (y=0 plane) for all physics objects ---
+        for (var gi = 0; gi < physNames.length; gi++) {
+            var gn = physNames[gi];
+            var gobj = objects[gn];
+            var grb = physicsObjects[gn];
+            if (!gobj || !grb) continue;
+            var gAABB = _getColliderAABB(gn);
+            if (!gAABB) continue;
+            if (gAABB.minY < 0) {
+                gobj.position.y += (-gAABB.minY);
+                grb.velocity.y = -grb.velocity.y * _getBounciness(gn);
+                grb.velocity.x *= (1 - _getFriction(gn) * 0.3);
+                grb.velocity.z *= (1 - _getFriction(gn) * 0.3);
+                if (Math.abs(grb.velocity.y) < 0.1) { grb.velocity.y = 0; }
+            }
+        }
+
+        // --- Step 3: AABB collision between physics objects ---
         for (var a = 0; a < physNames.length; a++) {
             for (var b = a + 1; b < physNames.length; b++) {
                 var objA = objects[physNames[a]];
@@ -5985,51 +6120,152 @@ var SashaEngineAPI = (function() {
                 var rbA = physicsObjects[physNames[a]];
                 var rbB = physicsObjects[physNames[b]];
                 if (!rbA || !rbB) continue;
-                var dx = objB.position.x - objA.position.x;
-                var dy = objB.position.y - objA.position.y;
-                var dz = objB.position.z - objA.position.z;
-                var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                // Get collider radii from components if available
-                var radA = _getColliderRadius(physNames[a]);
-                var radB = _getColliderRadius(physNames[b]);
-                var minDist = radA + radB;
-                if (dist < minDist && dist > 0.001) {
+                var aabbA = _getColliderAABB(physNames[a]);
+                var aabbB = _getColliderAABB(physNames[b]);
+                if (!aabbA || !aabbB) continue;
+                // AABB overlap test
+                if (aabbA.maxX > aabbB.minX && aabbA.minX < aabbB.maxX &&
+                    aabbA.maxY > aabbB.minY && aabbA.minY < aabbB.maxY &&
+                    aabbA.maxZ > aabbB.minZ && aabbA.minZ < aabbB.maxZ) {
                     var isTrig = _isTrigger(physNames[a], physNames[b]);
                     collisionPairs.push({ a: physNames[a], b: physNames[b], isTrigger: isTrig });
-                    var nx = dx / dist;
-                    var ny = dy / dist;
-                    var nz = dz / dist;
-                    var relVx = rbA.velocity.x - rbB.velocity.x;
-                    var relVy = rbA.velocity.y - rbB.velocity.y;
-                    var relVz = rbA.velocity.z - rbB.velocity.z;
-                    var relDot = relVx * nx + relVy * ny + relVz * nz;
-                    if (!isTrig && relDot > 0) {
+                    if (!isTrig) {
+                        // Compute overlap on each axis
+                        var ox = Math.min(aabbA.maxX - aabbB.minX, aabbB.maxX - aabbA.minX);
+                        var oy = Math.min(aabbA.maxY - aabbB.minY, aabbB.maxY - aabbA.minY);
+                        var oz = Math.min(aabbA.maxZ - aabbB.minZ, aabbB.maxZ - aabbA.minZ);
+                        // Resolve on axis with smallest overlap
+                        var nx = 0, ny = 0, nz = 0;
+                        if (ox <= oy && ox <= oz) { nx = (objA.position.x < objB.position.x) ? -1 : 1; }
+                        else if (oy <= ox && oy <= oz) { ny = (objA.position.y < objB.position.y) ? -1 : 1; }
+                        else { nz = (objA.position.z < objB.position.z) ? -1 : 1; }
+                        // Separate objects
+                        var overlap = (nx !== 0) ? ox : ((ny !== 0) ? oy : oz);
                         var massA = rbA.mass || 1;
                         var massB = rbB.mass || 1;
-                        var bounceA = _getBounciness(physNames[a]);
-                        var bounceB = _getBounciness(physNames[b]);
-                        var bounce = (bounceA + bounceB) / 2;
-                        var impulse = ((1 + bounce) * relDot) / (massA + massB);
-                        rbA.velocity.x -= impulse * massB * nx;
-                        rbA.velocity.y -= impulse * massB * ny;
-                        rbA.velocity.z -= impulse * massB * nz;
-                        rbB.velocity.x += impulse * massA * nx;
-                        rbB.velocity.y += impulse * massA * ny;
-                        rbB.velocity.z += impulse * massA * nz;
-                    }
-                    if (!isTrig) {
-                        var overlap = minDist - dist;
-                        objA.position.x -= nx * overlap * 0.5;
-                        objA.position.y -= ny * overlap * 0.5;
-                        objA.position.z -= nz * overlap * 0.5;
-                        objB.position.x += nx * overlap * 0.5;
-                        objB.position.y += ny * overlap * 0.5;
-                        objB.position.z += nz * overlap * 0.5;
+                        var totalMass = massA + massB;
+                        objA.position.x += nx * overlap * (massB / totalMass);
+                        objA.position.y += ny * overlap * (massB / totalMass);
+                        objA.position.z += nz * overlap * (massB / totalMass);
+                        objB.position.x -= nx * overlap * (massA / totalMass);
+                        objB.position.y -= ny * overlap * (massA / totalMass);
+                        objB.position.z -= nz * overlap * (massA / totalMass);
+                        // Impulse-based velocity response
+                        var relVx = rbA.velocity.x - rbB.velocity.x;
+                        var relVy = rbA.velocity.y - rbB.velocity.y;
+                        var relVz = rbA.velocity.z - rbB.velocity.z;
+                        var relDot = relVx * nx + relVy * ny + relVz * nz;
+                        if (relDot > 0) {
+                            var bounceA = _getBounciness(physNames[a]);
+                            var bounceB = _getBounciness(physNames[b]);
+                            var bounce = (bounceA + bounceB) / 2;
+                            var friction = (_getFriction(physNames[a]) + _getFriction(physNames[b])) / 2;
+                            var impulse = ((1 + bounce) * relDot) / totalMass;
+                            rbA.velocity.x -= impulse * massB * nx;
+                            rbA.velocity.y -= impulse * massB * ny;
+                            rbA.velocity.z -= impulse * massB * nz;
+                            rbB.velocity.x += impulse * massA * nx;
+                            rbB.velocity.y += impulse * massA * ny;
+                            rbB.velocity.z += impulse * massA * nz;
+                            // Apply friction to tangential velocity
+                            var tangX = relVx - relDot * nx;
+                            var tangZ = relVz - relDot * nz;
+                            var tangSpeed = Math.sqrt(tangX * tangX + tangZ * tangZ);
+                            if (tangSpeed > 0.01) {
+                                var fricImpulse = Math.min(friction * Math.abs(impulse), tangSpeed / totalMass);
+                                var ftX = (tangX / tangSpeed) * fricImpulse;
+                                var ftZ = (tangZ / tangSpeed) * fricImpulse;
+                                rbA.velocity.x -= ftX * massB;
+                                rbA.velocity.z -= ftZ * massB;
+                                rbB.velocity.x += ftX * massA;
+                                rbB.velocity.z += ftZ * massA;
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // --- Step 4: Physics objects vs static colliders (no RigidBody) ---
+        for (var si = 0; si < physNames.length; si++) {
+            var sObjName = physNames[si];
+            var sObj = objects[sObjName];
+            var sRb = physicsObjects[sObjName];
+            if (!sObj || !sRb) continue;
+            var sAABB = _getColliderAABB(sObjName);
+            if (!sAABB) continue;
+            for (var ti = 0; ti < staticColliderNames.length; ti++) {
+                var tName = staticColliderNames[ti];
+                var tObj = objects[tName];
+                if (!tObj) continue;
+                var tAABB = _getColliderAABB(tName);
+                if (!tAABB) continue;
+                // AABB overlap
+                if (sAABB.maxX > tAABB.minX && sAABB.minX < tAABB.maxX &&
+                    sAABB.maxY > tAABB.minY && sAABB.minY < tAABB.maxY &&
+                    sAABB.maxZ > tAABB.minZ && sAABB.minZ < tAABB.maxZ) {
+                    var tIsTrig = _isTrigger(sObjName, tName);
+                    collisionPairs.push({ a: sObjName, b: tName, isTrigger: tIsTrig });
+                    if (!tIsTrig) {
+                        var sox = Math.min(sAABB.maxX - tAABB.minX, tAABB.maxX - sAABB.minX);
+                        var soy = Math.min(sAABB.maxY - tAABB.minY, tAABB.maxY - sAABB.minY);
+                        var soz = Math.min(sAABB.maxZ - tAABB.minZ, tAABB.maxZ - sAABB.minZ);
+                        var snx = 0, sny = 0, snz = 0;
+                        if (sox <= soy && sox <= soz) { snx = (sObj.position.x < tObj.position.x) ? -1 : 1; }
+                        else if (soy <= sox && soy <= soz) { sny = (sObj.position.y < tObj.position.y) ? -1 : 1; }
+                        else { snz = (sObj.position.z < tObj.position.z) ? -1 : 1; }
+                        var sOverlap = (snx !== 0) ? sox : ((sny !== 0) ? soy : soz);
+                        // Push physics object out completely (static has infinite mass)
+                        sObj.position.x += snx * sOverlap;
+                        sObj.position.y += sny * sOverlap;
+                        sObj.position.z += snz * sOverlap;
+                        // Reflect velocity
+                        var velDot = sRb.velocity.x * snx + sRb.velocity.y * sny + sRb.velocity.z * snz;
+                        if (velDot > 0) {
+                            var sBounce = _getBounciness(sObjName);
+                            var sFric = _getFriction(sObjName);
+                            sRb.velocity.x -= (1 + sBounce) * velDot * snx;
+                            sRb.velocity.y -= (1 + sBounce) * velDot * sny;
+                            sRb.velocity.z -= (1 + sBounce) * velDot * snz;
+                            // Friction on tangential
+                            var stX = sRb.velocity.x - (sRb.velocity.x * snx + sRb.velocity.y * sny + sRb.velocity.z * snz) * snx;
+                            var stZ = sRb.velocity.z - (sRb.velocity.x * snx + sRb.velocity.y * sny + sRb.velocity.z * snz) * snz;
+                            sRb.velocity.x -= stX * sFric * 0.3;
+                            sRb.velocity.z -= stZ * sFric * 0.3;
+                        }
+                    }
+                }
+            }
+        }
+
         return collisionPairs;
+    }
+
+    // Initialize physicsObjects from RigidBody components on all objects (called on Play)
+    function initPhysicsFromComponents() {
+        physicsObjects = {};
+        for (var name in objects) {
+            if (!objects.hasOwnProperty(name)) continue;
+            if (name.indexOf('__builtin') === 0) continue;
+            var comps = objectComponents[name];
+            if (!comps) continue;
+            for (var i = 0; i < comps.length; i++) {
+                if (comps[i].type === 'rigidbody') {
+                    var rb = comps[i];
+                    physicsObjects[name] = {
+                        mass: rb.mass !== undefined ? rb.mass : 1,
+                        useGravity: rb.useGravity !== undefined ? rb.useGravity : true,
+                        drag: rb.drag !== undefined ? rb.drag : 0,
+                        angularDrag: rb.angularDrag !== undefined ? rb.angularDrag : 0.05,
+                        velocity: rb.velocity ? { x: rb.velocity.x || 0, y: rb.velocity.y || 0, z: rb.velocity.z || 0 } : { x: 0, y: 0, z: 0 },
+                        constraints: rb.constraints ? { freezeX: !!rb.constraints.freezeX, freezeY: !!rb.constraints.freezeY, freezeZ: !!rb.constraints.freezeZ } : { freezeX: false, freezeY: false, freezeZ: false },
+                        bounciness: rb.bounciness !== undefined ? rb.bounciness : 0.4,
+                        friction: rb.friction !== undefined ? rb.friction : 0.6
+                    };
+                    break;
+                }
+            }
+        }
     }
 
     function savePlayState() {
@@ -6218,6 +6454,9 @@ var SashaEngineAPI = (function() {
         // === FPS Camera (WASD + Mouse Look) — only in FPS mode ===
         updateFPSCamera(delta);
 
+        // === Edit Mode WASD Camera Panning — only when NOT in FPS mode ===
+        updateEditCamera(delta);
+
         // === Main Camera Follow Update (only when follow target set and NOT in FPS mode) ===
         if (!fpsMode) updateMainCamera(delta);
 
@@ -6265,6 +6504,7 @@ var SashaEngineAPI = (function() {
         addObjectComponent: addObjectComponent, removeObjectComponent: removeObjectComponent,
         getPlayState: getPlayState, setPlayState: setPlayState,
         savePlayState: savePlayState, restorePlayState: restorePlayState,
+        initPhysicsFromComponents: initPhysicsFromComponents,
         updatePhysics: updatePhysics, stepScripts: stepScripts, destroyScripts: destroyScripts,
         setGizmoMode: setGizmoMode, getGizmoMode: getGizmoMode,
         setOnSelectionChange: setOnSelectionChange, setInspectorAutoRefresh: setInspectorAutoRefresh,
@@ -6706,6 +6946,8 @@ var EngineApp = (function() {
         if (SashaEngineAPI.getPlayState() === 'playing') return;
         if (SashaEngineAPI.getPlayState() === 'stopped') {
             SashaEngineAPI.savePlayState();
+            // Auto-initialize physicsObjects from components (RigidBody on objects)
+            SashaEngineAPI.initPhysicsFromComponents();
         }
         SashaEngineAPI.setPlayState('playing');
         var sec = document.getElementById('engine');
@@ -7052,7 +7294,7 @@ var EngineApp = (function() {
 
     // Inspector helpers
     function iRow(label, inputHtml) { return '<div class="insp-row"><span style="font-size:0.72rem;color:var(--text-muted);width:50px;">'+label+'</span>'+inputHtml+'</div>'; }
-    function iVec3(label, vec, handler, pfx) { return '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">'+label+'</div><div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+vec.x.toFixed(2)+'" onchange="EngineApp.'+handler+'(\''+selected+'\',\''+pfx+'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+vec.y.toFixed(2)+'" onchange="EngineApp.'+handler+'(\''+selected+'\',\''+pfx+'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+vec.z.toFixed(2)+'" onchange="EngineApp.'+handler+'(\''+selected+'\',\''+pfx+'z\',this.value)"></div>'; }
+    function iVec3(label, vec, handler, pfx, sel) { return '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">'+label+'</div><div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+vec.x.toFixed(2)+'" onchange="EngineApp.'+handler+'(\''+sel+'\',\''+pfx+'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+vec.y.toFixed(2)+'" onchange="EngineApp.'+handler+'(\''+sel+'\',\''+pfx+'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+vec.z.toFixed(2)+'" onchange="EngineApp.'+handler+'(\''+sel+'\',\''+pfx+'z\',this.value)"></div>'; }
     function iRField(compType, field, step, min, max, val, sel) { return iRow(field, '<input class="insp-input" type="number" step="'+(step||0.1)+'" '+(min!==undefined?'min="'+min+'"':'')+(max!==undefined?'max="'+max+'"':'')+' value="'+val+'" onchange="EngineApp.set'+compType+'(\''+sel+'\',\''+field+'\',this.value)">'); }
     function iSection(icon, title, body) { return '<div class="insp-section"><div class="insp-section-header" onclick="this.parentElement.classList.toggle(\'collapsed\')"><i class="fas '+icon+'"></i> '+title+' <i class="fas fa-chevron-down insp-collapse-icon"></i></div><div class="insp-section-body">'+body+'</div></div>'; }
     function sh(text) { return '<div style="padding:2px 10px;font-size:0.68rem;color:var(--text-secondary);">'+text+'</div>'; }
@@ -7077,7 +7319,7 @@ var EngineApp = (function() {
         var types = SashaEngineAPI.getObjectTypes();
         var type = types[selected] || 'cube';
         var html = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);">'+selected+'</div>';
-        html += iSection('fa-arrows-alt', 'Transform', iVec3('Position', obj.position, 'setTransform', 'p')+iVec3('Rotation', obj.rotation, 'setTransform', 'r')+iVec3('Scale', obj.scale, 'setTransform', 's'));
+        html += iSection('fa-arrows-alt', 'Transform', iVec3('Position', obj.position, 'setTransform', 'p', selected)+iVec3('Rotation', obj.rotation, 'setTransform', 'r', selected)+iVec3('Scale', obj.scale, 'setTransform', 's', selected));
         if (obj.isMesh || obj.isLight === undefined) {
             var mbody = iRow('Type', '<span style="font-size:0.72rem;color:#fff;">'+type+'</span>');
             if (obj.material && obj.material.color) {
@@ -7154,16 +7396,52 @@ var EngineApp = (function() {
         if (!sel || !sel.value) return;
         var compType = sel.value;
         if (compType === 'script') {
+            var scriptName = prompt('Enter script name:', 'PlayerController');
+            if (!scriptName || !scriptName.trim()) return;
+            scriptName = scriptName.trim().replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ]/g, '');
+            if (!scriptName) return;
+            // Check for duplicate script name on same object
+            var existingComps = SashaEngineAPI.getAllComponents(name);
+            for (var i = 0; i < existingComps.length; i++) {
+                if (existingComps[i].type === 'script' && existingComps[i].name === scriptName) {
+                    log('Script "' + scriptName + '" already exists on ' + name, 'warn');
+                    return;
+                }
+            }
             SashaEngineAPI.addObjectComponent(name, 'script', {
-                name: 'Script_' + Date.now(),
-                code: 'function onUpdate(delta, obj) {\n  // Your code here\n  obj.rotation.y += delta;\n}',
+                name: scriptName,
+                code: 'function onStart(obj, Engine) {\n  // Called once when Play is pressed\n  Engine.log("Script ' + scriptName + ' started on " + obj.name + \'");\n}\n\nfunction onUpdate(delta, obj, Engine) {\n  // Called every frame while playing\n  // obj.rotation.y += delta;\n}\n\nfunction onCollision(other, Engine) {\n  // Called when colliding with another object\n  // Engine.log("Collision with: " + other);\n}\n\nfunction onDestroy(obj, Engine) {\n  // Called when Stop is pressed\n}',
                 enabled: true
             });
+            log('Created script: ' + scriptName, 'log');
         } else {
+            // Check if component already exists
+            var existingComps2 = SashaEngineAPI.getAllComponents(name);
+            for (var j = 0; j < existingComps2.length; j++) {
+                if (existingComps2[j].type === compType) {
+                    log(compType + ' already exists on ' + name, 'warn');
+                    return;
+                }
+            }
             SashaEngineAPI.addObjectComponent(name, compType, {});
+            // Auto-add RigidBody if adding collider without one
+            if (compType !== 'rigidbody' && compType !== 'script') {
+                var hasRB = false;
+                for (var k = 0; k < existingComps2.length; k++) {
+                    if (existingComps2[k].type === 'rigidbody') { hasRB = true; break; }
+                }
+                if (!hasRB) {
+                    var autoRB = confirm('Add RigidBody to ' + name + '?\n(Colliders need RigidBody for physics)');
+                    if (autoRB) {
+                        SashaEngineAPI.addObjectComponent(name, 'rigidbody', {});
+                        log('Auto-added RigidBody', 'log');
+                    }
+                }
+            }
+            log('Added component: ' + compType + ' to ' + name, 'log');
         }
         refreshInspector();
-        log('Added component: ' + compType + ' to ' + name, 'log');
+        refreshHierarchy();
     }
 
     function removeComp(name, compType, compName) {
