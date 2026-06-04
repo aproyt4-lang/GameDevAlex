@@ -44,6 +44,7 @@
         main { margin-top: 70px; min-height: calc(100vh - 70px); }
         .section { display: none; padding: 30px; max-width: 1600px; margin: 0 auto; }
         .section.active { display: block; animation: fadeIn 0.5s ease; }
+        #engine.section.active { display: flex; padding: 0; max-width: none; width: 100%; flex-direction: column; height: calc(100vh - 65px); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         #home { display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start; }
@@ -194,7 +195,7 @@
         @media (max-width: 768px) { .chat-header { flex-direction: column; align-items: flex-start; } .chat-header-controls { width: 100%; justify-content: flex-start; } .memory-panel, .tts-settings-popup { width: 280px; } }
 
         /* ===== Engine Section ===== */
-        .engine-section { display: flex; flex-direction: column; height: calc(100vh - 65px); }
+        .engine-section { display: flex; flex-direction: column; height: 100%; flex: 1; min-height: 0; }
         .engine-toolbar {
             display: flex; align-items: center; gap: 6px; padding: 6px 12px;
             background: var(--bg-card); border-bottom: 1px solid var(--border); flex-wrap: wrap;
@@ -765,6 +766,8 @@
                     <button class="eng-btn pause-btn" onclick="EngineApp.pause()" title="Pause"><i class="fas fa-pause"></i></button>
                     <button class="eng-btn stop-btn" onclick="EngineApp.stop()" title="Stop"><i class="fas fa-stop"></i></button>
                     <div class="eng-separator"></div>
+                    <button class="eng-btn" id="fps-mode-btn" onclick="EngineApp.toggleFPS()" title="FPS Mode (WASD + Mouse)"><i class="fas fa-crosshairs"></i> FPS</button>
+                    <div class="eng-separator"></div>
                     <div class="gizmo-group">
                         <button class="gizmo-mode-btn active" id="gizmo-translate" onclick="EngineApp.setGizmoMode('translate')" title="Move (W)">W</button>
                         <button class="gizmo-mode-btn" id="gizmo-rotate" onclick="EngineApp.setGizmoMode('rotate')" title="Rotate (E)">E</button>
@@ -844,10 +847,16 @@
                         <canvas id="engine-canvas"></canvas>
                         <div class="viewport-stats" id="eng-viewport-stats">FPS: -- | Objs: 0</div>
                         <div class="viewport-gizmo-info" id="viewport-gizmo-info">
-                            Tool: <span id="gizmo-info-mode">Move</span> | 
-                            Selected: <span id="gizmo-info-sel">None</span> | 
+                            Tool: <span id="gizmo-info-mode">Move</span> |
+                            Selected: <span id="gizmo-info-sel">None</span> |
                             Objects: <span id="gizmo-info-count">0</span>
                         </div>
+                        <div id="fps-crosshair" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10;">
+                            <div style="width:20px;height:2px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                            <div style="width:2px;height:20px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                            <div style="width:4px;height:4px;background:rgba(255,255,255,0.8);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                        </div>
+                        <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - movement | Mouse - look | Shift - sprint | Space - up | ESC - release</div>
                         <div class="engine-model-overlay" id="eng-overlay">
                             <div class="model-text" id="eng-overlay-text">Loading AI model...</div>
                             <div class="model-progress"><div class="model-progress-bar" id="eng-progress-bar"></div></div>
@@ -2468,10 +2477,13 @@ var SashaAIAgent = (function() {
                     category: 'learned',
                     source: 'dialog'
                 });
-                return '✅ Запомнил!\n\n❓ Q: ' + question + '\n💡 A: ' + answer + '\n\n📊 Всего в базе: ' + SashaMemory.count() + ' записей.\n📌 ID: ' + entry.id;
+                // Rebuild IDF so new knowledge is immediately searchable
+                if (SashaMemory.rebuildIDF) SashaMemory.rebuildIDF();
+                var total = SashaMemory.count();
+                return 'Запомнил! Модель теперь знает это.\n\nQ: ' + question + '\nA: ' + answer + '\n\nБаза знаний: ' + total + ' записей. При следующем запросе LLM получит эту информацию в контексте (RAG).';
             }
         }
-        return 'Для обучения используй формат:\n"Обучи: вопрос -> ответ"\n\nПример:\n"Обучи: GameForge -> это моя игровая платформа"';
+        return 'Формат обучения:\n"обучи: вопрос -> ответ"\n\nПример:\n"обучи: GameForge -> моя игровая платформа"\n"обучи: SashaAI -> это мой движок"\n\nМодель запоминает через RAG — знания инжектятся в контекст LLM при каждом запросе.';
     }
 
     function handleDocumentLearning(input) {
@@ -2490,7 +2502,8 @@ var SashaAIAgent = (function() {
             }
         }
         if (learned > 0) {
-            return '📄 Извлёк ' + learned + ' фактов из текста.\n\n📊 База знаний теперь: ' + SashaMemory.count() + ' записей.';
+            if (SashaMemory.rebuildIDF) SashaMemory.rebuildIDF();
+            return 'Извлёк ' + learned + ' фактов. База знаний: ' + SashaMemory.count() + ' записей. LLM получит их через RAG.';
         }
         return 'Вставь текст для обучения. Минимум 15 символов на предложение.';
     }
@@ -2502,10 +2515,11 @@ var SashaAIAgent = (function() {
             var a = input.substring(sepIdx + 1).trim();
             if (q.length > 0 && a.length > 0) {
                 SashaMemory.addKnowledge({ question: q, answer: a, category: 'manual', source: 'manual' });
-                return '✅ Добавлено:\n❓ Q: ' + q + '\n💡 A: ' + a + '\n\n📊 Всего: ' + SashaMemory.count() + ' записей.';
+                if (SashaMemory.rebuildIDF) SashaMemory.rebuildIDF();
+                return 'Добавлено:\nQ: ' + q + '\nA: ' + a + '\n\nБаза знаний: ' + SashaMemory.count() + ' записей.';
             }
         }
-        return 'Формат: "вопрос | ответ"\n\nПример:\n"что такое GameForge | это моя игровая платформа"';
+        return 'Формат: "вопрос | ответ"';
     }
 
     function handleGitHubLearning(input) {
@@ -3421,8 +3435,9 @@ function showSection(sectionId) {
             if (typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) {
                 EngineApp.init();
             }
+            // Force resize to ensure renderer gets correct dimensions
             window.dispatchEvent(new Event('resize'));
-        }, 150);
+        }, 300);
     }
 }
 
@@ -4323,6 +4338,29 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
+    // === RAG — inject learned knowledge into LLM context ===
+    function buildKnowledgeContext(query, maxEntries) {
+        if (typeof SashaMemory === 'undefined' || !SashaMemory.searchKnowledge) return '';
+        maxEntries = maxEntries || 3;
+        try {
+            var results = SashaMemory.searchKnowledge(query, maxEntries);
+            if (!results || results.length === 0) return '';
+            // Only use results with decent similarity
+            var filtered = [];
+            for (var i = 0; i < results.length; i++) {
+                if (results[i].score > 0.05) filtered.push(results[i]);
+            }
+            if (filtered.length === 0) return '';
+            var ctx = '\n[Knowledge Base — learned facts the user taught you. Use these in your response if relevant.]\n';
+            for (var j = 0; j < filtered.length; j++) {
+                var entry = filtered[j].entry;
+                ctx += '- Q: ' + entry.question + ' → A: ' + entry.answer + '\n';
+            }
+            ctx += '[End of Knowledge Base]\n';
+            return ctx;
+        } catch(e) { return ''; }
+    }
+
     var _codeSystemPrompt = 'You are a 3D scene generator. Return ONLY JavaScript using Engine API.\n' +
         'Use var. Colors hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xff88cc=pink 0xffffff=white 0x888888=gray 0x111111=black\n' +
         'ALLOWED (all prefixed with Engine.):\n' +
@@ -4346,11 +4384,14 @@ var SashaWebLLM = (function() {
     function isCodeMode() { return _codeMode; }
 
     async function chat(prompt) {
-        return await generate(prompt, _chatSystemPrompt);
+        var knowledgeCtx = buildKnowledgeContext(prompt, 3);
+        var sys = _chatSystemPrompt + knowledgeCtx;
+        return await generate(prompt, sys);
     }
 
     async function generateCode(prompt, currentCode) {
-        var sys = _codeSystemPrompt;
+        var knowledgeCtx = buildKnowledgeContext(prompt, 2);
+        var sys = _codeSystemPrompt + knowledgeCtx;
         if (currentCode && currentCode.trim().length > 0) {
             sys += '\nCurrent code in editor:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
         }
@@ -4581,6 +4622,116 @@ var SashaEngineAPI = (function() {
     var objCounter = 0;
     var animations = [];
     var frameCallbacks = [];
+
+    // === FPS Camera Controller (WASD + Mouse Look) ===
+    var fpsMode = false;           // true = FPS mode, false = OrbitControls editor mode
+    var fpsMoveSpeed = 5;         // units per second
+    var fpsLookSpeed = 0.002;     // mouse sensitivity
+    var fpsYaw = 0;               // horizontal rotation (radians)
+    var fpsPitch = 0;             // vertical rotation (radians)
+    var fpsKeys = { w: false, a: false, s: false, d: false, shift: false, space: false };
+    var fpsPointerLocked = false;
+
+    function toggleFPSMode(forceState) {
+        fpsMode = (forceState !== undefined) ? !!forceState : !fpsMode;
+        if (fpsMode) {
+            // Enter FPS mode — disable OrbitControls
+            if (controls) controls.enabled = false;
+            // Initialize yaw/pitch from current camera direction
+            var dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            fpsYaw = Math.atan2(-dir.x, -dir.z);
+            fpsPitch = Math.asin(Math.max(-1, Math.min(1, dir.y)));
+            log('FPS mode ON — WASD move, mouse look. Click viewport to capture mouse. ESC to release.', 'info');
+        } else {
+            // Exit FPS mode — re-enable OrbitControls
+            if (controls) controls.enabled = true;
+            if (fpsPointerLocked && document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+            fpsPointerLocked = false;
+            fpsKeys = { w: false, a: false, s: false, d: false, shift: false, space: false };
+            log('Edit mode — OrbitControls active.', 'info');
+        }
+    }
+
+    function isFPSMode() { return fpsMode; }
+
+    function setFPSMoveSpeed(s) { fpsMoveSpeed = s; }
+
+    // Called every frame in animate() — handles WASD movement + mouse look
+    function updateFPSCamera(delta) {
+        if (!fpsMode || !camera) return;
+
+        var speed = fpsMoveSpeed * delta;
+        if (fpsKeys.shift) speed *= 2.5; // sprint
+
+        // Direction vectors from yaw (horizontal rotation only)
+        var forward = new THREE.Vector3(-Math.sin(fpsYaw), 0, -Math.cos(fpsYaw));
+        var right = new THREE.Vector3(Math.cos(fpsYaw), 0, -Math.sin(fpsYaw));
+
+        // WASD movement (world XZ plane, relative to camera yaw)
+        if (fpsKeys.w) { camera.position.addScaledVector(forward, speed); }
+        if (fpsKeys.s) { camera.position.addScaledVector(forward, -speed); }
+        if (fpsKeys.d) { camera.position.addScaledVector(right, speed); }
+        if (fpsKeys.a) { camera.position.addScaledVector(right, -speed); }
+        if (fpsKeys.space) { camera.position.y += speed; }
+        if (fpsKeys.shift) { /* already handled speed multiplier */ }
+
+        // Apply rotation from yaw + pitch
+        var euler = new THREE.Euler(fpsPitch, fpsYaw, 0, 'YXZ');
+        camera.quaternion.setFromEuler(euler);
+
+        // Update OrbitControls target to match camera look direction (for smooth transition back)
+        if (controls) {
+            var lookDir = new THREE.Vector3();
+            camera.getWorldDirection(lookDir);
+            controls.target.copy(camera.position).add(lookDir);
+        }
+    }
+
+    // Keyboard input
+    function onFPSKeyDown(e) {
+        if (!fpsMode) return;
+        var key = e.key.toLowerCase();
+        if (key === 'w' || key === 'ц') fpsKeys.w = true;      // W / Ц (russian layout)
+        else if (key === 'a' || key === 'ф') fpsKeys.a = true;  // A / Ф
+        else if (key === 's' || key === 'ы' || key === 'і') fpsKeys.s = true; // S / Ы / І
+        else if (key === 'd' || key === 'в') fpsKeys.d = true;  // D / В
+        else if (key === 'shift') fpsKeys.shift = true;
+        else if (key === ' ') { fpsKeys.space = true; e.preventDefault(); }
+    }
+
+    function onFPSKeyUp(e) {
+        var key = e.key.toLowerCase();
+        if (key === 'w' || key === 'ц') fpsKeys.w = false;
+        else if (key === 'a' || key === 'ф') fpsKeys.a = false;
+        else if (key === 's' || key === 'ы' || key === 'і') fpsKeys.s = false;
+        else if (key === 'd' || key === 'в') fpsKeys.d = false;
+        else if (key === 'shift') fpsKeys.shift = false;
+        else if (key === ' ') fpsKeys.space = false;
+    }
+
+    // Mouse look via pointer lock
+    function onFPSMouseMove(e) {
+        if (!fpsMode || !fpsPointerLocked) return;
+        fpsYaw -= e.movementX * fpsLookSpeed;
+        fpsPitch -= e.movementY * fpsLookSpeed;
+        // Clamp pitch to prevent flipping
+        fpsPitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, fpsPitch));
+    }
+
+    function onFPSPointerLockChange() {
+        fpsPointerLocked = (document.pointerLockElement === canvas);
+    }
+
+    // Click canvas to capture mouse in FPS mode
+    function onFPSCanvasClick(e) {
+        if (!fpsMode) return;
+        if (!fpsPointerLocked && canvas) {
+            canvas.requestPointerLock();
+        }
+    }
     var clock;
     var canvas;
     var initialized = false;
@@ -4695,8 +4846,18 @@ var SashaEngineAPI = (function() {
         canvas.addEventListener('pointerup', onPointerUp);
         var pointerDownPos = { x: 0, y: 0 };
 
+        // FPS mode event listeners
+        canvas.addEventListener('click', onFPSCanvasClick);
+        document.addEventListener('pointerlockchange', onFPSPointerLockChange);
+        document.addEventListener('mousemove', onFPSMouseMove);
+        document.addEventListener('keydown', onFPSKeyDown);
+        document.addEventListener('keyup', onFPSKeyUp);
+
         window.addEventListener('resize', onResize);
         initialized = true;
+        // Delayed resize to ensure canvas gets real pixel dimensions
+        setTimeout(onResize, 50);
+        setTimeout(onResize, 200);
         animate();
     }
 
@@ -6037,23 +6198,27 @@ var SashaEngineAPI = (function() {
             try { frameCallbacks[j](delta, t); } catch(e) {}
         }
 
-        // === Main Camera Follow Update ===
-        updateMainCamera(delta);
+        // === FPS Camera (WASD + Mouse Look) — only in FPS mode ===
+        updateFPSCamera(delta);
 
-        // In game mode (playing) with follow target: disable OrbitControls
-        // In editor mode (stopped/paused): OrbitControls active for free camera
-        if (playState === 'playing' && followTarget) {
+        // === Main Camera Follow Update (only when follow target set and NOT in FPS mode) ===
+        if (!fpsMode) updateMainCamera(delta);
+
+        // Controls: disabled in FPS mode, disabled in game mode with follow target, enabled otherwise
+        if (fpsMode) {
+            if (controls) controls.enabled = false;
+        } else if (playState === 'playing' && followTarget) {
             if (controls) controls.enabled = false;
         } else {
             if (controls) controls.enabled = true;
         }
 
-        if (controls) controls.update();
+        if (controls && controls.enabled) controls.update();
         // === RENDER ===
         if (renderer && scene && camera) {
             var w = canvas ? canvas.clientWidth : 0;
             var h = canvas ? canvas.clientHeight : 0;
-            if (w > 0 && h > 0) {
+            if (w > 0 && h > 0 && (w !== renderer.domElement.width || h !== renderer.domElement.height)) {
                 camera.aspect = w / h;
                 camera.updateProjectionMatrix();
                 renderer.setSize(w, h);
@@ -6073,6 +6238,8 @@ var SashaEngineAPI = (function() {
         removeObject: removeObject, setCameraPos: setCameraPos, setCameraTarget: setCameraTarget,
         // Main Camera API
         setFollowTarget: setFollowTarget, clearFollowTarget: clearFollowTarget, getMainCamera: getMainCamera,
+        // FPS Camera
+        toggleFPSMode: toggleFPSMode, isFPSMode: isFPSMode, setFPSMoveSpeed: setFPSMoveSpeed,
         setBgColor: setBgColor, animate: animateObj, onFrame: onFrame, getScene: getScene,
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
@@ -6494,6 +6661,29 @@ var EngineApp = (function() {
     }
 
     // --- Play/Pause/Stop ---
+
+    function toggleFPS() {
+        var isFPS = SashaEngineAPI.isFPSMode();
+        SashaEngineAPI.toggleFPSMode();
+        var btn = document.getElementById('fps-mode-btn');
+        var crosshair = document.getElementById('fps-crosshair');
+        var hint = document.getElementById('fps-hint');
+        if (btn) {
+            if (!isFPS) {
+                btn.classList.add('active');
+                btn.style.background = '#6366f1';
+                btn.style.color = '#fff';
+                btn.style.borderColor = '#6366f1';
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            }
+        }
+        if (crosshair) crosshair.style.display = (!isFPS) ? 'block' : 'none';
+        if (hint) hint.style.display = (!isFPS) ? 'block' : 'none';
+    }
 
     function play() {
         if (SashaEngineAPI.getPlayState() === 'playing') return;
@@ -8322,6 +8512,7 @@ var EngineApp = (function() {
         // AI chat
         clearAIChat: clearAIChat, setAIMode: setAIMode, sendAI: sendAI,
         restartModel: restartModel, unloadModel: unloadModel,
+        toggleFPS: toggleFPS,
         // Inspector helpers
         setRBConstraint: setRBConstraint, setColliderField: setColliderField,
         isInitialized: function() { return initialized; }
@@ -8330,6 +8521,5 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
-
 
 
