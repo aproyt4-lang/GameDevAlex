@@ -4859,6 +4859,10 @@ var SashaEngineAPI = (function() {
         transformCtrl = new THREE.TransformControls(camera, canvas);
         transformCtrl.setMode('translate');
         transformCtrl.setSize(0.8);
+        transformCtrl.space = 'world';  // World space: arrows always X(red)=right, Y(green)=up, Z(blue)=forward
+        transformCtrl.showX = true;
+        transformCtrl.showY = true;
+        transformCtrl.showZ = true;
         transformCtrl.addEventListener('dragging-changed', function(event) {
             controls.enabled = !event.value;
             _transformDragging = event.value;
@@ -5579,6 +5583,11 @@ var SashaEngineAPI = (function() {
             // Attach gizmo only if object is in the scene
             if (obj.parent) {
                 transformCtrl.attach(obj);
+                // Force world space so arrows always align with world axes
+                transformCtrl.space = 'world';
+                transformCtrl.showX = true;
+                transformCtrl.showY = true;
+                transformCtrl.showZ = true;
             }
 
             // Show selection highlight
@@ -5599,7 +5608,10 @@ var SashaEngineAPI = (function() {
 
     function setGizmoMode(mode) {
         gizmoMode = mode;
-        if (transformCtrl) { transformCtrl.setMode(mode); }
+        if (transformCtrl) {
+            transformCtrl.setMode(mode);
+            transformCtrl.space = 'world';  // Always world space
+        }
     }
 
     function getGizmoMode() { return gizmoMode; }
