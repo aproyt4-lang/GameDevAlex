@@ -3415,6 +3415,15 @@ function showSection(sectionId) {
             window.dispatchEvent(new Event('resize'));
         }, 100);
     }
+    if (sectionId === 'engine') {
+        // Init engine on first visit (when canvas has real dimensions)
+        setTimeout(function() {
+            if (typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) {
+                EngineApp.init();
+            }
+            window.dispatchEvent(new Event('resize'));
+        }, 150);
+    }
 }
 
 // ============ Enhanced Chat Functions ============
@@ -4123,8 +4132,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var count = SashaMemory.count();
     document.getElementById('memory-count').textContent = count + ' знани' + (count === 1 ? 'е' : (count < 5 ? 'я' : 'й'));
 
-    // Init Engine (delayed — only when needed)
-    setTimeout(function() { EngineApp.init(); }, 2000);
+    // Engine init is now lazy — triggered when user switches to Engine tab for the first time
 });
 
 
@@ -4322,12 +4330,13 @@ var SashaWebLLM = (function() {
         'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
         'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name)\n' +
         'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b) Engine.animate(name,prop,from,to,dur)\n' +
+        'Engine.setFollowTarget(name,offsetX,offsetY,offsetZ,smooth) Engine.clearFollowTarget() Engine.getMainCamera()\n' +
         'Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)\n' +
         'FORBIDDEN: document. window. fetch eval localStorage XMLHttpRequest innerHTML\n' +
         'Build complex objects from many primitives. ALWAYS create 5+ objects. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER write text or markdown.\n';
 
     var _chatSystemPrompt = 'You are Sasha, a friendly AI assistant in a 3D engine. Respond in Russian.\n' +
-        'You can generate code as text in chat. Use Engine API: Engine.addCube, Engine.addSphere, Engine.addCylinder, Engine.addCone, Engine.addCapsule, Engine.addTorus, Engine.addPlane, Engine.addIcosahedron, Engine.addTorusKnot, Engine.addPointLight, Engine.addDirectionalLight, Engine.addSpotLight, Engine.addAmbientLight, Engine.setPosition, Engine.setRotation, Engine.setScale, Engine.setCameraPos, Engine.setCameraTarget, Engine.animate, Engine.addRigidBody, Engine.setVelocity, Engine.moveObject, Engine.addChild, Engine.setObjectColor, Engine.removeObject.\n' +
+        'You can generate code as text in chat. Use Engine API: Engine.addCube, Engine.addSphere, Engine.addCylinder, Engine.addCone, Engine.addCapsule, Engine.addTorus, Engine.addPlane, Engine.addIcosahedron, Engine.addTorusKnot, Engine.addPointLight, Engine.addDirectionalLight, Engine.addSpotLight, Engine.addAmbientLight, Engine.setPosition, Engine.setRotation, Engine.setScale, Engine.setCameraPos, Engine.setCameraTarget, Engine.setFollowTarget, Engine.clearFollowTarget, Engine.animate, Engine.addRigidBody, Engine.setVelocity, Engine.moveObject, Engine.addChild, Engine.setObjectColor, Engine.removeObject.\n' +
         'When user asks for code (movement, animation, scripts, any logic) — generate JavaScript code using Engine API. Show code in chat as text between ```javascript and ``` markers.\n' +
         'When user asks to create 3D objects — suggest switching to Build mode.\n' +
         'Keep responses concise. Discuss code when asked. Explain how the code works.\n' +
@@ -4480,32 +4489,74 @@ var SashaWebLLM = (function() {
         _recovering = true;
         var savedModelId = modelId;
         console.log('[SashaWebLLM] Recovering model:', savedModelId);
-        try {
-            if (engine) {
-                try { await engine.unload(); } catch(e) {}
-                engine = null;
-            }
-            gpuDead = false;
-            status = 'loading';
-            updateStatus();
-            await new Promise(function(r) { setTimeout(r, 3000); });
-            var mod = await importWebLLM();
-            engine = new mod.MLCEngine({ initProgressCallback: function() {} });
-            await engine.reload(savedModelId);
-            status = 'ready';
-            gpuDead = false;
-            chatHistory = [];
-            updateStatus();
-            _recovering = false;
-            return 'ok';
-        } catch(e) {
-            console.error('[SashaWebLLM] Recovery failed:', e.message);
-            status = 'error';
-            gpuDead = true;
-            updateStatus();
-            _recovering = false;
-            return 'failed: ' + e.message;
+
+        // Cleanup helper — null out engine and force GC to release GPU resources
+        function cleanupEngine() {
+            engine = null;
+            if (typeof gc === 'function') { try { gc(); } catch(e) {} }
         }
+
+        // Try up to 3 times with increasing delays (5s, 10s, 15s)
+        var delays = [5000, 10000, 15000];
+        var lastError = '';
+        for (var attempt = 0; attempt < delays.length; attempt++) {
+            var waitSec = delays[attempt] / 1000;
+            console.log('[SashaWebLLM] Recovery attempt ' + (attempt+1) + '/' + delays.length + ' (wait ' + waitSec + 's)');
+            try {
+                // Unload old engine if exists
+                if (engine) {
+                    try { await engine.unload(); } catch(e) { console.warn('[SashaWebLLM] Unload warn:', e.message); }
+                    engine = null;
+                }
+                gpuDead = false;
+                status = 'loading';
+                updateStatus();
+
+                // Wait for GPU driver to recover
+                await new Promise(function(r) { setTimeout(r, delays[attempt]); });
+                cleanupEngine();
+
+                // Try to create new engine and reload model
+                var mod = await importWebLLM();
+                engine = new mod.MLCEngine({ initProgressCallback: function() {} });
+                await engine.reload(savedModelId);
+
+                // Success!
+                status = 'ready';
+                gpuDead = false;
+                chatHistory = [];
+                updateStatus();
+                _recovering = false;
+                console.log('[SashaWebLLM] Recovery succeeded on attempt ' + (attempt+1));
+                return 'ok';
+            } catch(e) {
+                lastError = e.message || String(e);
+                console.error('[SashaWebLLM] Attempt ' + (attempt+1) + ' failed:', lastError);
+                // If DXGI_ERROR_DEVICE_REMOVED — GPU still dead, cleanup and retry
+                if (lastError.indexOf('DXGI_ERROR_DEVICE_REMOVED') !== -1 ||
+                    lastError.indexOf('requestDevice') !== -1) {
+                    cleanupEngine();
+                    // Tell user we're retrying
+                    if (typeof addAIChat === 'function' && attempt < delays.length - 1) {
+                        addAIChat('ai', 'Попытка ' + (attempt+1) + ' не удалась (GPU ещё не восстановился). Ждём ' + (delays[attempt+1]/1000) + ' сек...');
+                    }
+                    continue; // retry with longer delay
+                }
+                // Other error — don't retry
+                break;
+            }
+        }
+
+        // All attempts failed
+        console.error('[SashaWebLLM] All recovery attempts failed');
+        status = 'error';
+        gpuDead = true;
+        updateStatus();
+        _recovering = false;
+        if (lastError.indexOf('DXGI_ERROR_DEVICE_REMOVED') !== -1) {
+            return 'GPU не восстановился после 3 попыток. Перезагрузи страницу (F5) — WebGPU устройство потеряно.';
+        }
+        return 'failed: ' + lastError;
     }
 
     return {
@@ -4535,6 +4586,15 @@ var SashaEngineAPI = (function() {
     var initialized = false;
     var animFrameId = null;
     var selectedObject = null;
+    // === Main Camera System (Unity-style) ===
+    var mainCameraObj = null;       // The camera object on scene (THREE.Camera)
+    var mainCameraName = 'Main Camera';
+    var mainCameraHelper = null;    // Wireframe helper mesh
+    var followTarget = null;        // Name of object to follow
+    var followOffset = { x: 0, y: 3, z: 8 };  // Default offset behind/above
+    var followSmooth = 5;           // Lerp speed (higher = snappier)
+    var cameraFrustum = null;       // Frustum lines for visual
+
     var playState = 'stopped';
     var savedState = {};
     var objectComponents = {};
@@ -4561,6 +4621,22 @@ var SashaEngineAPI = (function() {
 
         camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
         camera.position.set(5, 5, 5);
+
+        // Create Main Camera as a scene object (Unity-style)
+        mainCameraObj = camera;
+        mainCameraObj.name = mainCameraName;
+        mainCameraObj.userData.isMainCamera = true;
+        // Wireframe helper to show camera in viewport
+        mainCameraHelper = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.2, 0.4),
+            new THREE.MeshBasicMaterial({ color: 0x44aaff, wireframe: true, transparent: true, opacity: 0.6 })
+        );
+        mainCameraHelper.name = '__mainCamera_helper';
+        mainCameraObj.add(mainCameraHelper);
+        // Register in objects so it appears in hierarchy
+        objects[mainCameraName] = mainCameraObj;
+        objectTypes[mainCameraName] = 'mainCamera';
+        objectRenames[mainCameraName] = mainCameraName;
 
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
@@ -4683,9 +4759,12 @@ var SashaEngineAPI = (function() {
 
     function onResize() {
         if (!canvas || !camera || !renderer) return;
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        var w = canvas.clientWidth;
+        var h = canvas.clientHeight;
+        if (w < 1 || h < 1) return; // Canvas not visible yet (display:none)
+        camera.aspect = w / h;
         camera.updateProjectionMatrix();
-        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        renderer.setSize(w, h);
     }
 
     function getUniqueName(prefix) {
@@ -4712,6 +4791,47 @@ var SashaEngineAPI = (function() {
         helper.name = name + '_helper';
         cam.add(helper);
         return name;
+    }
+
+    // === Main Camera Follow System ===
+    function setFollowTarget(objName, offsetX, offsetY, offsetZ, smooth) {
+        if (!objName) { followTarget = null; return; }
+        if (!objects[objName]) { log('Follow target not found: ' + objName); return; }
+        followTarget = objName;
+        followOffset.x = offsetX !== undefined ? offsetX : 0;
+        followOffset.y = offsetY !== undefined ? offsetY : 3;
+        followOffset.z = offsetZ !== undefined ? offsetZ : 8;
+        followSmooth = smooth !== undefined ? smooth : 5;
+        log('Main Camera follows: ' + objName + ' offset(' + followOffset.x + ',' + followOffset.y + ',' + followOffset.z + ')');
+    }
+
+    function clearFollowTarget() {
+        followTarget = null;
+    }
+
+    function getMainCamera() {
+        return { name: mainCameraName, camera: camera, position: camera ? camera.position.clone() : null, target: followTarget, offset: followOffset };
+    }
+
+    // Called every frame in animate() — moves camera toward follow target
+    function updateMainCamera(delta) {
+        if (!followTarget || !camera || !objects[followTarget]) return;
+        var target = objects[followTarget];
+        var targetPos = target.position.clone();
+        // Compute desired camera position = target + offset
+        var desiredX = targetPos.x + followOffset.x;
+        var desiredY = targetPos.y + followOffset.y;
+        var desiredZ = targetPos.z + followOffset.z;
+        // Smooth lerp
+        var speed = followSmooth * delta;
+        if (speed > 1) speed = 1;
+        camera.position.x += (desiredX - camera.position.x) * speed;
+        camera.position.y += (desiredY - camera.position.y) * speed;
+        camera.position.z += (desiredZ - camera.position.z) * speed;
+        // Look at target
+        if (controls) {
+            controls.target.lerp(targetPos, speed);
+        }
     }
 
     // --- Public API ---
@@ -4907,6 +5027,9 @@ var SashaEngineAPI = (function() {
     }
 
     function removeObject(name) {
+        if (!name) return;
+        // Protect Main Camera from deletion
+        if (name === mainCameraName) { log('Cannot delete Main Camera'); return; }
         if (objects[name]) {
             scene.remove(objects[name]);
             if (objects[name].geometry) objects[name].geometry.dispose();
@@ -5055,8 +5178,11 @@ var SashaEngineAPI = (function() {
     function getScene() { return scene; }
 
     function clear() {
+        // Save Main Camera before clearing
+        var mcObj = objects[mainCameraName];
+        var mcType = objectTypes[mainCameraName];
         for (var name in objects) {
-            if (objects.hasOwnProperty(name)) { removeObject(name); }
+            if (objects.hasOwnProperty(name) && name !== mainCameraName) { removeObject(name); }
         }
         animations = [];
         frameCallbacks = [];
@@ -5064,6 +5190,12 @@ var SashaEngineAPI = (function() {
         physicsObjects = {};
         selectedObject = null;
         objectTypes = {};
+        followTarget = null;
+        // Restore Main Camera
+        if (mcObj) {
+            objects[mainCameraName] = mcObj;
+            objectTypes[mainCameraName] = mcType || 'mainCamera';
+        }
     }
 
     function getObjects() { return objects; }
@@ -5905,8 +6037,29 @@ var SashaEngineAPI = (function() {
             try { frameCallbacks[j](delta, t); } catch(e) {}
         }
 
+        // === Main Camera Follow Update ===
+        updateMainCamera(delta);
+
+        // In game mode (playing) with follow target: disable OrbitControls
+        // In editor mode (stopped/paused): OrbitControls active for free camera
+        if (playState === 'playing' && followTarget) {
+            if (controls) controls.enabled = false;
+        } else {
+            if (controls) controls.enabled = true;
+        }
+
         if (controls) controls.update();
-        if (renderer && scene && camera) renderer.render(scene, camera);
+        // === RENDER ===
+        if (renderer && scene && camera) {
+            var w = canvas ? canvas.clientWidth : 0;
+            var h = canvas ? canvas.clientHeight : 0;
+            if (w > 0 && h > 0) {
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            }
+            renderer.render(scene, camera);
+        }
     }
 
     function log(text) {
@@ -5918,6 +6071,8 @@ var SashaEngineAPI = (function() {
         addCylinder: addCylinder, addCone: addCone, addTorus: addTorus, addCapsule: addCapsule,
         addLight: addLight, loadModel: loadModel,
         removeObject: removeObject, setCameraPos: setCameraPos, setCameraTarget: setCameraTarget,
+        // Main Camera API
+        setFollowTarget: setFollowTarget, clearFollowTarget: clearFollowTarget, getMainCamera: getMainCamera,
         setBgColor: setBgColor, animate: animateObj, onFrame: onFrame, getScene: getScene,
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
@@ -6484,6 +6639,7 @@ var EngineApp = (function() {
             else if (type === 'terrain') ico = 'fa-mountain';
             else if (type === 'text3d') ico = 'fa-font';
             else if (type === 'camera') ico = 'fa-video';
+            else if (type === 'mainCamera') ico = 'fa-video';
 
             var selClass = (name === selected) ? ' selected' : '';
             var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
@@ -7398,11 +7554,11 @@ var EngineApp = (function() {
         // Rewrite const/let to var
         code = code.replace(/^(const|let)\s+/gm, 'var ');
 
-        // Clear previous user objects
+        // Clear previous user objects (protect Main Camera and builtins)
         var objs = SashaEngineAPI.getObjects();
         var toRemove = [];
         for (var name in objs) {
-            if (objs.hasOwnProperty(name) && name.indexOf('__builtin') !== 0) {
+            if (objs.hasOwnProperty(name) && name.indexOf('__builtin') !== 0 && name !== 'Main Camera') {
                 toRemove.push(name);
             }
         }
@@ -7948,16 +8104,10 @@ var EngineApp = (function() {
             var errMsg = String(e.message || e);
             addAIChat('ai', 'Ошибка: ' + errMsg);
             log('AI error: ' + errMsg, 'error');
-            // Auto-recover model on GPU crash (scene stays intact)
+            // GPU crash — tell user to use Restart button or F5
             if (errMsg.indexOf('DXGI_ERROR') !== -1 || errMsg.indexOf('DEVICE_REMOVED') !== -1 ||
                 errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('requestDevice') !== -1) {
-                addAIChat('ai', 'GPU сброшен. Перезапускаю модель (сцена сохранена)...');
-                var recovery = await SashaWebLLM.recoverModel();
-                if (recovery === 'ok') {
-                    addAIChat('ai', 'Модель восстановлена! Попробуй снова.');
-                } else {
-                    addAIChat('ai', 'Не удалось восстановить модель. Перезагрузи страницу (F5).');
-                }
+                addAIChat('ai', 'GPU упал. Нажми кнопку Restart для перезагрузки модели (до 30 сек, 3 попытки). Если не поможет — F5.');
             }
         } finally {
             _aiBusy = false;
@@ -7990,13 +8140,14 @@ var EngineApp = (function() {
     // Manually restart LLM model after GPU crash (scene stays intact)
     async function restartModel() {
         if (_aiBusy) { log('Model busy...', 'warn'); return; }
-        if (!SashaWebLLM.getLoadedModelId()) { log('No model loaded', 'warn'); return; }
+        var loadedId = SashaWebLLM.getLoadedModelId();
+        if (!loadedId) { log('No model loaded', 'warn'); return; }
         log('Restarting model (scene preserved)...', 'info');
         var chat = document.getElementById('eng-ai-chat');
         if (chat) {
             var div = document.createElement('div');
             div.className = 'engine-ai-msg ai';
-            div.textContent = 'Перезагружаю модель...';
+            div.textContent = 'Перезагружаю модель... Это может занять до 30 сек (3 попытки).';
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
         }
@@ -8005,6 +8156,11 @@ var EngineApp = (function() {
             if (result === 'ok') {
                 log('Model restarted OK', 'result');
                 addAIChat('ai', 'Модель перезагружена! Сцена сохранена.');
+            } else if (result.indexOf('F5') !== -1 || result.indexOf('перезагрузи страницу') !== -1) {
+                // Hard GPU crash — page reload needed
+                log('GPU hard crash, F5 required', 'error');
+                addAIChat('ai', result);
+                addAIChat('ai', '⚠️ Нажми F5 чтобы перезагрузить страницу. GPU устройство полностью потеряно, восстановления из JS невозможно.');
             } else {
                 log('Model restart failed: ' + result, 'error');
                 addAIChat('ai', 'Ошибка перезагрузки: ' + result);
@@ -8167,11 +8323,13 @@ var EngineApp = (function() {
         clearAIChat: clearAIChat, setAIMode: setAIMode, sendAI: sendAI,
         restartModel: restartModel, unloadModel: unloadModel,
         // Inspector helpers
-        setRBConstraint: setRBConstraint, setColliderField: setColliderField
+        setRBConstraint: setRBConstraint, setColliderField: setColliderField,
+        isInitialized: function() { return initialized; }
     };
 })();
 </script>
 </body>
-</html>>
+</html>
+
 
 
