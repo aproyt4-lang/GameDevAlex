@@ -339,6 +339,11 @@
         /* Viewport */
         .engine-viewport-pane { position: relative; background: #0a0a1a; overflow: hidden; }
         .engine-viewport-pane canvas { width: 100% !important; height: 100% !important; display: block; }
+        /* Camera Preview — bottom-right corner when camera selected */
+        .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .camera-preview.visible { display: block; }
+        .camera-preview canvas { width: 100% !important; height: 100% !important; display: block; }
+        .camera-preview-label { position: absolute; top: 4px; left: 8px; color: rgba(255,255,255,0.7); font-size: 0.65rem; font-weight: 600; pointer-events: none; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
         .viewport-gizmo-info {
             position: absolute; bottom: 8px; left: 8px;
             font-size: 0.68rem; color: var(--text-muted);
@@ -856,6 +861,11 @@
                     <!-- Viewport -->
                     <div class="engine-viewport-pane">
                         <canvas id="engine-canvas"></canvas>
+                        <!-- Camera Preview (shows what Main Camera sees when selected) -->
+                        <div class="camera-preview" id="camera-preview">
+                            <canvas id="camera-preview-canvas"></canvas>
+                            <div class="camera-preview-label">Camera Preview</div>
+                        </div>
                         <div class="viewport-stats" id="eng-viewport-stats">FPS: -- | Objs: 0</div>
                         <div class="viewport-gizmo-info" id="viewport-gizmo-info">
                             Tool: <span id="gizmo-info-mode">Move</span> |
@@ -867,7 +877,7 @@
                             <div style="width:2px;height:20px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
                             <div style="width:4px;height:4px;background:rgba(255,255,255,0.8);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
                         </div>
-                        <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - movement | Mouse - look | Shift - sprint | Space - up | ESC - release</div>
+                        <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - move | Q - down | Space - up | Shift - sprint | Mouse - look | ESC - release</div>
                         <div class="engine-model-overlay" id="eng-overlay">
                             <div class="model-text" id="eng-overlay-text">Loading AI model...</div>
                             <div class="model-progress"><div class="model-progress-bar" id="eng-progress-bar"></div></div>
@@ -4710,7 +4720,7 @@ var SashaEngineAPI = (function() {
     }
 
     // Keyboard input — works in BOTH FPS mode and edit mode
-    var editKeys = { w: false, a: false, s: false, d: false, shift: false, space: false };
+    var editKeys = { w: false, a: false, s: false, d: false, shift: false, space: false, q: false };
     function onFPSKeyDown(e) {
         // Don't capture WASD when typing in editor/input
         var inEditor = e.target.closest('#engine-monaco') || e.target.closest('input') || e.target.closest('textarea') || e.target.closest('.monaco-editor');
@@ -4722,11 +4732,13 @@ var SashaEngineAPI = (function() {
         else if (key === 'ф') mapped = 'a';
         else if (key === 'ы' || key === 'і') mapped = 's';
         else if (key === 'в') mapped = 'd';
+        else if (key === 'й') mapped = 'q';
 
         if (mapped === 'w') { fpsKeys.w = true; editKeys.w = true; }
         else if (mapped === 'a') { fpsKeys.a = true; editKeys.a = true; }
         else if (mapped === 's') { fpsKeys.s = true; editKeys.s = true; }
         else if (mapped === 'd') { fpsKeys.d = true; editKeys.d = true; }
+        else if (mapped === 'q') { editKeys.q = true; }
         else if (key === 'shift') { fpsKeys.shift = true; editKeys.shift = true; }
         else if (key === ' ') { fpsKeys.space = true; editKeys.space = true; if (!fpsMode) e.preventDefault(); }
     }
@@ -4738,11 +4750,13 @@ var SashaEngineAPI = (function() {
         else if (key === 'ф') mapped = 'a';
         else if (key === 'ы' || key === 'і') mapped = 's';
         else if (key === 'в') mapped = 'd';
+        else if (key === 'й') mapped = 'q';
 
         if (mapped === 'w') { fpsKeys.w = false; editKeys.w = false; }
         else if (mapped === 'a') { fpsKeys.a = false; editKeys.a = false; }
         else if (mapped === 's') { fpsKeys.s = false; editKeys.s = false; }
         else if (mapped === 'd') { fpsKeys.d = false; editKeys.d = false; }
+        else if (mapped === 'q') { editKeys.q = false; }
         else if (key === 'shift') { fpsKeys.shift = false; editKeys.shift = false; }
         else if (key === ' ') { fpsKeys.space = false; editKeys.space = false; }
     }
@@ -4778,6 +4792,7 @@ var SashaEngineAPI = (function() {
         if (editKeys.d) { camera.position.addScaledVector(right, speed); if (controls) controls.target.addScaledVector(right, speed); }
         if (editKeys.a) { camera.position.addScaledVector(right, -speed); if (controls) controls.target.addScaledVector(right, -speed); }
         if (editKeys.space) { camera.position.y += speed; if (controls) controls.target.y += speed; }
+        if (editKeys.q) { camera.position.y -= speed; if (controls) controls.target.y -= speed; }
     }
     function setEditMoveSpeed(s) { editMoveSpeed = s; }
 
@@ -4793,6 +4808,12 @@ var SashaEngineAPI = (function() {
     var initialized = false;
     var animFrameId = null;
     var selectedObject = null;
+    // === Game View System ===
+    var gameCamera = null;          // Game camera (renders scene from Main Camera's perspective)
+    var gameViewActive = false;    // Is game mode active — render from gameCamera on main canvas
+    var useGameCamera = true;       // true = render from game camera, false = render from editor camera (free cam)
+    var previewRenderer = null;    // Small renderer for camera preview
+    var previewCanvas = null;      // Preview canvas element
     // === Main Camera System (Unity-style) ===
     var mainCameraObj = null;       // The camera object on scene (THREE.Camera)
     var mainCameraName = 'Main Camera';
@@ -4829,10 +4850,17 @@ var SashaEngineAPI = (function() {
         camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
         camera.position.set(5, 5, 5);
 
-        // Create Main Camera as a scene object (Unity-style)
-        mainCameraObj = camera;
+        // Create Game Camera (renders scene from Main Camera's perspective in Play mode)
+        gameCamera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+        gameCamera.position.set(0, 5, 10);
+        gameCamera.lookAt(0, 0, 0);  // Look at scene origin by default
+        gameCamera.name = mainCameraName;
+
+        // Create Main Camera as a scene object with helper visible in editor viewport
+        mainCameraObj = new THREE.Object3D();
         mainCameraObj.name = mainCameraName;
         mainCameraObj.userData.isMainCamera = true;
+        mainCameraObj.position.copy(gameCamera.position);
         // Wireframe helper to show camera in viewport
         mainCameraHelper = new THREE.Mesh(
             new THREE.BoxGeometry(0.3, 0.2, 0.4),
@@ -4840,6 +4868,7 @@ var SashaEngineAPI = (function() {
         );
         mainCameraHelper.name = '__mainCamera_helper';
         mainCameraObj.add(mainCameraHelper);
+        scene.add(mainCameraObj);
         // Register in objects so it appears in hierarchy
         objects[mainCameraName] = mainCameraObj;
         objectTypes[mainCameraName] = 'mainCamera';
@@ -4851,9 +4880,16 @@ var SashaEngineAPI = (function() {
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+        // Preview renderer created lazily when camera preview first shown (canvas hidden during init)
+
         controls = new THREE.OrbitControls(camera, canvas);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        controls.minPolarAngle = 0;          // Full vertical rotation — can look straight down
+        controls.maxPolarAngle = Math.PI;    // Full vertical rotation — can look straight up
+        controls.minDistance = 0.5;
+        controls.maxDistance = 200;
+        controls.target.set(0, 1, 0);
 
         // TransformControls (gizmo)
         transformCtrl = new THREE.TransformControls(camera, canvas);
@@ -4864,7 +4900,10 @@ var SashaEngineAPI = (function() {
         transformCtrl.showY = true;
         transformCtrl.showZ = true;
         transformCtrl.addEventListener('dragging-changed', function(event) {
-            controls.enabled = !event.value;
+            // Disable OrbitControls during gizmo drag — prevents fighting over mouse
+            if (event.value) {
+                controls.enabled = false;
+            }
             _transformDragging = event.value;
             // Record time when drag ends — prevents click-to-select race condition
             if (!event.value) { _lastTransformEnd = Date.now(); }
@@ -4907,6 +4946,7 @@ var SashaEngineAPI = (function() {
         // Click-to-select via raycasting
         canvas.addEventListener('pointerdown', onPointerDown);
         canvas.addEventListener('pointerup', onPointerUp);
+        canvas.addEventListener('pointermove', onCanvasPointerMove);
         var pointerDownPos = { x: 0, y: 0 };
 
         // FPS mode event listeners
@@ -4928,19 +4968,27 @@ var SashaEngineAPI = (function() {
         this._pointerDownPos = { x: e.clientX, y: e.clientY };
     }
 
+    // Track pointer on canvas — used to distinguish click vs drag reliably
+    function onCanvasPointerMove(e) {
+        if (this._pointerDownPos && !_transformDragging) {
+            var dx = e.clientX - this._pointerDownPos.x;
+            var dy = e.clientY - this._pointerDownPos.y;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                this._pointerDownPos = null; // It's a drag, not a click
+            }
+        }
+    }
+
     function onPointerUp(e) {
         if (!this._pointerDownPos) return;
+        this._pointerDownPos = null; // Consume it
         // Don't select right after TransformControls interaction (race condition fix)
-        if (Date.now() - _lastTransformEnd < 100) { this._pointerDownPos = null; return; }
-        // Don't select during active drag
-        if (_transformDragging) { this._pointerDownPos = null; return; }
-        var dx = e.clientX - this._pointerDownPos.x;
-        var dy = e.clientY - this._pointerDownPos.y;
-        // Only select if it's a click (not drag)
-        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
-            onClickSelect(e);
-        }
-        this._pointerDownPos = null;
+        if (Date.now() - _lastTransformEnd < 200) return;
+        // Don't select during active gizmo drag
+        if (_transformDragging) return;
+        // Don't select in game mode or FPS mode
+        if (playState === 'playing' || fpsMode) return;
+        onClickSelect(e);
     }
 
     function onClickSelect(e) {
@@ -5039,28 +5087,142 @@ var SashaEngineAPI = (function() {
     }
 
     function getMainCamera() {
-        return { name: mainCameraName, camera: camera, position: camera ? camera.position.clone() : null, target: followTarget, offset: followOffset };
+        return { name: mainCameraName, camera: gameCamera || camera, position: gameCamera ? gameCamera.position.clone() : (camera ? camera.position.clone() : null), target: followTarget, offset: followOffset };
+    }
+
+    // Game View control — switches main canvas between editor camera and game camera
+    function setGameViewActive(active) {
+        gameViewActive = !!active;
+        useGameCamera = true;
+        // Hide editor-only helpers when entering game mode, show when exiting
+        var gridObj = scene.getObjectByName('__builtin_grid');
+        if (gridObj) gridObj.visible = !gameViewActive;
+        if (mainCameraHelper) mainCameraHelper.visible = !gameViewActive;
+        if (selectionHelper) selectionHelper.visible = false;
+        if (transformCtrl) transformCtrl.visible = !gameViewActive;
+        // Hide camera preview in game mode
+        _updateCameraPreviewVisibility(null);
+    }
+
+    // Camera Preview — show/hide small preview window
+    function _updateCameraPreviewVisibility(selectedName) {
+        var previewEl = document.getElementById('camera-preview');
+        if (!previewEl) return;
+        // Show preview when a camera object is selected and NOT in game mode
+        var isCameraSelected = selectedName && (
+            selectedName === mainCameraName ||
+            objectTypes[selectedName] === 'camera' ||
+            objectTypes[selectedName] === 'mainCamera'
+        );
+        if (isCameraSelected && !gameViewActive) {
+            previewEl.classList.add('visible');
+            // Renderer will be lazy-created on first _renderCameraPreview call
+        } else {
+            previewEl.classList.remove('visible');
+        }
+    }
+
+    // Render camera preview each frame (called from animate)
+    function _renderCameraPreview() {
+        var previewEl = document.getElementById('camera-preview');
+        if (!previewEl || !previewEl.classList.contains('visible')) return;
+        // Don't render preview in game mode (main canvas already shows game view)
+        if (gameViewActive) return;
+
+        // Lazy-init preview renderer on first render
+        if (!previewRenderer) {
+            previewCanvas = document.getElementById('camera-preview-canvas');
+            if (!previewCanvas) return;
+            previewRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: true });
+            previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            previewRenderer.shadowMap.enabled = true;
+            previewRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
+        if (!previewCanvas) return;
+        if (!gameCamera) return;
+
+        var pw = previewCanvas.clientWidth;
+        var ph = previewCanvas.clientHeight;
+        if (pw < 1 || ph < 1) return;
+
+        // Auto-sync gameCamera from Main Camera helper position every frame
+        if (mainCameraObj) {
+            gameCamera.position.copy(mainCameraObj.position);
+            if (followTarget && objects[followTarget]) {
+                gameCamera.lookAt(objects[followTarget].position);
+            } else {
+                gameCamera.lookAt(0, 1, 0);
+            }
+        }
+
+        // Set preview camera aspect and resize if needed
+        var ppr = previewRenderer.getPixelRatio();
+        if (Math.round(pw * ppr) !== previewRenderer.domElement.width || Math.round(ph * ppr) !== previewRenderer.domElement.height) {
+            previewRenderer.setSize(pw, ph);
+        }
+        gameCamera.aspect = pw / ph;
+        gameCamera.updateProjectionMatrix();
+
+        // Hide editor helpers for clean preview
+        var gridObj = scene.getObjectByName('__builtin_grid');
+        var _gridVis = gridObj ? gridObj.visible : false;
+        var _helpVis = mainCameraHelper ? mainCameraHelper.visible : false;
+        var _selVis = selectionHelper.visible;
+        var _tcVis = transformCtrl.visible;
+        if (gridObj) gridObj.visible = false;
+        if (mainCameraHelper) mainCameraHelper.visible = false;
+        if (selectionHelper) selectionHelper.visible = false;
+        if (transformCtrl) transformCtrl.visible = false;
+
+        // Render — ALL objects on scene that camera sees
+        previewRenderer.render(scene, gameCamera);
+
+        // Restore helpers
+        if (gridObj) gridObj.visible = _gridVis;
+        if (mainCameraHelper) mainCameraHelper.visible = _helpVis;
+        if (selectionHelper) selectionHelper.visible = _selVis;
+        if (transformCtrl) transformCtrl.visible = _tcVis;
+    }
+
+    function toggleGameViewCam() {
+        useGameCamera = !useGameCamera;
+        EngineApp.log(useGameCamera ? 'Game Camera view' : 'Free Camera view', 'info');
+    }
+
+    // Sync game camera position from Main Camera helper (rotation NOT copied — gameCamera looks at scene)
+    function syncGameCamera() {
+        if (mainCameraObj && gameCamera) {
+            gameCamera.position.copy(mainCameraObj.position);
+            // Look at follow target or scene center
+            if (followTarget && objects[followTarget]) {
+                gameCamera.lookAt(objects[followTarget].position);
+            } else {
+                gameCamera.lookAt(0, 1, 0);
+            }
+        }
     }
 
     // Called every frame in animate() — moves camera toward follow target
     function updateMainCamera(delta) {
-        if (!followTarget || !camera || !objects[followTarget]) return;
+        if (!followTarget || !gameCamera || !objects[followTarget]) return;
         var target = objects[followTarget];
         var targetPos = target.position.clone();
-        // Compute desired camera position = target + offset
+        // Compute desired game camera position = target + offset
         var desiredX = targetPos.x + followOffset.x;
         var desiredY = targetPos.y + followOffset.y;
         var desiredZ = targetPos.z + followOffset.z;
         // Smooth lerp
         var speed = followSmooth * delta;
         if (speed > 1) speed = 1;
-        camera.position.x += (desiredX - camera.position.x) * speed;
-        camera.position.y += (desiredY - camera.position.y) * speed;
-        camera.position.z += (desiredZ - camera.position.z) * speed;
-        // Look at target
-        if (controls) {
-            controls.target.lerp(targetPos, speed);
+        gameCamera.position.x += (desiredX - gameCamera.position.x) * speed;
+        gameCamera.position.y += (desiredY - gameCamera.position.y) * speed;
+        gameCamera.position.z += (desiredZ - gameCamera.position.z) * speed;
+        // Sync helper position in editor viewport
+        if (mainCameraObj) {
+            mainCameraObj.position.copy(gameCamera.position);
         }
+        // Look at target
+        gameCamera.lookAt(targetPos);
     }
 
     // --- Public API ---
@@ -5577,6 +5739,9 @@ var SashaEngineAPI = (function() {
         // Detach gizmo from old object
         transformCtrl.detach();
         selectionHelper.visible = false;
+
+        // Show camera preview when Main Camera (or any camera) is selected
+        _updateCameraPreviewVisibility(name);
 
         if (name && objects[name]) {
             var obj = objects[name];
@@ -6469,30 +6634,52 @@ var SashaEngineAPI = (function() {
         // === Main Camera Follow Update (only when follow target set and NOT in FPS mode) ===
         if (!fpsMode) updateMainCamera(delta);
 
-        // Controls: disabled in FPS mode, during gizmo drag, or in game mode with follow target
-        if (fpsMode) {
+        // Controls: disabled in FPS mode, during gizmo drag, in game mode, or with follow target
+        if (fpsMode || (playState === 'playing' && gameViewActive)) {
             if (controls) controls.enabled = false;
         } else if (_transformDragging) {
-            // TransformControls is dragging — keep OrbitControls OFF
-            if (controls) controls.enabled = false;
-        } else if (playState === 'playing' && followTarget) {
             if (controls) controls.enabled = false;
         } else {
             if (controls) controls.enabled = true;
         }
 
         if (controls && controls.enabled) controls.update();
+
         // === RENDER ===
         if (renderer && scene && camera) {
             var w = canvas ? canvas.clientWidth : 0;
             var h = canvas ? canvas.clientHeight : 0;
-            var pr = renderer.getPixelRatio();
-            if (w > 0 && h > 0 && (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height)) {
-                camera.aspect = w / h;
-                camera.updateProjectionMatrix();
-                renderer.setSize(w, h);
+            if (w > 0 && h > 0) {
+                var pr = renderer.getPixelRatio();
+                if (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height) {
+                    camera.aspect = w / h;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(w, h);
+                }
             }
-            renderer.render(scene, camera);
+
+            if (playState === 'playing' && gameViewActive) {
+                // === GAME MODE — render from gameCamera on MAIN canvas ===
+                // Sync gameCamera from Main Camera position + lookAt
+                if (mainCameraObj && gameCamera) {
+                    gameCamera.position.copy(mainCameraObj.position);
+                    if (followTarget && objects[followTarget]) {
+                        gameCamera.lookAt(objects[followTarget].position);
+                    } else {
+                        gameCamera.lookAt(0, 1, 0);
+                    }
+                }
+                var renderCam = useGameCamera ? gameCamera : camera;
+                renderCam.aspect = w / h;
+                renderCam.updateProjectionMatrix();
+                renderer.render(scene, renderCam);
+            } else {
+                // === EDITOR MODE — render from editor camera ===
+                renderer.render(scene, camera);
+            }
+
+            // === Camera Preview (small window when camera is selected) ===
+            _renderCameraPreview();
         }
     }
 
@@ -6509,6 +6696,7 @@ var SashaEngineAPI = (function() {
         setFollowTarget: setFollowTarget, clearFollowTarget: clearFollowTarget, getMainCamera: getMainCamera,
         // FPS Camera
         toggleFPSMode: toggleFPSMode, isFPSMode: isFPSMode, setFPSMoveSpeed: setFPSMoveSpeed,
+        setGameViewActive: setGameViewActive, toggleGameViewCam: toggleGameViewCam, syncGameCamera: syncGameCamera, getGameCamera: function() { return gameCamera; },
         setBgColor: setBgColor, animate: animateObj, onFrame: onFrame, getScene: getScene,
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
@@ -6961,11 +7149,14 @@ var EngineApp = (function() {
             SashaEngineAPI.savePlayState();
             // Auto-initialize physicsObjects from components (RigidBody on objects)
             SashaEngineAPI.initPhysicsFromComponents();
+            // Sync game camera position from Main Camera helper object
+            SashaEngineAPI.syncGameCamera();
         }
         SashaEngineAPI.setPlayState('playing');
+        SashaEngineAPI.setGameViewActive(true);
         var sec = document.getElementById('engine');
         if (sec) sec.classList.add('game-mode');
-        log('▶ Play mode', 'info');
+        log('▶ Play mode — Game view active', 'info');
     }
 
     function pause() {
@@ -6978,6 +7169,7 @@ var EngineApp = (function() {
         SashaEngineAPI.destroyScripts();
         SashaEngineAPI.restorePlayState();
         SashaEngineAPI.setPlayState('stopped');
+        SashaEngineAPI.setGameViewActive(false);
         var sec = document.getElementById('engine');
         if (sec) sec.classList.remove('game-mode');
         refreshInspector();
