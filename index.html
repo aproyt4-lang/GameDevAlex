@@ -1010,8 +1010,13 @@
                         <div class="split-viewport" id="split-viewport">
                             <!-- Scene View (editor camera) -->
                             <div class="scene-view" id="scene-view-pane">
-                                <div class="view-label" id="scene-view-label">Scene</div>
+                                <div class="view-label active-label" id="scene-view-label">Scene</div>
                                 <canvas id="engine-canvas"></canvas>
+                                <!-- Camera Preview (shows what Main Camera sees when selected) -->
+                                <div class="camera-preview" id="camera-preview">
+                                    <canvas id="camera-preview-canvas"></canvas>
+                                    <div class="camera-preview-label">Camera Preview</div>
+                                </div>
                                 <div class="viewport-stats" id="eng-viewport-stats">FPS: -- | Objs: 0</div>
                                 <div class="viewport-gizmo-info" id="viewport-gizmo-info">
                                     Tool: <span id="gizmo-info-mode">Move</span> |
@@ -7098,6 +7103,8 @@ var SashaEngineAPI = (function() {
                 } else {
                     renderer.render(scene, camera);
                 }
+                // Camera Preview — render when visible (editor mode + camera selected)
+                _renderCameraPreview();
             }
 
             // --- Game View: game camera (second renderer) ---
@@ -7660,6 +7667,11 @@ var EngineApp = (function() {
         SashaEngineAPI.setGameViewActive(true);
         var sec = document.getElementById('engine');
         if (sec) sec.classList.add('game-mode');
+        // Update view labels
+        var sceneLabel = document.getElementById('scene-view-label');
+        var gameLabel = document.getElementById('game-view-label');
+        if (sceneLabel) sceneLabel.classList.remove('active-label');
+        if (gameLabel) gameLabel.classList.add('active-label');
         log('▶ Play mode — Game view active', 'info');
     }
 
@@ -7677,6 +7689,11 @@ var EngineApp = (function() {
         SashaEngineAPI.setGameViewActive(false);
         var sec = document.getElementById('engine');
         if (sec) sec.classList.remove('game-mode');
+        // Update view labels
+        var sceneLabel = document.getElementById('scene-view-label');
+        var gameLabel = document.getElementById('game-view-label');
+        if (sceneLabel) sceneLabel.classList.add('active-label');
+        if (gameLabel) gameLabel.classList.remove('active-label');
         refreshInspector();
         log('⏹ Stopped', 'info');
     }
