@@ -338,7 +338,39 @@
 
         /* Viewport */
         .engine-viewport-pane { position: relative; background: #0a0a1a; overflow: hidden; }
-        .engine-viewport-pane canvas { width: 100% !important; height: 100% !important; display: block; }
+        .engine-viewport-pane canvas { display: block; }
+
+        /* Split Viewport: Scene View | Game View */
+        .split-viewport { display: flex; width: 100%; height: 100%; position: relative; }
+        .split-viewport .scene-view {
+            flex: 0 0 60%; position: relative; overflow: hidden; min-width: 100px;
+        }
+        .split-viewport .scene-view canvas { width: 100% !important; height: 100% !important; }
+        .split-viewport .split-handle {
+            flex: 0 0 4px; background: #1e293b; cursor: col-resize; position: relative; z-index: 5;
+            transition: background 0.15s;
+        }
+        .split-viewport .split-handle:hover, .split-viewport .split-handle.active { background: #6366f1; }
+        .split-viewport .split-handle::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 2px; height: 30px; background: rgba(255,255,255,0.15); border-radius: 2px;
+        }
+        .split-viewport .split-handle.active::after { background: rgba(255,255,255,0.5); }
+        .split-viewport .game-view {
+            flex: 1 1 40%; position: relative; overflow: hidden; min-width: 100px;
+        }
+        .split-viewport .game-view canvas { width: 100% !important; height: 100% !important; }
+        .view-label {
+            position: absolute; top: 6px; left: 8px; z-index: 6;
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+            color: rgba(255,255,255,0.5); pointer-events: none;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+        .view-label.active-label { color: rgba(99,102,241,0.9); }
+        /* Game mode: collapse scene view, expand game view */
+        .game-mode .split-viewport .scene-view { flex: 0 0 0px; overflow: hidden; }
+        .game-mode .split-viewport .split-handle { display: none; }
+        .game-mode .split-viewport .game-view { flex: 1 1 100%; }
         /* Camera Preview — bottom-right corner when camera selected */
         .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .camera-preview.visible { display: block; }
@@ -425,8 +457,9 @@
         .hier-item .hier-parent-icon:hover { color: var(--primary); }
         .scene-setting-row { display: flex; align-items: center; padding: 4px 10px; gap: 8px; }
         .scene-setting-label { font-size: 0.72rem; color: var(--text-muted); width: 80px; min-width: 80px; }
-        .game-mode .engine-hierarchy, .game-mode .engine-inspector, .game-mode .engine-toolbar .gizmo-group, .game-mode .engine-toolbar .eng-separator, .game-mode .engine-toolbar select, .game-mode .engine-toolbar .engine-model-status, .game-mode .viewport-gizmo-info { display: none !important; }
+        .game-mode .engine-hierarchy, .game-mode .engine-inspector, .game-mode .engine-toolbar .gizmo-group, .game-mode .engine-toolbar .eng-separator, .game-mode .engine-toolbar select, .game-mode .engine-toolbar .engine-model-status, .game-mode .viewport-gizmo-info, .game-mode .engine-bottom-grid { display: none !important; }
         .game-mode .engine-main-grid { grid-template-columns: 0px 1fr 0px; }
+        .game-mode .engine-main-grid { flex: 1; }
 
         .asset-browser { display: flex; flex-direction: column; height: 100%; background: var(--bg-card); }
         .asset-toolbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); position: relative; }
@@ -972,26 +1005,34 @@
                         <div id="eng-hierarchy" style="flex:1;overflow-y:auto;padding:4px;"></div>
                     </div>
 
-                    <!-- Viewport -->
+                    <!-- Viewport: Split Scene View + Game View -->
                     <div class="engine-viewport-pane">
-                        <canvas id="engine-canvas"></canvas>
-                        <!-- Camera Preview (shows what Main Camera sees when selected) -->
-                        <div class="camera-preview" id="camera-preview">
-                            <canvas id="camera-preview-canvas"></canvas>
-                            <div class="camera-preview-label">Camera Preview</div>
+                        <div class="split-viewport" id="split-viewport">
+                            <!-- Scene View (editor camera) -->
+                            <div class="scene-view" id="scene-view-pane">
+                                <div class="view-label" id="scene-view-label">Scene</div>
+                                <canvas id="engine-canvas"></canvas>
+                                <div class="viewport-stats" id="eng-viewport-stats">FPS: -- | Objs: 0</div>
+                                <div class="viewport-gizmo-info" id="viewport-gizmo-info">
+                                    Tool: <span id="gizmo-info-mode">Move</span> |
+                                    Selected: <span id="gizmo-info-sel">None</span> |
+                                    Objects: <span id="gizmo-info-count">0</span>
+                                </div>
+                                <div id="fps-crosshair" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10;">
+                                    <div style="width:20px;height:2px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                                    <div style="width:2px;height:20px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                                    <div style="width:4px;height:4px;background:rgba(255,255,255,0.8);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                                </div>
+                                <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - move | Q - down | Space - up | Shift - sprint | Mouse - look | ESC - release</div>
+                            </div>
+                            <!-- Split Handle (draggable divider) -->
+                            <div class="split-handle" id="viewport-split-handle"></div>
+                            <!-- Game View (game camera) -->
+                            <div class="game-view" id="game-view-pane">
+                                <div class="view-label" id="game-view-label">Game</div>
+                                <canvas id="game-view-canvas"></canvas>
+                            </div>
                         </div>
-                        <div class="viewport-stats" id="eng-viewport-stats">FPS: -- | Objs: 0</div>
-                        <div class="viewport-gizmo-info" id="viewport-gizmo-info">
-                            Tool: <span id="gizmo-info-mode">Move</span> |
-                            Selected: <span id="gizmo-info-sel">None</span> |
-                            Objects: <span id="gizmo-info-count">0</span>
-                        </div>
-                        <div id="fps-crosshair" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10;">
-                            <div style="width:20px;height:2px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-                            <div style="width:2px;height:20px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-                            <div style="width:4px;height:4px;background:rgba(255,255,255,0.8);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-                        </div>
-                        <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - move | Q - down | Space - up | Shift - sprint | Mouse - look | ESC - release</div>
                         <div class="engine-model-overlay" id="eng-overlay">
                             <div class="model-text" id="eng-overlay-text">Loading AI model...</div>
                             <div class="model-progress"><div class="model-progress-bar" id="eng-progress-bar"></div></div>
@@ -4933,6 +4974,8 @@ var SashaEngineAPI = (function() {
     var useGameCamera = true;       // true = render from game camera, false = render from editor camera (free cam)
     var previewRenderer = null;    // Small renderer for camera preview
     var previewCanvas = null;      // Preview canvas element
+    var gameViewRenderer = null;   // Renderer for Game View split pane
+    var gameViewCanvas = null;     // Canvas element for Game View split pane
     // === Main Camera System (Unity-style) ===
     var mainCameraObj = null;       // The camera object on scene (THREE.Camera)
     var mainCameraName = 'Main Camera';
@@ -4998,6 +5041,16 @@ var SashaEngineAPI = (function() {
         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Game View renderer — second renderer for the Game View pane
+        gameViewCanvas = document.getElementById('game-view-canvas');
+        if (gameViewCanvas) {
+            gameViewRenderer = new THREE.WebGLRenderer({ canvas: gameViewCanvas, antialias: true });
+            gameViewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            gameViewRenderer.setSize(gameViewCanvas.clientWidth, gameViewCanvas.clientHeight);
+            gameViewRenderer.shadowMap.enabled = true;
+            gameViewRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
 
         // Preview renderer created lazily when camera preview first shown (canvas hidden during init)
 
@@ -7007,41 +7060,76 @@ var SashaEngineAPI = (function() {
 
         if (controls && controls.enabled) controls.update();
 
-        // === RENDER ===
+        // === RENDER — Scene View + Game View split ===
         if (renderer && scene && camera) {
-            var w = canvas ? canvas.clientWidth : 0;
-            var h = canvas ? canvas.clientHeight : 0;
-            if (w < 1 || h < 1) return; // Canvas not ready — don't render anything
-
-            var pr = renderer.getPixelRatio();
-            if (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height) {
-                camera.aspect = w / h;
-                camera.updateProjectionMatrix();
-                renderer.setSize(w, h);
+            // --- Sync gameCamera from Main Camera helper ---
+            if (gameCamera && mainCameraObj) {
+                gameCamera.position.copy(mainCameraObj.position);
+                if (followTarget && objects[followTarget]) {
+                    gameCamera.lookAt(objects[followTarget].position);
+                } else {
+                    gameCamera.lookAt(0, 1, 0);
+                }
             }
 
-            if (playState === 'playing' && gameViewActive) {
-                // === GAME MODE — render from gameCamera on MAIN canvas ===
-                if (gameCamera) {
-                    // Sync position from Main Camera helper
-                    if (mainCameraObj) {
-                        gameCamera.position.copy(mainCameraObj.position);
-                    }
-                    // Look at follow target or scene center
-                    if (followTarget && objects[followTarget]) {
-                        gameCamera.lookAt(objects[followTarget].position);
-                    } else {
-                        gameCamera.lookAt(0, 1, 0);
-                    }
-                    gameCamera.aspect = w / h;
-                    gameCamera.updateProjectionMatrix();
-                    renderer.render(scene, gameCamera);
+            // --- Scene View: editor camera ---
+            var svW = canvas ? canvas.clientWidth : 0;
+            var svH = canvas ? canvas.clientHeight : 0;
+            if (svW > 0 && svH > 0) {
+                var svPr = renderer.getPixelRatio();
+                if (Math.round(svW * svPr) !== renderer.domElement.width || Math.round(svH * svPr) !== renderer.domElement.height) {
+                    camera.aspect = svW / svH;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(svW, svH);
                 }
-            } else {
-                // === EDITOR MODE — render from editor camera ===
-                renderer.render(scene, camera);
-                // Camera Preview only in editor mode
-                _renderCameraPreview();
+                // Hide editor helpers in game mode
+                if (playState === 'playing' && gameViewActive) {
+                    var gridObj = scene.getObjectByName('__builtin_grid');
+                    if (gridObj) gridObj.visible = false;
+                    if (mainCameraHelper) mainCameraHelper.visible = false;
+                    if (selectionHelper) selectionHelper.visible = false;
+                    if (transformCtrl) transformCtrl.visible = false;
+                    renderer.render(scene, gameCamera || camera);
+                    // Restore
+                    if (gridObj) gridObj.visible = true;
+                    if (mainCameraHelper) mainCameraHelper.visible = true;
+                    if (selectionHelper) selectionHelper.visible = true;
+                    if (transformCtrl) transformCtrl.visible = true;
+                } else {
+                    renderer.render(scene, camera);
+                }
+            }
+
+            // --- Game View: game camera (second renderer) ---
+            if (gameViewRenderer && gameCamera) {
+                var gvW = gameViewCanvas ? gameViewCanvas.clientWidth : 0;
+                var gvH = gameViewCanvas ? gameViewCanvas.clientHeight : 0;
+                if (gvW > 0 && gvH > 0) {
+                    var gvPr = gameViewRenderer.getPixelRatio();
+                    if (Math.round(gvW * gvPr) !== gameViewRenderer.domElement.width || Math.round(gvH * gvPr) !== gameViewRenderer.domElement.height) {
+                        gameViewRenderer.setSize(gvW, gvH);
+                    }
+                    gameCamera.aspect = gvW / gvH;
+                    gameCamera.updateProjectionMatrix();
+                    // Hide editor helpers for clean game view
+                    var gvGrid = scene.getObjectByName('__builtin_grid');
+                    var gvGridVis = gvGrid ? gvGrid.visible : false;
+                    var gvHelpVis = mainCameraHelper ? mainCameraHelper.visible : false;
+                    var gvSelVis = selectionHelper.visible;
+                    var gvTcVis = transformCtrl.visible;
+                    if (gvGrid) gvGrid.visible = false;
+                    if (mainCameraHelper) mainCameraHelper.visible = false;
+                    if (selectionHelper) selectionHelper.visible = false;
+                    if (transformCtrl) transformCtrl.visible = false;
+
+                    gameViewRenderer.render(scene, gameCamera);
+
+                    // Restore
+                    if (gvGrid) gvGrid.visible = gvGridVis;
+                    if (mainCameraHelper) mainCameraHelper.visible = gvHelpVis;
+                    if (selectionHelper) selectionHelper.visible = gvSelVis;
+                    if (transformCtrl) transformCtrl.visible = gvTcVis;
+                }
             }
         }
     }
@@ -7334,6 +7422,47 @@ var EngineApp = (function() {
     var editor = null;
     var liveMode = false;
     var liveTimer = null;
+    // === Split Viewport Handle Drag ===
+    function initSplitHandle() {
+        var handle = document.getElementById('viewport-split-handle');
+        var splitViewport = document.getElementById('split-viewport');
+        if (!handle || !splitViewport) return;
+
+        var scenePane = document.getElementById('scene-view-pane');
+        var gamePane = document.getElementById('game-view-pane');
+        if (!scenePane || !gamePane) return;
+
+        var dragging = false;
+
+        handle.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            dragging = true;
+            handle.classList.add('active');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!dragging) return;
+            var rect = splitViewport.getBoundingClientRect();
+            var x = e.clientX - rect.left;
+            var totalW = rect.width;
+            var pct = (x / totalW) * 100;
+            if (pct < 15) pct = 15;   // min 15% for scene view
+            if (pct > 85) pct = 85;   // max 85% (leave 15% for game view)
+            scenePane.style.flex = '0 0 ' + pct + '%';
+            gamePane.style.flex = '1 1 ' + (100 - pct) + '%';
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (!dragging) return;
+            dragging = false;
+            handle.classList.remove('active');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        });
+    }
+
     var initialized = false;
     var currentTab = 'assets';
     var defaultCode = '// SashaAI Engine — Unity-like game engine\n' +
@@ -7350,6 +7479,8 @@ var EngineApp = (function() {
         SashaEngineAPI.init();
         // Load assets from localStorage
         SashaAssetManager.load();
+        // Init split viewport handle drag
+        initSplitHandle();
         // Set selection change callback to refresh UI
         SashaEngineAPI.setOnSelectionChange(function(name) {
             refreshHierarchy();
