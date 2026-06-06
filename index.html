@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="ru">
 <head>
    <meta charset="UTF-8">
@@ -901,6 +901,7 @@
                         <button class="eng-tab" onclick="EngineApp.switchTab('code')"><i class="fas fa-code"></i> Code</button>
                         <button class="eng-tab" onclick="EngineApp.switchTab('ai')"><i class="fas fa-robot"></i> AI Agent</button>
                         <button class="eng-tab" onclick="EngineApp.switchTab('ui')"><i class="fas fa-window-maximize"></i> UI Canvas</button>
+                        <button class="eng-tab" onclick="EngineApp.switchTab('timeline')"><i class="fas fa-film"></i> Animation</button>
                     </div>
                     <div class="engine-bottom-content">
                         <div class="eng-tab-content" id="eng-tab-assets" style="display:block;">
@@ -963,6 +964,60 @@
                                     </div>
                                     <input type="text" id="eng-ai-input" placeholder="Спроси что-нибудь..." onkeydown="if(event.key==='Enter')EngineApp.sendAI()">
                                     <button id="ai-send-btn" onclick="EngineApp.sendAI()"><i class="fas fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="eng-tab-content" id="eng-tab-timeline" style="display:none;">
+                            <div id="timeline-panel" style="width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-card);overflow:hidden;">
+                                <!-- Timeline header: clip info + controls -->
+                                <div id="timeline-header" style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap;min-height:32px;background:var(--bg-dark);">
+                                    <span id="timeline-clip-name" style="font-size:0.72rem;color:var(--text-secondary);min-width:60px;"></span>
+                                    <div style="display:flex;gap:3px;align-items:center;">
+                                        <button class="eng-tab" onclick="EngineApp.tlPlay()" title="Play" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-play"></i></button>
+                                        <button class="eng-tab" onclick="EngineApp.tlStop()" title="Stop" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-stop"></i></button>
+                                        <button class="eng-tab" onclick="EngineApp.tlToggleLoop()" id="tl-loop-btn" title="Loop" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-redo"></i></button>
+                                    </div>
+                                    <span id="tl-time-display" style="font-size:0.68rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">0.000 / 1.000</span>
+                                    <div style="flex:1"></div>
+                                    <span style="font-size:0.65rem;color:var(--text-muted);">Duration:</span>
+                                    <input type="number" id="tl-duration" step="0.1" min="0.1" max="60" value="1.0" style="width:50px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;" onchange="EngineApp.tlSetDuration(this.value)">
+                                    <span style="font-size:0.65rem;color:var(--text-muted);">FPS:</span>
+                                    <input type="number" id="tl-fps" step="1" min="1" max="120" value="60" style="width:40px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;">
+                                </div>
+                                <!-- Timeline tracks + canvas area -->
+                                <div style="display:flex;flex:1;min-height:0;">
+                                    <!-- Track labels (left column) -->
+                                    <div id="tl-track-labels" style="width:160px;min-width:160px;overflow-y:auto;background:var(--bg-dark);border-right:1px solid var(--border);padding:2px 0;"></div>
+                                    <!-- Canvas area (right) -->
+                                    <div id="tl-canvas-wrap" style="flex:1;position:relative;overflow:auto;cursor:default;">
+                                        <canvas id="tl-canvas" style="display:block;"></canvas>
+                                    </div>
+                                </div>
+                                <!-- Bottom toolbar -->
+                                <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--border);min-height:28px;background:var(--bg-dark);">
+                                    <button class="eng-tab" onclick="EngineApp.tlAddTrack()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add Track</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-diamond"></i> Add Key</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlDeleteSelectedKey()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-trash"></i> Del Key</button>
+                                    <div style="flex:1"></div>
+                                    <span id="tl-cursor-info" style="font-size:0.65rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;"></span>
+                                </div>
+                            </div>
+                            <!-- Animator Controller Editor (shown when animator asset selected) -->
+                            <div id="animator-editor" style="width:100%;height:100%;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;">
+                                <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);min-height:32px;background:var(--bg-dark);">
+                                    <span id="ac-ctrl-name" style="font-size:0.72rem;color:var(--primary);font-weight:600;min-width:60px;"></span>
+                                    <div style="flex:1"></div>
+                                    <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add State</button>
+                                    <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-sliders-h"></i> Add Param</button>
+                                    <button class="eng-tab" onclick="EngineApp.acAddTransition()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-arrow-right"></i> Add Transition</button>
+                                </div>
+                                <div style="display:flex;flex:1;min-height:0;">
+                                    <!-- Parameters panel -->
+                                    <div id="ac-params-panel" style="width:180px;min-width:180px;overflow-y:auto;background:var(--bg-dark);border-right:1px solid var(--border);padding:6px;"></div>
+                                    <!-- State machine canvas -->
+                                    <div id="ac-canvas-wrap" style="flex:1;position:relative;overflow:auto;">
+                                        <canvas id="ac-canvas" style="display:block;"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -7048,6 +7103,7 @@ var SashaEngineAPI = (function() {
         addStateToController: addStateToController, removeStateFromController: removeStateFromController,
         addTransition: addTransition, removeTransition: removeTransition,
         setAnimatorParam: setAnimatorParam, getAnimatorParam: getAnimatorParam, triggerAnimatorParam: triggerAnimatorParam,
+        applyClipToObject: applyClipToObject,
         resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; }
     };
 })();
@@ -7804,7 +7860,7 @@ var EngineApp = (function() {
             if (obj.isDirectionalLight || obj.isSpotLight) { lbody += iRow('Shadows', '<input type="checkbox" class="insp-checkbox" '+(obj.castShadow?'checked':'')+' onchange="EngineApp.setLightProp(\''+selected+'\',\'castShadow\',this.checked)">'); }
             html += iSection('fa-lightbulb', 'Light', lbody);
         }
-        html += iSection('fa-puzzle-piece', 'Components', (function(){ var chtml=''; var comps=SashaEngineAPI.getAllComponents(selected); if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; } for(var i=0;i<comps.length;i++){ var comp=comps[i]; var compIcon='fa-file-code'; var compName=comp.type; if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';}else if(comp.type==='capsulecollider'){compIcon='fa-capsules';compName='CapsuleCollider';}else if(comp.type==='cylindercollider'){compIcon='fa-database';compName='CylinderCollider';}else if(comp.type==='wheelcollider'){compIcon='fa-circle-notch';compName='WheelCollider';}else if(comp.type==='planecollider'){compIcon='fa-minus';compName='PlaneCollider';}else if(comp.type==='terraincollider'){compIcon='fa-mountain';compName='TerrainCollider';} chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';} chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>'; if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';} if(comp.type==='rigidbody'){chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');chtml+=sh('Velocity');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';chtml+=sh('Constraints');chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');chtml+=iRField('RBField','Bounce',0.05,0,1,(comp.bounciness!==undefined?comp.bounciness:0.4),selected);chtml+=iRField('RBField','Friction',0.05,0,1,(comp.friction!==undefined?comp.friction:0.6),selected);} if(comp.type==='boxcollider'){var bs=comp.size||{x:1,y:1,z:1};var bc=comp.center||{x:0,y:0,z:0};chtml+=sh('Size');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';} if(comp.type==='spherecollider'){var sc2=comp.center||{x:0,y:0,z:0};chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='meshcollider'){chtml+=iRow('Convex','<input type="checkbox" class="insp-checkbox" '+(comp.convex?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'convex\',this.checked)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='capsulecollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.25)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||2)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='cylindercollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||1)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'isTrigger\',this.checked)">');} if(comp.type==='wheelcollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'radius\',this.value)">');chtml+=iRow('Susp Dist','<input class="insp-input" type="number" step="0.1" value="'+(comp.suspensionDistance||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'suspensionDistance\',this.value)">');} if(comp.type==='boxcollider'){chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'isTrigger\',this.checked)">');} } return chtml; })());
+        html += iSection('fa-puzzle-piece', 'Components', (function(){ var chtml=''; var comps=SashaEngineAPI.getAllComponents(selected); if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; } for(var i=0;i<comps.length;i++){ var comp=comps[i]; var compIcon='fa-file-code'; var compName=comp.type; if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';}else if(comp.type==='capsulecollider'){compIcon='fa-capsules';compName='CapsuleCollider';}else if(comp.type==='cylindercollider'){compIcon='fa-database';compName='CylinderCollider';}else if(comp.type==='wheelcollider'){compIcon='fa-circle-notch';compName='WheelCollider';}else if(comp.type==='planecollider'){compIcon='fa-minus';compName='PlaneCollider';}else if(comp.type==='terraincollider'){compIcon='fa-mountain';compName='TerrainCollider';}else if(comp.type==='animator'){compIcon='fa-project-diagram';compName='Animator';} chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';} chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>'; if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';} if(comp.type==='rigidbody'){chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');chtml+=sh('Velocity');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';chtml+=sh('Constraints');chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');chtml+=iRField('RBField','Bounce',0.05,0,1,(comp.bounciness!==undefined?comp.bounciness:0.4),selected);chtml+=iRField('RBField','Friction',0.05,0,1,(comp.friction!==undefined?comp.friction:0.6),selected);} if(comp.type==='boxcollider'){var bs=comp.size||{x:1,y:1,z:1};var bc=comp.center||{x:0,y:0,z:0};chtml+=sh('Size');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';} if(comp.type==='spherecollider'){var sc2=comp.center||{x:0,y:0,z:0};chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='meshcollider'){chtml+=iRow('Convex','<input type="checkbox" class="insp-checkbox" '+(comp.convex?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'convex\',this.checked)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='capsulecollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.25)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||2)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='cylindercollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||1)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'isTrigger\',this.checked)">');} if(comp.type==='wheelcollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'radius\',this.value)">');chtml+=iRow('Susp Dist','<input class="insp-input" type="number" step="0.1" value="'+(comp.suspensionDistance||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'suspensionDistance\',this.value)">');} if(comp.type==='boxcollider'){chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='animator'){var ctrl=SashaEngineAPI.getAnimatorController(comp.controllerId);chtml+=iRow('Controller',ctrl?('<span style=\"color:var(--primary);cursor:pointer;text-decoration:underline;\" onclick=\"EngineApp.openAnimatorEditor(\\''+comp.controllerId+'\\')\">'+ctrl.name+'</span>'):'<span style=\"color:var(--text-muted);\">None</span>');chtml+='<button onclick=\"EngineApp.openAnimatorEditor(\\''+comp.controllerId+'\\')\" style=\"width:100%;margin-top:4px;font-size:0.65rem;padding:3px;background:var(--primary);border:none;color:#fff;border-radius:4px;cursor:pointer;\"><i class=\"fas fa-project-diagram\"></i> Open Animator Editor</button>';} } return chtml; })());
         html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option><option value="animator">Animator</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
         html += '<div style="display:flex;gap:4px;padding:4px 8px;"><button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button><button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button></div>';
         container.innerHTML = html;
@@ -7989,7 +8045,7 @@ var EngineApp = (function() {
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove('active');
         }
-        var tabMap = { assets: 'Assets', console: 'Console', code: 'Code', ai: 'AI Agent', ui: 'UI Canvas' };
+        var tabMap = { assets: 'Assets', console: 'Console', code: 'Code', ai: 'AI Agent', ui: 'UI Canvas', timeline: 'Animation' };
         for (var j = 0; j < tabs.length; j++) {
             if (tabs[j].textContent.indexOf(tabMap[tabName]) !== -1) {
                 tabs[j].classList.add('active');
@@ -8006,6 +8062,7 @@ var EngineApp = (function() {
         }
         if (tabName === 'assets') { refreshAssetBrowser(); }
         if (tabName === 'ui') { renderUICanvas(); }
+        if (tabName === 'timeline') { EngineApp.tlRefresh(); }
     }
 
     // ============ Asset Browser ============
@@ -8154,6 +8211,7 @@ var EngineApp = (function() {
             html += '</div>';
         } else if (asset.type === 'animator') {
             var ctrl = asset.data.controllerId ? SashaEngineAPI.getAnimatorController(asset.data.controllerId) : null;
+            html += '<button onclick="EngineApp.openAnimatorEditor(\'' + asset.data.controllerId + '\')"><i class="fas fa-project-diagram"></i> Open Editor</button>';
             html += '</div><div class="asset-content-body">';
             if (ctrl) {
                 html += '<div style="color:var(--text-secondary);font-size:0.72rem">';
@@ -8369,9 +8427,884 @@ var EngineApp = (function() {
         log('Added keyframe at t=' + time + ' v=' + value, 'log');
     }
 
+    // Current editing targets
+    var _tlEditingClipId = null;
+    var _tlEditingCtrlId = null;
+
     function openAnimationTimeline(clipId) {
+        _tlEditingCtrlId = null;
+        _tlEditingClipId = clipId;
         switchTab('timeline');
+        var tlPanel = document.getElementById('timeline-panel');
+        var acEditor = document.getElementById('animator-editor');
+        if (tlPanel) tlPanel.style.display = 'flex';
+        if (acEditor) acEditor.style.display = 'none';
+        tlRefresh();
         log('Timeline opened for clip: ' + clipId, 'info');
+    }
+
+    function openAnimatorEditor(ctrlId) {
+        _tlEditingClipId = null;
+        _tlEditingCtrlId = ctrlId;
+        switchTab('timeline');
+        var tlPanel = document.getElementById('timeline-panel');
+        var acEditor = document.getElementById('animator-editor');
+        if (tlPanel) tlPanel.style.display = 'none';
+        if (acEditor) acEditor.style.display = 'flex';
+        acRefresh();
+        log('Animator Controller opened: ' + ctrlId, 'info');
+    }
+
+    // ============ ANIMATION TIMELINE EDITOR ============
+    var _tlState = {
+        playing: false, looping: true, time: 0, duration: 1.0,
+        selectedTrack: -1, selectedKey: -1, draggingKey: false, dragTrack: -1, dragKey: -1,
+        pixelsPerSecond: 120, trackHeight: 28, headerHeight: 24,
+        lastFrameTime: 0, rafId: null, targetObjName: null
+    };
+
+    function tlRefresh() {
+        _tlEnsureEvents();
+        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
+        if (!clip) {
+            var nameEl = document.getElementById('timeline-clip-name');
+            if (nameEl) nameEl.textContent = 'No clip selected';
+            return;
+        }
+        _tlState.duration = clip.duration;
+        _tlState.looping = clip.loop;
+        var nameEl = document.getElementById('timeline-clip-name');
+        if (nameEl) nameEl.textContent = clip.name || 'Animation Clip';
+        var durEl = document.getElementById('tl-duration');
+        if (durEl) durEl.value = clip.duration;
+        var loopBtn = document.getElementById('tl-loop-btn');
+        if (loopBtn) loopBtn.style.opacity = clip.loop ? '1' : '0.4';
+        _tlRenderTrackLabels();
+        _tlRenderCanvas();
+    }
+
+    function tlSetDuration(val) {
+        var v = parseFloat(val);
+        if (isNaN(v) || v < 0.1) return;
+        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
+        if (clip) { clip.duration = v; _tlState.duration = v; tlRefresh(); }
+    }
+
+    function tlPlay() {
+        if (_tlState.playing) return;
+        _tlState.playing = true;
+        _tlState.lastFrameTime = performance.now();
+        _tlPlaybackLoop();
+    }
+
+    function tlStop() {
+        _tlState.playing = false;
+        if (_tlState.rafId) { cancelAnimationFrame(_tlState.rafId); _tlState.rafId = null; }
+        _tlState.time = 0;
+        _tlApplyTimeToScene();
+        _tlRenderCanvas();
+        _tlUpdateTimeDisplay();
+    }
+
+    function tlToggleLoop() {
+        _tlState.looping = !_tlState.looping;
+        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
+        if (clip) clip.loop = _tlState.looping;
+        var loopBtn = document.getElementById('tl-loop-btn');
+        if (loopBtn) loopBtn.style.opacity = _tlState.looping ? '1' : '0.4';
+    }
+
+    function tlPlaybackLoop() {
+        if (!_tlState.playing) return;
+        var now = performance.now();
+        var dt = (now - _tlState.lastFrameTime) / 1000;
+        _tlState.lastFrameTime = now;
+        _tlState.time += dt;
+        if (_tlState.time >= _tlState.duration) {
+            if (_tlState.looping) { _tlState.time = _tlState.time % _tlState.duration; }
+            else { _tlState.time = _tlState.duration; _tlState.playing = false; }
+        }
+        _tlApplyTimeToScene();
+        _tlRenderCanvas();
+        _tlUpdateTimeDisplay();
+        if (_tlState.playing) _tlState.rafId = requestAnimationFrame(tlPlaybackLoop);
+    }
+
+    function _tlApplyTimeToScene() {
+        if (!_tlEditingClipId || !_tlState.targetObjName) return;
+        SashaEngineAPI.applyClipToObject(_tlEditingClipId, _tlState.targetObjName, _tlState.time);
+    }
+
+    function _tlUpdateTimeDisplay() {
+        var el = document.getElementById('tl-time-display');
+        if (el) el.textContent = _tlState.time.toFixed(3) + ' / ' + _tlState.duration.toFixed(3);
+    }
+
+    function tlAddTrack() {
+        if (!_tlEditingClipId) { log('No clip selected', 'warn'); return; }
+        var prop = prompt('Track property (e.g. position.x, position.y, position.z, rotation.y, scale.x, material.emissiveIntensity):', 'position.y');
+        if (!prop || !prop.trim()) return;
+        SashaEngineAPI.addTrackToClip(_tlEditingClipId, prop.trim());
+        // Set target object to currently selected object
+        if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
+        tlRefresh();
+    }
+
+    function tlAddKeyframe() {
+        if (!_tlEditingClipId) { log('No clip selected', 'warn'); return; }
+        if (_tlState.selectedTrack < 0) { log('Select a track first', 'warn'); return; }
+        var time = _tlState.time;
+        var value = 0;
+        // Auto-read current value from selected object if possible
+        var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
+        if (objName) {
+            var objs = SashaEngineAPI.getObjects();
+            var obj = objs[objName];
+            var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+            if (obj && clip && clip.tracks[_tlState.selectedTrack]) {
+                var prop = clip.tracks[_tlState.selectedTrack].property;
+                var parts = prop.split('.');
+                if (parts.length === 2) {
+                    var parent = parts[0]; var child = parts[1];
+                    if (parent === 'position' && obj.position) value = obj.position[child];
+                    else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
+                    else if (parent === 'scale' && obj.scale) value = obj.scale[child];
+                } else if (parts.length === 1 && obj[parts[0]] !== undefined) {
+                    value = obj[parts[0]];
+                }
+            }
+        }
+        var valStr = prompt('Value at t=' + time.toFixed(3) + ':', String(value));
+        if (valStr === null) return;
+        value = parseFloat(valStr);
+        if (isNaN(value)) return;
+        SashaEngineAPI.addKeyframe(_tlEditingClipId, _tlState.selectedTrack, time, value);
+        tlRefresh();
+    }
+
+    function tlDeleteSelectedKey() {
+        if (!_tlEditingClipId || _tlState.selectedTrack < 0 || _tlState.selectedKey < 0) return;
+        SashaEngineAPI.removeKeyframe(_tlEditingClipId, _tlState.selectedTrack, _tlState.selectedKey);
+        _tlState.selectedKey = -1;
+        tlRefresh();
+    }
+
+    function _tlRenderTrackLabels() {
+        var container = document.getElementById('tl-track-labels');
+        if (!container) return;
+        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
+        var html = '';
+        // Target object selector
+        html += '<div style="padding:2px 6px;border-bottom:1px solid var(--border);">';
+        html += '<select id=\"tl-target-sel\" style=\"width:100%;font-size:0.65rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:2px;border-radius:3px;outline:none;\" onchange=\"EngineApp.tlSetTarget(this.value)\">';
+        html += '<option value=\"\">-- Object --</option>';
+        var names = SashaEngineAPI.getAllObjectNames();
+        for (var n = 0; n < names.length; n++) {
+            var sel = (_tlState.targetObjName === names[n]) ? ' selected' : '';
+            html += '<option value=\"' + names[n] + '\"' + sel + '>' + names[n] + '</option>';
+        }
+        html += '</select></div>';
+        if (clip) {
+            for (var i = 0; i < clip.tracks.length; i++) {
+                var track = clip.tracks[i];
+                var isSel = (_tlState.selectedTrack === i);
+                html += '<div onclick=\"EngineApp.tlSelectTrack(' + i + ')\" style=\"padding:4px 8px;font-size:0.68rem;cursor:pointer;border-bottom:1px solid var(--border);background:' + (isSel ? 'rgba(99,102,241,0.2)' : 'transparent') + ';color:' + (isSel ? '#fff' : 'var(--text-secondary)') + ';border-left:2px solid ' + (isSel ? '#6366f1' : 'transparent') + ';\">';
+                html += '<i class=\"fas fa-wave-square\" style=\"color:#a855f7;margin-right:4px;\"></i>' + track.property;
+                html += ' <span style=\"color:var(--text-muted);font-size:0.6rem;\">(' + track.keyframes.length + ')</span>';
+                html += '</div>';
+            }
+        }
+        container.innerHTML = html;
+    }
+
+    function tlSetTarget(name) {
+        _tlState.targetObjName = name || null;
+    }
+
+    function tlSelectTrack(idx) {
+        _tlState.selectedTrack = idx;
+        _tlState.selectedKey = -1;
+        tlRefresh();
+    }
+
+    function _tlRenderCanvas() {
+        var canvas = document.getElementById('tl-canvas');
+        var wrap = document.getElementById('tl-canvas-wrap');
+        if (!canvas || !wrap) return;
+        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
+        var trackCount = clip ? clip.tracks.length : 0;
+        var totalWidth = Math.max(wrap.clientWidth, _tlState.duration * _tlState.pixelsPerSecond + 40);
+        var totalHeight = _tlState.headerHeight + trackCount * _tlState.trackHeight + 10;
+        if (totalHeight < 60) totalHeight = 60;
+
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = totalWidth * dpr;
+        canvas.height = totalHeight * dpr;
+        canvas.style.width = totalWidth + 'px';
+        canvas.style.height = totalHeight + 'px';
+
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, totalWidth, totalHeight);
+
+        // Header: time ruler
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(0, 0, totalWidth, _tlState.headerHeight);
+        ctx.strokeStyle = '#2e2e4a';
+        ctx.lineWidth = 1;
+
+        // Time marks
+        var step = 1;
+        if (_tlState.duration > 5) step = 1;
+        if (_tlState.duration > 10) step = 2;
+        if (_tlState.duration > 30) step = 5;
+        for (var t = 0; t <= _tlState.duration + step; t += step) {
+            var x = t * _tlState.pixelsPerSecond;
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, _tlState.headerHeight); ctx.stroke();
+            ctx.fillStyle = '#a1a1aa';
+            ctx.font = '10px JetBrains Mono, monospace';
+            ctx.fillText(t + 's', x + 2, _tlState.headerHeight - 4);
+        }
+        // Sub-marks (0.5s)
+        ctx.strokeStyle = '#1e1e3a';
+        for (var t2 = 0.5; t2 <= _tlState.duration; t2 += 1) {
+            var x2 = t2 * _tlState.pixelsPerSecond;
+            ctx.beginPath(); ctx.moveTo(x2, _tlState.headerHeight - 8); ctx.lineTo(x2, _tlState.headerHeight); ctx.stroke();
+        }
+
+        // Playhead
+        var phX = _tlState.time * _tlState.pixelsPerSecond;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(phX, 0); ctx.lineTo(phX, totalHeight); ctx.stroke();
+        // Playhead triangle
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.moveTo(phX - 5, 0); ctx.lineTo(phX + 5, 0); ctx.lineTo(phX, 7); ctx.closePath(); ctx.fill();
+
+        // Tracks
+        if (clip) {
+            var trackColors = ['#6366f1', '#a855f7', '#06b6d4', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#14b8a6', '#f97316', '#8b5cf6'];
+            for (var ti = 0; ti < clip.tracks.length; ti++) {
+                var track = clip.tracks[ti];
+                var y = _tlState.headerHeight + ti * _tlState.trackHeight;
+                var isSelected = (_tlState.selectedTrack === ti);
+
+                // Track background
+                ctx.fillStyle = isSelected ? 'rgba(99,102,241,0.08)' : '#0f0f23';
+                ctx.fillRect(0, y, totalWidth, _tlState.trackHeight);
+                ctx.strokeStyle = isSelected ? '#6366f1' : '#1a1a2e';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(0, y, totalWidth, _tlState.trackHeight);
+
+                var col = trackColors[ti % trackColors.length];
+
+                // Draw keyframes
+                for (var ki = 0; ki < track.keyframes.length; ki++) {
+                    var kf = track.keyframes[ki];
+                    var kx = kf.time * _tlState.pixelsPerSecond;
+                    var ky = y + _tlState.trackHeight / 2;
+                    var isKeySel = (isSelected && _tlState.selectedKey === ki);
+
+                    // Keyframe diamond
+                    ctx.fillStyle = isKeySel ? '#fff' : col;
+                    ctx.strokeStyle = isKeySel ? col : '#fff';
+                    ctx.lineWidth = isKeySel ? 2 : 1;
+                    ctx.beginPath();
+                    ctx.moveTo(kx, ky - 6);
+                    ctx.lineTo(kx + 6, ky);
+                    ctx.lineTo(kx, ky + 6);
+                    ctx.lineTo(kx - 6, ky);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Value label
+                    ctx.fillStyle = isKeySel ? '#fff' : '#a1a1aa';
+                    ctx.font = '9px JetBrains Mono, monospace';
+                    ctx.fillText(kf.value.toFixed(2), kx + 8, ky + 3);
+                }
+
+                // Draw interpolation lines between keyframes
+                if (track.keyframes.length > 1) {
+                    ctx.strokeStyle = col;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = 0.4;
+                    ctx.beginPath();
+                    for (var li = 0; li < track.keyframes.length; li++) {
+                        var lkf = track.keyframes[li];
+                        var lx = lkf.time * _tlState.pixelsPerSecond;
+                        // normalize value for visual
+                        var minV = Infinity, maxV = -Infinity;
+                        for (var vi = 0; vi < track.keyframes.length; vi++) {
+                            if (track.keyframes[vi].value < minV) minV = track.keyframes[vi].value;
+                            if (track.keyframes[vi].value > maxV) maxV = track.keyframes[vi].value;
+                        }
+                        var range = maxV - minV;
+                        if (range < 0.001) range = 1;
+                        var ly = y + _tlState.trackHeight - 4 - ((lkf.value - minV) / range) * (_tlState.trackHeight - 8);
+                        if (li === 0) ctx.moveTo(lx, ly);
+                        else ctx.lineTo(lx, ly);
+                    }
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+    }
+
+    // Timeline canvas mouse events
+    function _tlCanvasMouseDown(e) {
+        var canvas = document.getElementById('tl-canvas');
+        if (!canvas || !_tlEditingClipId) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip) return;
+
+        // Check if clicking in header (seek)
+        if (my < _tlState.headerHeight) {
+            _tlState.time = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
+            _tlApplyTimeToScene();
+            _tlRenderCanvas();
+            _tlUpdateTimeDisplay();
+            return;
+        }
+
+        // Check keyframe hit
+        for (var ti = 0; ti < clip.tracks.length; ti++) {
+            var y = _tlState.headerHeight + ti * _tlState.trackHeight;
+            for (var ki = 0; ki < clip.tracks[ti].keyframes.length; ki++) {
+                var kf = clip.tracks[ti].keyframes[ki];
+                var kx = kf.time * _tlState.pixelsPerSecond;
+                var ky = y + _tlState.trackHeight / 2;
+                if (Math.abs(mx - kx) < 8 && Math.abs(my - ky) < 8) {
+                    _tlState.selectedTrack = ti;
+                    _tlState.selectedKey = ki;
+                    _tlState.draggingKey = true;
+                    _tlState.dragTrack = ti;
+                    _tlState.dragKey = ki;
+                    _tlRenderTrackLabels();
+                    _tlRenderCanvas();
+                    return;
+                }
+            }
+            // Click on track (select track, deselect key)
+            if (my >= y && my < y + _tlState.trackHeight) {
+                _tlState.selectedTrack = ti;
+                _tlState.selectedKey = -1;
+                _tlRenderTrackLabels();
+                _tlRenderCanvas();
+                return;
+            }
+        }
+    }
+
+    function _tlCanvasMouseMove(e) {
+        if (!_tlState.draggingKey || !_tlEditingClipId) return;
+        var canvas = document.getElementById('tl-canvas');
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip || !clip.tracks[_tlState.dragTrack]) return;
+        var newTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
+        clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey].time = newTime;
+        clip.tracks[_tlState.dragTrack].keyframes.sort(function(a, b) { return a.time - b.time; });
+        // Recalculate selectedKey index after sort
+        for (var i = 0; i < clip.tracks[_tlState.dragTrack].keyframes.length; i++) {
+            if (clip.tracks[_tlState.dragTrack].keyframes[i] === clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey]) {
+                // find the moved keyframe
+            }
+        }
+        _tlRenderCanvas();
+        _tlUpdateTimeDisplay();
+        var info = document.getElementById('tl-cursor-info');
+        if (info) info.textContent = 't=' + newTime.toFixed(3);
+    }
+
+    function _tlCanvasMouseUp(e) {
+        _tlState.draggingKey = false;
+        var info = document.getElementById('tl-cursor-info');
+        if (info) info.textContent = '';
+    }
+
+    function _tlCanvasDblClick(e) {
+        if (!_tlEditingClipId) return;
+        var canvas = document.getElementById('tl-canvas');
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip || my < _tlState.headerHeight) return;
+        // Find which track was double-clicked
+        for (var ti = 0; ti < clip.tracks.length; ti++) {
+            var y = _tlState.headerHeight + ti * _tlState.trackHeight;
+            if (my >= y && my < y + _tlState.trackHeight) {
+                var time = mx / _tlState.pixelsPerSecond;
+                // Read current value
+                var value = 0;
+                var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
+                if (objName) {
+                    var objs = SashaEngineAPI.getObjects();
+                    var obj = objs[objName];
+                    if (obj) {
+                        var prop = clip.tracks[ti].property;
+                        var parts = prop.split('.');
+                        if (parts.length === 2) {
+                            var parent = parts[0]; var child = parts[1];
+                            if (parent === 'position' && obj.position) value = obj.position[child];
+                            else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
+                            else if (parent === 'scale' && obj.scale) value = obj.scale[child];
+                        }
+                    }
+                }
+                var valStr = prompt('Keyframe value at t=' + time.toFixed(3) + ':', String(parseFloat(value.toFixed(3))));
+                if (valStr === null) return;
+                value = parseFloat(valStr);
+                if (isNaN(value)) return;
+                SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, time, value);
+                _tlState.selectedTrack = ti;
+                _tlState.selectedKey = clip.tracks[ti].keyframes.length - 1;
+                tlRefresh();
+                return;
+            }
+        }
+    }
+
+    // Init canvas events lazily
+    var _tlEventsInit = false;
+    var _acEventsInit = false;
+    function _tlEnsureEvents() {
+        if (_tlEventsInit) return;
+        _tlEventsInit = true;
+        var c = document.getElementById('tl-canvas');
+        if (c) {
+            c.addEventListener('mousedown', _tlCanvasMouseDown);
+            c.addEventListener('mousemove', _tlCanvasMouseMove);
+            c.addEventListener('mouseup', _tlCanvasMouseUp);
+            c.addEventListener('dblclick', _tlCanvasDblClick);
+        }
+    }
+    function _acEnsureEvents() {
+        if (_acEventsInit) return;
+        _acEventsInit = true;
+        var c = document.getElementById('ac-canvas');
+        if (c) {
+            c.addEventListener('mousedown', _acCanvasMouseDown);
+            c.addEventListener('mousemove', _acCanvasMouseMove);
+            c.addEventListener('mouseup', _acCanvasMouseUp);
+            c.addEventListener('dblclick', _acCanvasDblClick);
+        }
+    }
+    var _acState = {
+        selectedState: null, selectedTransition: -1,
+        draggingNode: false, dragNodeName: '', dragOffX: 0, dragOffY: 0,
+        nodes: {} // stateName → { x, y }
+    };
+
+    function acRefresh() {
+        _acEnsureEvents();
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        if (!ctrl) { var n = document.getElementById('ac-ctrl-name'); if (n) n.textContent = 'No controller'; return; }
+        var n = document.getElementById('ac-ctrl-name');
+        if (n) n.textContent = ctrl.name || 'Animator Controller';
+        // Init node positions if not set
+        for (var i = 0; i < ctrl.states.length; i++) {
+            if (!_acState.nodes[ctrl.states[i].name]) {
+                _acState.nodes[ctrl.states[i].name] = { x: 80 + i * 180, y: 60 + (i % 2) * 80 };
+            }
+        }
+        _acRenderParams();
+        _acRenderCanvas();
+    }
+
+    function acAddState() {
+        if (!_tlEditingCtrlId) return;
+        var name = prompt('State name:', 'Walk');
+        if (!name || !name.trim()) return;
+        name = name.trim();
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl) return;
+        // Find available clips
+        var allAssets = SashaAssetManager.getAll();
+        var clips = [];
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId) {
+                clips.push(allAssets[i].data.clipId + ':' + allAssets[i].name);
+            }
+        }
+        var clipId = '';
+        if (clips.length > 0) {
+            var choice = prompt('Animation Clip (optional, press Cancel for none):\\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
+            if (choice) {
+                for (var ci = 0; ci < clips.length; ci++) {
+                    if (clips[ci].split(':')[1] === choice) { clipId = clips[ci].split(':')[0]; break; }
+                }
+            }
+        }
+        SashaEngineAPI.addStateToController(_tlEditingCtrlId, name, clipId);
+        _acState.nodes[name] = { x: 80 + ctrl.states.length * 160, y: 60 + Math.random() * 60 };
+        acRefresh();
+        log('Added state: ' + name, 'log');
+    }
+
+    function acAddParam() {
+        if (!_tlEditingCtrlId) return;
+        var name = prompt('Parameter name:', 'Speed');
+        if (!name || !name.trim()) return;
+        name = name.trim();
+        var type = prompt('Type (float, int, bool, trigger):', 'float');
+        if (!type) return;
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl) return;
+        var val = 0;
+        if (type === 'bool' || type === 'trigger') val = false;
+        ctrl.parameters[name] = { type: type, value: val };
+        acRefresh();
+        log('Added parameter: ' + name + ' (' + type + ')', 'log');
+    }
+
+    function acAddTransition() {
+        if (!_tlEditingCtrlId) return;
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl || ctrl.states.length < 2) { log('Need at least 2 states', 'warn'); return; }
+        var stateNames = ctrl.states.map(function(s){return s.name});
+        var from = prompt('From state:\\n' + stateNames.join(', '), stateNames[0]);
+        if (!from) return;
+        var to = prompt('To state:\\n' + stateNames.join(', '), stateNames[stateNames.length > 1 ? 1 : 0]);
+        if (!to) return;
+        var condition = prompt('Condition (e.g. Speed > 1, IsGrounded == false):', '');
+        SashaEngineAPI.addTransition(_tlEditingCtrlId, from, to, condition || '', true);
+        acRefresh();
+        log('Added transition: ' + from + ' -> ' + to, 'log');
+    }
+
+    function acDeleteState(name) {
+        if (!_tlEditingCtrlId) return;
+        SashaEngineAPI.removeStateFromController(_tlEditingCtrlId, name);
+        delete _acState.nodes[name];
+        _acState.selectedState = null;
+        acRefresh();
+        log('Removed state: ' + name, 'log');
+    }
+
+    function acDeleteTransition(idx) {
+        if (!_tlEditingCtrlId) return;
+        SashaEngineAPI.removeTransition(_tlEditingCtrlId, idx);
+        _acState.selectedTransition = -1;
+        acRefresh();
+    }
+
+    function _acRenderParams() {
+        var panel = document.getElementById('ac-params-panel');
+        if (!panel) return;
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        if (!ctrl) { panel.innerHTML = '<div style=\"color:var(--text-muted);font-size:0.68rem\">No parameters</div>'; return; }
+        var html = '<div style=\"font-size:0.72rem;color:var(--primary);font-weight:600;margin-bottom:6px;\">Parameters</div>';
+        for (var p in ctrl.parameters) {
+            if (!ctrl.parameters.hasOwnProperty(p)) continue;
+            var param = ctrl.parameters[p];
+            html += '<div style=\"padding:4px 6px;background:var(--bg-hover);border-radius:4px;margin-bottom:4px;font-size:0.68rem;\">';
+            html += '<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;\">';
+            html += '<span style=\"color:#6366f1;font-size:0.6rem;text-transform:uppercase;\">' + param.type + '</span>';
+            html += '<button onclick=\"EngineApp.acRemoveParam(\\'' + p + '\\')\" style=\"background:none;border:none;color:var(--error);cursor:pointer;font-size:0.6rem;\"><i class=\"fas fa-times\"></i></button>';
+            html += '</div>';
+            html += '<span style=\"color:#fff;\">' + p + '</span>';
+            if (param.type === 'float') {
+                html += '<input type=\"range\" min=\"-10\" max=\"10\" step=\"0.1\" value=\"' + param.value + '\" style=\"width:100%;margin-top:2px;\" onchange=\"EngineApp.acSetParam(\\'' + p + '\\',parseFloat(this.value))\" oninput=\"this.nextElementSibling.textContent=this.value\">';
+                html += '<span style=\"font-size:0.6rem;color:var(--text-muted);\">' + param.value + '</span>';
+            } else if (param.type === 'int') {
+                html += '<input type=\"number\" value=\"' + param.value + '\" style=\"width:100%;margin-top:2px;font-size:0.65rem;background:var(--bg-dark);border:1px solid var(--border);color:#fff;padding:2px 4px;border-radius:3px;outline:none;\" onchange=\"EngineApp.acSetParam(\\'' + p + '\\',parseInt(this.value))\">';
+            } else if (param.type === 'bool') {
+                html += '<label style=\"margin-top:2px;display:flex;align-items:center;gap:4px;cursor:pointer;\"><input type=\"checkbox\" ' + (param.value ? 'checked' : '') + ' onchange=\"EngineApp.acSetParam(\\'' + p + '\\',this.checked)\"><span style=\"font-size:0.6rem;color:var(--text-muted);\">' + (param.value ? 'true' : 'false') + '</span></label>';
+            } else if (param.type === 'trigger') {
+                html += '<button onclick=\"EngineApp.acTriggerParam(\\'' + p + '\\')\" style=\"width:100%;margin-top:2px;font-size:0.65rem;padding:2px;background:var(--primary);border:none;color:#fff;border-radius:3px;cursor:pointer;\">Trigger</button>';
+            }
+            html += '</div>';
+        }
+        panel.innerHTML = html;
+    }
+
+    function acSetParam(name, value) {
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        if (ctrl && ctrl.parameters[name]) { ctrl.parameters[name].value = value; _acRenderParams(); }
+    }
+
+    function acTriggerParam(name) {
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        if (ctrl && ctrl.parameters[name]) { ctrl.parameters[name].value = true; _acRenderParams(); log('Triggered: ' + name, 'info'); }
+    }
+
+    function acRemoveParam(name) {
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        if (ctrl) { delete ctrl.parameters[name]; acRefresh(); log('Removed param: ' + name, 'log'); }
+    }
+
+    function _acRenderCanvas() {
+        var canvas = document.getElementById('ac-canvas');
+        var wrap = document.getElementById('ac-canvas-wrap');
+        if (!canvas || !wrap) return;
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        var dpr = window.devicePixelRatio || 1;
+        var w = Math.max(wrap.clientWidth, 600);
+        var h = Math.max(wrap.clientHeight, 400);
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+
+        // Grid
+        ctx.strokeStyle = '#1a1a2e';
+        ctx.lineWidth = 1;
+        for (var gx = 0; gx < w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+        for (var gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+
+        if (!ctrl) return;
+
+        // Draw transitions (arrows)
+        for (var ti = 0; ti < ctrl.transitions.length; ti++) {
+            var tr = ctrl.transitions[ti];
+            var fromNode = _acState.nodes[tr.from];
+            var toNode = _acState.nodes[tr.to];
+            if (!fromNode || !toNode) continue;
+            var fx = fromNode.x + 70, fy = fromNode.y + 25;
+            var tx = toNode.x, ty = toNode.y + 25;
+
+            // Arrow line
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            var cpx = (fx + tx) / 2;
+            var cpy = Math.min(fy, ty) - 30;
+            ctx.moveTo(fx, fy);
+            ctx.quadraticCurveTo(cpx, cpy, tx, ty);
+            ctx.stroke();
+
+            // Arrow head
+            var angle = Math.atan2(ty - cpy, tx - cpx);
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx - 10 * Math.cos(angle - 0.4), ty - 10 * Math.sin(angle - 0.4));
+            ctx.lineTo(tx - 10 * Math.cos(angle + 0.4), ty - 10 * Math.sin(angle + 0.4));
+            ctx.closePath();
+            ctx.fill();
+
+            // Condition label
+            var midX = cpx, midY = (fy + ty) / 2 - 15;
+            ctx.fillStyle = 'rgba(15,15,35,0.8)';
+            ctx.fillRect(midX - 30, midY - 8, 60, 16);
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '9px JetBrains Mono, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(tr.condition || 'always', midX, midY + 3);
+            ctx.textAlign = 'left';
+        }
+
+        // Draw state nodes
+        for (var si = 0; si < ctrl.states.length; si++) {
+            var st = ctrl.states[si];
+            var nd = _acState.nodes[st.name];
+            if (!nd) continue;
+            var nx = nd.x, ny = nd.y;
+            var nw = 140, nh = 50;
+            var isSel = (_acState.selectedState === st.name);
+            var isDef = st.isDefault;
+
+            // Node shadow
+            ctx.shadowColor = isSel ? 'rgba(99,102,241,0.5)' : 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = isSel ? 12 : 6;
+
+            // Node body
+            var grad = ctx.createLinearGradient(nx, ny, nx, ny + nh);
+            if (isDef) {
+                grad.addColorStop(0, '#4f46e5');
+                grad.addColorStop(1, '#3730a3');
+            } else if (isSel) {
+                grad.addColorStop(0, '#6366f1');
+                grad.addColorStop(1, '#4f46e5');
+            } else {
+                grad.addColorStop(0, '#1e1b4b');
+                grad.addColorStop(1, '#1a1a2e');
+            }
+            ctx.fillStyle = grad;
+
+            // Rounded rect
+            var r = 8;
+            ctx.beginPath();
+            ctx.moveTo(nx + r, ny);
+            ctx.lineTo(nx + nw - r, ny);
+            ctx.quadraticCurveTo(nx + nw, ny, nx + nw, ny + r);
+            ctx.lineTo(nx + nw, ny + nh - r);
+            ctx.quadraticCurveTo(nx + nw, ny + nh, nx + nw - r, ny + nh);
+            ctx.lineTo(nx + r, ny + nh);
+            ctx.quadraticCurveTo(nx, ny + nh, nx, ny + nh - r);
+            ctx.lineTo(nx, ny + r);
+            ctx.quadraticCurveTo(nx, ny, nx + r, ny);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            // Border
+            ctx.strokeStyle = isDef ? '#818cf8' : (isSel ? '#a5b4fc' : '#2e2e4a');
+            ctx.lineWidth = isSel ? 2 : 1;
+            ctx.stroke();
+
+            // State name
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.fillText(st.name, nx + 10, ny + 20);
+
+            // Clip name (smaller)
+            ctx.fillStyle = '#a1a1aa';
+            ctx.font = '9px JetBrains Mono, monospace';
+            var clipLabel = st.clipId ? _findClipName(st.clipId) : 'No clip';
+            if (clipLabel.length > 16) clipLabel = clipLabel.substring(0, 14) + '..';
+            ctx.fillText(clipLabel, nx + 10, ny + 36);
+
+            // Default badge
+            if (isDef) {
+                ctx.fillStyle = '#22c55e';
+                ctx.font = 'bold 8px Inter, sans-serif';
+                ctx.fillText('DEFAULT', nx + nw - 52, ny + 12);
+            }
+
+            // Entry arrow for default
+            if (isDef) {
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(nx - 20, ny + nh / 2);
+                ctx.lineTo(nx, ny + nh / 2);
+                ctx.stroke();
+                // Arrowhead
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath();
+                ctx.moveTo(nx, ny + nh / 2);
+                ctx.lineTo(nx - 6, ny + nh / 2 - 4);
+                ctx.lineTo(nx - 6, ny + nh / 2 + 4);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+    }
+
+    function _findClipName(clipId) {
+        var allAssets = SashaAssetManager.getAll();
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId === clipId) {
+                return allAssets[i].name;
+            }
+        }
+        return clipId.substring(0, 12);
+    }
+
+    // Animator canvas mouse events
+    function _acCanvasMouseDown(e) {
+        var canvas = document.getElementById('ac-canvas');
+        if (!canvas || !_tlEditingCtrlId) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl) return;
+
+        // Check if clicking on a state node
+        for (var i = 0; i < ctrl.states.length; i++) {
+            var st = ctrl.states[i];
+            var nd = _acState.nodes[st.name];
+            if (!nd) continue;
+            if (mx >= nd.x && mx <= nd.x + 140 && my >= nd.y && my <= nd.y + 50) {
+                _acState.selectedState = st.name;
+                _acState.draggingNode = true;
+                _acState.dragNodeName = st.name;
+                _acState.dragOffX = mx - nd.x;
+                _acState.dragOffY = my - nd.y;
+                _acRenderCanvas();
+                return;
+            }
+        }
+        // Click on empty space — deselect
+        _acState.selectedState = null;
+        _acRenderCanvas();
+    }
+
+    function _acCanvasMouseMove(e) {
+        if (!_acState.draggingNode || !_tlEditingCtrlId) return;
+        var canvas = document.getElementById('ac-canvas');
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        if (_acState.nodes[_acState.dragNodeName]) {
+            _acState.nodes[_acState.dragNodeName].x = mx - _acState.dragOffX;
+            _acState.nodes[_acState.dragNodeName].y = my - _acState.dragOffY;
+            _acRenderCanvas();
+        }
+    }
+
+    function _acCanvasMouseUp(e) {
+        _acState.draggingNode = false;
+    }
+
+    function _acCanvasDblClick(e) {
+        if (!_acState.selectedState || !_tlEditingCtrlId) return;
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl) return;
+        var name = _acState.selectedState;
+        // Context menu for state
+        var action = prompt('State "' + name + '"\\nActions:\\n1 = Set as Default\\n2 = Assign Clip\\n3 = Rename\\n4 = Delete\\nEnter number:', '1');
+        if (!action) return;
+        var stateObj = null;
+        for (var i = 0; i < ctrl.states.length; i++) {
+            if (ctrl.states[i].name === name) { stateObj = ctrl.states[i]; break; }
+        }
+        if (!stateObj) return;
+        if (action === '1') {
+            for (var j = 0; j < ctrl.states.length; j++) { ctrl.states[j].isDefault = false; }
+            stateObj.isDefault = true;
+            acRefresh();
+        } else if (action === '2') {
+            var allAssets = SashaAssetManager.getAll();
+            var clips = [];
+            for (var ci = 0; ci < allAssets.length; ci++) {
+                if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) {
+                    clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name);
+                }
+            }
+            if (clips.length === 0) { log('No animation clips. Create one first.', 'warn'); return; }
+            var choice = prompt('Clip:\\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
+            if (choice) {
+                for (var k = 0; k < clips.length; k++) {
+                    if (clips[k].split(':')[1] === choice) { stateObj.clipId = clips[k].split(':')[0]; break; }
+                }
+                acRefresh();
+            }
+        } else if (action === '3') {
+            var newName = prompt('New name:', name);
+            if (newName && newName.trim()) {
+                var oldName = name;
+                newName = newName.trim();
+                stateObj.name = newName;
+                _acState.nodes[newName] = _acState.nodes[oldName];
+                delete _acState.nodes[oldName];
+                _acState.selectedState = newName;
+                acRefresh();
+            }
+        } else if (action === '4') {
+            acDeleteState(name);
+        }
+    }
+
+    function _acInitCanvasEvents() {
     }
 
     function saveAllAssets() {
@@ -9434,12 +10367,22 @@ var EngineApp = (function() {
         toggleFPS: toggleFPS,
         // Inspector helpers
         setRBConstraint: setRBConstraint, setColliderField: setColliderField,
+        // Animation Timeline
+        tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop,
+        tlSetDuration: tlSetDuration, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
+        tlDeleteSelectedKey: tlDeleteSelectedKey, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
+        // Animator Controller Editor
+        openAnimatorEditor: openAnimatorEditor, acAddState: acAddState, acAddParam: acAddParam,
+        acAddTransition: acAddTransition, acDeleteState: acDeleteState, acDeleteTransition: acDeleteTransition,
+        acSetParam: acSetParam, acTriggerParam: acTriggerParam, acRemoveParam: acRemoveParam,
+        acRefresh: acRefresh,
         isInitialized: function() { return initialized; }
     };
 })();
 </script>
 </body>
 </html>
+
 
 
 
