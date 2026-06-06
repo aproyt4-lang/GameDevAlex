@@ -368,9 +368,9 @@
         }
         .view-label.active-label { color: rgba(99,102,241,0.9); }
         /* Game mode: collapse scene view, expand game view */
-        .game-mode .split-viewport .scene-view { flex: 0 0 0px; overflow: hidden; }
+        .game-mode .split-viewport .scene-view { flex: 0 0 0px !important; min-width: 0 !important; max-width: 0 !important; width: 0 !important; overflow: hidden; }
         .game-mode .split-viewport .split-handle { display: none; }
-        .game-mode .split-viewport .game-view { flex: 1 1 100%; }
+        .game-mode .split-viewport .game-view { flex: 1 1 100%; min-width: 0 !important; }
         /* Camera Preview — bottom-right corner when camera selected */
         .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .camera-preview.visible { display: block; }
@@ -611,6 +611,71 @@
             content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
             border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid #f59e0b;
         }
+        /* State node clip select */
+        .anim-state-node .node-clip-select {
+            padding: 2px 6px; font-size: 0.6rem; background: var(--bg-hover); border: 1px solid var(--border);
+            color: var(--text-secondary); border-radius: 3px; width: calc(100% - 16px); margin: 2px 8px 4px;
+            cursor: pointer; outline: none;
+        }
+        .anim-state-node .node-clip-select:focus { border-color: var(--primary); }
+        /* State node speed slider */
+        .anim-state-node .node-speed-row {
+            display: flex; align-items: center; gap: 4px; padding: 2px 8px 4px; font-size: 0.6rem; color: var(--text-muted);
+        }
+        .anim-state-node .node-speed-row input[type=range] { flex: 1; height: 3px; accent-color: var(--primary); cursor: pointer; }
+        /* State node output port (right side for drag-connect) */
+        .anim-state-node .node-port-out {
+            position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+            width: 12px; height: 12px; border-radius: 50%; background: var(--bg-card);
+            border: 2px solid var(--primary); cursor: crosshair; z-index: 2;
+        }
+        .anim-state-node .node-port-out:hover { background: var(--primary); }
+        /* State node input port (left side) */
+        .anim-state-node .node-port-in {
+            position: absolute; left: -8px; top: 50%; transform: translateY(-50%);
+            width: 12px; height: 12px; border-radius: 50%; background: var(--bg-card);
+            border: 2px solid #22c55e; cursor: crosshair; z-index: 2;
+        }
+        .anim-state-node .node-port-in:hover { background: #22c55e; }
+        /* Connecting line while dragging */
+        .anim-connecting-line { pointer-events: none; z-index: 5; }
+        /* Animator graph context menu */
+        .anim-ctx-menu {
+            position: absolute; z-index: 100; min-width: 180px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 6px; padding: 4px 0; box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+        }
+        .anim-ctx-menu .ctx-item {
+            display: flex; align-items: center; gap: 8px; padding: 5px 12px;
+            font-size: 0.7rem; color: var(--text-secondary); cursor: pointer;
+            transition: all 0.1s;
+        }
+        .anim-ctx-menu .ctx-item:hover { background: var(--bg-hover); color: #fff; }
+        .anim-ctx-menu .ctx-item i { width: 14px; text-align: center; font-size: 0.65rem; color: var(--primary); }
+        .anim-ctx-menu .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+        /* Transition condition editor popup */
+        .anim-trans-editor {
+            position: absolute; z-index: 100; width: 250px;
+            background: var(--bg-card); border: 1px solid var(--primary);
+            border-radius: 8px; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        }
+        .anim-trans-editor .te-header { font-size: 0.72rem; font-weight: 600; color: #fff; margin-bottom: 6px; }
+        .anim-trans-editor .te-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+        .anim-trans-editor .te-row label { font-size: 0.65rem; color: var(--text-muted); width: 60px; }
+        .anim-trans-editor .te-row input, .anim-trans-editor .te-row select {
+            flex: 1; background: var(--bg-hover); border: 1px solid var(--border);
+            color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; outline: none;
+        }
+        .anim-trans-editor .te-row input:focus, .anim-trans-editor .te-row select:focus { border-color: var(--primary); }
+        .anim-trans-editor .te-btns { display: flex; gap: 4px; margin-top: 6px; }
+        .anim-trans-editor .te-btns button {
+            flex: 1; background: var(--bg-hover); border: 1px solid var(--border);
+            color: var(--text-secondary); padding: 3px 8px; border-radius: 4px;
+            cursor: pointer; font-size: 0.65rem;
+        }
+        .anim-trans-editor .te-btns button:hover { border-color: var(--primary); color: #fff; }
+        .anim-trans-editor .te-btns .te-del { color: #ef4444; border-color: rgba(239,68,68,0.3); }
+        .anim-trans-editor .te-btns .te-del:hover { border-color: #ef4444; background: rgba(239,68,68,0.1); }
 
         /* ===== Shader Editor ===== */
         .shader-editor-panel { display: flex; flex-direction: column; height: 100%; }
@@ -7672,6 +7737,10 @@ var EngineApp = (function() {
         var gameLabel = document.getElementById('game-view-label');
         if (sceneLabel) sceneLabel.classList.remove('active-label');
         if (gameLabel) gameLabel.classList.add('active-label');
+        // Force layout recalc so renderers pick up new canvas sizes on next frame
+        requestAnimationFrame(function() {
+            window.dispatchEvent(new Event('resize'));
+        });
         log('▶ Play mode — Game view active', 'info');
     }
 
@@ -7695,6 +7764,10 @@ var EngineApp = (function() {
         if (sceneLabel) sceneLabel.classList.add('active-label');
         if (gameLabel) gameLabel.classList.remove('active-label');
         refreshInspector();
+        // Force layout recalc so renderers pick up new canvas sizes on next frame
+        requestAnimationFrame(function() {
+            window.dispatchEvent(new Event('resize'));
+        });
         log('⏹ Stopped', 'info');
     }
 
@@ -9796,11 +9869,20 @@ var EngineApp = (function() {
     var _animEditorState = {
         ctrlId: null,
         selectedState: null,
+        selectedTransition: -1, // index in ctrl.transitions
         draggingState: null,
         dragOffset: { x: 0, y: 0 },
         statePositions: {}, // stateName -> {x, y}
-        connectingFrom: null, // state name when creating transition
-        nodeColors: ['#6366f1','#ec4899','#22c55e','#f59e0b','#06b6d4','#8b5cf6','#ef4444','#14b8a6']
+        nodeColors: ['#6366f1','#ec4899','#22c55e','#f59e0b','#06b6d4','#8b5cf6','#ef4444','#14b8a6'],
+        // Drag-connect state
+        connectingFrom: null, // state name being dragged FROM
+        connectingMouseX: 0,
+        connectingMouseY: 0,
+        // Pan/zoom
+        panX: 0, panY: 0,
+        isPanning: false,
+        panStartX: 0, panStartY: 0,
+        panOrigX: 0, panOrigY: 0,
     };
 
     function openAnimatorControllerEditor(assetId) {
@@ -9864,6 +9946,7 @@ var EngineApp = (function() {
         // Render state nodes
         var nodesDiv = document.getElementById('anim-state-nodes');
         if (!nodesDiv) return;
+        var clips = SashaEngineAPI.getAnimClips();
         var html = '';
         for (var si = 0; si < ctrl.states.length; si++) {
             var st = ctrl.states[si];
@@ -9871,23 +9954,34 @@ var EngineApp = (function() {
             var colorIdx = si % _animEditorState.nodeColors.length;
             var isDefault = st.isDefault;
             var isSelected = _animEditorState.selectedState === st.name;
-            var clipInfo = '';
-            if (st.clipId) {
-                var clip = SashaEngineAPI.getAnimationClip(st.clipId);
-                if (clip) clipInfo = 'Motion: ' + clip.name;
-            }
-            html += '<div class="anim-state-node' + (isDefault ? ' default-state' : '') + (isSelected ? ' selected' : '') + '" ' +
+
+            // Check if this state is currently active on any object
+            var isActive = false;
+
+            html += '<div class="anim-state-node' + (isDefault ? ' default-state' : '') + (isSelected ? ' selected' : '') + (isActive ? ' active-state' : '') + '" ' +
                 'data-state-name="' + st.name + '" ' +
                 'style="left:' + pos.x + 'px;top:' + pos.y + 'px;">';
+            // Input port (left)
+            html += '<div class="node-port-in" data-port="in" data-state="' + st.name + '"></div>';
+            // Output port (right)
+            html += '<div class="node-port-out" data-port="out" data-state="' + st.name + '"></div>';
             if (isDefault) {
                 html += '<div class="node-entry-arrow"></div>';
             }
             html += '<div class="node-header">' +
                 '<div class="node-color" style="background:' + _animEditorState.nodeColors[colorIdx] + '"></div>' +
-                st.name + '</div>' +
-                '<div class="node-body">Speed: ' + st.speed + 'x</div>' +
-                (clipInfo ? '<div class="node-motion">' + clipInfo + '</div>' : '') +
-                '</div>';
+                st.name + '</div>';
+            // Clip dropdown
+            html += '<select class="node-clip-select" data-state="' + st.name + '" onchange="EngineApp.animEditorSetClip(\'' + st.name + '\',this.value)">';
+            html += '<option value="">-- No Clip --</option>';
+            for (var ci = 0; ci < clips.length; ci++) {
+                var sel = (st.clipId === clips[ci].id) ? ' selected' : '';
+                html += '<option value="' + clips[ci].id + '"' + sel + '>' + clips[ci].name + '</option>';
+            }
+            html += '</select>';
+            // Speed slider
+            html += '<div class="node-speed-row">Speed: <input type="range" min="0.1" max="3" step="0.1" value="' + st.speed + '" oninput="EngineApp.animEditorSetSpeed(\'' + st.name + '\',parseFloat(this.value))"> <span>' + st.speed.toFixed(1) + 'x</span></div>';
+            html += '</div>';
         }
         nodesDiv.innerHTML = html;
 
@@ -9907,21 +10001,20 @@ var EngineApp = (function() {
             var fromPos = _animEditorState.statePositions[tr.from];
             var toPos = _animEditorState.statePositions[tr.to];
             if (!fromPos || !toPos) continue;
-            // Approximate node centers (node width ~150, height ~60)
-            var fromCx = fromPos.x + 75;
-            var fromCy = fromPos.y + 35;
-            var toCx = toPos.x + 75;
-            var toCy = toPos.y + 35;
+            // Node edges (port positions)
+            var fromCx = fromPos.x + 155; // right port
+            var fromCy = fromPos.y + 40;
+            var toCx = toPos.x - 5;       // left port
+            var toCy = toPos.y + 40;
 
-            // Draw curved arrow
+            var isTransSelected = (_animEditorState.selectedTransition === ti);
             var dx = toCx - fromCx;
             var dy = toCy - fromCy;
             var dist = Math.sqrt(dx * dx + dy * dy);
-            var curvature = Math.min(dist * 0.3, 60);
+            var curvature = Math.min(dist * 0.3, 80);
 
             var mx = (fromCx + toCx) / 2;
             var my = (fromCy + toCy) / 2;
-            // Perpendicular offset
             var nx = -dy / (dist || 1) * curvature;
             var ny = dx / (dist || 1) * curvature;
             var cpx = mx + nx;
@@ -9930,27 +10023,54 @@ var EngineApp = (function() {
             ctx.beginPath();
             ctx.moveTo(fromCx, fromCy);
             ctx.quadraticCurveTo(cpx, cpy, toCx, toCy);
-            ctx.strokeStyle = tr.condition ? '#f59e0b' : '#6366f1';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = isTransSelected ? '#fff' : (tr.condition ? '#f59e0b' : '#6366f1');
+            ctx.lineWidth = isTransSelected ? 3 : 2;
             ctx.stroke();
 
             // Arrowhead
             var angle = Math.atan2(toCy - cpy, toCx - cpx);
-            var arrowSize = 8;
+            var arrowSize = 10;
             ctx.beginPath();
             ctx.moveTo(toCx, toCy);
             ctx.lineTo(toCx - arrowSize * Math.cos(angle - 0.4), toCy - arrowSize * Math.sin(angle - 0.4));
             ctx.lineTo(toCx - arrowSize * Math.cos(angle + 0.4), toCy - arrowSize * Math.sin(angle + 0.4));
             ctx.closePath();
-            ctx.fillStyle = tr.condition ? '#f59e0b' : '#6366f1';
+            ctx.fillStyle = isTransSelected ? '#fff' : (tr.condition ? '#f59e0b' : '#6366f1');
             ctx.fill();
 
-            // Condition label
+            // Condition label on arrow
+            var label = '';
             if (tr.condition) {
+                label = tr.condition;
+            }
+            if (label) {
                 ctx.font = '10px JetBrains Mono, monospace';
-                ctx.fillStyle = '#f59e0b';
+                ctx.fillStyle = isTransSelected ? '#fff' : '#f59e0b';
                 ctx.textAlign = 'center';
-                ctx.fillText(tr.condition, cpx, cpy - 6);
+                // Background for label
+                var tw = ctx.measureText(label).width + 8;
+                ctx.fillStyle = 'rgba(10,10,20,0.85)';
+                ctx.fillRect(cpx - tw/2, cpy - 14, tw, 16);
+                ctx.fillStyle = isTransSelected ? '#fff' : '#f59e0b';
+                ctx.fillText(label, cpx, cpy - 2);
+            }
+
+            // Clickable area around midpoint for selecting transitions
+            // (handled via canvas click event below)
+        }
+
+        // Draw connecting line if dragging from a port
+        if (_animEditorState.connectingFrom) {
+            var fromPos2 = _animEditorState.statePositions[_animEditorState.connectingFrom];
+            if (fromPos2) {
+                ctx.beginPath();
+                ctx.moveTo(fromPos2.x + 155, fromPos2.y + 40);
+                ctx.lineTo(_animEditorState.connectingMouseX, _animEditorState.connectingMouseY);
+                ctx.strokeStyle = '#6366f1';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
             }
         }
     }
@@ -9959,12 +10079,69 @@ var EngineApp = (function() {
         var container = document.getElementById('anim-graph-container');
         if (!container) return;
 
-        // State node dragging
+        // === RIGHT-CLICK: context menu ===
+        container.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var nodeEl = e.target.closest('.anim-state-node');
+            var clickedState = nodeEl ? nodeEl.getAttribute('data-state-name') : null;
+            var containerRect = container.getBoundingClientRect();
+            var mx = e.clientX - containerRect.left;
+            var my = e.clientY - containerRect.top;
+
+            closeAnimCtxMenu();
+
+            var menu = document.createElement('div');
+            menu.className = 'anim-ctx-menu';
+            menu.id = 'anim-ctx-menu';
+            menu.style.left = mx + 'px';
+            menu.style.top = my + 'px';
+
+            var html = '';
+            if (!clickedState) {
+                // Clicked on empty space
+                html += '<div class="ctx-item" onclick="EngineApp._animCtxCreateState(' + mx + ',' + my + ')"><i class="fas fa-plus"></i> Create State</div>';
+                html += '<div class="ctx-sep"></div>';
+                html += '<div class="ctx-item" onclick="EngineApp._animCtxDeleteTrans(' + mx + ',' + my + ')"><i class="fas fa-arrow-right"></i> Delete Transition</div>';
+            } else {
+                // Clicked on a state node
+                html += '<div class="ctx-item" onclick="EngineApp._animCtxSetDefault(\'' + clickedState + '\')"><i class="fas fa-flag"></i> Set as Default</div>';
+                html += '<div class="ctx-sep"></div>';
+                html += '<div class="ctx-item" onclick="EngineApp._animCtxMakeTransition(\'' + clickedState + '\')"><i class="fas fa-arrow-right"></i> Make Transition</div>';
+                html += '<div class="ctx-sep"></div>';
+                html += '<div class="ctx-item" onclick="EngineApp._animCtxDeleteState(\'' + clickedState + '\')"><i class="fas fa-trash"></i> Delete State</div>';
+            }
+            menu.innerHTML = html;
+            container.appendChild(menu);
+            // Clamp position so menu doesn't overflow
+            var menuRect = menu.getBoundingClientRect();
+            var contRect = container.getBoundingClientRect();
+            if (menuRect.right > contRect.right) menu.style.left = (mx - menuRect.width) + 'px';
+            if (menuRect.bottom > contRect.bottom) menu.style.top = (my - menuRect.height) + 'px';
+        });
+
+        // === MOUSE DOWN: select, start drag, start port connect ===
         container.addEventListener('mousedown', function(e) {
+            closeAnimCtxMenu();
+            closeTransEditorPopup();
+
+            var portEl = e.target.closest('.node-port-out');
+            if (portEl) {
+                // Start drag-connect from output port
+                _animEditorState.connectingFrom = portEl.getAttribute('data-state');
+                var containerRect = container.getBoundingClientRect();
+                _animEditorState.connectingMouseX = e.clientX - containerRect.left;
+                _animEditorState.connectingMouseY = e.clientY - containerRect.top;
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
             var nodeEl = e.target.closest('.anim-state-node');
             if (nodeEl) {
                 var stateName = nodeEl.getAttribute('data-state-name');
                 _animEditorState.selectedState = stateName;
+                _animEditorState.selectedTransition = -1;
                 var pos = _animEditorState.statePositions[stateName] || { x: 0, y: 0 };
                 var containerRect = container.getBoundingClientRect();
                 _animEditorState.draggingState = stateName;
@@ -9973,25 +10150,258 @@ var EngineApp = (function() {
                 focusFloatingWindow('animator-editor');
                 e.stopPropagation();
                 renderAnimatorGraph();
+            } else if (e.target.closest('.animator-graph-canvas')) {
+                // Clicked on canvas (empty area) — try to select transition or deselect
+                _animEditorState.selectedState = null;
+                var containerRect = container.getBoundingClientRect();
+                var mx = e.clientX - containerRect.left;
+                var my = e.clientY - containerRect.top;
+                // Check if click is near a transition midpoint
+                var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+                if (ctrl) {
+                    var foundTrans = -1;
+                    for (var ti = 0; ti < ctrl.transitions.length; ti++) {
+                        var tr = ctrl.transitions[ti];
+                        var fp = _animEditorState.statePositions[tr.from];
+                        var tp = _animEditorState.statePositions[tr.to];
+                        if (!fp || !tp) continue;
+                        var midX = (fp.x + 155 + tp.x) / 2;
+                        var midY = (fp.y + 40 + tp.y + 40) / 2;
+                        var dd = Math.sqrt((mx - midX) * (mx - midX) + (my - midY) * (my - midY));
+                        if (dd < 20) { foundTrans = ti; break; }
+                    }
+                    _animEditorState.selectedTransition = foundTrans;
+                    if (foundTrans >= 0) {
+                        openTransEditorPopup(foundTrans, mx, my);
+                    }
+                }
+                renderAnimatorGraph();
             } else {
                 _animEditorState.selectedState = null;
+                _animEditorState.selectedTransition = -1;
                 renderAnimatorGraph();
             }
         });
 
+        // === MOUSE MOVE: drag state, drag-connect line ===
         container.addEventListener('mousemove', function(e) {
-            if (!_animEditorState.draggingState) return;
             var containerRect = container.getBoundingClientRect();
-            var nx = e.clientX - containerRect.left - _animEditorState.dragOffset.x;
-            var ny = e.clientY - containerRect.top - _animEditorState.dragOffset.y;
-            nx = Math.max(0, nx); ny = Math.max(0, ny);
-            _animEditorState.statePositions[_animEditorState.draggingState] = { x: nx, y: ny };
-            renderAnimatorGraph();
+
+            if (_animEditorState.draggingState) {
+                var nx = e.clientX - containerRect.left - _animEditorState.dragOffset.x;
+                var ny = e.clientY - containerRect.top - _animEditorState.dragOffset.y;
+                nx = Math.max(0, nx); ny = Math.max(0, ny);
+                _animEditorState.statePositions[_animEditorState.draggingState] = { x: nx, y: ny };
+                renderAnimatorGraph();
+            }
+
+            if (_animEditorState.connectingFrom) {
+                _animEditorState.connectingMouseX = e.clientX - containerRect.left;
+                _animEditorState.connectingMouseY = e.clientY - containerRect.top;
+                renderAnimatorGraph();
+            }
         });
 
-        document.addEventListener('mouseup', function() {
+        // === MOUSE UP: drop connect on input port, end drag ===
+        document.addEventListener('mouseup', function(e) {
+            if (_animEditorState.connectingFrom) {
+                // Check if dropped on an input port
+                var portEl = e.target.closest('.node-port-in');
+                if (portEl) {
+                    var toState = portEl.getAttribute('data-state');
+                    var fromState = _animEditorState.connectingFrom;
+                    if (toState && toState !== fromState) {
+                        // Create transition with no condition (always)
+                        SashaEngineAPI.addTransition(_animEditorState.ctrlId, fromState, toState, '', true);
+                        log('Transition: ' + fromState + ' → ' + toState, 'result');
+                    }
+                }
+                _animEditorState.connectingFrom = null;
+                renderAnimatorGraph();
+            }
             _animEditorState.draggingState = null;
         });
+
+        // === Prevent dropdown/select from triggering node drag ===
+        container.addEventListener('mousedown', function(e) {
+            if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'OPTION') {
+                e.stopPropagation();
+            }
+        }, true);
+    }
+
+    // === Context menu helpers ===
+    function closeAnimCtxMenu() {
+        var m = document.getElementById('anim-ctx-menu');
+        if (m) m.remove();
+    }
+    function closeTransEditorPopup() {
+        var m = document.getElementById('anim-trans-editor-popup');
+        if (m) m.remove();
+    }
+
+    // Context menu: create state at position
+    function _animCtxCreateState(mx, my) {
+        closeAnimCtxMenu();
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        var name = 'NewState' + ctrl.states.length;
+        // Check unique
+        var unique = name;
+        var idx = 1;
+        while (ctrl.states.some(function(s) { return s.name === unique; })) {
+            unique = name + idx; idx++;
+        }
+        SashaEngineAPI.addStateToController(_animEditorState.ctrlId, unique, '');
+        _animEditorState.statePositions[unique] = { x: mx, y: my };
+        _animEditorState.selectedState = unique;
+        renderAnimatorGraph();
+        log('Created state: ' + unique, 'result');
+    }
+
+    // Context menu: set default
+    function _animCtxSetDefault(stateName) {
+        closeAnimCtxMenu();
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        for (var i = 0; i < ctrl.states.length; i++) {
+            ctrl.states[i].isDefault = (ctrl.states[i].name === stateName);
+        }
+        _animEditorState.selectedState = stateName;
+        renderAnimatorGraph();
+        log('Default: ' + stateName, 'result');
+    }
+
+    // Context menu: delete state
+    function _animCtxDeleteState(stateName) {
+        closeAnimCtxMenu();
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        SashaEngineAPI.removeStateFromController(_animEditorState.ctrlId, stateName);
+        delete _animEditorState.statePositions[stateName];
+        if (_animEditorState.selectedState === stateName) _animEditorState.selectedState = null;
+        renderAnimatorGraph();
+        log('Deleted state: ' + stateName, 'log');
+    }
+
+    // Context menu: start making transition (click on target state next)
+    function _animCtxMakeTransition(fromState) {
+        closeAnimCtxMenu();
+        _animEditorState.connectingFrom = fromState;
+        log('Click on target state or its input port to create transition from ' + fromState, 'info');
+    }
+
+    // Context menu: delete transition near click
+    function _animCtxDeleteTrans(mx, my) {
+        closeAnimCtxMenu();
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        for (var ti = 0; ti < ctrl.transitions.length; ti++) {
+            var tr = ctrl.transitions[ti];
+            var fp = _animEditorState.statePositions[tr.from];
+            var tp = _animEditorState.statePositions[tr.to];
+            if (!fp || !tp) continue;
+            var midX = (fp.x + 155 + tp.x) / 2;
+            var midY = (fp.y + 40 + tp.y + 40) / 2;
+            var dd = Math.sqrt((mx - midX) * (mx - midX) + (my - midY) * (my - midY));
+            if (dd < 30) {
+                SashaEngineAPI.removeTransition(_animEditorState.ctrlId, ti);
+                if (_animEditorState.selectedTransition === ti) _animEditorState.selectedTransition = -1;
+                renderAnimatorGraph();
+                log('Deleted transition: ' + tr.from + ' → ' + tr.to, 'log');
+                return;
+            }
+        }
+        log('No transition found near click', 'warn');
+    }
+
+    // Transition editor popup (click on arrow)
+    function openTransEditorPopup(transIdx, mx, my) {
+        closeTransEditorPopup();
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl || !ctrl.transitions[transIdx]) return;
+        var tr = ctrl.transitions[transIdx];
+        var container = document.getElementById('anim-graph-container');
+        if (!container) return;
+
+        var popup = document.createElement('div');
+        popup.className = 'anim-trans-editor';
+        popup.id = 'anim-trans-editor-popup';
+        popup.style.left = mx + 'px';
+        popup.style.top = my + 'px';
+
+        var params = ctrl.parameters || {};
+        var paramOptions = '';
+        for (var p in params) {
+            if (!params.hasOwnProperty(p)) continue;
+            paramOptions += '<option value="' + p + '">' + p + ' (' + params[p].type + ')</option>';
+        }
+
+        popup.innerHTML =
+            '<div class="te-header">' + tr.from + ' → ' + tr.to + '</div>' +
+            '<div class="te-row"><label>Condition</label><input type="text" id="te-condition" value="' + (tr.condition || '') + '" placeholder="e.g. Speed > 5"></div>' +
+            '<div class="te-row"><label>Operators:</label><span style="font-size:0.6rem;color:var(--text-muted)"> > < < == != && ||</span></div>' +
+            '<div class="te-btns">' +
+            '<button onclick="EngineApp._teSave(' + transIdx + ')"><i class="fas fa-check"></i> Apply</button>' +
+            '<button class="te-del" onclick="EngineApp._teDelete(' + transIdx + ')"><i class="fas fa-trash"></i> Delete</button>' +
+            '<button onclick="EngineApp.closeTransEditorPopup()">Cancel</button>' +
+            '</div>';
+
+        container.appendChild(popup);
+    }
+
+    function _teSave(transIdx) {
+        var condInput = document.getElementById('te-condition');
+        var cond = condInput ? condInput.value.trim() : '';
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl || !ctrl.transitions[transIdx]) return;
+        // Remove old, add new with updated condition
+        var tr = ctrl.transitions[transIdx];
+        ctrl.transitions[transIdx].condition = cond;
+        closeTransEditorPopup();
+        renderAnimatorGraph();
+        log('Transition updated: ' + tr.from + ' → ' + tr.to + (cond ? ' [' + cond + ']' : ' [always]'), 'result');
+    }
+
+    function _teDelete(transIdx) {
+        SashaEngineAPI.removeTransition(_animEditorState.ctrlId, transIdx);
+        _animEditorState.selectedTransition = -1;
+        closeTransEditorPopup();
+        renderAnimatorGraph();
+        log('Transition deleted', 'log');
+    }
+
+    // === Inline state node callbacks ===
+    function animEditorSetClip(stateName, clipId) {
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        for (var i = 0; i < ctrl.states.length; i++) {
+            if (ctrl.states[i].name === stateName) {
+                ctrl.states[i].clipId = clipId || '';
+                break;
+            }
+        }
+        renderAnimatorGraph();
+    }
+
+    function animEditorSetSpeed(stateName, speed) {
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        for (var i = 0; i < ctrl.states.length; i++) {
+            if (ctrl.states[i].name === stateName) {
+                ctrl.states[i].speed = speed;
+                break;
+            }
+        }
+        // Update label without full re-render (avoid flicker on slider)
+        var nodes = document.querySelectorAll('.anim-state-node');
+        for (var n = 0; n < nodes.length; n++) {
+            if (nodes[n].getAttribute('data-state-name') === stateName) {
+                var span = nodes[n].querySelector('.node-speed-row span');
+                if (span) span.textContent = speed.toFixed(1) + 'x';
+                break;
+            }
+        }
     }
 
     function renderAnimatorParams() {
@@ -10422,6 +10832,12 @@ var EngineApp = (function() {
         animEditorAddState: animEditorAddState, animEditorAddTransition: animEditorAddTransition,
         animEditorSetDefault: animEditorSetDefault, animEditorDeleteSelected: animEditorDeleteSelected,
         animEditorSetParam: animEditorSetParam, animEditorAddParam: animEditorAddParam,
+        animEditorSetClip: animEditorSetClip, animEditorSetSpeed: animEditorSetSpeed,
+        closeTransEditorPopup: closeTransEditorPopup,
+        _animCtxCreateState: _animCtxCreateState, _animCtxSetDefault: _animCtxSetDefault,
+        _animCtxDeleteState: _animCtxDeleteState, _animCtxMakeTransition: _animCtxMakeTransition,
+        _animCtxDeleteTrans: _animCtxDeleteTrans,
+        _teSave: _teSave, _teDelete: _teDelete,
         // Shader Editor
         openShaderEditor: openShaderEditor, switchShaderTab: switchShaderTab,
         compileAndApplyShader: compileAndApplyShader, saveShaderCode: saveShaderCode,
