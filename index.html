@@ -7003,7 +7003,12 @@ var SashaEngineAPI = (function() {
             }
 
             // === SCENE VIEW: render from editor camera (with helpers) ===
-            _showEditorHelpers();
+            var _eg = scene.getObjectByName('__builtin_grid');
+            if (_eg) _eg.visible = true;
+            if (selectionHelper) selectionHelper.visible = !!selectedObject;
+            if (transformCtrl) transformCtrl.visible = true;
+            if (mainCameraHelper) mainCameraHelper.visible = true;
+
             var gvVisible = document.getElementById('game-view') && !document.getElementById('game-view').classList.contains('hidden-view');
             var svVisible = document.getElementById('scene-view') && !document.getElementById('scene-view').classList.contains('hidden-view');
             if (svVisible) {
@@ -7012,10 +7017,16 @@ var SashaEngineAPI = (function() {
 
             // === GAME VIEW: render from gameCamera (without helpers) ===
             if (gvVisible) {
-                _hideEditorHelpers();
+                if (_eg) _eg.visible = false;
+                if (selectionHelper) selectionHelper.visible = false;
+                if (transformCtrl) transformCtrl.visible = false;
+                if (mainCameraHelper) mainCameraHelper.visible = false;
                 _renderGameView();
+                if (_eg) _eg.visible = true;
+                if (selectionHelper) selectionHelper.visible = !!selectedObject;
+                if (transformCtrl) transformCtrl.visible = true;
+                if (mainCameraHelper) mainCameraHelper.visible = true;
             }
-            _showEditorHelpers();
             // Camera Preview only when Scene visible and not playing
             if (svVisible && playState !== 'playing') _renderCameraPreview();
         }
