@@ -914,6 +914,8 @@
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('prefab')"><i class="fas fa-cube"></i> Prefab</div>
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('scene')"><i class="fas fa-film"></i> Scene</div>
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('shader')"><i class="fas fa-magic"></i> Shader Material</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('animation')"><i class="fas fa-play-circle"></i> Animation Clip</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('animator')"><i class="fas fa-project-diagram"></i> Animator Controller</div>
                                     </div>
                                     <button class="asset-btn" onclick="EngineApp.importAsset()"><i class="fas fa-file-import"></i> Import</button>
                                     <button class="asset-btn" onclick="EngineApp.saveAllAssets()"><i class="fas fa-save"></i> Save All</button>
@@ -4651,6 +4653,9 @@ var SashaEngineAPI = (function() {
     var objCounter = 0;
     var animations = [];
     var frameCallbacks = [];
+    var animationClips = {};     // id → clip data (keyframe tracks)
+    var animatorControllers = {}; // id → controller data (state machine)
+    var animatorStates = {};      // objectName → { controllerId, currentState, time, params }
 
     // === FPS Camera Controller (WASD + Mouse Look) ===
     var fpsMode = false;           // true = FPS mode, false = OrbitControls editor mode
@@ -5892,6 +5897,10 @@ var SashaEngineAPI = (function() {
             comp.isTrigger = (data && data.isTrigger) ? data.isTrigger : false;
         } else if (compType === 'terraincollider') {
             comp.isTrigger = false;
+        } else if (compType === 'animator') {
+            comp.controllerId = (data && data.controllerId) || '';
+            comp.applyRootMotion = (data && data.applyRootMotion !== undefined) ? data.applyRootMotion : false;
+            comp.updateMode = (data && data.updateMode) || 'normal'; // normal, animatePhysics, unscaledTime
         }
         objectComponents[name].push(comp);
     }
@@ -6571,6 +6580,244 @@ var SashaEngineAPI = (function() {
         savedConstraintPositions = {};
     }
 
+    // ============ ANIMATION CLIP SYSTEM ============
+    // Clip: { id, name, duration, loop, tracks: [{property, keyframes:[{time,value}]}] }
+    function createAnimationClip(id, name) {
+        var clip = {
+            id: id, name: name || 'New Clip',
+            duration: 1.0, loop: true,
+            tracks: []
+        };
+        animationClips[id] = clip;
+        return clip;
+    }
+
+    function getAnimationClip(id) { return animationClips[id] || null; }
+
+    function deleteAnimationClip(id) { delete animationClips[id]; }
+
+    function addTrackToClip(clipId, property) {
+        var clip = animationClips[clipId];
+        if (!clip) return;
+        clip.tracks.push({ property: property, keyframes: [{ time: 0, value: 0 }, { time: clip.duration, value: 0 }] });
+    }
+
+    function addKeyframe(clipId, trackIdx, time, value) {
+        var clip = animationClips[clipId];
+        if (!clip || !clip.tracks[trackIdx]) return;
+        clip.tracks[trackIdx].keyframes.push({ time: time, value: value });
+        clip.tracks[trackIdx].keyframes.sort(function(a, b) { return a.time - b.time; });
+    }
+
+    function removeKeyframe(clipId, trackIdx, kfIdx) {
+        var clip = animationClips[clipId];
+        if (!clip || !clip.tracks[trackIdx]) return;
+        clip.tracks[trackIdx].keyframes.splice(kfIdx, 1);
+    }
+
+    // Interpolate a track at given time — returns value
+    function sampleTrack(track, time) {
+        var kfs = track.keyframes;
+        if (kfs.length === 0) return 0;
+        if (kfs.length === 1) return kfs[0].value;
+        // Clamp to keyframe range
+        if (time <= kfs[0].time) return kfs[0].value;
+        if (time >= kfs[kfs.length - 1].time) return kfs[kfs.length - 1].value;
+        // Find surrounding keyframes
+        for (var i = 0; i < kfs.length - 1; i++) {
+            if (time >= kfs[i].time && time <= kfs[i + 1].time) {
+                var t = (time - kfs[i].time) / (kfs[i + 1].time - kfs[i].time);
+                return kfs[i].value + (kfs[i + 1].value - kfs[i].value) * t;
+            }
+        }
+        return kfs[kfs.length - 1].value;
+    }
+
+    // Apply clip to object at given time
+    function applyClipToObject(clipId, objName, time) {
+        var clip = animationClips[clipId];
+        var obj = objects[objName];
+        if (!clip || !obj) return;
+        var loopTime = clip.loop ? (time % clip.duration) : Math.min(time, clip.duration);
+        for (var t = 0; t < clip.tracks.length; t++) {
+            var track = clip.tracks[t];
+            var val = sampleTrack(track, loopTime);
+            var prop = track.property;
+            if (prop === 'position.x') obj.position.x = val;
+            else if (prop === 'position.y') obj.position.y = val;
+            else if (prop === 'position.z') obj.position.z = val;
+            else if (prop === 'rotation.x') obj.rotation.x = val;
+            else if (prop === 'rotation.y') obj.rotation.y = val;
+            else if (prop === 'rotation.z') obj.rotation.z = val;
+            else if (prop === 'scale.x') obj.scale.x = val;
+            else if (prop === 'scale.y') obj.scale.y = val;
+            else if (prop === 'scale.z') obj.scale.z = val;
+            else if (prop.indexOf('material.') === 0 && obj.material) {
+                var matProp = prop.substring(9);
+                if (obj.material[matProp] !== undefined) {
+                    if (matProp === 'color') obj.material.color.set(val);
+                    else obj.material[matProp] = val;
+                }
+            }
+        }
+    }
+
+    // ============ ANIMATOR CONTROLLER SYSTEM ============
+    // Controller: { id, name, parameters, states, transitions }
+    function createAnimatorController(id, name) {
+        var ctrl = {
+            id: id, name: name || 'New Controller',
+            parameters: { 'Speed': { type: 'float', value: 0 }, 'IsGrounded': { type: 'bool', value: true }, 'Attack': { type: 'trigger', value: false } },
+            states: [{ name: 'Idle', clipId: '', speed: 1, isDefault: true }],
+            transitions: []
+        };
+        animatorControllers[id] = ctrl;
+        return ctrl;
+    }
+
+    function getAnimatorController(id) { return animatorControllers[id] || null; }
+
+    function deleteAnimatorController(id) { delete animatorControllers[id]; }
+
+    function addStateToController(ctrlId, stateName, clipId) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl) return;
+        ctrl.states.push({ name: stateName, clipId: clipId || '', speed: 1, isDefault: false });
+    }
+
+    function removeStateFromController(ctrlId, stateName) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl) return;
+        ctrl.states = ctrl.states.filter(function(s) { return s.name !== stateName; });
+        ctrl.transitions = ctrl.transitions.filter(function(t) { return t.from !== stateName && t.to !== stateName; });
+    }
+
+    function addTransition(ctrlId, from, to, condition, exitTime) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl) return;
+        ctrl.transitions.push({ from: from, to: to, condition: condition || '', exitTime: exitTime !== false });
+    }
+
+    function removeTransition(ctrlId, idx) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl) return;
+        ctrl.transitions.splice(idx, 1);
+    }
+
+    // Evaluate a simple condition string against parameters
+    function evalCondition(condition, params) {
+        if (!condition) return true;
+        try {
+            var expr = condition;
+            for (var p in params) {
+                if (!params.hasOwnProperty(p)) continue;
+                var v = params[p].value;
+                if (params[p].type === 'trigger') v = v ? 1 : 0;
+                expr = expr.replace(new RegExp('\\b' + p + '\\b', 'g'), v);
+            }
+            return Function('"use strict"; return (' + expr + ')')();
+        } catch(e) { return false; }
+    }
+
+    // Step all animators (called in play mode)
+    function stepAnimators(delta) {
+        for (var name in objectComponents) {
+            if (!objectComponents.hasOwnProperty(name)) continue;
+            var comps = objectComponents[name];
+            for (var i = 0; i < comps.length; i++) {
+                if (comps[i].type !== 'animator') continue;
+                var comp = comps[i];
+                var ctrlId = comp.controllerId;
+                if (!ctrlId || !animatorControllers[ctrlId]) continue;
+                var ctrl = animatorControllers[ctrlId];
+
+                // Init animator state for this object
+                if (!animatorStates[name]) {
+                    animatorStates[name] = { controllerId: ctrlId, currentState: '', time: 0, params: {} };
+                    // Deep copy parameters
+                    for (var p in ctrl.parameters) {
+                        if (ctrl.parameters.hasOwnProperty(p)) {
+                            var param = ctrl.parameters[p];
+                            animatorStates[name].params[p] = { type: param.type, value: param.type === 'trigger' ? false : param.value };
+                        }
+                    }
+                    // Find default state
+                    for (var s = 0; s < ctrl.states.length; s++) {
+                        if (ctrl.states[s].isDefault) { animatorStates[name].currentState = ctrl.states[s].name; break; }
+                    }
+                    if (!animatorStates[name].currentState && ctrl.states.length > 0) {
+                        animatorStates[name].currentState = ctrl.states[0].name;
+                    }
+                }
+
+                var state = animatorStates[name];
+                state.time += delta;
+
+                // Reset triggers after evaluation
+                for (var tp in state.params) {
+                    if (state.params.hasOwnProperty(tp) && state.params[tp].type === 'trigger') {
+                        state.params[tp].value = false;
+                    }
+                }
+
+                // Check transitions from current state
+                var currentStateObj = null;
+                for (var ci = 0; ci < ctrl.states.length; ci++) {
+                    if (ctrl.states[ci].name === state.currentState) { currentStateObj = ctrl.states[ci]; break; }
+                }
+                if (currentStateObj && currentStateObj.clipId && animationClips[currentStateObj.clipId]) {
+                    var clip = animationClips[currentStateObj.clipId];
+                    if (state.time >= clip.duration) {
+                        // End of animation — check transitions
+                        for (var ti = 0; ti < ctrl.transitions.length; ti++) {
+                            var tr = ctrl.transitions[ti];
+                            if ((tr.from === state.currentState || tr.from === 'Any') && evalCondition(tr.condition, state.params)) {
+                                state.currentState = tr.to;
+                                state.time = 0;
+                                break;
+                            }
+                        }
+                        if (clip.loop && state.time >= clip.duration) {
+                            state.time = state.time % clip.duration;
+                        }
+                    }
+                }
+
+                // Apply current state's clip
+                for (var si = 0; si < ctrl.states.length; si++) {
+                    if (ctrl.states[si].name === state.currentState && ctrl.states[si].clipId) {
+                        applyClipToObject(ctrl.states[si].clipId, name, state.time);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Reset animator states on stop
+    function resetAnimators() {
+        animatorStates = {};
+    }
+
+    // Set animator parameter (called from scripts: Engine.setAnimatorParam(objectName, 'Speed', 5))
+    function setAnimatorParam(objectName, paramName, value) {
+        if (!animatorStates[objectName]) return;
+        if (!animatorStates[objectName].params[paramName]) return;
+        animatorStates[objectName].params[paramName].value = value;
+    }
+
+    function getAnimatorParam(objectName, paramName) {
+        if (!animatorStates[objectName] || !animatorStates[objectName].params[paramName]) return undefined;
+        return animatorStates[objectName].params[paramName].value;
+    }
+
+    function triggerAnimatorParam(objectName, paramName) {
+        if (!animatorStates[objectName] || !animatorStates[objectName].params[paramName]) return;
+        if (animatorStates[objectName].params[paramName].type === 'trigger') {
+            animatorStates[objectName].params[paramName].value = true;
+        }
+    }
+
     function animate() {
         animFrameId = requestAnimationFrame(animate);
         if (!initialized) return;
@@ -6580,10 +6827,11 @@ var SashaEngineAPI = (function() {
         // Update FPS
         updateFPS(delta);
 
-        // Play mode: run physics and scripts
+        // Play mode: run physics, scripts, animators
         if (playState === 'playing') {
             var collisionPairs = updatePhysics(delta);
             stepScripts(delta, collisionPairs);
+            stepAnimators(delta);
             // Auto-refresh inspector during play
             if (inspectorAutoRefresh && selectedObject) {
                 EngineApp.refreshInspector();
@@ -6649,37 +6897,38 @@ var SashaEngineAPI = (function() {
         if (renderer && scene && camera) {
             var w = canvas ? canvas.clientWidth : 0;
             var h = canvas ? canvas.clientHeight : 0;
-            if (w > 0 && h > 0) {
-                var pr = renderer.getPixelRatio();
-                if (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height) {
-                    camera.aspect = w / h;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(w, h);
-                }
+            if (w < 1 || h < 1) return; // Canvas not ready — don't render anything
+
+            var pr = renderer.getPixelRatio();
+            if (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height) {
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
             }
 
             if (playState === 'playing' && gameViewActive) {
                 // === GAME MODE — render from gameCamera on MAIN canvas ===
-                // Sync gameCamera from Main Camera position + lookAt
-                if (mainCameraObj && gameCamera) {
-                    gameCamera.position.copy(mainCameraObj.position);
+                if (gameCamera) {
+                    // Sync position from Main Camera helper
+                    if (mainCameraObj) {
+                        gameCamera.position.copy(mainCameraObj.position);
+                    }
+                    // Look at follow target or scene center
                     if (followTarget && objects[followTarget]) {
                         gameCamera.lookAt(objects[followTarget].position);
                     } else {
                         gameCamera.lookAt(0, 1, 0);
                     }
+                    gameCamera.aspect = w / h;
+                    gameCamera.updateProjectionMatrix();
+                    renderer.render(scene, gameCamera);
                 }
-                var renderCam = useGameCamera ? gameCamera : camera;
-                renderCam.aspect = w / h;
-                renderCam.updateProjectionMatrix();
-                renderer.render(scene, renderCam);
             } else {
                 // === EDITOR MODE — render from editor camera ===
                 renderer.render(scene, camera);
+                // Camera Preview only in editor mode
+                _renderCameraPreview();
             }
-
-            // === Camera Preview (small window when camera is selected) ===
-            _renderCameraPreview();
         }
     }
 
@@ -6791,7 +7040,15 @@ var SashaEngineAPI = (function() {
         setUIText: function(id, text) { var el = SashaUISystem.getElement(id); if (el) { el.text = text; EngineApp.renderUICanvas(); } },
         setUIPosition: function(id, x, y) { var el = SashaUISystem.getElement(id); if (el) { el.x = x; el.y = y; EngineApp.renderUICanvas(); } },
         setUIColor: function(id, color) { var el = SashaUISystem.getElement(id); if (el) { el.color = color; EngineApp.renderUICanvas(); } },
-        setUIBgColor: function(id, bgColor) { var el = SashaUISystem.getElement(id); if (el) { el.bgColor = bgColor; EngineApp.renderUICanvas(); } }
+        setUIBgColor: function(id, bgColor) { var el = SashaUISystem.getElement(id); if (el) { el.bgColor = bgColor; EngineApp.renderUICanvas(); } },
+        // Animation & Animator API
+        createAnimationClip: createAnimationClip, getAnimationClip: getAnimationClip, deleteAnimationClip: deleteAnimationClip,
+        addTrackToClip: addTrackToClip, addKeyframe: addKeyframe, removeKeyframe: removeKeyframe,
+        createAnimatorController: createAnimatorController, getAnimatorController: getAnimatorController, deleteAnimatorController: deleteAnimatorController,
+        addStateToController: addStateToController, removeStateFromController: removeStateFromController,
+        addTransition: addTransition, removeTransition: removeTransition,
+        setAnimatorParam: setAnimatorParam, getAnimatorParam: getAnimatorParam, triggerAnimatorParam: triggerAnimatorParam,
+        resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; }
     };
 })();
 
@@ -6804,7 +7061,9 @@ var SashaAssetManager = (function() {
         { id: 'folder_materials', type: 'folder', name: 'Materials', parent: null },
         { id: 'folder_prefabs', type: 'folder', name: 'Prefabs', parent: null },
         { id: 'folder_scenes', type: 'folder', name: 'Scenes', parent: null },
-        { id: 'folder_shaders', type: 'folder', name: 'Shaders', parent: null }
+        { id: 'folder_shaders', type: 'folder', name: 'Shaders', parent: null },
+        { id: 'folder_animations', type: 'folder', name: 'Animations', parent: null },
+        { id: 'folder_animators', type: 'folder', name: 'Animator Controllers', parent: null }
     ];
 
     var scriptTemplates = {
@@ -7167,6 +7426,7 @@ var EngineApp = (function() {
 
     function stop() {
         SashaEngineAPI.destroyScripts();
+        SashaEngineAPI.resetAnimators();
         SashaEngineAPI.restorePlayState();
         SashaEngineAPI.setPlayState('stopped');
         SashaEngineAPI.setGameViewActive(false);
@@ -7545,7 +7805,7 @@ var EngineApp = (function() {
             html += iSection('fa-lightbulb', 'Light', lbody);
         }
         html += iSection('fa-puzzle-piece', 'Components', (function(){ var chtml=''; var comps=SashaEngineAPI.getAllComponents(selected); if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; } for(var i=0;i<comps.length;i++){ var comp=comps[i]; var compIcon='fa-file-code'; var compName=comp.type; if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';}else if(comp.type==='capsulecollider'){compIcon='fa-capsules';compName='CapsuleCollider';}else if(comp.type==='cylindercollider'){compIcon='fa-database';compName='CylinderCollider';}else if(comp.type==='wheelcollider'){compIcon='fa-circle-notch';compName='WheelCollider';}else if(comp.type==='planecollider'){compIcon='fa-minus';compName='PlaneCollider';}else if(comp.type==='terraincollider'){compIcon='fa-mountain';compName='TerrainCollider';} chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';} chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>'; if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';} if(comp.type==='rigidbody'){chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');chtml+=sh('Velocity');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';chtml+=sh('Constraints');chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');chtml+=iRField('RBField','Bounce',0.05,0,1,(comp.bounciness!==undefined?comp.bounciness:0.4),selected);chtml+=iRField('RBField','Friction',0.05,0,1,(comp.friction!==undefined?comp.friction:0.6),selected);} if(comp.type==='boxcollider'){var bs=comp.size||{x:1,y:1,z:1};var bc=comp.center||{x:0,y:0,z:0};chtml+=sh('Size');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';} if(comp.type==='spherecollider'){var sc2=comp.center||{x:0,y:0,z:0};chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='meshcollider'){chtml+=iRow('Convex','<input type="checkbox" class="insp-checkbox" '+(comp.convex?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'convex\',this.checked)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='capsulecollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.25)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||2)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='cylindercollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||1)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'isTrigger\',this.checked)">');} if(comp.type==='wheelcollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'radius\',this.value)">');chtml+=iRow('Susp Dist','<input class="insp-input" type="number" step="0.1" value="'+(comp.suspensionDistance||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'suspensionDistance\',this.value)">');} if(comp.type==='boxcollider'){chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'isTrigger\',this.checked)">');} } return chtml; })());
-        html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
+        html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option><option value="animator">Animator</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
         html += '<div style="display:flex;gap:4px;padding:4px 8px;"><button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button><button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button></div>';
         container.innerHTML = html;
     }
@@ -7619,6 +7879,28 @@ var EngineApp = (function() {
                 enabled: true
             });
             log('Created script: ' + scriptName, 'log');
+        } else if (compType === 'animator') {
+            // Find available animator controllers from assets
+            var assets = SashaAssetManager.getAll();
+            var ctrlOptions = [];
+            for (var ai = 0; ai < assets.length; ai++) {
+                if (assets[ai].type === 'animator' && assets[ai].data && assets[ai].data.controllerId) {
+                    ctrlOptions.push(assets[ai].data.controllerId + ':' + assets[ai].name);
+                }
+            }
+            if (ctrlOptions.length === 0) {
+                log('No Animator Controllers found. Create one in Assets > Animator Controllers first.', 'warn');
+                return;
+            }
+            var ctrlChoice = prompt('Select Animator Controller:\n' + ctrlOptions.map(function(c){return c.split(':')[1]}).join('\n'), ctrlOptions[0].split(':')[1]);
+            if (!ctrlChoice) return;
+            var ctrlId = '';
+            for (var ci = 0; ci < ctrlOptions.length; ci++) {
+                if (ctrlOptions[ci].split(':')[1] === ctrlChoice) { ctrlId = ctrlOptions[ci].split(':')[0]; break; }
+            }
+            if (!ctrlId && ctrlOptions.length > 0) ctrlId = ctrlOptions[0].split(':')[0];
+            SashaEngineAPI.addObjectComponent(name, 'animator', { controllerId: ctrlId });
+            log('Added Animator: ' + ctrlChoice, 'log');
         } else {
             // Check if component already exists
             var existingComps2 = SashaEngineAPI.getAllComponents(name);
@@ -7797,7 +8079,7 @@ var EngineApp = (function() {
         var asset = SashaAssetManager.getAsset(id);
         if (!asset) { content.innerHTML = '<div class="asset-empty"><i class="fas fa-folder-open"></i><div>Select an asset</div></div>'; return; }
 
-        var typeIcons = { script: 'fa-file-code', material: 'fa-palette', prefab: 'fa-cube', scene: 'fa-film', shader: 'fa-magic', folder: 'fa-folder' };
+        var typeIcons = { script: 'fa-file-code', material: 'fa-palette', prefab: 'fa-cube', scene: 'fa-film', shader: 'fa-magic', animation: 'fa-play-circle', animator: 'fa-project-diagram', folder: 'fa-folder' };
         var icon = typeIcons[asset.type] || 'fa-file';
         var html = '<div class="asset-content-header"><i class="fas ' + icon + '"></i><span class="asset-ch-name">' + asset.name + '</span>';
 
@@ -7848,6 +8130,60 @@ var EngineApp = (function() {
             if (fcode) html += '<div style="margin:6px 0;color:var(--text-muted);font-size:0.68rem">Fragment Shader:</div><pre>' + fcode + '</pre>';
             if (!vcode && !fcode) html += '<div style="color:var(--text-muted)">Empty shader</div>';
             html += '</div>';
+        } else if (asset.type === 'animation') {
+            var clip = asset.data.clipId ? SashaEngineAPI.getAnimationClip(asset.data.clipId) : null;
+            html += '<button onclick="EngineApp.openAnimationTimeline(\'' + asset.data.clipId + '\')"><i class="fas fa-film"></i> Open Timeline</button>';
+            html += '</div><div class="asset-content-body">';
+            if (clip) {
+                html += '<div style="color:var(--text-secondary);font-size:0.72rem">';
+                html += '<b>Duration:</b> <input type="number" step="0.1" min="0.1" value="'+clip.duration+'" style="width:60px" onchange="SashaEngineAPI.getAnimationClip(\''+asset.data.clipId+'\').duration=parseFloat(this.value)">s';
+                html += ' &nbsp; <label><input type="checkbox" '+(clip.loop?'checked':'')+' onchange="SashaEngineAPI.getAnimationClip(\''+asset.data.clipId+'\').loop=this.checked"> Loop</label><br><br>';
+                html += '<b>Tracks:</b> ' + clip.tracks.length + '<br>';
+                for (var ti = 0; ti < clip.tracks.length; ti++) {
+                    var track = clip.tracks[ti];
+                    html += '<div style="margin:4px 0;padding:3px 6px;background:var(--bg-hover);border-radius:4px;font-size:0.68rem">';
+                    html += track.property + ' <span style="color:var(--text-muted)">(' + track.keyframes.length + ' keyframes)</span>';
+                    html += ' <button onclick="EngineApp.addKeyframeToTrack(\''+asset.data.clipId+'\',\''+ti+'\')" style="font-size:0.6rem;padding:1px 4px;margin-left:4px;">+KF</button>';
+                    html += '</div>';
+                }
+                html += '<button onclick="EngineApp.addTrackToClip(\''+asset.data.clipId+'\')" style="margin-top:6px;font-size:0.68rem;padding:2px 8px;">+ Add Track</button>';
+                html += '</div>';
+            } else {
+                html += '<div style="color:var(--text-muted)">Empty animation clip</div>';
+            }
+            html += '</div>';
+        } else if (asset.type === 'animator') {
+            var ctrl = asset.data.controllerId ? SashaEngineAPI.getAnimatorController(asset.data.controllerId) : null;
+            html += '</div><div class="asset-content-body">';
+            if (ctrl) {
+                html += '<div style="color:var(--text-secondary);font-size:0.72rem">';
+                html += '<b>Parameters:</b><br>';
+                for (var pp in ctrl.parameters) {
+                    if (!ctrl.parameters.hasOwnProperty(pp)) continue;
+                    var p = ctrl.parameters[pp];
+                    html += '<span style="color:#6366f1">'+p.type+'</span> ' + pp + ' = ' + p.value + '<br>';
+                }
+                html += '<br><b>States:</b> ' + ctrl.states.length + '<br>';
+                for (var si = 0; si < ctrl.states.length; si++) {
+                    var st = ctrl.states[si];
+                    html += '<div style="margin:2px 0;padding:2px 6px;background:'+(st.isDefault?'rgba(99,102,241,0.2)':'var(--bg-hover)')+';border-radius:3px;font-size:0.68rem">';
+                    html += (st.isDefault?'<b>':'') + st.name + (st.isDefault?' (default)</b>':'');
+                    html += ' → clip: ' + (st.clipId ? st.clipId.substring(0,12) + '...' : 'none');
+                    html += '</div>';
+                }
+                html += '<br><b>Transitions:</b> ' + ctrl.transitions.length + '<br>';
+                for (var tri = 0; tri < ctrl.transitions.length; tri++) {
+                    var tr = ctrl.transitions[tri];
+                    html += '<div style="margin:2px 0;padding:2px 6px;background:var(--bg-hover);border-radius:3px;font-size:0.68rem">';
+                    html += tr.from + ' → ' + tr.to;
+                    if (tr.condition) html += ' <span style="color:#f59e0b">[' + tr.condition + ']</span>';
+                    html += '</div>';
+                }
+                html += '</div>';
+            } else {
+                html += '<div style="color:var(--text-muted)">Empty animator controller</div>';
+            }
+            html += '</div>';
         } else if (asset.type === 'folder') {
             var children = SashaAssetManager.getChildren(id);
             html += '</div><div class="asset-content-body">';
@@ -7872,7 +8208,7 @@ var EngineApp = (function() {
         var name = prompt('Name:');
         if (!name) return;
         var parentFolder = null;
-        var folderMap = { script: 'folder_scripts', material: 'folder_materials', prefab: 'folder_prefabs', scene: 'folder_scenes', shader: 'folder_shaders', folder: null };
+        var folderMap = { script: 'folder_scripts', material: 'folder_materials', prefab: 'folder_prefabs', scene: 'folder_scenes', shader: 'folder_shaders', animation: 'folder_animations', animator: 'folder_animators', folder: null };
         parentFolder = folderMap[type] || null;
         if (type === 'script') {
             var templates = SashaAssetManager.getScriptTemplates();
@@ -7914,6 +8250,16 @@ var EngineApp = (function() {
             log('Scene saved: ' + name, 'result');
         } else if (type === 'shader') {
             SashaAssetManager.addAsset('shader', name, parentFolder, { vertex: '', fragment: '' });
+        } else if (type === 'animation') {
+            var clipId = 'clip_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            SashaEngineAPI.createAnimationClip(clipId, name);
+            SashaAssetManager.addAsset('animation', name, parentFolder, { clipId: clipId });
+            log('Animation Clip created: ' + name, 'result');
+        } else if (type === 'animator') {
+            var ctrlId = 'ctrl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            SashaEngineAPI.createAnimatorController(ctrlId, name);
+            SashaAssetManager.addAsset('animator', name, parentFolder, { controllerId: ctrlId });
+            log('Animator Controller created: ' + name, 'result');
         } else if (type === 'folder') {
             SashaAssetManager.addAsset('folder', name, null);
         }
@@ -8002,6 +8348,31 @@ var EngineApp = (function() {
     }
 
     function importAsset() { log('Import: paste URL or drag file (coming soon)', 'info'); }
+
+    // --- Animation helper functions ---
+    function addTrackToClip(clipId) {
+        var prop = prompt('Track property (e.g. position.y, rotation.y, scale.x, material.emissiveIntensity):', 'position.y');
+        if (!prop || !prop.trim()) return;
+        SashaEngineAPI.addTrackToClip(clipId, prop.trim());
+        refreshAssetBrowser();
+        if (selectedAsset) showAssetPreview(selectedAsset);
+        log('Added track: ' + prop.trim(), 'log');
+    }
+
+    function addKeyframeToTrack(clipId, trackIdx) {
+        var time = parseFloat(prompt('Time (seconds):', '0'));
+        var value = parseFloat(prompt('Value:', '0'));
+        if (isNaN(time) || isNaN(value)) return;
+        SashaEngineAPI.addKeyframe(clipId, parseInt(trackIdx), time, value);
+        refreshAssetBrowser();
+        if (selectedAsset) showAssetPreview(selectedAsset);
+        log('Added keyframe at t=' + time + ' v=' + value, 'log');
+    }
+
+    function openAnimationTimeline(clipId) {
+        switchTab('timeline');
+        log('Timeline opened for clip: ' + clipId, 'info');
+    }
 
     function saveAllAssets() {
         SashaAssetManager.save();
@@ -9049,6 +9420,7 @@ var EngineApp = (function() {
         editScriptAsset: editScriptAsset, applyScriptToSelected: applyScriptToSelected,
         applyMaterialToSelected: applyMaterialToSelected, instantiatePrefab: instantiatePrefab,
         importAsset: importAsset, saveAllAssets: saveAllAssets,
+        addTrackToClip: addTrackToClip, addKeyframeToTrack: addKeyframeToTrack, openAnimationTimeline: openAnimationTimeline,
         // Scene
         saveSceneData: saveSceneData, loadScene: loadScene,
         // UI Canvas
@@ -9068,6 +9440,7 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
+
 
 
 
