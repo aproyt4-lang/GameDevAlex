@@ -358,6 +358,16 @@
         .game-view-label { color: rgba(34,197,94,0.6); }
         #game-view-canvas { width: 100% !important; height: 100% !important; display: block; }
         .game-mode .scene-view-controls { display: none; }
+        .game-mode .viewport-splitter { display: none !important; }
+        .game-mode #scene-view { flex: 1 !important; display: block !important; }
+        .game-mode #game-view { display: none !important; }
+        .game-mode .eng-btn.play-btn { background: #16a34a !important; box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+        .game-mode .play-btn i::before { content: "\f04c"; }
+        .game-mode .viewport-tabs { pointer-events: none; opacity: 0.5; }
+        .game-mode .viewport-stats { display: none; }
+        .game-mode .viewport-gizmo-info { display: none; }
+        .game-mode .camera-preview { display: none !important; }
+        .game-mode .view-label { display: none; }
         /* Camera Preview — bottom-right corner when camera selected */
         .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .camera-preview.visible { display: block; }
@@ -6851,14 +6861,7 @@ var SashaEngineAPI = (function() {
                 var state = animatorStates[name];
                 state.time += delta;
 
-                // Reset triggers after evaluation
-                for (var tp in state.params) {
-                    if (state.params.hasOwnProperty(tp) && state.params[tp].type === 'trigger') {
-                        state.params[tp].value = false;
-                    }
-                }
-
-                // Check transitions from current state
+                // Check transitions from current state FIRST (before resetting triggers)
                 var currentStateObj = null;
                 for (var ci = 0; ci < ctrl.states.length; ci++) {
                     if (ctrl.states[ci].name === state.currentState) { currentStateObj = ctrl.states[ci]; break; }
@@ -6878,6 +6881,13 @@ var SashaEngineAPI = (function() {
                         if (clip.loop && state.time >= clip.duration) {
                             state.time = state.time % clip.duration;
                         }
+                    }
+                }
+
+                // Reset triggers AFTER transition evaluation
+                for (var tp in state.params) {
+                    if (state.params.hasOwnProperty(tp) && state.params[tp].type === 'trigger') {
+                        state.params[tp].value = false;
                     }
                 }
 
@@ -6993,6 +7003,53 @@ var SashaEngineAPI = (function() {
         if (renderer && scene && camera) {
             var w = canvas ? canvas.clientWidth : 0;
             var h = canvas ? canvas.clientHeight : 0;
+
+            // === GAME MODE: render on main canvas via gameCamera ===
+            if (gameViewActive && playState === 'playing') {
+                // Hide all editor helpers
+                var _eg = scene.getObjectByName('__builtin_grid');
+                if (_eg) _eg.visible = false;
+                if (selectionHelper) selectionHelper.visible = false;
+                if (transformCtrl) transformCtrl.visible = false;
+                if (mainCameraHelper) mainCameraHelper.visible = false;
+
+                // Sync gameCamera from Main Camera helper
+                if (gameCamera) {
+                    if (mainCameraObj) {
+                        gameCamera.position.copy(mainCameraObj.position);
+                    }
+                    if (followTarget && objects[followTarget]) {
+                        gameCamera.lookAt(objects[followTarget].position);
+                    } else {
+                        gameCamera.lookAt(0, 1, 0);
+                    }
+
+                    // Use getBoundingClientRect for reliable sizing
+                    var rect = canvas.getBoundingClientRect();
+                    var gw = Math.round(rect.width);
+                    var gh = Math.round(rect.height);
+
+                    if (gw >= 1 && gh >= 1) {
+                        gameCamera.aspect = gw / gh;
+                        gameCamera.updateProjectionMatrix();
+                        renderer.setSize(gw, gh, false);
+                        // Render game view on main canvas
+                        renderer.render(scene, gameCamera);
+                    } else {
+                        // Fallback: try clientWidth/clientHeight
+                        var fw = canvas.clientWidth;
+                        var fh = canvas.clientHeight;
+                        if (fw >= 1 && fh >= 1) {
+                            gameCamera.aspect = fw / fh;
+                            gameCamera.updateProjectionMatrix();
+                            renderer.setSize(fw, fh, false);
+                            renderer.render(scene, gameCamera);
+                        }
+                    }
+                }
+                return;
+            }
+
             if (w < 1 || h < 1) return; // Canvas not ready — don't render anything
 
             var pr = renderer.getPixelRatio();
@@ -7002,20 +7059,22 @@ var SashaEngineAPI = (function() {
                 renderer.setSize(w, h);
             }
 
-            // === SCENE VIEW: render from editor camera (with helpers) ===
             var _eg = scene.getObjectByName('__builtin_grid');
+            var gvVisible = document.getElementById('game-view') && !document.getElementById('game-view').classList.contains('hidden-view');
+            var svVisible = document.getElementById('scene-view') && !document.getElementById('scene-view').classList.contains('hidden-view');
+
+            // === EDITOR MODE: show helpers, Scene + optional Game split view ===
             if (_eg) _eg.visible = true;
             if (selectionHelper) selectionHelper.visible = !!selectedObject;
             if (transformCtrl) transformCtrl.visible = true;
             if (mainCameraHelper) mainCameraHelper.visible = true;
 
-            var gvVisible = document.getElementById('game-view') && !document.getElementById('game-view').classList.contains('hidden-view');
-            var svVisible = document.getElementById('scene-view') && !document.getElementById('scene-view').classList.contains('hidden-view');
+            // Scene view on main canvas
             if (svVisible) {
                 renderer.render(scene, camera);
             }
 
-            // === GAME VIEW: render from gameCamera (without helpers) ===
+            // Game view panel on separate canvas (without helpers)
             if (gvVisible) {
                 if (_eg) _eg.visible = false;
                 if (selectionHelper) selectionHelper.visible = false;
@@ -7027,6 +7086,7 @@ var SashaEngineAPI = (function() {
                 if (transformCtrl) transformCtrl.visible = true;
                 if (mainCameraHelper) mainCameraHelper.visible = true;
             }
+
             // Camera Preview only when Scene visible and not playing
             if (svVisible && playState !== 'playing') _renderCameraPreview();
         }
@@ -7200,7 +7260,19 @@ var SashaEngineAPI = (function() {
         addTransition: addTransition, removeTransition: removeTransition,
         setAnimatorParam: setAnimatorParam, getAnimatorParam: getAnimatorParam, triggerAnimatorParam: triggerAnimatorParam,
         applyClipToObject: applyClipToObject,
-        resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; }
+        resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; },
+        // Force renderer resize (called from EngineApp after layout changes)
+        _forceResize: function() {
+            if (!renderer || !canvas) return;
+            var rect = canvas.getBoundingClientRect();
+            var fw = Math.round(rect.width);
+            var fh = Math.round(rect.height);
+            if (fw >= 1 && fh >= 1) {
+                var cam = (gameViewActive && playState === 'playing') ? gameCamera : camera;
+                if (cam) { cam.aspect = fw / fh; cam.updateProjectionMatrix(); }
+                renderer.setSize(fw, fh, false);
+            }
+        }
     };
 })();
 
@@ -7554,20 +7626,36 @@ var EngineApp = (function() {
         if (hint) hint.style.display = (!isFPS) ? 'block' : 'none';
     }
 
+    var _savedViewTab = 'both';
+
     function play() {
-        if (SashaEngineAPI.getPlayState() === 'playing') return;
-        if (SashaEngineAPI.getPlayState() === 'stopped') {
-            SashaEngineAPI.savePlayState();
-            // Auto-initialize physicsObjects from components (RigidBody on objects)
-            SashaEngineAPI.initPhysicsFromComponents();
-            // Sync game camera position from Main Camera helper object
-            SashaEngineAPI.syncGameCamera();
-        }
-        SashaEngineAPI.setPlayState('playing');
-        SashaEngineAPI.setGameViewActive(true);
-        var sec = document.getElementById('engine');
-        if (sec) sec.classList.add('game-mode');
-        log('▶ Play mode — Game view active', 'info');
+        try {
+            if (SashaEngineAPI.getPlayState() === 'playing') return;
+            if (SashaEngineAPI.getPlayState() === 'stopped') {
+                SashaEngineAPI.savePlayState();
+                SashaEngineAPI.initPhysicsFromComponents();
+                SashaEngineAPI.syncGameCamera();
+            }
+            SashaEngineAPI.setPlayState('playing');
+            SashaEngineAPI.setGameViewActive(true);
+            _savedViewTab = _activeViewTab;
+            // Force DOM: show scene-view, hide game-view, hide splitter
+            var sv = document.getElementById('scene-view');
+            var gv = document.getElementById('game-view');
+            var sp = document.getElementById('viewport-splitter');
+            if (sv) { sv.classList.remove('hidden-view'); sv.classList.add('active-view'); sv.style.flex = '1'; sv.style.display = 'block'; }
+            if (gv) { gv.classList.add('hidden-view'); gv.classList.remove('active-view'); gv.style.display = 'none'; }
+            if (sp) sp.style.display = 'none';
+            var sec = document.getElementById('engine');
+            if (sec) sec.classList.add('game-mode');
+            // Force renderer resize after layout change
+            setTimeout(function() {
+                var cvs = document.getElementById('engine-canvas');
+                if (cvs && SashaEngineAPI._forceResize) SashaEngineAPI._forceResize();
+            }, 50);
+            console.log('[GameEngine] Play mode activated');
+            log('▶ Play mode — Game view active', 'info');
+        } catch(e) { console.error('[GameEngine] play() error:', e); }
     }
 
     function pause() {
@@ -7577,15 +7665,27 @@ var EngineApp = (function() {
     }
 
     function stop() {
-        SashaEngineAPI.destroyScripts();
-        SashaEngineAPI.resetAnimators();
-        SashaEngineAPI.restorePlayState();
-        SashaEngineAPI.setPlayState('stopped');
-        SashaEngineAPI.setGameViewActive(false);
-        var sec = document.getElementById('engine');
-        if (sec) sec.classList.remove('game-mode');
-        refreshInspector();
-        log('⏹ Stopped', 'info');
+        try {
+            SashaEngineAPI.destroyScripts();
+            SashaEngineAPI.resetAnimators();
+            SashaEngineAPI.restorePlayState();
+            SashaEngineAPI.setPlayState('stopped');
+            SashaEngineAPI.setGameViewActive(false);
+            switchViewTab(_savedViewTab || 'both');
+            var sec = document.getElementById('engine');
+            if (sec) sec.classList.remove('game-mode');
+            // Force DOM restore
+            var sv = document.getElementById('scene-view');
+            var gv = document.getElementById('game-view');
+            var sp = document.getElementById('viewport-splitter');
+            if (sv) { sv.style.display = ''; sv.style.flex = ''; }
+            if (gv) { gv.style.display = ''; gv.style.flex = ''; }
+            if (sp) sp.style.display = '';
+            refreshHierarchy();
+            refreshInspector();
+            console.log('[GameEngine] Stop mode');
+            log('⏹ Stopped', 'info');
+        } catch(e) { console.error('[GameEngine] stop() error:', e); }
     }
 
     // --- Object management ---
@@ -8108,7 +8208,9 @@ var EngineApp = (function() {
         if (field === 'mass') rb.mass = parseFloat(val) || 1;
         else if (field === 'useGravity') rb.useGravity = !!val;
         else if (field === 'drag') rb.drag = parseFloat(val) || 0;
-        else if (field === 'angularDrag') rb.angularDrag = parseFloat(val) || 0.05;
+        else if (field === 'angularDrag' || field === 'Ang Drag') rb.angularDrag = parseFloat(val) || 0.05;
+        else if (field === 'Bounce' || field === 'bounciness') rb.bounciness = parseFloat(val) || 0.4;
+        else if (field === 'Friction' || field === 'friction') rb.friction = parseFloat(val) || 0.6;
     }
 
     function setRBConstraint(name, axis, val) {
@@ -8128,6 +8230,10 @@ var EngineApp = (function() {
         else if (field === 'center_x') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.x = v; }
         else if (field === 'center_y') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.y = v; }
         else if (field === 'center_z') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.z = v; }
+        else if (field === 'isTrigger') { comp.isTrigger = !!val; }
+        else if (field === 'convex') { comp.convex = !!val; }
+        else if (field === 'height') { comp.height = parseFloat(val) || 1; }
+        else if (field === 'suspensionDistance') { comp.suspensionDistance = parseFloat(val) || 0.3; }
     }
 
     function setRBVel(name, axis, val) {
@@ -8544,6 +8650,10 @@ var EngineApp = (function() {
 
     function openAnimatorEditor(ctrlId) {
         _tlEditingClipId = null;
+        if (!ctrlId || !SashaEngineAPI.getAnimatorController(ctrlId)) {
+            log('No Animator Controller selected. Create one in the Assets panel first.', 'warn');
+            return;
+        }
         _tlEditingCtrlId = ctrlId;
         switchTab('timeline');
         var tlPanel = document.getElementById('timeline-panel');
@@ -8551,7 +8661,7 @@ var EngineApp = (function() {
         if (tlPanel) tlPanel.style.display = 'none';
         if (acEditor) acEditor.style.display = 'flex';
         acRefresh();
-        log('Animator Controller opened: ' + ctrlId, 'info');
+        log('Animator Controller opened', 'info');
     }
 
     // ============ ANIMATION TIMELINE EDITOR ============
