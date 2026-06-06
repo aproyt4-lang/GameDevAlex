@@ -339,35 +339,6 @@
         /* Viewport */
         .engine-viewport-pane { position: relative; background: #0a0a1a; overflow: hidden; }
         .engine-viewport-pane canvas { width: 100% !important; height: 100% !important; display: block; }
-
-        /* Split Viewport: Scene + Game side by side */
-        .viewport-split { display: flex; width: 100%; height: 100%; flex-direction: column; }
-        .viewport-tabs { display: flex; gap: 0; background: rgba(15,15,35,0.9); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-        .viewport-tab { padding: 4px 14px; font-size: 0.7rem; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; user-select: none; }
-        .viewport-tab:hover { color: #fff; }
-        .viewport-tab.active { color: #fff; border-bottom-color: var(--primary); background: rgba(99,102,241,0.1); }
-        .viewport-tab.active.game-tab { border-bottom-color: #22c55e; background: rgba(34,197,94,0.1); color: #22c55e; }
-        .viewport-tab.active.scene-tab { border-bottom-color: var(--primary); }
-        .viewport-views { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-        .viewport-view { position: relative; flex: 1; min-width: 0; overflow: hidden; }
-        .viewport-view.hidden-view { display: none; }
-        .viewport-view.active-view { display: block; }
-        .viewport-splitter { width: 3px; background: var(--border); cursor: col-resize; flex-shrink: 0; transition: background 0.15s; }
-        .viewport-splitter:hover, .viewport-splitter.dragging { background: var(--primary); }
-        .view-label { position: absolute; top: 4px; left: 8px; font-size: 0.6rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; pointer-events: none; z-index: 2; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
-        .game-view-label { color: rgba(34,197,94,0.6); }
-        #game-view-canvas { width: 100% !important; height: 100% !important; display: block; }
-        .game-mode .scene-view-controls { display: none; }
-        .game-mode .viewport-splitter { display: none !important; }
-        .game-mode #scene-view { flex: 1 !important; display: block !important; }
-        .game-mode #game-view { display: none !important; }
-        .game-mode .eng-btn.play-btn { background: #16a34a !important; box-shadow: 0 0 8px rgba(34,197,94,0.5); }
-        .game-mode .play-btn i::before { content: "\f04c"; }
-        .game-mode .viewport-tabs { pointer-events: none; opacity: 0.5; }
-        .game-mode .viewport-stats { display: none; }
-        .game-mode .viewport-gizmo-info { display: none; }
-        .game-mode .camera-preview { display: none !important; }
-        .game-mode .view-label { display: none; }
         /* Camera Preview — bottom-right corner when camera selected */
         .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .camera-preview.visible { display: block; }
@@ -454,7 +425,8 @@
         .hier-item .hier-parent-icon:hover { color: var(--primary); }
         .scene-setting-row { display: flex; align-items: center; padding: 4px 10px; gap: 8px; }
         .scene-setting-label { font-size: 0.72rem; color: var(--text-muted); width: 80px; min-width: 80px; }
-        .game-mode .viewport-tab.game-tab { box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+        .game-mode .engine-hierarchy, .game-mode .engine-inspector, .game-mode .engine-toolbar .gizmo-group, .game-mode .engine-toolbar .eng-separator, .game-mode .engine-toolbar select, .game-mode .engine-toolbar .engine-model-status, .game-mode .viewport-gizmo-info { display: none !important; }
+        .game-mode .engine-main-grid { grid-template-columns: 0px 1fr 0px; }
 
         .asset-browser { display: flex; flex-direction: column; height: 100%; background: var(--bg-card); }
         .asset-toolbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); position: relative; }
@@ -521,6 +493,120 @@
         .engine-ai-input-row button:hover { background: var(--primary-dark); }
         .engine-ai-input-row button.build-active { background: #e67e22; }
         .engine-ai-input-row button.build-active:hover { background: #d35400; }
+
+        /* ===== Floating Window System ===== */
+        .floating-window {
+            position: absolute; z-index: 500;
+            background: var(--bg-dark); border: 1px solid var(--border);
+            border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6); min-width: 200px; min-height: 120px;
+            resize: both;
+        }
+        .floating-window.maximized { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border-radius: 0; z-index: 1000; }
+        .floating-window.focused { border-color: var(--primary); box-shadow: 0 8px 32px rgba(99,102,241,0.2); }
+        .fw-titlebar {
+            display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+            background: var(--bg-card); border-bottom: 1px solid var(--border);
+            cursor: grab; user-select: none; flex-shrink: 0; font-size: 0.72rem;
+        }
+        .fw-titlebar:active { cursor: grabbing; }
+        .fw-titlebar .fw-icon { color: var(--primary); font-size: 0.68rem; }
+        .fw-titlebar .fw-title { flex: 1; color: var(--text-secondary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fw-titlebar .fw-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.68rem; padding: 2px 4px; border-radius: 3px; }
+        .fw-titlebar .fw-btn:hover { background: var(--bg-hover); color: #fff; }
+        .fw-titlebar .fw-btn.fw-close:hover { background: #ef4444; color: #fff; }
+        .fw-content { flex: 1; overflow: auto; position: relative; }
+        .fw-resize-handle { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; cursor: nwse-resize; z-index: 2; }
+        .fw-resize-handle::after { content: ''; position: absolute; bottom: 2px; right: 2px; width: 6px; height: 6px; border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted); opacity: 0.5; }
+
+        /* Dock zone highlights */
+        .dock-zone {
+            position: absolute; z-index: 499; background: rgba(99,102,241,0.15);
+            border: 2px dashed var(--primary); border-radius: 6px;
+            display: none; pointer-events: none; transition: all 0.15s;
+        }
+        .dock-zone.visible { display: block; }
+        .dock-zone.dock-left { left: 0; top: 0; bottom: 0; width: 50%; }
+        .dock-zone.dock-right { right: 0; top: 0; bottom: 0; width: 50%; }
+        .dock-zone.dock-top { left: 0; right: 0; top: 0; height: 50%; }
+        .dock-zone.dock-bottom { left: 0; right: 0; bottom: 0; height: 50%; }
+        .dock-zone.dock-center { left: 10%; right: 10%; top: 10%; bottom: 10%; }
+
+        /* ===== Animator Controller Graph ===== */
+        .animator-editor { display: flex; flex-direction: column; height: 100%; background: #0a0a14; }
+        .animator-toolbar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--bg-card); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .animator-toolbar button, .animator-toolbar select {
+            background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.68rem;
+        }
+        .animator-toolbar button:hover { border-color: var(--primary); color: #fff; }
+        .animator-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+        .animator-graph-container { flex: 1; position: relative; overflow: hidden; background: #08080f; }
+        .animator-graph-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: radial-gradient(circle, rgba(99,102,241,0.08) 1px, transparent 1px); background-size: 24px 24px; pointer-events: none; }
+        .animator-graph-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .animator-params-panel { width: 200px; background: var(--bg-dark); border-left: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; }
+        .animator-params-header { padding: 6px 8px; font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border); background: var(--bg-card); }
+        .animator-param-row { display: flex; align-items: center; padding: 3px 8px; gap: 4px; border-bottom: 1px solid rgba(46,46,74,0.3); font-size: 0.68rem; }
+        .animator-param-row .param-type { color: var(--primary); font-size: 0.62rem; width: 40px; min-width: 40px; }
+        .animator-param-row .param-name { flex: 1; color: var(--text-secondary); }
+        .animator-param-row input { background: var(--bg-card); border: 1px solid var(--border); color: #fff; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; width: 50px; outline: none; }
+        .animator-param-row input:focus { border-color: var(--primary); }
+        /* State nodes */
+        .anim-state-node {
+            position: absolute; min-width: 140px; max-width: 200px;
+            background: var(--bg-card); border: 2px solid var(--border);
+            border-radius: 8px; cursor: move; user-select: none; z-index: 10;
+            transition: box-shadow 0.15s;
+        }
+        .anim-state-node:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+        .anim-state-node.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.3); }
+        .anim-state-node.active-state { border-color: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.3); }
+        .anim-state-node .node-header {
+            display: flex; align-items: center; gap: 4px; padding: 4px 8px;
+            background: rgba(99,102,241,0.15); border-radius: 6px 6px 0 0;
+            font-size: 0.68rem; font-weight: 600; color: #fff;
+        }
+        .anim-state-node .node-header .node-color { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .anim-state-node.default-state .node-header { background: rgba(245,158,11,0.2); }
+        .anim-state-node .node-body { padding: 4px 8px; font-size: 0.62rem; color: var(--text-muted); }
+        .anim-state-node .node-motion { font-size: 0.62rem; color: var(--text-muted); padding: 2px 8px 4px; border-top: 1px solid var(--border); }
+        .anim-state-node .node-entry-arrow {
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            width: 2px; height: 20px; background: #f59e0b;
+        }
+        .anim-state-node .node-entry-arrow::after {
+            content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+            border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid #f59e0b;
+        }
+
+        /* ===== Shader Editor ===== */
+        .shader-editor-panel { display: flex; flex-direction: column; height: 100%; }
+        .shader-tabs { display: flex; gap: 0; background: var(--bg-card); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .shader-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); padding: 5px 14px; cursor: pointer; font-size: 0.72rem; }
+        .shader-tab.active { color: #8b5cf6; border-bottom-color: #8b5cf6; }
+        .shader-tab:hover { color: #fff; }
+        .shader-code-area { flex: 1; position: relative; min-height: 0; }
+        .shader-code-area textarea {
+            width: 100%; height: 100%; background: var(--bg-dark); border: none;
+            color: #a5d6a7; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem; padding: 8px; resize: none; outline: none;
+            line-height: 1.5; tab-size: 2;
+        }
+        .shader-error-log { max-height: 80px; overflow-y: auto; padding: 4px 8px; background: rgba(239,68,68,0.1); border-top: 1px solid var(--border); font-size: 0.68rem; color: #ef4444; font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+        .shader-toolbar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--bg-card); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .shader-toolbar button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 0.68rem; }
+        .shader-toolbar button:hover { border-color: #8b5cf6; color: #fff; }
+        .shader-toolbar button.shader-apply-btn { background: rgba(139,92,246,0.2); border-color: #8b5cf6; color: #8b5cf6; }
+
+        /* ===== Animation Preview Controls ===== */
+        .anim-preview-bar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--bg-card); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .anim-preview-bar button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.68rem; }
+        .anim-preview-bar button:hover { border-color: var(--primary); color: #fff; }
+        .anim-preview-bar .anim-time { font-size: 0.68rem; color: var(--primary); font-family: 'JetBrains Mono', monospace; min-width: 80px; }
+        .anim-timeline-track { flex: 1; height: 6px; background: var(--bg-dark); border-radius: 3px; position: relative; cursor: pointer; border: 1px solid var(--border); }
+        .anim-timeline-fill { height: 100%; background: var(--primary); border-radius: 3px; position: absolute; left: 0; top: 0; }
+        .anim-timeline-scrubber { position: absolute; top: -3px; width: 12px; height: 12px; background: #fff; border: 2px solid var(--primary); border-radius: 50%; cursor: grab; transform: translateX(-50%); }
+        .anim-timeline-scrubber:active { cursor: grabbing; }
     </style>
 </head>
 <body>
@@ -888,45 +974,24 @@
 
                     <!-- Viewport -->
                     <div class="engine-viewport-pane">
-                        <div class="viewport-split">
-                            <!-- Viewport tabs: Scene / Game -->
-                            <div class="viewport-tabs">
-                                <div class="viewport-tab scene-tab active" id="vtab-scene" onclick="EngineApp.switchViewTab('scene')"><i class="fas fa-cube" style="margin-right:4px;font-size:0.6rem;"></i>Scene</div>
-                                <div class="viewport-tab game-tab" id="vtab-game" onclick="EngineApp.switchViewTab('game')"><i class="fas fa-gamepad" style="margin-right:4px;font-size:0.6rem;"></i>Game</div>
-                            </div>
-                            <!-- Split views container -->
-                            <div class="viewport-views" id="viewport-views">
-                                <!-- Scene View (left) -->
-                                <div class="viewport-view active-view" id="scene-view" style="flex:1;">
-                                    <div class="view-label scene-view-controls">Scene</div>
-                                    <canvas id="engine-canvas"></canvas>
-                                    <div class="camera-preview" id="camera-preview">
-                                        <canvas id="camera-preview-canvas"></canvas>
-                                        <div class="camera-preview-label">Camera Preview</div>
-                                    </div>
-                                    <div class="viewport-stats" id="eng-viewport-stats">FPS: -- | Objs: 0</div>
-                                    <div class="viewport-gizmo-info" id="viewport-gizmo-info">
-                                        Tool: <span id="gizmo-info-mode">Move</span> |
-                                        Selected: <span id="gizmo-info-sel">None</span> |
-                                        Objects: <span id="gizmo-info-count">0</span>
-                                    </div>
-                                    <div id="fps-crosshair" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10;">
-                                        <div style="width:20px;height:2px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-                                        <div style="width:2px;height:20px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-                                        <div style="width:4px;height:4px;background:rgba(255,255,255,0.8);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-                                    </div>
-                                    <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - move | Q - down | Space - up | Shift - sprint | Mouse - look | ESC - release</div>
-                                </div>
-                                <!-- Splitter -->
-                                <div class="viewport-splitter" id="viewport-splitter"></div>
-                                <!-- Game View (right) -->
-                                <div class="viewport-view active-view" id="game-view" style="flex:1;">
-                                    <div class="view-label game-view-label">Game</div>
-                                    <canvas id="game-view-canvas"></canvas>
-                                    <div id="game-stats" style="position:absolute;bottom:6px;left:8px;font-size:0.62rem;color:rgba(34,197,94,0.5);font-family:'JetBrains Mono',monospace;pointer-events:none;">Game View</div>
-                                </div>
-                            </div>
+                        <canvas id="engine-canvas"></canvas>
+                        <!-- Camera Preview (shows what Main Camera sees when selected) -->
+                        <div class="camera-preview" id="camera-preview">
+                            <canvas id="camera-preview-canvas"></canvas>
+                            <div class="camera-preview-label">Camera Preview</div>
                         </div>
+                        <div class="viewport-stats" id="eng-viewport-stats">FPS: -- | Objs: 0</div>
+                        <div class="viewport-gizmo-info" id="viewport-gizmo-info">
+                            Tool: <span id="gizmo-info-mode">Move</span> |
+                            Selected: <span id="gizmo-info-sel">None</span> |
+                            Objects: <span id="gizmo-info-count">0</span>
+                        </div>
+                        <div id="fps-crosshair" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10;">
+                            <div style="width:20px;height:2px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                            <div style="width:2px;height:20px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                            <div style="width:4px;height:4px;background:rgba(255,255,255,0.8);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                        </div>
+                        <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - move | Q - down | Space - up | Shift - sprint | Mouse - look | ESC - release</div>
                         <div class="engine-model-overlay" id="eng-overlay">
                             <div class="model-text" id="eng-overlay-text">Loading AI model...</div>
                             <div class="model-progress"><div class="model-progress-bar" id="eng-progress-bar"></div></div>
@@ -950,7 +1015,6 @@
                         <button class="eng-tab" onclick="EngineApp.switchTab('code')"><i class="fas fa-code"></i> Code</button>
                         <button class="eng-tab" onclick="EngineApp.switchTab('ai')"><i class="fas fa-robot"></i> AI Agent</button>
                         <button class="eng-tab" onclick="EngineApp.switchTab('ui')"><i class="fas fa-window-maximize"></i> UI Canvas</button>
-                        <button class="eng-tab" onclick="EngineApp.switchTab('timeline')"><i class="fas fa-film"></i> Animation</button>
                     </div>
                     <div class="engine-bottom-content">
                         <div class="eng-tab-content" id="eng-tab-assets" style="display:block;">
@@ -1013,61 +1077,6 @@
                                     </div>
                                     <input type="text" id="eng-ai-input" placeholder="Спроси что-нибудь..." onkeydown="if(event.key==='Enter')EngineApp.sendAI()">
                                     <button id="ai-send-btn" onclick="EngineApp.sendAI()"><i class="fas fa-paper-plane"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="eng-tab-content" id="eng-tab-timeline" style="display:none;">
-                            <div id="timeline-panel" style="width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-card);overflow:hidden;">
-                                <!-- Timeline header: clip info + controls -->
-                                <div id="timeline-header" style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap;min-height:32px;background:var(--bg-dark);">
-                                    <span id="timeline-clip-name" style="font-size:0.72rem;color:var(--text-secondary);min-width:60px;"></span>
-                                    <button class="eng-tab" onclick="EngineApp.tlCreateNewClip()" title="New Clip" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> New Clip</button>
-                                    <div style="display:flex;gap:3px;align-items:center;">
-                                        <button class="eng-tab" onclick="EngineApp.tlPlay()" title="Play" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-play"></i></button>
-                                        <button class="eng-tab" onclick="EngineApp.tlStop()" title="Stop" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-stop"></i></button>
-                                        <button class="eng-tab" onclick="EngineApp.tlToggleLoop()" id="tl-loop-btn" title="Loop" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-redo"></i></button>
-                                    </div>
-                                    <span id="tl-time-display" style="font-size:0.68rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">0.000 / 1.000</span>
-                                    <div style="flex:1"></div>
-                                    <span style="font-size:0.65rem;color:var(--text-muted);">Duration:</span>
-                                    <input type="number" id="tl-duration" step="0.1" min="0.1" max="60" value="1.0" style="width:50px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;" onchange="EngineApp.tlSetDuration(this.value)">
-                                    <span style="font-size:0.65rem;color:var(--text-muted);">FPS:</span>
-                                    <input type="number" id="tl-fps" step="1" min="1" max="120" value="60" style="width:40px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;">
-                                </div>
-                                <!-- Timeline tracks + canvas area -->
-                                <div style="display:flex;flex:1;min-height:0;">
-                                    <!-- Track labels (left column) -->
-                                    <div id="tl-track-labels" style="width:160px;min-width:160px;overflow-y:auto;background:var(--bg-dark);border-right:1px solid var(--border);padding:2px 0;"></div>
-                                    <!-- Canvas area (right) -->
-                                    <div id="tl-canvas-wrap" style="flex:1;position:relative;overflow:auto;cursor:default;">
-                                        <canvas id="tl-canvas" style="display:block;"></canvas>
-                                    </div>
-                                </div>
-                                <!-- Bottom toolbar -->
-                                <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--border);min-height:28px;background:var(--bg-dark);">
-                                    <button class="eng-tab" onclick="EngineApp.tlAddTrack()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add Track</button>
-                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-diamond"></i> Add Key</button>
-                                    <button class="eng-tab" onclick="EngineApp.tlDeleteSelectedKey()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-trash"></i> Del Key</button>
-                                    <div style="flex:1"></div>
-                                    <span id="tl-cursor-info" style="font-size:0.65rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;"></span>
-                                </div>
-                            </div>
-                            <!-- Animator Controller Editor (shown when animator asset selected) -->
-                            <div id="animator-editor" style="width:100%;height:100%;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;">
-                                <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);min-height:32px;background:var(--bg-dark);">
-                                    <span id="ac-ctrl-name" style="font-size:0.72rem;color:var(--primary);font-weight:600;min-width:60px;"></span>
-                                    <div style="flex:1"></div>
-                                    <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add State</button>
-                                    <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-sliders-h"></i> Add Param</button>
-                                    <button class="eng-tab" onclick="EngineApp.acAddTransition()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-arrow-right"></i> Add Transition</button>
-                                </div>
-                                <div style="display:flex;flex:1;min-height:0;">
-                                    <!-- Parameters panel -->
-                                    <div id="ac-params-panel" style="width:180px;min-width:180px;overflow-y:auto;background:var(--bg-dark);border-right:1px solid var(--border);padding:6px;"></div>
-                                    <!-- State machine canvas -->
-                                    <div id="ac-canvas-wrap" style="flex:1;position:relative;overflow:auto;">
-                                        <canvas id="ac-canvas" style="display:block;"></canvas>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -4924,9 +4933,6 @@ var SashaEngineAPI = (function() {
     var useGameCamera = true;       // true = render from game camera, false = render from editor camera (free cam)
     var previewRenderer = null;    // Small renderer for camera preview
     var previewCanvas = null;      // Preview canvas element
-    // === Game View Renderer (separate renderer for Game View panel) ===
-    var gameViewRenderer = null;   // WebGLRenderer for game-view-canvas
-    var gameViewCanvas = null;     // The game-view-canvas element
     // === Main Camera System (Unity-style) ===
     var mainCameraObj = null;       // The camera object on scene (THREE.Camera)
     var mainCameraName = 'Main Camera';
@@ -6861,7 +6867,7 @@ var SashaEngineAPI = (function() {
                 var state = animatorStates[name];
                 state.time += delta;
 
-                // Check transitions from current state FIRST (before resetting triggers)
+                // Check transitions from current state BEFORE resetting triggers
                 var currentStateObj = null;
                 for (var ci = 0; ci < ctrl.states.length; ci++) {
                     if (ctrl.states[ci].name === state.currentState) { currentStateObj = ctrl.states[ci]; break; }
@@ -6884,18 +6890,18 @@ var SashaEngineAPI = (function() {
                     }
                 }
 
-                // Reset triggers AFTER transition evaluation
-                for (var tp in state.params) {
-                    if (state.params.hasOwnProperty(tp) && state.params[tp].type === 'trigger') {
-                        state.params[tp].value = false;
-                    }
-                }
-
                 // Apply current state's clip
                 for (var si = 0; si < ctrl.states.length; si++) {
                     if (ctrl.states[si].name === state.currentState && ctrl.states[si].clipId) {
                         applyClipToObject(ctrl.states[si].clipId, name, state.time);
                         break;
+                    }
+                }
+
+                // Reset triggers AFTER transition evaluation so they can fire
+                for (var tp in state.params) {
+                    if (state.params.hasOwnProperty(tp) && state.params[tp].type === 'trigger') {
+                        state.params[tp].value = false;
                     }
                 }
             }
@@ -6990,8 +6996,10 @@ var SashaEngineAPI = (function() {
         // === Main Camera Follow Update (only when follow target set and NOT in FPS mode) ===
         if (!fpsMode) updateMainCamera(delta);
 
-        // Controls: disabled in FPS mode or during gizmo drag (Scene view always editable)
-        if (fpsMode || _transformDragging) {
+        // Controls: disabled in FPS mode, during gizmo drag, in game mode, or with follow target
+        if (fpsMode || (playState === 'playing' && gameViewActive)) {
+            if (controls) controls.enabled = false;
+        } else if (_transformDragging) {
             if (controls) controls.enabled = false;
         } else {
             if (controls) controls.enabled = true;
@@ -7003,53 +7011,6 @@ var SashaEngineAPI = (function() {
         if (renderer && scene && camera) {
             var w = canvas ? canvas.clientWidth : 0;
             var h = canvas ? canvas.clientHeight : 0;
-
-            // === GAME MODE: render on main canvas via gameCamera ===
-            if (gameViewActive && playState === 'playing') {
-                // Hide all editor helpers
-                var _eg = scene.getObjectByName('__builtin_grid');
-                if (_eg) _eg.visible = false;
-                if (selectionHelper) selectionHelper.visible = false;
-                if (transformCtrl) transformCtrl.visible = false;
-                if (mainCameraHelper) mainCameraHelper.visible = false;
-
-                // Sync gameCamera from Main Camera helper
-                if (gameCamera) {
-                    if (mainCameraObj) {
-                        gameCamera.position.copy(mainCameraObj.position);
-                    }
-                    if (followTarget && objects[followTarget]) {
-                        gameCamera.lookAt(objects[followTarget].position);
-                    } else {
-                        gameCamera.lookAt(0, 1, 0);
-                    }
-
-                    // Use getBoundingClientRect for reliable sizing
-                    var rect = canvas.getBoundingClientRect();
-                    var gw = Math.round(rect.width);
-                    var gh = Math.round(rect.height);
-
-                    if (gw >= 1 && gh >= 1) {
-                        gameCamera.aspect = gw / gh;
-                        gameCamera.updateProjectionMatrix();
-                        renderer.setSize(gw, gh, false);
-                        // Render game view on main canvas
-                        renderer.render(scene, gameCamera);
-                    } else {
-                        // Fallback: try clientWidth/clientHeight
-                        var fw = canvas.clientWidth;
-                        var fh = canvas.clientHeight;
-                        if (fw >= 1 && fh >= 1) {
-                            gameCamera.aspect = fw / fh;
-                            gameCamera.updateProjectionMatrix();
-                            renderer.setSize(fw, fh, false);
-                            renderer.render(scene, gameCamera);
-                        }
-                    }
-                }
-                return;
-            }
-
             if (w < 1 || h < 1) return; // Canvas not ready — don't render anything
 
             var pr = renderer.getPixelRatio();
@@ -7059,88 +7020,30 @@ var SashaEngineAPI = (function() {
                 renderer.setSize(w, h);
             }
 
-            var _eg = scene.getObjectByName('__builtin_grid');
-            var gvVisible = document.getElementById('game-view') && !document.getElementById('game-view').classList.contains('hidden-view');
-            var svVisible = document.getElementById('scene-view') && !document.getElementById('scene-view').classList.contains('hidden-view');
-
-            // === EDITOR MODE: show helpers, Scene + optional Game split view ===
-            if (_eg) _eg.visible = true;
-            if (selectionHelper) selectionHelper.visible = !!selectedObject;
-            if (transformCtrl) transformCtrl.visible = true;
-            if (mainCameraHelper) mainCameraHelper.visible = true;
-
-            // Scene view on main canvas
-            if (svVisible) {
-                renderer.render(scene, camera);
-            }
-
-            // Game view panel on separate canvas (without helpers)
-            if (gvVisible) {
-                if (_eg) _eg.visible = false;
-                if (selectionHelper) selectionHelper.visible = false;
-                if (transformCtrl) transformCtrl.visible = false;
-                if (mainCameraHelper) mainCameraHelper.visible = false;
-                _renderGameView();
-                if (_eg) _eg.visible = true;
-                if (selectionHelper) selectionHelper.visible = !!selectedObject;
-                if (transformCtrl) transformCtrl.visible = true;
-                if (mainCameraHelper) mainCameraHelper.visible = true;
-            }
-
-            // Camera Preview only when Scene visible and not playing
-            if (svVisible && playState !== 'playing') _renderCameraPreview();
-        }
-    }
-
-    // Check if Scene view is hidden (when user selected only Game tab)
-    function _gvSceneHidden() {
-        var sv = document.getElementById('scene-view');
-        return sv && sv.classList.contains('hidden-view');
-    }
-
-    // Render Game View panel
-    function _renderGameView() {
-        var gvContainer = document.getElementById('game-view');
-        var gvCanvas = document.getElementById('game-view-canvas');
-        if (!gvContainer || !gvCanvas) return;
-        if (gvContainer.classList.contains('hidden-view')) return;
-        var gw = gvCanvas.clientWidth;
-        var gh = gvCanvas.clientHeight;
-        if (gw < 1 || gh < 1) return;
-
-        // Lazy-init game view renderer
-        if (!gameViewRenderer) {
-            gameViewRenderer = new THREE.WebGLRenderer({ canvas: gvCanvas, antialias: true, alpha: false });
-            gameViewRenderer.setPixelRatio(window.devicePixelRatio);
-            gameViewRenderer.setSize(gw, gh);
-            gameViewRenderer.setClearColor(scene ? scene.background || new THREE.Color(0x0a0a1a) : new THREE.Color(0x0a0a1a));
-            gameViewRenderer.shadowMap.enabled = renderer ? renderer.shadowMap.enabled : false;
-        }
-
-        // Update game camera aspect
-        if (gameCamera) {
-            // Sync position from Main Camera helper
-            if (mainCameraObj) {
-                gameCamera.position.copy(mainCameraObj.position);
-            }
-            // Look at follow target or scene center
-            if (followTarget && objects[followTarget]) {
-                gameCamera.lookAt(objects[followTarget].position);
+            if (playState === 'playing' && gameViewActive) {
+                // === GAME MODE — render from gameCamera on MAIN canvas ===
+                if (gameCamera) {
+                    // Sync position from Main Camera helper
+                    if (mainCameraObj) {
+                        gameCamera.position.copy(mainCameraObj.position);
+                    }
+                    // Look at follow target or scene center
+                    if (followTarget && objects[followTarget]) {
+                        gameCamera.lookAt(objects[followTarget].position);
+                    } else {
+                        gameCamera.lookAt(0, 1, 0);
+                    }
+                    gameCamera.aspect = w / h;
+                    gameCamera.updateProjectionMatrix();
+                    renderer.render(scene, gameCamera);
+                }
             } else {
-                gameCamera.lookAt(0, 1, 0);
+                // === EDITOR MODE — render from editor camera ===
+                renderer.render(scene, camera);
+                // Camera Preview only in editor mode
+                _renderCameraPreview();
             }
-            gameCamera.aspect = gw / gh;
-            gameCamera.updateProjectionMatrix();
         }
-
-        // Resize if needed
-        var gpr = gameViewRenderer.getPixelRatio();
-        if (Math.round(gw * gpr) !== gameViewRenderer.domElement.width || Math.round(gh * gpr) !== gameViewRenderer.domElement.height) {
-            gameViewRenderer.setSize(gw, gh);
-        }
-
-        // Render game view (helpers already hidden by caller)
-        gameViewRenderer.render(scene, gameCamera);
     }
 
     function log(text) {
@@ -7259,20 +7162,7 @@ var SashaEngineAPI = (function() {
         addStateToController: addStateToController, removeStateFromController: removeStateFromController,
         addTransition: addTransition, removeTransition: removeTransition,
         setAnimatorParam: setAnimatorParam, getAnimatorParam: getAnimatorParam, triggerAnimatorParam: triggerAnimatorParam,
-        applyClipToObject: applyClipToObject,
-        resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; },
-        // Force renderer resize (called from EngineApp after layout changes)
-        _forceResize: function() {
-            if (!renderer || !canvas) return;
-            var rect = canvas.getBoundingClientRect();
-            var fw = Math.round(rect.width);
-            var fh = Math.round(rect.height);
-            if (fw >= 1 && fh >= 1) {
-                var cam = (gameViewActive && playState === 'playing') ? gameCamera : camera;
-                if (cam) { cam.aspect = fw / fh; cam.updateProjectionMatrix(); }
-                renderer.setSize(fw, fh, false);
-            }
-        }
+        resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; }, applyClipToObject: applyClipToObject
     };
 })();
 
@@ -7370,8 +7260,8 @@ var SashaAssetManager = (function() {
             if (saved) { assets = JSON.parse(saved); }
         } catch(e) {}
         // Ensure root folders exist
-        var folders = ['Scripts', 'Materials', 'Prefabs', 'Scenes', 'Shaders'];
-        var icons = { 'Scripts': 'fa-file-code', 'Materials': 'fa-palette', 'Prefabs': 'fa-cube', 'Scenes': 'fa-film', 'Shaders': 'fa-magic' };
+        var folders = ['Scripts', 'Materials', 'Prefabs', 'Scenes', 'Shaders', 'Animations', 'Animator Controllers'];
+        var icons = { 'Scripts': 'fa-file-code', 'Materials': 'fa-palette', 'Prefabs': 'fa-cube', 'Scenes': 'fa-film', 'Shaders': 'fa-magic', 'Animations': 'fa-play-circle', 'Animator Controllers': 'fa-project-diagram' };
         for (var i = 0; i < folders.length; i++) {
             var exists = false;
             for (var j = 0; j < assets.length; j++) {
@@ -7626,36 +7516,20 @@ var EngineApp = (function() {
         if (hint) hint.style.display = (!isFPS) ? 'block' : 'none';
     }
 
-    var _savedViewTab = 'both';
-
     function play() {
-        try {
-            if (SashaEngineAPI.getPlayState() === 'playing') return;
-            if (SashaEngineAPI.getPlayState() === 'stopped') {
-                SashaEngineAPI.savePlayState();
-                SashaEngineAPI.initPhysicsFromComponents();
-                SashaEngineAPI.syncGameCamera();
-            }
-            SashaEngineAPI.setPlayState('playing');
-            SashaEngineAPI.setGameViewActive(true);
-            _savedViewTab = _activeViewTab;
-            // Force DOM: show scene-view, hide game-view, hide splitter
-            var sv = document.getElementById('scene-view');
-            var gv = document.getElementById('game-view');
-            var sp = document.getElementById('viewport-splitter');
-            if (sv) { sv.classList.remove('hidden-view'); sv.classList.add('active-view'); sv.style.flex = '1'; sv.style.display = 'block'; }
-            if (gv) { gv.classList.add('hidden-view'); gv.classList.remove('active-view'); gv.style.display = 'none'; }
-            if (sp) sp.style.display = 'none';
-            var sec = document.getElementById('engine');
-            if (sec) sec.classList.add('game-mode');
-            // Force renderer resize after layout change
-            setTimeout(function() {
-                var cvs = document.getElementById('engine-canvas');
-                if (cvs && SashaEngineAPI._forceResize) SashaEngineAPI._forceResize();
-            }, 50);
-            console.log('[GameEngine] Play mode activated');
-            log('▶ Play mode — Game view active', 'info');
-        } catch(e) { console.error('[GameEngine] play() error:', e); }
+        if (SashaEngineAPI.getPlayState() === 'playing') return;
+        if (SashaEngineAPI.getPlayState() === 'stopped') {
+            SashaEngineAPI.savePlayState();
+            // Auto-initialize physicsObjects from components (RigidBody on objects)
+            SashaEngineAPI.initPhysicsFromComponents();
+            // Sync game camera position from Main Camera helper object
+            SashaEngineAPI.syncGameCamera();
+        }
+        SashaEngineAPI.setPlayState('playing');
+        SashaEngineAPI.setGameViewActive(true);
+        var sec = document.getElementById('engine');
+        if (sec) sec.classList.add('game-mode');
+        log('▶ Play mode — Game view active', 'info');
     }
 
     function pause() {
@@ -7665,27 +7539,15 @@ var EngineApp = (function() {
     }
 
     function stop() {
-        try {
-            SashaEngineAPI.destroyScripts();
-            SashaEngineAPI.resetAnimators();
-            SashaEngineAPI.restorePlayState();
-            SashaEngineAPI.setPlayState('stopped');
-            SashaEngineAPI.setGameViewActive(false);
-            switchViewTab(_savedViewTab || 'both');
-            var sec = document.getElementById('engine');
-            if (sec) sec.classList.remove('game-mode');
-            // Force DOM restore
-            var sv = document.getElementById('scene-view');
-            var gv = document.getElementById('game-view');
-            var sp = document.getElementById('viewport-splitter');
-            if (sv) { sv.style.display = ''; sv.style.flex = ''; }
-            if (gv) { gv.style.display = ''; gv.style.flex = ''; }
-            if (sp) sp.style.display = '';
-            refreshHierarchy();
-            refreshInspector();
-            console.log('[GameEngine] Stop mode');
-            log('⏹ Stopped', 'info');
-        } catch(e) { console.error('[GameEngine] stop() error:', e); }
+        SashaEngineAPI.destroyScripts();
+        SashaEngineAPI.resetAnimators();
+        SashaEngineAPI.restorePlayState();
+        SashaEngineAPI.setPlayState('stopped');
+        SashaEngineAPI.setGameViewActive(false);
+        var sec = document.getElementById('engine');
+        if (sec) sec.classList.remove('game-mode');
+        refreshInspector();
+        log('⏹ Stopped', 'info');
     }
 
     // --- Object management ---
@@ -7809,10 +7671,10 @@ var EngineApp = (function() {
 
             var selClass = (name === selected) ? ' selected' : '';
             var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
-            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "'") + '\')" ondblclick="EngineApp.startRename(\'' + name.replace(/'/g, "'") + '\',this)">' +
+            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "\\'") + '\')" ondblclick="EngineApp.startRename(\'' + name.replace(/'/g, "\\'") + '\',this)">' +
                 '<span class="hier-icon"><i class="fas ' + ico + '"></i></span>' +
                 '<span class="hier-name">' + name + '</span>' +
-                '<button class="hier-vis" onclick="event.stopPropagation(); EngineApp.toggleVis(\'' + name.replace(/'/g, "'") + '\')"><i class="fas ' + visIcon + '"></i></button>' +
+                '<button class="hier-vis" onclick="event.stopPropagation(); EngineApp.toggleVis(\'' + name.replace(/'/g, "\\'") + '\')"><i class="fas ' + visIcon + '"></i></button>' +
                 '</div>';
         }
 
@@ -8056,7 +7918,7 @@ var EngineApp = (function() {
             if (obj.isDirectionalLight || obj.isSpotLight) { lbody += iRow('Shadows', '<input type="checkbox" class="insp-checkbox" '+(obj.castShadow?'checked':'')+' onchange="EngineApp.setLightProp(\''+selected+'\',\'castShadow\',this.checked)">'); }
             html += iSection('fa-lightbulb', 'Light', lbody);
         }
-        html += iSection('fa-puzzle-piece', 'Components', (function(){ var chtml=''; var comps=SashaEngineAPI.getAllComponents(selected); if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; } for(var i=0;i<comps.length;i++){ var comp=comps[i]; var compIcon='fa-file-code'; var compName=comp.type; if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';}else if(comp.type==='capsulecollider'){compIcon='fa-capsules';compName='CapsuleCollider';}else if(comp.type==='cylindercollider'){compIcon='fa-database';compName='CylinderCollider';}else if(comp.type==='wheelcollider'){compIcon='fa-circle-notch';compName='WheelCollider';}else if(comp.type==='planecollider'){compIcon='fa-minus';compName='PlaneCollider';}else if(comp.type==='terraincollider'){compIcon='fa-mountain';compName='TerrainCollider';}else if(comp.type==='animator'){compIcon='fa-project-diagram';compName='Animator';} chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';} chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>'; if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';} if(comp.type==='rigidbody'){chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');chtml+=sh('Velocity');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';chtml+=sh('Constraints');chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');chtml+=iRField('RBField','Bounce',0.05,0,1,(comp.bounciness!==undefined?comp.bounciness:0.4),selected);chtml+=iRField('RBField','Friction',0.05,0,1,(comp.friction!==undefined?comp.friction:0.6),selected);} if(comp.type==='boxcollider'){var bs=comp.size||{x:1,y:1,z:1};var bc=comp.center||{x:0,y:0,z:0};chtml+=sh('Size');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';} if(comp.type==='spherecollider'){var sc2=comp.center||{x:0,y:0,z:0};chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='meshcollider'){chtml+=iRow('Convex','<input type="checkbox" class="insp-checkbox" '+(comp.convex?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'convex\',this.checked)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='capsulecollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.25)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||2)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='cylindercollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||1)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'isTrigger\',this.checked)">');} if(comp.type==='wheelcollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'radius\',this.value)">');chtml+=iRow('Susp Dist','<input class="insp-input" type="number" step="0.1" value="'+(comp.suspensionDistance||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'suspensionDistance\',this.value)">');} if(comp.type==='boxcollider'){chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='animator'){var ctrl=SashaEngineAPI.getAnimatorController(comp.controllerId);chtml+=iRow('Controller',ctrl?('<span style=\"color:var(--primary);cursor:pointer;text-decoration:underline;\" onclick=\"EngineApp.openAnimatorEditor(\''+comp.controllerId+'\')\">'+ctrl.name+'</span>'):'<span style=\"color:var(--text-muted);\">None</span>');chtml+='<button onclick=\"EngineApp.openAnimatorEditor(\''+comp.controllerId+'\')\" style=\"width:100%;margin-top:4px;font-size:0.65rem;padding:3px;background:var(--primary);border:none;color:#fff;border-radius:4px;cursor:pointer;\"><i class=\"fas fa-project-diagram\"></i> Open Animator Editor</button>';} } return chtml; })());
+        html += iSection('fa-puzzle-piece', 'Components', (function(){ var chtml=''; var comps=SashaEngineAPI.getAllComponents(selected); if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; } for(var i=0;i<comps.length;i++){ var comp=comps[i]; var compIcon='fa-file-code'; var compName=comp.type; if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';}else if(comp.type==='capsulecollider'){compIcon='fa-capsules';compName='CapsuleCollider';}else if(comp.type==='cylindercollider'){compIcon='fa-database';compName='CylinderCollider';}else if(comp.type==='wheelcollider'){compIcon='fa-circle-notch';compName='WheelCollider';}else if(comp.type==='planecollider'){compIcon='fa-minus';compName='PlaneCollider';}else if(comp.type==='terraincollider'){compIcon='fa-mountain';compName='TerrainCollider';} chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';} chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>'; if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';} if(comp.type==='rigidbody'){chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');chtml+=sh('Velocity');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';chtml+=sh('Constraints');chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');chtml+=iRField('RBField','Bounce',0.05,0,1,(comp.bounciness!==undefined?comp.bounciness:0.4),selected);chtml+=iRField('RBField','Friction',0.05,0,1,(comp.friction!==undefined?comp.friction:0.6),selected);} if(comp.type==='boxcollider'){var bs=comp.size||{x:1,y:1,z:1};var bc=comp.center||{x:0,y:0,z:0};chtml+=sh('Size');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';} if(comp.type==='spherecollider'){var sc2=comp.center||{x:0,y:0,z:0};chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');chtml+=sh('Center');chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='meshcollider'){chtml+=iRow('Convex','<input type="checkbox" class="insp-checkbox" '+(comp.convex?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'convex\',this.checked)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'isTrigger\',this.checked)">');} if(comp.type==='capsulecollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.25)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||2)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'isTrigger\',this.checked)">');} if(comp.type==='cylindercollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||1)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'isTrigger\',this.checked)">');} if(comp.type==='wheelcollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'radius\',this.value)">');chtml+=iRow('Susp Dist','<input class="insp-input" type="number" step="0.1" value="'+(comp.suspensionDistance||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'suspensionDistance\',this.value)">');} if(comp.type==='boxcollider'){chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'isTrigger\',this.checked)">');} } return chtml; })());
         html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option><option value="animator">Animator</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
         html += '<div style="display:flex;gap:4px;padding:4px 8px;"><button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button><button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button></div>';
         container.innerHTML = html;
@@ -8148,10 +8010,7 @@ var EngineApp = (function() {
             if (!ctrlChoice) return;
             var ctrlId = '';
             for (var ci = 0; ci < ctrlOptions.length; ci++) {
-                var optName = ctrlOptions[ci].split(':')[1];
-                if (optName.toLowerCase() === ctrlChoice.toLowerCase() || optName.toLowerCase().indexOf(ctrlChoice.toLowerCase()) !== -1 || ctrlChoice.toLowerCase().indexOf(optName.toLowerCase()) !== -1) {
-                    ctrlId = ctrlOptions[ci].split(':')[0]; break;
-                }
+                if (ctrlOptions[ci].split(':')[1] === ctrlChoice) { ctrlId = ctrlOptions[ci].split(':')[0]; break; }
             }
             if (!ctrlId && ctrlOptions.length > 0) ctrlId = ctrlOptions[0].split(':')[0];
             SashaEngineAPI.addObjectComponent(name, 'animator', { controllerId: ctrlId });
@@ -8208,9 +8067,7 @@ var EngineApp = (function() {
         if (field === 'mass') rb.mass = parseFloat(val) || 1;
         else if (field === 'useGravity') rb.useGravity = !!val;
         else if (field === 'drag') rb.drag = parseFloat(val) || 0;
-        else if (field === 'angularDrag' || field === 'Ang Drag') rb.angularDrag = parseFloat(val) || 0.05;
-        else if (field === 'Bounce' || field === 'bounciness') rb.bounciness = parseFloat(val) || 0.4;
-        else if (field === 'Friction' || field === 'friction') rb.friction = parseFloat(val) || 0.6;
+        else if (field === 'angularDrag') rb.angularDrag = parseFloat(val) || 0.05;
     }
 
     function setRBConstraint(name, axis, val) {
@@ -8230,10 +8087,6 @@ var EngineApp = (function() {
         else if (field === 'center_x') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.x = v; }
         else if (field === 'center_y') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.y = v; }
         else if (field === 'center_z') { if (!comp.center) comp.center = {x:0,y:0,z:0}; comp.center.z = v; }
-        else if (field === 'isTrigger') { comp.isTrigger = !!val; }
-        else if (field === 'convex') { comp.convex = !!val; }
-        else if (field === 'height') { comp.height = parseFloat(val) || 1; }
-        else if (field === 'suspensionDistance') { comp.suspensionDistance = parseFloat(val) || 0.3; }
     }
 
     function setRBVel(name, axis, val) {
@@ -8250,7 +8103,7 @@ var EngineApp = (function() {
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove('active');
         }
-        var tabMap = { assets: 'Assets', console: 'Console', code: 'Code', ai: 'AI Agent', ui: 'UI Canvas', timeline: 'Animation' };
+        var tabMap = { assets: 'Assets', console: 'Console', code: 'Code', ai: 'AI Agent', ui: 'UI Canvas' };
         for (var j = 0; j < tabs.length; j++) {
             if (tabs[j].textContent.indexOf(tabMap[tabName]) !== -1) {
                 tabs[j].classList.add('active');
@@ -8267,7 +8120,6 @@ var EngineApp = (function() {
         }
         if (tabName === 'assets') { refreshAssetBrowser(); }
         if (tabName === 'ui') { renderUICanvas(); }
-        if (tabName === 'timeline') { EngineApp.tlRefresh(); }
     }
 
     // ============ Asset Browser ============
@@ -8384,7 +8236,8 @@ var EngineApp = (function() {
             if (data.components) html += 'Components: ' + Object.keys(data.components).length + '<br>';
             html += '</div></div>';
         } else if (asset.type === 'shader') {
-            html += '<button onclick="EngineApp.editScriptAsset(\'' + id + '\')"><i class="fas fa-edit"></i> Edit</button>';
+            html += '<button onclick="EngineApp.openShaderEditor(\'' + id + '\')"><i class="fas fa-edit"></i> Open Editor</button>';
+            html += '<button onclick="EngineApp.compileAndApplyShader()"><i class="fas fa-play"></i> Apply</button>';
             html += '</div><div class="asset-content-body">';
             var vcode = (asset.data.vertex || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
             var fcode = (asset.data.fragment || '').replace(/&/g,'&amp;').replace(/</g,'&gt;');
@@ -8394,7 +8247,8 @@ var EngineApp = (function() {
             html += '</div>';
         } else if (asset.type === 'animation') {
             var clip = asset.data.clipId ? SashaEngineAPI.getAnimationClip(asset.data.clipId) : null;
-            html += '<button onclick="EngineApp.openAnimationTimeline(\'' + asset.data.clipId + '\')"><i class="fas fa-film"></i> Open Timeline</button>';
+            html += '<button onclick="EngineApp.openAnimationPreview(\'' + asset.data.clipId + '\')"><i class="fas fa-play"></i> Preview</button>';
+            html += '<button onclick="EngineApp.openAnimationTimeline(\'' + asset.data.clipId + '\')"><i class="fas fa-film"></i> Timeline</button>';
             html += '</div><div class="asset-content-body">';
             if (clip) {
                 html += '<div style="color:var(--text-secondary);font-size:0.72rem">';
@@ -8416,7 +8270,7 @@ var EngineApp = (function() {
             html += '</div>';
         } else if (asset.type === 'animator') {
             var ctrl = asset.data.controllerId ? SashaEngineAPI.getAnimatorController(asset.data.controllerId) : null;
-            html += '<button onclick="EngineApp.openAnimatorEditor(\'' + asset.data.controllerId + '\')"><i class="fas fa-project-diagram"></i> Open Editor</button>';
+            html += '<button onclick="EngineApp.openAnimatorControllerEditor(\'' + id + '\')"><i class="fas fa-project-diagram"></i> Open Editor</button>';
             html += '</div><div class="asset-content-body">';
             if (ctrl) {
                 html += '<div style="color:var(--text-secondary);font-size:0.72rem">';
@@ -8632,1031 +8486,10 @@ var EngineApp = (function() {
         log('Added keyframe at t=' + time + ' v=' + value, 'log');
     }
 
-    // Current editing targets
-    var _tlEditingClipId = null;
-    var _tlEditingCtrlId = null;
-
     function openAnimationTimeline(clipId) {
-        _tlEditingCtrlId = null;
-        _tlEditingClipId = clipId;
         switchTab('timeline');
-        var tlPanel = document.getElementById('timeline-panel');
-        var acEditor = document.getElementById('animator-editor');
-        if (tlPanel) tlPanel.style.display = 'flex';
-        if (acEditor) acEditor.style.display = 'none';
-        tlRefresh();
         log('Timeline opened for clip: ' + clipId, 'info');
     }
-
-    function openAnimatorEditor(ctrlId) {
-        _tlEditingClipId = null;
-        if (!ctrlId || !SashaEngineAPI.getAnimatorController(ctrlId)) {
-            log('No Animator Controller selected. Create one in the Assets panel first.', 'warn');
-            return;
-        }
-        _tlEditingCtrlId = ctrlId;
-        switchTab('timeline');
-        var tlPanel = document.getElementById('timeline-panel');
-        var acEditor = document.getElementById('animator-editor');
-        if (tlPanel) tlPanel.style.display = 'none';
-        if (acEditor) acEditor.style.display = 'flex';
-        acRefresh();
-        log('Animator Controller opened', 'info');
-    }
-
-    // ============ ANIMATION TIMELINE EDITOR ============
-    var _tlState = {
-        playing: false, looping: true, time: 0, duration: 1.0,
-        selectedTrack: -1, selectedKey: -1, draggingKey: false, dragTrack: -1, dragKey: -1,
-        pixelsPerSecond: 120, trackHeight: 28, headerHeight: 24,
-        lastFrameTime: 0, rafId: null, targetObjName: null
-    };
-
-    function tlRefresh() {
-        _tlEnsureEvents();
-        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
-        if (!clip) {
-            var nameEl = document.getElementById('timeline-clip-name');
-            if (nameEl) nameEl.textContent = 'No clip selected';
-            _tlRenderNoClipUI();
-            return;
-        }
-        _tlState.duration = clip.duration;
-        _tlState.looping = clip.loop;
-        var nameEl = document.getElementById('timeline-clip-name');
-        if (nameEl) nameEl.textContent = clip.name || 'Animation Clip';
-        var durEl = document.getElementById('tl-duration');
-        if (durEl) durEl.value = clip.duration;
-        var loopBtn = document.getElementById('tl-loop-btn');
-        if (loopBtn) loopBtn.style.opacity = clip.loop ? '1' : '0.4';
-        _tlRenderTrackLabels();
-        _tlRenderCanvas();
-    }
-
-    // Render UI when no clip is selected — show create/select options
-    function _tlRenderNoClipUI() {
-        var labels = document.getElementById('tl-track-labels');
-        var wrap = document.getElementById('tl-canvas-wrap');
-        if (!labels || !wrap) return;
-        // Build list of existing clips
-        var allAssets = SashaAssetManager.getAll();
-        var clips = [];
-        for (var i = 0; i < allAssets.length; i++) {
-            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId) {
-                clips.push({ id: allAssets[i].data.clipId, name: allAssets[i].name });
-            }
-        }
-        var html = '<div style="padding:8px;font-size:0.72rem;color:var(--text-secondary);">';
-        html += '<div style="margin-bottom:8px;"><b style="color:var(--text-primary);">Animation Timeline</b></div>';
-        html += '<div style="margin-bottom:6px;color:var(--text-muted);font-size:0.65rem;">No clip selected. Create new or open existing:</div>';
-        html += '<button onclick="EngineApp.tlCreateNewClip()" style="width:100%;padding:6px 8px;font-size:0.7rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-bottom:8px;"><i class="fas fa-plus" style="margin-right:4px;"></i> Create New Clip</button>';
-        if (clips.length > 0) {
-            html += '<div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;">Existing clips:</div>';
-            for (var c = 0; c < clips.length; c++) {
-                html += '<div onclick="EngineApp.openAnimationTimeline(\'' + clips[c].id + '\')" style="padding:4px 6px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.68rem;color:var(--text-secondary);transition:background 0.15s;" onmouseover="this.style.background=\'var(--bg-hover)\'" onmouseout="this.style.background=\'transparent\'">';
-                html += '<i class="fas fa-film" style="color:#a855f7;margin-right:4px;font-size:0.6rem;"></i>' + clips[c].name;
-                html += '</div>';
-            }
-        }
-        html += '</div>';
-        labels.innerHTML = html;
-        // Clear canvas
-        if (wrap) {
-            var cvs = document.getElementById('tl-canvas');
-            if (cvs) { var ctx = cvs.getContext('2d'); if (ctx) ctx.clearRect(0, 0, cvs.width, cvs.height); }
-        }
-    }
-
-    // Create a new animation clip and open it in the timeline
-    function tlCreateNewClip() {
-        var name = prompt('Animation Clip name:', 'NewClip_' + (SashaAssetManager.getAll().filter(function(a){return a.type==='animation'}).length + 1));
-        if (!name || !name.trim()) return;
-        name = name.trim();
-        var clipId = 'clip_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-        SashaEngineAPI.createAnimationClip(clipId, name);
-        SashaAssetManager.addAsset('animation', name, null, { clipId: clipId });
-        _tlEditingClipId = clipId;
-        _tlEditingCtrlId = null;
-        var tlPanel = document.getElementById('timeline-panel');
-        var acEditor = document.getElementById('animator-editor');
-        if (tlPanel) tlPanel.style.display = 'flex';
-        if (acEditor) acEditor.style.display = 'none';
-        tlRefresh();
-        refreshAssetBrowser();
-        log('Created & opened clip: ' + name, 'result');
-    }
-
-    function tlSetDuration(val) {
-        var v = parseFloat(val);
-        if (isNaN(v) || v < 0.1) return;
-        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
-        if (clip) { clip.duration = v; _tlState.duration = v; tlRefresh(); }
-    }
-
-    function tlPlay() {
-        if (_tlState.playing) return;
-        _tlState.playing = true;
-        _tlState.lastFrameTime = performance.now();
-        _tlPlaybackLoop();
-    }
-
-    function tlStop() {
-        _tlState.playing = false;
-        if (_tlState.rafId) { cancelAnimationFrame(_tlState.rafId); _tlState.rafId = null; }
-        _tlState.time = 0;
-        _tlApplyTimeToScene();
-        _tlRenderCanvas();
-        _tlUpdateTimeDisplay();
-    }
-
-    function tlToggleLoop() {
-        _tlState.looping = !_tlState.looping;
-        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
-        if (clip) clip.loop = _tlState.looping;
-        var loopBtn = document.getElementById('tl-loop-btn');
-        if (loopBtn) loopBtn.style.opacity = _tlState.looping ? '1' : '0.4';
-    }
-
-    function tlPlaybackLoop() {
-        if (!_tlState.playing) return;
-        var now = performance.now();
-        var dt = (now - _tlState.lastFrameTime) / 1000;
-        _tlState.lastFrameTime = now;
-        _tlState.time += dt;
-        if (_tlState.time >= _tlState.duration) {
-            if (_tlState.looping) { _tlState.time = _tlState.time % _tlState.duration; }
-            else { _tlState.time = _tlState.duration; _tlState.playing = false; }
-        }
-        _tlApplyTimeToScene();
-        _tlRenderCanvas();
-        _tlUpdateTimeDisplay();
-        if (_tlState.playing) _tlState.rafId = requestAnimationFrame(tlPlaybackLoop);
-    }
-
-    function _tlApplyTimeToScene() {
-        if (!_tlEditingClipId || !_tlState.targetObjName) return;
-        SashaEngineAPI.applyClipToObject(_tlEditingClipId, _tlState.targetObjName, _tlState.time);
-    }
-
-    function _tlUpdateTimeDisplay() {
-        var el = document.getElementById('tl-time-display');
-        if (el) el.textContent = _tlState.time.toFixed(3) + ' / ' + _tlState.duration.toFixed(3);
-    }
-
-    function tlAddTrack() {
-        if (!_tlEditingClipId) { tlCreateNewClip(); return; }
-        var prop = prompt('Track property (e.g. position.x, position.y, position.z, rotation.y, scale.x, material.emissiveIntensity):', 'position.y');
-        if (!prop || !prop.trim()) return;
-        SashaEngineAPI.addTrackToClip(_tlEditingClipId, prop.trim());
-        // Set target object to currently selected object
-        if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
-        tlRefresh();
-    }
-
-    function tlAddKeyframe() {
-        if (!_tlEditingClipId) { tlCreateNewClip(); return; }
-        if (_tlState.selectedTrack < 0) { log('Select a track first', 'warn'); return; }
-        var time = _tlState.time;
-        var value = 0;
-        // Auto-read current value from selected object if possible
-        var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
-        if (objName) {
-            var objs = SashaEngineAPI.getObjects();
-            var obj = objs[objName];
-            var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-            if (obj && clip && clip.tracks[_tlState.selectedTrack]) {
-                var prop = clip.tracks[_tlState.selectedTrack].property;
-                var parts = prop.split('.');
-                if (parts.length === 2) {
-                    var parent = parts[0]; var child = parts[1];
-                    if (parent === 'position' && obj.position) value = obj.position[child];
-                    else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
-                    else if (parent === 'scale' && obj.scale) value = obj.scale[child];
-                } else if (parts.length === 1 && obj[parts[0]] !== undefined) {
-                    value = obj[parts[0]];
-                }
-            }
-        }
-        var valStr = prompt('Value at t=' + time.toFixed(3) + ':', String(value));
-        if (valStr === null) return;
-        value = parseFloat(valStr);
-        if (isNaN(value)) return;
-        SashaEngineAPI.addKeyframe(_tlEditingClipId, _tlState.selectedTrack, time, value);
-        tlRefresh();
-    }
-
-    function tlDeleteSelectedKey() {
-        if (!_tlEditingClipId) { log('No clip selected', 'warn'); return; }
-        if (_tlState.selectedTrack < 0 || _tlState.selectedKey < 0) return;
-        SashaEngineAPI.removeKeyframe(_tlEditingClipId, _tlState.selectedTrack, _tlState.selectedKey);
-        _tlState.selectedKey = -1;
-        tlRefresh();
-    }
-
-    function _tlRenderTrackLabels() {
-        var container = document.getElementById('tl-track-labels');
-        if (!container) return;
-        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
-        var html = '';
-        // Target object selector
-        html += '<div style="padding:2px 6px;border-bottom:1px solid var(--border);">';
-        html += '<select id=\"tl-target-sel\" style=\"width:100%;font-size:0.65rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:2px;border-radius:3px;outline:none;\" onchange=\"EngineApp.tlSetTarget(this.value)\">';
-        html += '<option value=\"\">-- Object --</option>';
-        var names = SashaEngineAPI.getAllObjectNames();
-        for (var n = 0; n < names.length; n++) {
-            var sel = (_tlState.targetObjName === names[n]) ? ' selected' : '';
-            html += '<option value=\"' + names[n] + '\"' + sel + '>' + names[n] + '</option>';
-        }
-        html += '</select></div>';
-        if (clip) {
-            for (var i = 0; i < clip.tracks.length; i++) {
-                var track = clip.tracks[i];
-                var isSel = (_tlState.selectedTrack === i);
-                html += '<div onclick=\"EngineApp.tlSelectTrack(' + i + ')\" style=\"padding:4px 8px;font-size:0.68rem;cursor:pointer;border-bottom:1px solid var(--border);background:' + (isSel ? 'rgba(99,102,241,0.2)' : 'transparent') + ';color:' + (isSel ? '#fff' : 'var(--text-secondary)') + ';border-left:2px solid ' + (isSel ? '#6366f1' : 'transparent') + ';\">';
-                html += '<i class=\"fas fa-wave-square\" style=\"color:#a855f7;margin-right:4px;\"></i>' + track.property;
-                html += ' <span style=\"color:var(--text-muted);font-size:0.6rem;\">(' + track.keyframes.length + ')</span>';
-                html += '</div>';
-            }
-        }
-        container.innerHTML = html;
-    }
-
-    function tlSetTarget(name) {
-        _tlState.targetObjName = name || null;
-    }
-
-    function tlSelectTrack(idx) {
-        _tlState.selectedTrack = idx;
-        _tlState.selectedKey = -1;
-        tlRefresh();
-    }
-
-    function _tlRenderCanvas() {
-        var canvas = document.getElementById('tl-canvas');
-        var wrap = document.getElementById('tl-canvas-wrap');
-        if (!canvas || !wrap) return;
-        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
-        var trackCount = clip ? clip.tracks.length : 0;
-        var totalWidth = Math.max(wrap.clientWidth, _tlState.duration * _tlState.pixelsPerSecond + 40);
-        var totalHeight = _tlState.headerHeight + trackCount * _tlState.trackHeight + 10;
-        if (totalHeight < 60) totalHeight = 60;
-
-        var dpr = window.devicePixelRatio || 1;
-        canvas.width = totalWidth * dpr;
-        canvas.height = totalHeight * dpr;
-        canvas.style.width = totalWidth + 'px';
-        canvas.style.height = totalHeight + 'px';
-
-        var ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, totalWidth, totalHeight);
-
-        // Header: time ruler
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(0, 0, totalWidth, _tlState.headerHeight);
-        ctx.strokeStyle = '#2e2e4a';
-        ctx.lineWidth = 1;
-
-        // Time marks
-        var step = 1;
-        if (_tlState.duration > 5) step = 1;
-        if (_tlState.duration > 10) step = 2;
-        if (_tlState.duration > 30) step = 5;
-        for (var t = 0; t <= _tlState.duration + step; t += step) {
-            var x = t * _tlState.pixelsPerSecond;
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, _tlState.headerHeight); ctx.stroke();
-            ctx.fillStyle = '#a1a1aa';
-            ctx.font = '10px JetBrains Mono, monospace';
-            ctx.fillText(t + 's', x + 2, _tlState.headerHeight - 4);
-        }
-        // Sub-marks (0.5s)
-        ctx.strokeStyle = '#1e1e3a';
-        for (var t2 = 0.5; t2 <= _tlState.duration; t2 += 1) {
-            var x2 = t2 * _tlState.pixelsPerSecond;
-            ctx.beginPath(); ctx.moveTo(x2, _tlState.headerHeight - 8); ctx.lineTo(x2, _tlState.headerHeight); ctx.stroke();
-        }
-
-        // Playhead
-        var phX = _tlState.time * _tlState.pixelsPerSecond;
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(phX, 0); ctx.lineTo(phX, totalHeight); ctx.stroke();
-        // Playhead triangle
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath(); ctx.moveTo(phX - 5, 0); ctx.lineTo(phX + 5, 0); ctx.lineTo(phX, 7); ctx.closePath(); ctx.fill();
-
-        // Tracks
-        if (clip) {
-            var trackColors = ['#6366f1', '#a855f7', '#06b6d4', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#14b8a6', '#f97316', '#8b5cf6'];
-            for (var ti = 0; ti < clip.tracks.length; ti++) {
-                var track = clip.tracks[ti];
-                var y = _tlState.headerHeight + ti * _tlState.trackHeight;
-                var isSelected = (_tlState.selectedTrack === ti);
-
-                // Track background
-                ctx.fillStyle = isSelected ? 'rgba(99,102,241,0.08)' : '#0f0f23';
-                ctx.fillRect(0, y, totalWidth, _tlState.trackHeight);
-                ctx.strokeStyle = isSelected ? '#6366f1' : '#1a1a2e';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(0, y, totalWidth, _tlState.trackHeight);
-
-                var col = trackColors[ti % trackColors.length];
-
-                // Draw keyframes
-                for (var ki = 0; ki < track.keyframes.length; ki++) {
-                    var kf = track.keyframes[ki];
-                    var kx = kf.time * _tlState.pixelsPerSecond;
-                    var ky = y + _tlState.trackHeight / 2;
-                    var isKeySel = (isSelected && _tlState.selectedKey === ki);
-
-                    // Keyframe diamond
-                    ctx.fillStyle = isKeySel ? '#fff' : col;
-                    ctx.strokeStyle = isKeySel ? col : '#fff';
-                    ctx.lineWidth = isKeySel ? 2 : 1;
-                    ctx.beginPath();
-                    ctx.moveTo(kx, ky - 6);
-                    ctx.lineTo(kx + 6, ky);
-                    ctx.lineTo(kx, ky + 6);
-                    ctx.lineTo(kx - 6, ky);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Value label
-                    ctx.fillStyle = isKeySel ? '#fff' : '#a1a1aa';
-                    ctx.font = '9px JetBrains Mono, monospace';
-                    ctx.fillText(kf.value.toFixed(2), kx + 8, ky + 3);
-                }
-
-                // Draw interpolation lines between keyframes
-                if (track.keyframes.length > 1) {
-                    ctx.strokeStyle = col;
-                    ctx.lineWidth = 1.5;
-                    ctx.globalAlpha = 0.4;
-                    ctx.beginPath();
-                    for (var li = 0; li < track.keyframes.length; li++) {
-                        var lkf = track.keyframes[li];
-                        var lx = lkf.time * _tlState.pixelsPerSecond;
-                        // normalize value for visual
-                        var minV = Infinity, maxV = -Infinity;
-                        for (var vi = 0; vi < track.keyframes.length; vi++) {
-                            if (track.keyframes[vi].value < minV) minV = track.keyframes[vi].value;
-                            if (track.keyframes[vi].value > maxV) maxV = track.keyframes[vi].value;
-                        }
-                        var range = maxV - minV;
-                        if (range < 0.001) range = 1;
-                        var ly = y + _tlState.trackHeight - 4 - ((lkf.value - minV) / range) * (_tlState.trackHeight - 8);
-                        if (li === 0) ctx.moveTo(lx, ly);
-                        else ctx.lineTo(lx, ly);
-                    }
-                    ctx.stroke();
-                    ctx.globalAlpha = 1;
-                }
-            }
-        }
-    }
-
-    // Timeline canvas mouse events
-    function _tlCanvasMouseDown(e) {
-        var canvas = document.getElementById('tl-canvas');
-        if (!canvas || !_tlEditingClipId) return;
-        var rect = canvas.getBoundingClientRect();
-        var mx = e.clientX - rect.left;
-        var my = e.clientY - rect.top;
-        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-        if (!clip) return;
-
-        // Check if clicking in header (seek)
-        if (my < _tlState.headerHeight) {
-            _tlState.time = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
-            _tlApplyTimeToScene();
-            _tlRenderCanvas();
-            _tlUpdateTimeDisplay();
-            return;
-        }
-
-        // Check keyframe hit
-        for (var ti = 0; ti < clip.tracks.length; ti++) {
-            var y = _tlState.headerHeight + ti * _tlState.trackHeight;
-            for (var ki = 0; ki < clip.tracks[ti].keyframes.length; ki++) {
-                var kf = clip.tracks[ti].keyframes[ki];
-                var kx = kf.time * _tlState.pixelsPerSecond;
-                var ky = y + _tlState.trackHeight / 2;
-                if (Math.abs(mx - kx) < 8 && Math.abs(my - ky) < 8) {
-                    _tlState.selectedTrack = ti;
-                    _tlState.selectedKey = ki;
-                    _tlState.draggingKey = true;
-                    _tlState.dragTrack = ti;
-                    _tlState.dragKey = ki;
-                    _tlRenderTrackLabels();
-                    _tlRenderCanvas();
-                    return;
-                }
-            }
-            // Click on track (select track, deselect key)
-            if (my >= y && my < y + _tlState.trackHeight) {
-                _tlState.selectedTrack = ti;
-                _tlState.selectedKey = -1;
-                _tlRenderTrackLabels();
-                _tlRenderCanvas();
-                return;
-            }
-        }
-    }
-
-    function _tlCanvasMouseMove(e) {
-        if (!_tlState.draggingKey || !_tlEditingClipId) return;
-        var canvas = document.getElementById('tl-canvas');
-        if (!canvas) return;
-        var rect = canvas.getBoundingClientRect();
-        var mx = e.clientX - rect.left;
-        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-        if (!clip || !clip.tracks[_tlState.dragTrack]) return;
-        var newTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
-        clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey].time = newTime;
-        clip.tracks[_tlState.dragTrack].keyframes.sort(function(a, b) { return a.time - b.time; });
-        // Recalculate selectedKey index after sort
-        for (var i = 0; i < clip.tracks[_tlState.dragTrack].keyframes.length; i++) {
-            if (clip.tracks[_tlState.dragTrack].keyframes[i] === clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey]) {
-                // find the moved keyframe
-            }
-        }
-        _tlRenderCanvas();
-        _tlUpdateTimeDisplay();
-        var info = document.getElementById('tl-cursor-info');
-        if (info) info.textContent = 't=' + newTime.toFixed(3);
-    }
-
-    function _tlCanvasMouseUp(e) {
-        _tlState.draggingKey = false;
-        var info = document.getElementById('tl-cursor-info');
-        if (info) info.textContent = '';
-    }
-
-    function _tlCanvasDblClick(e) {
-        if (!_tlEditingClipId) return;
-        var canvas = document.getElementById('tl-canvas');
-        if (!canvas) return;
-        var rect = canvas.getBoundingClientRect();
-        var mx = e.clientX - rect.left;
-        var my = e.clientY - rect.top;
-        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-        if (!clip || my < _tlState.headerHeight) return;
-        // Find which track was double-clicked
-        for (var ti = 0; ti < clip.tracks.length; ti++) {
-            var y = _tlState.headerHeight + ti * _tlState.trackHeight;
-            if (my >= y && my < y + _tlState.trackHeight) {
-                var time = mx / _tlState.pixelsPerSecond;
-                // Read current value
-                var value = 0;
-                var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
-                if (objName) {
-                    var objs = SashaEngineAPI.getObjects();
-                    var obj = objs[objName];
-                    if (obj) {
-                        var prop = clip.tracks[ti].property;
-                        var parts = prop.split('.');
-                        if (parts.length === 2) {
-                            var parent = parts[0]; var child = parts[1];
-                            if (parent === 'position' && obj.position) value = obj.position[child];
-                            else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
-                            else if (parent === 'scale' && obj.scale) value = obj.scale[child];
-                        }
-                    }
-                }
-                var valStr = prompt('Keyframe value at t=' + time.toFixed(3) + ':', String(parseFloat(value.toFixed(3))));
-                if (valStr === null) return;
-                value = parseFloat(valStr);
-                if (isNaN(value)) return;
-                SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, time, value);
-                _tlState.selectedTrack = ti;
-                _tlState.selectedKey = clip.tracks[ti].keyframes.length - 1;
-                tlRefresh();
-                return;
-            }
-        }
-    }
-
-    // Init canvas events lazily
-    var _tlEventsInit = false;
-    var _acEventsInit = false;
-    function _tlEnsureEvents() {
-        if (_tlEventsInit) return;
-        _tlEventsInit = true;
-        var c = document.getElementById('tl-canvas');
-        if (c) {
-            c.addEventListener('mousedown', _tlCanvasMouseDown);
-            c.addEventListener('mousemove', _tlCanvasMouseMove);
-            c.addEventListener('mouseup', _tlCanvasMouseUp);
-            c.addEventListener('dblclick', _tlCanvasDblClick);
-        }
-    }
-    function _acEnsureEvents() {
-        if (_acEventsInit) return;
-        _acEventsInit = true;
-        var c = document.getElementById('ac-canvas');
-        if (c) {
-            c.addEventListener('mousedown', _acCanvasMouseDown);
-            c.addEventListener('mousemove', _acCanvasMouseMove);
-            c.addEventListener('mouseup', _acCanvasMouseUp);
-            c.addEventListener('dblclick', _acCanvasDblClick);
-        }
-    }
-    var _acState = {
-        selectedState: null, selectedTransition: -1,
-        draggingNode: false, dragNodeName: '', dragOffX: 0, dragOffY: 0,
-        nodes: {} // stateName → { x, y }
-    };
-
-    function acRefresh() {
-        _acEnsureEvents();
-        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (!ctrl) { var n = document.getElementById('ac-ctrl-name'); if (n) n.textContent = 'No controller'; return; }
-        var n = document.getElementById('ac-ctrl-name');
-        if (n) n.textContent = ctrl.name || 'Animator Controller';
-        // Init node positions if not set
-        for (var i = 0; i < ctrl.states.length; i++) {
-            if (!_acState.nodes[ctrl.states[i].name]) {
-                _acState.nodes[ctrl.states[i].name] = { x: 80 + i * 180, y: 60 + (i % 2) * 80 };
-            }
-        }
-        _acRenderParams();
-        _acRenderCanvas();
-    }
-
-    function acAddState() {
-        if (!_tlEditingCtrlId) return;
-        var name = prompt('State name:', 'Walk');
-        if (!name || !name.trim()) return;
-        name = name.trim();
-        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
-        if (!ctrl) return;
-        // Find available clips
-        var allAssets = SashaAssetManager.getAll();
-        var clips = [];
-        for (var i = 0; i < allAssets.length; i++) {
-            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId) {
-                clips.push(allAssets[i].data.clipId + ':' + allAssets[i].name);
-            }
-        }
-        var clipId = '';
-        if (clips.length > 0) {
-            var choice = prompt('Animation Clip (optional, press Cancel for none):\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
-            if (choice) {
-                // Flexible matching: case-insensitive, partial match
-                for (var ci = 0; ci < clips.length; ci++) {
-                    var clipName = clips[ci].split(':')[1];
-                    if (clipName.toLowerCase() === choice.toLowerCase() || clipName.toLowerCase().indexOf(choice.toLowerCase()) !== -1 || choice.toLowerCase().indexOf(clipName.toLowerCase()) !== -1) {
-                        clipId = clips[ci].split(':')[0]; break;
-                    }
-                }
-            }
-        }
-        SashaEngineAPI.addStateToController(_tlEditingCtrlId, name, clipId);
-        _acState.nodes[name] = { x: 80 + ctrl.states.length * 160, y: 60 + Math.random() * 60 };
-        acRefresh();
-        log('Added state: ' + name, 'log');
-    }
-
-    function acAddParam() {
-        if (!_tlEditingCtrlId) return;
-        var name = prompt('Parameter name:', 'Speed');
-        if (!name || !name.trim()) return;
-        name = name.trim();
-        var type = prompt('Type (float, int, bool, trigger):', 'float');
-        if (!type) return;
-        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
-        if (!ctrl) return;
-        var val = 0;
-        if (type === 'bool' || type === 'trigger') val = false;
-        ctrl.parameters[name] = { type: type, value: val };
-        acRefresh();
-        log('Added parameter: ' + name + ' (' + type + ')', 'log');
-    }
-
-    function acAddTransition() {
-        if (!_tlEditingCtrlId) return;
-        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
-        if (!ctrl || ctrl.states.length < 2) { log('Need at least 2 states', 'warn'); return; }
-        var stateNames = ctrl.states.map(function(s){return s.name});
-        var from = prompt('From state:\n' + stateNames.join(', '), stateNames[0]);
-        if (!from) return;
-        var to = prompt('To state:\n' + stateNames.join(', '), stateNames[stateNames.length > 1 ? 1 : 0]);
-        if (!to) return;
-        var condition = prompt('Condition (e.g. Speed > 1, IsGrounded == false):', '');
-        SashaEngineAPI.addTransition(_tlEditingCtrlId, from, to, condition || '', true);
-        acRefresh();
-        log('Added transition: ' + from + ' -> ' + to, 'log');
-    }
-
-    function acDeleteState(name) {
-        if (!_tlEditingCtrlId) return;
-        SashaEngineAPI.removeStateFromController(_tlEditingCtrlId, name);
-        delete _acState.nodes[name];
-        _acState.selectedState = null;
-        acRefresh();
-        log('Removed state: ' + name, 'log');
-    }
-
-    function acDeleteTransition(idx) {
-        if (!_tlEditingCtrlId) return;
-        SashaEngineAPI.removeTransition(_tlEditingCtrlId, idx);
-        _acState.selectedTransition = -1;
-        acRefresh();
-    }
-
-    function _acRenderParams() {
-        var panel = document.getElementById('ac-params-panel');
-        if (!panel) return;
-        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (!ctrl) { panel.innerHTML = '<div style=\"color:var(--text-muted);font-size:0.68rem\">No parameters</div>'; return; }
-        var html = '<div style=\"font-size:0.72rem;color:var(--primary);font-weight:600;margin-bottom:6px;\">Parameters</div>';
-        for (var p in ctrl.parameters) {
-            if (!ctrl.parameters.hasOwnProperty(p)) continue;
-            var param = ctrl.parameters[p];
-            html += '<div style=\"padding:4px 6px;background:var(--bg-hover);border-radius:4px;margin-bottom:4px;font-size:0.68rem;\">';
-            html += '<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;\">';
-            html += '<span style=\"color:#6366f1;font-size:0.6rem;text-transform:uppercase;\">' + param.type + '</span>';
-            html += '<button onclick=\"EngineApp.acRemoveParam(\'' + p + '\')\" style=\"background:none;border:none;color:var(--error);cursor:pointer;font-size:0.6rem;\"><i class=\"fas fa-times\"></i></button>';
-            html += '</div>';
-            html += '<span style=\"color:#fff;\">' + p + '</span>';
-            if (param.type === 'float') {
-                html += '<input type=\"range\" min=\"-10\" max=\"10\" step=\"0.1\" value=\"' + param.value + '\" style=\"width:100%;margin-top:2px;\" onchange=\"EngineApp.acSetParam(\'\' + p + \'\',parseFloat(this.value))\" oninput=\"this.nextElementSibling.textContent=this.value\">';
-                html += '<span style=\"font-size:0.6rem;color:var(--text-muted);\">' + param.value + '</span>';
-            } else if (param.type === 'int') {
-                html += '<input type=\"number\" value=\"' + param.value + '\" style=\"width:100%;margin-top:2px;font-size:0.65rem;background:var(--bg-dark);border:1px solid var(--border);color:#fff;padding:2px 4px;border-radius:3px;outline:none;\" onchange=\"EngineApp.acSetParam(\'\' + p + \'\',parseInt(this.value))\">';
-            } else if (param.type === 'bool') {
-                html += '<label style=\"margin-top:2px;display:flex;align-items:center;gap:4px;cursor:pointer;\"><input type=\"checkbox\" ' + (param.value ? 'checked' : '') + ' onchange=\"EngineApp.acSetParam(\'\' + p + \'\',this.checked)\"><span style=\"font-size:0.6rem;color:var(--text-muted);\">' + (param.value ? 'true' : 'false') + '</span></label>';
-            } else if (param.type === 'trigger') {
-                html += '<button onclick=\"EngineApp.acTriggerParam(\'' + p + '\')\" style=\"width:100%;margin-top:2px;font-size:0.65rem;padding:2px;background:var(--primary);border:none;color:#fff;border-radius:3px;cursor:pointer;\">Trigger</button>';
-            }
-            html += '</div>';
-        }
-        panel.innerHTML = html;
-    }
-
-    function acSetParam(name, value) {
-        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (ctrl && ctrl.parameters[name]) { ctrl.parameters[name].value = value; _acRenderParams(); }
-    }
-
-    function acTriggerParam(name) {
-        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (ctrl && ctrl.parameters[name]) { ctrl.parameters[name].value = true; _acRenderParams(); log('Triggered: ' + name, 'info'); }
-    }
-
-    function acRemoveParam(name) {
-        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (ctrl) { delete ctrl.parameters[name]; acRefresh(); log('Removed param: ' + name, 'log'); }
-    }
-
-    function _acRenderCanvas() {
-        var canvas = document.getElementById('ac-canvas');
-        var wrap = document.getElementById('ac-canvas-wrap');
-        if (!canvas || !wrap) return;
-        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        var dpr = window.devicePixelRatio || 1;
-        var w = Math.max(wrap.clientWidth, 600);
-        var h = Math.max(wrap.clientHeight, 400);
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
-        canvas.style.width = w + 'px';
-        canvas.style.height = h + 'px';
-
-        var ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, w, h);
-
-        // Grid
-        ctx.strokeStyle = '#1a1a2e';
-        ctx.lineWidth = 1;
-        for (var gx = 0; gx < w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-        for (var gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
-
-        if (!ctrl) return;
-
-        // Draw transitions (arrows)
-        for (var ti = 0; ti < ctrl.transitions.length; ti++) {
-            var tr = ctrl.transitions[ti];
-            var fromNode = _acState.nodes[tr.from];
-            var toNode = _acState.nodes[tr.to];
-            if (!fromNode || !toNode) continue;
-            var fx = fromNode.x + 70, fy = fromNode.y + 25;
-            var tx = toNode.x, ty = toNode.y + 25;
-
-            // Arrow line
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            var cpx = (fx + tx) / 2;
-            var cpy = Math.min(fy, ty) - 30;
-            ctx.moveTo(fx, fy);
-            ctx.quadraticCurveTo(cpx, cpy, tx, ty);
-            ctx.stroke();
-
-            // Arrow head
-            var angle = Math.atan2(ty - cpy, tx - cpx);
-            ctx.fillStyle = '#f59e0b';
-            ctx.beginPath();
-            ctx.moveTo(tx, ty);
-            ctx.lineTo(tx - 10 * Math.cos(angle - 0.4), ty - 10 * Math.sin(angle - 0.4));
-            ctx.lineTo(tx - 10 * Math.cos(angle + 0.4), ty - 10 * Math.sin(angle + 0.4));
-            ctx.closePath();
-            ctx.fill();
-
-            // Condition label
-            var midX = cpx, midY = (fy + ty) / 2 - 15;
-            ctx.fillStyle = 'rgba(15,15,35,0.8)';
-            ctx.fillRect(midX - 30, midY - 8, 60, 16);
-            ctx.fillStyle = '#f59e0b';
-            ctx.font = '9px JetBrains Mono, monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText(tr.condition || 'always', midX, midY + 3);
-            ctx.textAlign = 'left';
-        }
-
-        // Draw state nodes
-        for (var si = 0; si < ctrl.states.length; si++) {
-            var st = ctrl.states[si];
-            var nd = _acState.nodes[st.name];
-            if (!nd) continue;
-            var nx = nd.x, ny = nd.y;
-            var nw = 140, nh = 50;
-            var isSel = (_acState.selectedState === st.name);
-            var isDef = st.isDefault;
-
-            // Node shadow
-            ctx.shadowColor = isSel ? 'rgba(99,102,241,0.5)' : 'rgba(0,0,0,0.3)';
-            ctx.shadowBlur = isSel ? 12 : 6;
-
-            // Node body
-            var grad = ctx.createLinearGradient(nx, ny, nx, ny + nh);
-            if (isDef) {
-                grad.addColorStop(0, '#4f46e5');
-                grad.addColorStop(1, '#3730a3');
-            } else if (isSel) {
-                grad.addColorStop(0, '#6366f1');
-                grad.addColorStop(1, '#4f46e5');
-            } else {
-                grad.addColorStop(0, '#1e1b4b');
-                grad.addColorStop(1, '#1a1a2e');
-            }
-            ctx.fillStyle = grad;
-
-            // Rounded rect
-            var r = 8;
-            ctx.beginPath();
-            ctx.moveTo(nx + r, ny);
-            ctx.lineTo(nx + nw - r, ny);
-            ctx.quadraticCurveTo(nx + nw, ny, nx + nw, ny + r);
-            ctx.lineTo(nx + nw, ny + nh - r);
-            ctx.quadraticCurveTo(nx + nw, ny + nh, nx + nw - r, ny + nh);
-            ctx.lineTo(nx + r, ny + nh);
-            ctx.quadraticCurveTo(nx, ny + nh, nx, ny + nh - r);
-            ctx.lineTo(nx, ny + r);
-            ctx.quadraticCurveTo(nx, ny, nx + r, ny);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-
-            // Border
-            ctx.strokeStyle = isDef ? '#818cf8' : (isSel ? '#a5b4fc' : '#2e2e4a');
-            ctx.lineWidth = isSel ? 2 : 1;
-            ctx.stroke();
-
-            // State name
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 12px Inter, sans-serif';
-            ctx.fillText(st.name, nx + 10, ny + 20);
-
-            // Clip name (smaller)
-            ctx.fillStyle = '#a1a1aa';
-            ctx.font = '9px JetBrains Mono, monospace';
-            var clipLabel = st.clipId ? _findClipName(st.clipId) : 'No clip';
-            if (clipLabel.length > 16) clipLabel = clipLabel.substring(0, 14) + '..';
-            ctx.fillText(clipLabel, nx + 10, ny + 36);
-
-            // Default badge
-            if (isDef) {
-                ctx.fillStyle = '#22c55e';
-                ctx.font = 'bold 8px Inter, sans-serif';
-                ctx.fillText('DEFAULT', nx + nw - 52, ny + 12);
-            }
-
-            // Entry arrow for default
-            if (isDef) {
-                ctx.strokeStyle = '#22c55e';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(nx - 20, ny + nh / 2);
-                ctx.lineTo(nx, ny + nh / 2);
-                ctx.stroke();
-                // Arrowhead
-                ctx.fillStyle = '#22c55e';
-                ctx.beginPath();
-                ctx.moveTo(nx, ny + nh / 2);
-                ctx.lineTo(nx - 6, ny + nh / 2 - 4);
-                ctx.lineTo(nx - 6, ny + nh / 2 + 4);
-                ctx.closePath();
-                ctx.fill();
-            }
-        }
-    }
-
-    function _findClipName(clipId) {
-        var allAssets = SashaAssetManager.getAll();
-        for (var i = 0; i < allAssets.length; i++) {
-            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId === clipId) {
-                return allAssets[i].name;
-            }
-        }
-        return clipId.substring(0, 12);
-    }
-
-    // Animator canvas mouse events
-    function _acCanvasMouseDown(e) {
-        var canvas = document.getElementById('ac-canvas');
-        if (!canvas || !_tlEditingCtrlId) return;
-        var rect = canvas.getBoundingClientRect();
-        var mx = e.clientX - rect.left;
-        var my = e.clientY - rect.top;
-        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
-        if (!ctrl) return;
-
-        // Check if clicking on a state node
-        for (var i = 0; i < ctrl.states.length; i++) {
-            var st = ctrl.states[i];
-            var nd = _acState.nodes[st.name];
-            if (!nd) continue;
-            if (mx >= nd.x && mx <= nd.x + 140 && my >= nd.y && my <= nd.y + 50) {
-                _acState.selectedState = st.name;
-                _acState.draggingNode = true;
-                _acState.dragNodeName = st.name;
-                _acState.dragOffX = mx - nd.x;
-                _acState.dragOffY = my - nd.y;
-                _acRenderCanvas();
-                return;
-            }
-        }
-        // Click on empty space — deselect
-        _acState.selectedState = null;
-        _acRenderCanvas();
-    }
-
-    function _acCanvasMouseMove(e) {
-        if (!_acState.draggingNode || !_tlEditingCtrlId) return;
-        var canvas = document.getElementById('ac-canvas');
-        if (!canvas) return;
-        var rect = canvas.getBoundingClientRect();
-        var mx = e.clientX - rect.left;
-        var my = e.clientY - rect.top;
-        if (_acState.nodes[_acState.dragNodeName]) {
-            _acState.nodes[_acState.dragNodeName].x = mx - _acState.dragOffX;
-            _acState.nodes[_acState.dragNodeName].y = my - _acState.dragOffY;
-            _acRenderCanvas();
-        }
-    }
-
-    function _acCanvasMouseUp(e) {
-        _acState.draggingNode = false;
-    }
-
-    function _acCanvasDblClick(e) {
-        if (!_acState.selectedState || !_tlEditingCtrlId) return;
-        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
-        if (!ctrl) return;
-        var name = _acState.selectedState;
-        // Context menu for state
-        var action = prompt('State "' + name + '"\nActions:\n1 = Set as Default\n2 = Assign Clip\n3 = Rename\n4 = Delete\nEnter number:', '1');
-        if (!action) return;
-        var stateObj = null;
-        for (var i = 0; i < ctrl.states.length; i++) {
-            if (ctrl.states[i].name === name) { stateObj = ctrl.states[i]; break; }
-        }
-        if (!stateObj) return;
-        if (action === '1') {
-            for (var j = 0; j < ctrl.states.length; j++) { ctrl.states[j].isDefault = false; }
-            stateObj.isDefault = true;
-            acRefresh();
-        } else if (action === '2') {
-            var allAssets = SashaAssetManager.getAll();
-            var clips = [];
-            for (var ci = 0; ci < allAssets.length; ci++) {
-                if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) {
-                    clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name);
-                }
-            }
-            if (clips.length === 0) { log('No animation clips. Create one first.', 'warn'); return; }
-            var choice = prompt('Clip:\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
-            if (choice) {
-                // Flexible matching: case-insensitive, partial match
-                for (var k = 0; k < clips.length; k++) {
-                    var cn = clips[k].split(':')[1];
-                    if (cn.toLowerCase() === choice.toLowerCase() || cn.toLowerCase().indexOf(choice.toLowerCase()) !== -1 || choice.toLowerCase().indexOf(cn.toLowerCase()) !== -1) {
-                        stateObj.clipId = clips[k].split(':')[0]; break;
-                    }
-                }
-                acRefresh();
-            }
-        } else if (action === '3') {
-            var newName = prompt('New name:', name);
-            if (newName && newName.trim()) {
-                var oldName = name;
-                newName = newName.trim();
-                stateObj.name = newName;
-                _acState.nodes[newName] = _acState.nodes[oldName];
-                delete _acState.nodes[oldName];
-                _acState.selectedState = newName;
-                acRefresh();
-            }
-        } else if (action === '4') {
-            acDeleteState(name);
-        }
-    }
-
-    function _acInitCanvasEvents() {
-    }
-
-    // ============ VIEWPORT SPLIT: Scene + Game View Tabs ============
-    var _activeViewTab = 'both'; // 'scene', 'game', 'both'
-
-    function switchViewTab(tab) {
-        var sceneView = document.getElementById('scene-view');
-        var gameView = document.getElementById('game-view');
-        var splitter = document.getElementById('viewport-splitter');
-        var tabScene = document.getElementById('vtab-scene');
-        var tabGame = document.getElementById('vtab-game');
-
-        if (tab === 'scene') {
-            if (_activeViewTab === 'scene') { _activeViewTab = 'both'; tab = 'both'; }
-            else { _activeViewTab = 'scene'; }
-        } else if (tab === 'game') {
-            if (_activeViewTab === 'game') { _activeViewTab = 'both'; tab = 'both'; }
-            else { _activeViewTab = 'game'; }
-        }
-
-        if (_activeViewTab === 'both') {
-            if (sceneView) { sceneView.classList.remove('hidden-view'); sceneView.classList.add('active-view'); sceneView.style.flex = '1'; }
-            if (gameView) { gameView.classList.remove('hidden-view'); gameView.classList.add('active-view'); gameView.style.flex = '1'; }
-            if (splitter) splitter.style.display = 'block';
-            if (tabScene) tabScene.classList.add('active');
-            if (tabGame) tabGame.classList.add('active');
-        } else if (_activeViewTab === 'scene') {
-            if (sceneView) { sceneView.classList.remove('hidden-view'); sceneView.classList.add('active-view'); sceneView.style.flex = '1'; }
-            if (gameView) { gameView.classList.add('hidden-view'); gameView.classList.remove('active-view'); }
-            if (splitter) splitter.style.display = 'none';
-            if (tabScene) tabScene.classList.add('active');
-            if (tabGame) tabGame.classList.remove('active');
-        } else if (_activeViewTab === 'game') {
-            if (sceneView) { sceneView.classList.add('hidden-view'); sceneView.classList.remove('active-view'); }
-            if (gameView) { gameView.classList.remove('hidden-view'); gameView.classList.add('active-view'); gameView.style.flex = '1'; }
-            if (splitter) splitter.style.display = 'none';
-            if (tabScene) tabScene.classList.remove('active');
-            if (tabGame) tabGame.classList.add('active');
-        }
-    }
-
-    // Viewport splitter drag
-    (function() {
-        var splitter = null;
-        var container = null;
-        var dragging = false;
-        function onDown(e) {
-            splitter = document.getElementById('viewport-splitter');
-            container = document.getElementById('viewport-views');
-            if (!splitter || !container) return;
-            dragging = true;
-            splitter.classList.add('dragging');
-            e.preventDefault();
-        }
-        function onMove(e) {
-            if (!dragging || !container) return;
-            var rect = container.getBoundingClientRect();
-            var x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-            var total = rect.width;
-            var pct = Math.max(20, Math.min(80, (x / total) * 100));
-            var sv = document.getElementById('scene-view');
-            var gv = document.getElementById('game-view');
-            if (sv) sv.style.flex = '0 0 ' + pct + '%';
-            if (gv) gv.style.flex = '0 0 ' + (100 - pct - 0.3) + '%';
-        }
-        function onUp() {
-            if (splitter) splitter.classList.remove('dragging');
-            dragging = false;
-        }
-        document.addEventListener('mousedown', function(e) {
-            if (e.target && e.target.id === 'viewport-splitter') onDown(e);
-        });
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-        document.addEventListener('touchstart', function(e) {
-            if (e.target && e.target.id === 'viewport-splitter') onDown(e);
-        }, { passive: false });
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('touchend', onUp);
-    })();
 
     function saveAllAssets() {
         SashaAssetManager.save();
@@ -10676,6 +9509,718 @@ var EngineApp = (function() {
         log('Game exported as HTML', 'result');
     }
 
+    // ============================================================
+    // ============ FLOATING WINDOW SYSTEM ============
+    var _floatingWindows = {};
+    var _fwZCounter = 500;
+    var _fwDragState = null;
+
+    function createFloatingWindow(id, title, icon, contentHTML, x, y, w, h) {
+        // Remove if already exists
+        closeFloatingWindow(id);
+        var engineSec = document.getElementById('engine');
+        if (!engineSec) return;
+        x = x || 100; y = y || 100; w = w || 500; h = h || 400;
+        _fwZCounter++;
+        var win = document.createElement('div');
+        win.className = 'floating-window focused';
+        win.id = 'fw-' + id;
+        win.style.left = x + 'px'; win.style.top = y + 'px';
+        win.style.width = w + 'px'; win.style.height = h + 'px';
+        win.style.zIndex = _fwZCounter;
+        win.innerHTML =
+            '<div class="fw-titlebar" data-fw-id="' + id + '">' +
+            '<i class="fas ' + (icon || 'fa-window-maximize') + ' fw-icon"></i>' +
+            '<span class="fw-title">' + title + '</span>' +
+            '<button class="fw-btn" onclick="EngineApp.minimizeFloatingWindow(\'' + id + '\')" title="Minimize"><i class="fas fa-minus"></i></button>' +
+            '<button class="fw-btn" onclick="EngineApp.maximizeFloatingWindow(\'' + id + '\')" title="Maximize"><i class="fas fa-expand"></i></button>' +
+            '<button class="fw-btn fw-close" onclick="EngineApp.closeFloatingWindow(\'' + id + '\')" title="Close"><i class="fas fa-times"></i></button>' +
+            '</div>' +
+            '<div class="fw-content" id="fw-content-' + id + '">' + contentHTML + '</div>' +
+            '<div class="fw-resize-handle" data-fw-id="' + id + '"></div>';
+        engineSec.appendChild(win);
+        _floatingWindows[id] = { el: win, title: title, icon: icon, minimized: false, maximized: false, prevRect: null };
+        // Focus on click
+        win.addEventListener('mousedown', function() { focusFloatingWindow(id); });
+        // Drag
+        var titlebar = win.querySelector('.fw-titlebar');
+        titlebar.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.fw-btn')) return;
+            _fwDragState = { type: 'move', id: id, startX: e.clientX, startY: e.clientY, origX: parseInt(win.style.left), origY: parseInt(win.style.top) };
+            e.preventDefault();
+            focusFloatingWindow(id);
+        });
+        // Double-click titlebar to maximize
+        titlebar.addEventListener('dblclick', function(e) {
+            if (e.target.closest('.fw-btn')) return;
+            maximizeFloatingWindow(id);
+        });
+        // Resize handle
+        var resizeHandle = win.querySelector('.fw-resize-handle');
+        resizeHandle.addEventListener('mousedown', function(e) {
+            _fwDragState = { type: 'resize', id: id, startX: e.clientX, startY: e.clientY, origW: win.offsetWidth, origH: win.offsetHeight };
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        log('Window: ' + title, 'info');
+        return win;
+    }
+
+    document.addEventListener('mousemove', function(e) {
+        if (!_fwDragState) return;
+        var fw = _floatingWindows[_fwDragState.id];
+        if (!fw) { _fwDragState = null; return; }
+        var win = fw.el;
+        var dx = e.clientX - _fwDragState.startX;
+        var dy = e.clientY - _fwDragState.startY;
+        if (_fwDragState.type === 'move') {
+            if (fw.maximized) return;
+            var newX = _fwDragState.origX + dx;
+            var newY = _fwDragState.origY + dy;
+            // Clamp to viewport
+            var maxLeft = window.innerWidth - 60;
+            var maxTop = window.innerHeight - 30;
+            win.style.left = Math.max(0, Math.min(newX, maxLeft)) + 'px';
+            win.style.top = Math.max(0, Math.min(newY, maxTop)) + 'px';
+        } else if (_fwDragState.type === 'resize') {
+            var newW = Math.max(200, _fwDragState.origW + dx);
+            var newH = Math.max(120, _fwDragState.origH + dy);
+            win.style.width = newW + 'px';
+            win.style.height = newH + 'px';
+        }
+    });
+
+    document.addEventListener('mouseup', function() {
+        _fwDragState = null;
+    });
+
+    function focusFloatingWindow(id) {
+        for (var wid in _floatingWindows) {
+            if (_floatingWindows.hasOwnProperty(wid)) {
+                _floatingWindows[wid].el.classList.remove('focused');
+            }
+        }
+        if (_floatingWindows[id]) {
+            _fwZCounter++;
+            _floatingWindows[id].el.style.zIndex = _fwZCounter;
+            _floatingWindows[id].el.classList.add('focused');
+        }
+    }
+
+    function closeFloatingWindow(id) {
+        if (_floatingWindows[id]) {
+            _floatingWindows[id].el.remove();
+            delete _floatingWindows[id];
+        }
+    }
+
+    function minimizeFloatingWindow(id) {
+        if (!_floatingWindows[id]) return;
+        var fw = _floatingWindows[id];
+        if (fw.minimized) {
+            fw.el.style.display = 'flex';
+            fw.minimized = false;
+        } else {
+            fw.el.style.display = 'none';
+            fw.minimized = true;
+        }
+    }
+
+    function maximizeFloatingWindow(id) {
+        if (!_floatingWindows[id]) return;
+        var fw = _floatingWindows[id];
+        if (fw.maximized) {
+            fw.el.classList.remove('maximized');
+            if (fw.prevRect) {
+                fw.el.style.left = fw.prevRect.left; fw.el.style.top = fw.prevRect.top;
+                fw.el.style.width = fw.prevRect.width; fw.el.style.height = fw.prevRect.height;
+            }
+            fw.maximized = false;
+        } else {
+            fw.prevRect = { left: fw.el.style.left, top: fw.el.style.top, width: fw.el.style.width, height: fw.el.style.height };
+            fw.el.classList.add('maximized');
+            fw.maximized = true;
+        }
+    }
+
+    // ============================================================
+    // ============ ANIMATOR CONTROLLER VISUAL EDITOR ============
+    var _animEditorState = {
+        ctrlId: null,
+        selectedState: null,
+        draggingState: null,
+        dragOffset: { x: 0, y: 0 },
+        statePositions: {}, // stateName -> {x, y}
+        connectingFrom: null, // state name when creating transition
+        nodeColors: ['#6366f1','#ec4899','#22c55e','#f59e0b','#06b6d4','#8b5cf6','#ef4444','#14b8a6']
+    };
+
+    function openAnimatorControllerEditor(assetId) {
+        var asset = SashaAssetManager.getAsset(assetId);
+        if (!asset || !asset.data || !asset.data.controllerId) {
+            log('Invalid animator asset', 'error'); return;
+        }
+        var ctrlId = asset.data.controllerId;
+        var ctrl = SashaEngineAPI.getAnimatorController(ctrlId);
+        if (!ctrl) { log('Controller not found', 'error'); return; }
+
+        _animEditorState.ctrlId = ctrlId;
+        _animEditorState.selectedState = null;
+        _animEditorState.connectingFrom = null;
+
+        // Auto-position states if not positioned
+        if (Object.keys(_animEditorState.statePositions).length === 0 || _animEditorState.statePositions._ctrlId !== ctrlId) {
+            _animEditorState.statePositions = { _ctrlId: ctrlId };
+            for (var si = 0; si < ctrl.states.length; si++) {
+                var col = si % 3;
+                var row = Math.floor(si / 3);
+                _animEditorState.statePositions[ctrl.states[si].name] = { x: 40 + col * 180, y: 40 + row * 120 };
+            }
+        }
+
+        var contentHTML = '<div class="animator-editor">' +
+            '<div class="animator-toolbar">' +
+            '<button onclick="EngineApp.animEditorAddState()" title="Add State"><i class="fas fa-plus"></i> State</button>' +
+            '<button onclick="EngineApp.animEditorAddTransition()" title="Add Transition"><i class="fas fa-arrow-right"></i> Transition</button>' +
+            '<button onclick="EngineApp.animEditorSetDefault()" title="Set as Default"><i class="fas fa-flag"></i> Default</button>' +
+            '<div style="flex:1"></div>' +
+            '<button onclick="EngineApp.animEditorDeleteSelected()" title="Delete Selected"><i class="fas fa-trash"></i></button>' +
+            '</div>' +
+            '<div class="animator-body">' +
+            '<div class="animator-graph-container" id="anim-graph-container">' +
+            '<div class="animator-graph-bg"></div>' +
+            '<canvas class="animator-graph-canvas" id="anim-graph-canvas"></canvas>' +
+            '<div id="anim-state-nodes"></div>' +
+            '</div>' +
+            '<div class="animator-params-panel" id="anim-params-panel">' +
+            '<div class="animator-params-header"><i class="fas fa-sliders-h"></i> Parameters</div>' +
+            '<div id="anim-params-list"></div>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+
+        createFloatingWindow('animator-editor', 'Animator: ' + ctrl.name, 'fa-project-diagram', contentHTML, 150, 80, 700, 500);
+
+        // Setup events
+        setTimeout(function() {
+            renderAnimatorGraph();
+            renderAnimatorParams();
+            setupAnimatorGraphEvents();
+        }, 50);
+    }
+
+    function renderAnimatorGraph() {
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+
+        // Render state nodes
+        var nodesDiv = document.getElementById('anim-state-nodes');
+        if (!nodesDiv) return;
+        var html = '';
+        for (var si = 0; si < ctrl.states.length; si++) {
+            var st = ctrl.states[si];
+            var pos = _animEditorState.statePositions[st.name] || { x: 40, y: 40 };
+            var colorIdx = si % _animEditorState.nodeColors.length;
+            var isDefault = st.isDefault;
+            var isSelected = _animEditorState.selectedState === st.name;
+            var clipInfo = '';
+            if (st.clipId) {
+                var clip = SashaEngineAPI.getAnimationClip(st.clipId);
+                if (clip) clipInfo = 'Motion: ' + clip.name;
+            }
+            html += '<div class="anim-state-node' + (isDefault ? ' default-state' : '') + (isSelected ? ' selected' : '') + '" ' +
+                'data-state-name="' + st.name + '" ' +
+                'style="left:' + pos.x + 'px;top:' + pos.y + 'px;">';
+            if (isDefault) {
+                html += '<div class="node-entry-arrow"></div>';
+            }
+            html += '<div class="node-header">' +
+                '<div class="node-color" style="background:' + _animEditorState.nodeColors[colorIdx] + '"></div>' +
+                st.name + '</div>' +
+                '<div class="node-body">Speed: ' + st.speed + 'x</div>' +
+                (clipInfo ? '<div class="node-motion">' + clipInfo + '</div>' : '') +
+                '</div>';
+        }
+        nodesDiv.innerHTML = html;
+
+        // Draw transition arrows on canvas
+        var canvas = document.getElementById('anim-graph-canvas');
+        var container = document.getElementById('anim-graph-container');
+        if (!canvas || !container) return;
+        var rect = container.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw transitions
+        for (var ti = 0; ti < ctrl.transitions.length; ti++) {
+            var tr = ctrl.transitions[ti];
+            var fromPos = _animEditorState.statePositions[tr.from];
+            var toPos = _animEditorState.statePositions[tr.to];
+            if (!fromPos || !toPos) continue;
+            // Approximate node centers (node width ~150, height ~60)
+            var fromCx = fromPos.x + 75;
+            var fromCy = fromPos.y + 35;
+            var toCx = toPos.x + 75;
+            var toCy = toPos.y + 35;
+
+            // Draw curved arrow
+            var dx = toCx - fromCx;
+            var dy = toCy - fromCy;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            var curvature = Math.min(dist * 0.3, 60);
+
+            var mx = (fromCx + toCx) / 2;
+            var my = (fromCy + toCy) / 2;
+            // Perpendicular offset
+            var nx = -dy / (dist || 1) * curvature;
+            var ny = dx / (dist || 1) * curvature;
+            var cpx = mx + nx;
+            var cpy = my + ny;
+
+            ctx.beginPath();
+            ctx.moveTo(fromCx, fromCy);
+            ctx.quadraticCurveTo(cpx, cpy, toCx, toCy);
+            ctx.strokeStyle = tr.condition ? '#f59e0b' : '#6366f1';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Arrowhead
+            var angle = Math.atan2(toCy - cpy, toCx - cpx);
+            var arrowSize = 8;
+            ctx.beginPath();
+            ctx.moveTo(toCx, toCy);
+            ctx.lineTo(toCx - arrowSize * Math.cos(angle - 0.4), toCy - arrowSize * Math.sin(angle - 0.4));
+            ctx.lineTo(toCx - arrowSize * Math.cos(angle + 0.4), toCy - arrowSize * Math.sin(angle + 0.4));
+            ctx.closePath();
+            ctx.fillStyle = tr.condition ? '#f59e0b' : '#6366f1';
+            ctx.fill();
+
+            // Condition label
+            if (tr.condition) {
+                ctx.font = '10px JetBrains Mono, monospace';
+                ctx.fillStyle = '#f59e0b';
+                ctx.textAlign = 'center';
+                ctx.fillText(tr.condition, cpx, cpy - 6);
+            }
+        }
+    }
+
+    function setupAnimatorGraphEvents() {
+        var container = document.getElementById('anim-graph-container');
+        if (!container) return;
+
+        // State node dragging
+        container.addEventListener('mousedown', function(e) {
+            var nodeEl = e.target.closest('.anim-state-node');
+            if (nodeEl) {
+                var stateName = nodeEl.getAttribute('data-state-name');
+                _animEditorState.selectedState = stateName;
+                var pos = _animEditorState.statePositions[stateName] || { x: 0, y: 0 };
+                var containerRect = container.getBoundingClientRect();
+                _animEditorState.draggingState = stateName;
+                _animEditorState.dragOffset.x = e.clientX - containerRect.left - pos.x;
+                _animEditorState.dragOffset.y = e.clientY - containerRect.top - pos.y;
+                focusFloatingWindow('animator-editor');
+                e.stopPropagation();
+                renderAnimatorGraph();
+            } else {
+                _animEditorState.selectedState = null;
+                renderAnimatorGraph();
+            }
+        });
+
+        container.addEventListener('mousemove', function(e) {
+            if (!_animEditorState.draggingState) return;
+            var containerRect = container.getBoundingClientRect();
+            var nx = e.clientX - containerRect.left - _animEditorState.dragOffset.x;
+            var ny = e.clientY - containerRect.top - _animEditorState.dragOffset.y;
+            nx = Math.max(0, nx); ny = Math.max(0, ny);
+            _animEditorState.statePositions[_animEditorState.draggingState] = { x: nx, y: ny };
+            renderAnimatorGraph();
+        });
+
+        document.addEventListener('mouseup', function() {
+            _animEditorState.draggingState = null;
+        });
+    }
+
+    function renderAnimatorParams() {
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        var list = document.getElementById('anim-params-list');
+        if (!list) return;
+        var html = '';
+        for (var pp in ctrl.parameters) {
+            if (!ctrl.parameters.hasOwnProperty(pp)) continue;
+            var p = ctrl.parameters[pp];
+            var inputHtml = '';
+            if (p.type === 'float') {
+                inputHtml = '<input type="number" step="0.1" value="' + p.value + '" onchange="EngineApp.animEditorSetParam(\'' + pp + '\',parseFloat(this.value))">';
+            } else if (p.type === 'bool') {
+                inputHtml = '<input type="checkbox" ' + (p.value ? 'checked' : '') + ' onchange="EngineApp.animEditorSetParam(\'' + pp + '\',this.checked)">';
+            } else if (p.type === 'trigger') {
+                inputHtml = '<button onclick="EngineApp.animEditorSetParam(\'' + pp + '\',true)" style="background:var(--bg-hover);border:1px solid var(--border);color:#f59e0b;padding:1px 6px;border-radius:3px;cursor:pointer;font-size:0.62rem;">Fire</button>';
+            }
+            html += '<div class="animator-param-row">' +
+                '<span class="param-type">' + p.type + '</span>' +
+                '<span class="param-name">' + pp + '</span>' +
+                inputHtml +
+                '</div>';
+        }
+        // Add parameter button
+        html += '<div style="padding:4px 8px;">' +
+            '<button onclick="EngineApp.animEditorAddParam()" style="width:100%;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);padding:3px;border-radius:4px;cursor:pointer;font-size:0.65rem;">+ Add Parameter</button>' +
+            '</div>';
+        list.innerHTML = html;
+    }
+
+    function animEditorAddState() {
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        var name = prompt('State name:', 'NewState');
+        if (!name || !name.trim()) return;
+        name = name.trim();
+        // Check duplicate
+        for (var i = 0; i < ctrl.states.length; i++) {
+            if (ctrl.states[i].name === name) { log('State "' + name + '" already exists', 'warn'); return; }
+        }
+        SashaEngineAPI.addStateToController(_animEditorState.ctrlId, name, '');
+        // Position new state
+        var count = ctrl.states.length;
+        _animEditorState.statePositions[name] = { x: 40 + (count % 3) * 180, y: 40 + Math.floor(count / 3) * 120 };
+        renderAnimatorGraph();
+        log('Added state: ' + name, 'result');
+    }
+
+    function animEditorAddTransition() {
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl || ctrl.states.length < 2) { log('Need at least 2 states', 'warn'); return; }
+        var fromName = prompt('From state:', ctrl.states[0].name);
+        if (!fromName) return;
+        var toName = prompt('To state:', ctrl.states[ctrl.states.length - 1].name);
+        if (!toName || toName === fromName) return;
+        var condition = prompt('Condition (e.g. Speed > 5, Attack == true, empty = always):', '');
+        SashaEngineAPI.addTransition(_animEditorState.ctrlId, fromName, toName, condition || '', true);
+        renderAnimatorGraph();
+        log('Added transition: ' + fromName + ' -> ' + toName + (condition ? ' [' + condition + ']' : ''), 'result');
+    }
+
+    function animEditorSetDefault() {
+        if (!_animEditorState.selectedState) { log('Select a state first', 'warn'); return; }
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        for (var i = 0; i < ctrl.states.length; i++) {
+            ctrl.states[i].isDefault = (ctrl.states[i].name === _animEditorState.selectedState);
+        }
+        renderAnimatorGraph();
+        log('Default state: ' + _animEditorState.selectedState, 'result');
+    }
+
+    function animEditorDeleteSelected() {
+        if (!_animEditorState.selectedState) { log('Select a state first', 'warn'); return; }
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        var name = _animEditorState.selectedState;
+        if (confirm('Delete state "' + name + '" and all its transitions?')) {
+            SashaEngineAPI.removeStateFromController(_animEditorState.ctrlId, name);
+            delete _animEditorState.statePositions[name];
+            _animEditorState.selectedState = null;
+            renderAnimatorGraph();
+            log('Deleted state: ' + name, 'log');
+        }
+    }
+
+    function animEditorSetParam(name, value) {
+        // Set parameter on all objects using this controller (for live preview)
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl || !ctrl.parameters[name]) return;
+        ctrl.parameters[name].value = value;
+        // Also set in running animator states
+        var objs = SashaEngineAPI.getObjects();
+        var allNames = SashaEngineAPI.getAllObjectNames();
+        for (var i = 0; i < allNames.length; i++) {
+            SashaEngineAPI.setAnimatorParam(allNames[i], name, value);
+        }
+    }
+
+    function animEditorAddParam() {
+        var ctrl = SashaEngineAPI.getAnimatorController(_animEditorState.ctrlId);
+        if (!ctrl) return;
+        var name = prompt('Parameter name:', 'NewParam');
+        if (!name || !name.trim()) return;
+        name = name.trim();
+        if (ctrl.parameters[name]) { log('Parameter "' + name + '" already exists', 'warn'); return; }
+        var type = prompt('Type (float, bool, trigger):', 'float');
+        if (type !== 'bool' && type !== 'trigger') type = 'float';
+        var defaultVal = type === 'float' ? 0 : (type === 'bool' ? true : false);
+        ctrl.parameters[name] = { type: type, value: defaultVal };
+        renderAnimatorParams();
+        log('Added parameter: ' + name + ' (' + type + ')', 'result');
+    }
+
+    // ============================================================
+    // ============ SHADER EDITOR ============
+    var _shaderEditorState = {
+        assetId: null,
+        shaderTab: 'vertex', // vertex or fragment
+        compiledMaterial: null
+    };
+
+    function openShaderEditor(assetId) {
+        var asset = SashaAssetManager.getAsset(assetId);
+        if (!asset || asset.type !== 'shader') { log('Invalid shader asset', 'error'); return; }
+        _shaderEditorState.assetId = assetId;
+        _shaderEditorState.shaderTab = 'vertex';
+
+        var vCode = asset.data.vertex || '// Vertex Shader\nattribute vec3 position;\nattribute vec3 normal;\nuniform mat4 modelViewMatrix;\nuniform mat4 projectionMatrix;\nuniform mat3 normalMatrix;\nvarying vec3 vNormal;\nvarying vec3 vPosition;\n\nvoid main() {\n    vNormal = normalize(normalMatrix * normal);\n    vPosition = position;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}';
+        var fCode = asset.data.fragment || '// Fragment Shader\nprecision mediump float;\nvarying vec3 vNormal;\nvarying vec3 vPosition;\nuniform vec3 uColor;\nuniform float uTime;\n\nvoid main() {\n    vec3 light = normalize(vec3(1.0, 1.0, 1.0));\n    float diff = max(dot(vNormal, light), 0.0);\n    vec3 color = uColor * (0.3 + 0.7 * diff);\n    color += vec3(sin(uTime + vPosition.x) * 0.1);\n    gl_FragColor = vec4(color, 1.0);\n}';
+
+        var contentHTML = '<div class="shader-editor-panel">' +
+            '<div class="shader-toolbar">' +
+            '<button class="shader-apply-btn" onclick="EngineApp.compileAndApplyShader()"><i class="fas fa-play"></i> Compile & Apply</button>' +
+            '<button onclick="EngineApp.saveShaderCode()"><i class="fas fa-save"></i> Save</button>' +
+            '<div style="flex:1"></div>' +
+            '<select id="shader-target-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:2px 6px;border-radius:4px;font-size:0.68rem;"><option value="">Apply to...</option></select>' +
+            '</div>' +
+            '<div class="shader-tabs">' +
+            '<button class="shader-tab active" id="shader-tab-vertex" onclick="EngineApp.switchShaderTab(\'vertex\')">Vertex</button>' +
+            '<button class="shader-tab" id="shader-tab-fragment" onclick="EngineApp.switchShaderTab(\'fragment\')">Fragment</button>' +
+            '</div>' +
+            '<div class="shader-code-area">' +
+            '<textarea id="shader-vertex-editor">' + vCode.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>' +
+            '<textarea id="shader-fragment-editor" style="display:none;">' + fCode.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>' +
+            '</div>' +
+            '<div class="shader-error-log" id="shader-error-log"></div>' +
+            '</div>';
+
+        createFloatingWindow('shader-editor', 'Shader: ' + asset.name, 'fa-magic', contentHTML, 200, 120, 550, 450);
+
+        setTimeout(function() {
+            // Populate target select with scene objects
+            var sel = document.getElementById('shader-target-select');
+            if (sel) {
+                var names = SashaEngineAPI.getAllObjectNames();
+                for (var i = 0; i < names.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = names[i]; opt.textContent = names[i];
+                    sel.appendChild(opt);
+                }
+            }
+        }, 100);
+    }
+
+    function switchShaderTab(tab) {
+        _shaderEditorState.shaderTab = tab;
+        var vBtn = document.getElementById('shader-tab-vertex');
+        var fBtn = document.getElementById('shader-tab-fragment');
+        var vEditor = document.getElementById('shader-vertex-editor');
+        var fEditor = document.getElementById('shader-fragment-editor');
+        if (vBtn && fBtn && vEditor && fEditor) {
+            vBtn.className = 'shader-tab' + (tab === 'vertex' ? ' active' : '');
+            fBtn.className = 'shader-tab' + (tab === 'fragment' ? ' active' : '');
+            vEditor.style.display = tab === 'vertex' ? 'block' : 'none';
+            fEditor.style.display = tab === 'fragment' ? 'block' : 'none';
+        }
+    }
+
+    function compileAndApplyShader() {
+        var vEditor = document.getElementById('shader-vertex-editor');
+        var fEditor = document.getElementById('shader-fragment-editor');
+        var errLog = document.getElementById('shader-error-log');
+        var targetSel = document.getElementById('shader-target-select');
+        if (!vEditor || !fEditor) return;
+
+        var vertexCode = vEditor.value;
+        var fragmentCode = fEditor.value;
+        var targetName = targetSel ? targetSel.value : '';
+
+        // Save code to asset
+        var asset = SashaAssetManager.getAsset(_shaderEditorState.assetId);
+        if (asset) {
+            asset.data.vertex = vertexCode;
+            asset.data.fragment = fragmentCode;
+            SashaAssetManager.save();
+        }
+
+        try {
+            var material = new THREE.ShaderMaterial({
+                vertexShader: vertexCode,
+                fragmentShader: fragmentCode,
+                uniforms: {
+                    uColor: { value: new THREE.Color(0x6366f1) },
+                    uTime: { value: 0 }
+                },
+                side: THREE.DoubleSide
+            });
+            _shaderEditorState.compiledMaterial = material;
+
+            // Apply to selected or target object
+            var sel = targetName || SashaEngineAPI.getSelectedObject();
+            if (sel) {
+                var objs = SashaEngineAPI.getObjects();
+                var obj = objs[sel];
+                if (obj && obj.isMesh) {
+                    obj.material = material;
+                    if (errLog) errLog.innerHTML = '<span style="color:#22c55e">Compiled OK. Applied to ' + sel + '</span>';
+                    refreshInspector();
+                    log('Shader compiled and applied to ' + sel, 'result');
+                } else {
+                    if (errLog) errLog.innerHTML = 'Target is not a mesh';
+                }
+            } else {
+                if (errLog) errLog.innerHTML = '<span style="color:#22c55e">Compiled OK. Select an object and click Apply.</span>';
+                log('Shader compiled successfully', 'result');
+            }
+        } catch(e) {
+            if (errLog) errLog.innerHTML = 'ERROR: ' + e.message;
+            log('Shader compile error: ' + e.message, 'error');
+        }
+    }
+
+    function saveShaderCode() {
+        var vEditor = document.getElementById('shader-vertex-editor');
+        var fEditor = document.getElementById('shader-fragment-editor');
+        if (!vEditor || !fEditor) return;
+        var asset = SashaAssetManager.getAsset(_shaderEditorState.assetId);
+        if (asset) {
+            asset.data.vertex = vEditor.value;
+            asset.data.fragment = fEditor.value;
+            SashaAssetManager.save();
+            log('Shader saved', 'result');
+        }
+    }
+
+    // ============================================================
+    // ============ ANIMATION PREVIEW ============
+    var _animPreviewState = {
+        clipId: null,
+        objectName: null,
+        playing: false,
+        time: 0,
+        savedValues: null,
+        rafId: null
+    };
+
+    function openAnimationPreview(clipId) {
+        var clip = SashaEngineAPI.getAnimationClip(clipId);
+        if (!clip) { log('Clip not found', 'error'); return; }
+
+        _animPreviewState.clipId = clipId;
+        _animPreviewState.time = 0;
+        _animPreviewState.playing = false;
+
+        // Save current object transform
+        var sel = SashaEngineAPI.getSelectedObject();
+        if (sel) {
+            var objs = SashaEngineAPI.getObjects();
+            var obj = objs[sel];
+            if (obj) {
+                _animPreviewState.objectName = sel;
+                _animPreviewState.savedValues = {
+                    px: obj.position.x, py: obj.position.y, pz: obj.position.z,
+                    rx: obj.rotation.x, ry: obj.rotation.y, rz: obj.rotation.z,
+                    sx: obj.scale.x, sy: obj.scale.y, sz: obj.scale.z
+                };
+            }
+        }
+
+        var contentHTML = '<div style="display:flex;flex-direction:column;height:100%;background:var(--bg-dark);">' +
+            '<div class="anim-preview-bar">' +
+            '<button onclick="EngineApp.animPreviewToggle()" id="anim-preview-play-btn"><i class="fas fa-play"></i></button>' +
+            '<button onclick="EngineApp.animPreviewStop()"><i class="fas fa-stop"></i></button>' +
+            '<span class="anim-time" id="anim-preview-time">0.00 / ' + clip.duration.toFixed(2) + 's</span>' +
+            '<div class="anim-timeline-track" id="anim-preview-track" onclick="EngineApp.animPreviewScrub(event)">' +
+            '<div class="anim-timeline-fill" id="anim-preview-fill"></div>' +
+            '<div class="anim-timeline-scrubber" id="anim-preview-scrubber" style="left:0"></div>' +
+            '</div>' +
+            '<div style="flex:1"></div>' +
+            '<div style="font-size:0.68rem;color:var(--text-muted);padding:4px 8px;">Clip: ' + clip.name + ' | Tracks: ' + clip.tracks.length + ' | Duration: ' + clip.duration.toFixed(2) + 's' + (clip.loop ? ' | Loop' : '') + '</div>' +
+            '</div>';
+
+        createFloatingWindow('anim-preview', 'Animation: ' + clip.name, 'fa-play-circle', contentHTML, 180, 160, 420, 140);
+    }
+
+    function animPreviewToggle() {
+        _animPreviewState.playing = !_animPreviewState.playing;
+        var btn = document.getElementById('anim-preview-play-btn');
+        if (btn) btn.innerHTML = _animPreviewState.playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+        if (_animPreviewState.playing) animPreviewTick();
+        else if (_animPreviewState.rafId) { cancelAnimationFrame(_animPreviewState.rafId); _animPreviewState.rafId = null; }
+    }
+
+    function animPreviewStop() {
+        _animPreviewState.playing = false;
+        _animPreviewState.time = 0;
+        if (_animPreviewState.rafId) { cancelAnimationFrame(_animPreviewState.rafId); _animPreviewState.rafId = null; }
+        var btn = document.getElementById('anim-preview-play-btn');
+        if (btn) btn.innerHTML = '<i class="fas fa-play"></i>';
+        // Restore saved transform
+        if (_animPreviewState.savedValues && _animPreviewState.objectName) {
+            var objs = SashaEngineAPI.getObjects();
+            var obj = objs[_animPreviewState.objectName];
+            if (obj) {
+                var sv = _animPreviewState.savedValues;
+                obj.position.set(sv.px, sv.py, sv.pz);
+                obj.rotation.set(sv.rx, sv.ry, sv.rz);
+                obj.scale.set(sv.sx, sv.sy, sv.sz);
+            }
+        }
+        animPreviewUpdateUI();
+    }
+
+    function animPreviewTick() {
+        if (!_animPreviewState.playing) return;
+        var clip = SashaEngineAPI.getAnimationClip(_animPreviewState.clipId);
+        if (!clip) { animPreviewStop(); return; }
+        _animPreviewState.time += 0.016;
+        if (clip.loop) {
+            _animPreviewState.time = _animPreviewState.time % clip.duration;
+        } else if (_animPreviewState.time > clip.duration) {
+            _animPreviewState.time = clip.duration;
+            _animPreviewState.playing = false;
+            var btn = document.getElementById('anim-preview-play-btn');
+            if (btn) btn.innerHTML = '<i class="fas fa-play"></i>';
+        }
+        // Apply clip
+        if (_animPreviewState.objectName) {
+            SashaEngineAPI.applyClipToObject(_animPreviewState.clipId, _animPreviewState.objectName, _animPreviewState.time);
+        }
+        animPreviewUpdateUI();
+        if (_animPreviewState.playing) {
+            _animPreviewState.rafId = requestAnimationFrame(animPreviewTick);
+        }
+    }
+
+    function animPreviewUpdateUI() {
+        var clip = SashaEngineAPI.getAnimationClip(_animPreviewState.clipId);
+        if (!clip) return;
+        var dur = clip.duration;
+        var t = _animPreviewState.time;
+        var pct = dur > 0 ? (t / dur * 100) : 0;
+        var timeEl = document.getElementById('anim-preview-time');
+        var fillEl = document.getElementById('anim-preview-fill');
+        var scrubEl = document.getElementById('anim-preview-scrubber');
+        if (timeEl) timeEl.textContent = t.toFixed(2) + ' / ' + dur.toFixed(2) + 's';
+        if (fillEl) fillEl.style.width = pct + '%';
+        if (scrubEl) scrubEl.style.left = pct + '%';
+    }
+
+    function animPreviewScrub(e) {
+        var track = document.getElementById('anim-preview-track');
+        if (!track) return;
+        var rect = track.getBoundingClientRect();
+        var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        var clip = SashaEngineAPI.getAnimationClip(_animPreviewState.clipId);
+        if (!clip) return;
+        _animPreviewState.time = pct * clip.duration;
+        if (_animPreviewState.objectName) {
+            SashaEngineAPI.applyClipToObject(_animPreviewState.clipId, _animPreviewState.objectName, _animPreviewState.time);
+        }
+        animPreviewUpdateUI();
+    }
+
     return {
         init: init, runCode: runCode, toggleLive: toggleLive,
         clearScene: clearScene, loadModelFromURL: loadModelFromURL,
@@ -10718,19 +10263,23 @@ var EngineApp = (function() {
         toggleFPS: toggleFPS,
         // Inspector helpers
         setRBConstraint: setRBConstraint, setColliderField: setColliderField,
-        // Animation Timeline
-        tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop,
-        tlSetDuration: tlSetDuration, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
-        tlDeleteSelectedKey: tlDeleteSelectedKey, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
-        tlCreateNewClip: tlCreateNewClip,
+        isInitialized: function() { return initialized; },
+        // Floating windows
+        createFloatingWindow: createFloatingWindow, closeFloatingWindow: closeFloatingWindow,
+        minimizeFloatingWindow: minimizeFloatingWindow, maximizeFloatingWindow: maximizeFloatingWindow,
+        focusFloatingWindow: focusFloatingWindow,
         // Animator Controller Editor
-        openAnimatorEditor: openAnimatorEditor, acAddState: acAddState, acAddParam: acAddParam,
-        acAddTransition: acAddTransition, acDeleteState: acDeleteState, acDeleteTransition: acDeleteTransition,
-        acSetParam: acSetParam, acTriggerParam: acTriggerParam, acRemoveParam: acRemoveParam,
-        acRefresh: acRefresh,
-        // Viewport
-        switchViewTab: switchViewTab,
-        isInitialized: function() { return initialized; }
+        openAnimatorControllerEditor: openAnimatorControllerEditor,
+        renderAnimatorGraph: renderAnimatorGraph,
+        animEditorAddState: animEditorAddState, animEditorAddTransition: animEditorAddTransition,
+        animEditorSetDefault: animEditorSetDefault, animEditorDeleteSelected: animEditorDeleteSelected,
+        animEditorSetParam: animEditorSetParam, animEditorAddParam: animEditorAddParam,
+        // Shader Editor
+        openShaderEditor: openShaderEditor, switchShaderTab: switchShaderTab,
+        compileAndApplyShader: compileAndApplyShader, saveShaderCode: saveShaderCode,
+        // Animation Preview
+        openAnimationPreview: openAnimationPreview, animPreviewToggle: animPreviewToggle,
+        animPreviewStop: animPreviewStop, animPreviewScrub: animPreviewScrub
     };
 })();
 </script>
