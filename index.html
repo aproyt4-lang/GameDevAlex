@@ -195,7 +195,7 @@
         @media (max-width: 768px) { .chat-header { flex-direction: column; align-items: flex-start; } .chat-header-controls { width: 100%; justify-content: flex-start; } .memory-panel, .tts-settings-popup { width: 280px; } }
 
         /* ===== Engine Section ===== */
-        .engine-section { display: flex; flex-direction: column; height: 100%; flex: 1; min-height: 0; }
+        .engine-section { display: flex; flex-direction: column; height: 100%; flex: 1; min-height: 0; position: relative; }
         .engine-toolbar {
             display: flex; align-items: center; gap: 6px; padding: 6px 12px;
             background: var(--bg-card); border-bottom: 1px solid var(--border); flex-wrap: wrap;
@@ -371,6 +371,40 @@
         .game-mode .split-viewport .scene-view { flex: 0 0 0px !important; min-width: 0 !important; max-width: 0 !important; width: 0 !important; overflow: hidden; }
         .game-mode .split-viewport .split-handle { display: none; }
         .game-mode .split-viewport .game-view { flex: 1 1 100%; min-width: 0 !important; }
+
+        /* Game Mode Fullscreen Overlay */
+        .gamemode-overlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 50; background: #000; flex-direction: column;
+        }
+        .gamemode-overlay.active { display: flex; }
+        .gamemode-toolbar {
+            display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+            background: rgba(30,30,50,0.95); border-bottom: 1px solid rgba(99,102,241,0.3);
+            flex-shrink: 0;
+        }
+        .gamemode-toolbar .gm-label {
+            font-size: 0.75rem; font-weight: 700; color: #a78bfa; text-transform: uppercase;
+            letter-spacing: 1px; margin-right: 12px;
+        }
+        .gamemode-toolbar .gm-btn {
+            background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4);
+            color: #c4b5fd; padding: 5px 14px; border-radius: 6px; cursor: pointer;
+            font-size: 0.75rem; display: flex; align-items: center; gap: 5px; transition: all 0.15s;
+        }
+        .gamemode-toolbar .gm-btn:hover { background: rgba(99,102,241,0.4); color: #fff; }
+        .gamemode-toolbar .gm-btn.gm-stop { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+        .gamemode-toolbar .gm-btn.gm-stop:hover { background: rgba(239,68,68,0.5); color: #fff; }
+        .gamemode-toolbar .gm-btn.gm-pause { background: rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+        .gamemode-toolbar .gm-btn.gm-pause:hover { background: rgba(245,158,11,0.5); color: #fff; }
+        .gamemode-toolbar .gm-sep { width: 1px; height: 20px; background: rgba(99,102,241,0.3); }
+        .gamemode-toolbar .gm-info { margin-left: auto; font-size: 0.7rem; color: rgba(255,255,255,0.4); }
+        .gamemode-canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+        .gamemode-canvas-wrap canvas { width: 100% !important; height: 100% !important; display: block; }
+        .gamemode-maximize-hint {
+            position: absolute; bottom: 10px; right: 10px; font-size: 0.65rem;
+            color: rgba(255,255,255,0.25); pointer-events: none;
+        }
         /* Camera Preview — bottom-right corner when camera selected */
         .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .camera-preview.visible { display: block; }
@@ -1059,6 +1093,22 @@
                     <div class="engine-model-status">
                         <div class="status-dot" id="eng-status-dot"></div>
                         <span id="eng-status-text">AI: offline</span>
+                    </div>
+                </div>
+
+                <!-- Game Mode Fullscreen Overlay (appears on Play, hides on Stop) -->
+                <div class="gamemode-overlay" id="gamemode-overlay">
+                    <div class="gamemode-toolbar">
+                        <span class="gm-label"><i class="fas fa-gamepad"></i> Game Mode</span>
+                        <div class="gm-sep"></div>
+                        <button class="gm-btn gm-pause" onclick="EngineApp.pause()" title="Pause"><i class="fas fa-pause"></i> Pause</button>
+                        <button class="gm-btn gm-stop" onclick="EngineApp.stop()" title="Stop"><i class="fas fa-stop"></i> Stop</button>
+                        <div class="gm-sep"></div>
+                        <button class="gm-btn" onclick="EngineApp.toggleFPS()" title="FPS Mode"><i class="fas fa-crosshairs"></i> FPS</button>
+                        <span class="gm-info" id="gamemode-info">FPS: --</span>
+                    </div>
+                    <div class="gamemode-canvas-wrap">
+                        <canvas id="gamemode-canvas"></canvas>
                     </div>
                 </div>
 
@@ -5046,6 +5096,9 @@ var SashaEngineAPI = (function() {
     var previewCanvas = null;      // Preview canvas element
     var gameViewRenderer = null;   // Renderer for Game View split pane
     var gameViewCanvas = null;     // Canvas element for Game View split pane
+    // === Game Mode Overlay System ===
+    var gamemodeRenderer = null;    // Renderer for Game Mode fullscreen overlay
+    var gamemodeCanvas = null;      // Canvas element for Game Mode overlay
     // === Main Camera System (Unity-style) ===
     var mainCameraObj = null;       // The camera object on scene (THREE.Camera)
     var mainCameraName = 'Main Camera';
@@ -5120,6 +5173,15 @@ var SashaEngineAPI = (function() {
             gameViewRenderer.setSize(gameViewCanvas.clientWidth, gameViewCanvas.clientHeight);
             gameViewRenderer.shadowMap.enabled = true;
             gameViewRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
+
+        // Game Mode overlay renderer — fullscreen overlay when playing
+        gamemodeCanvas = document.getElementById('gamemode-canvas');
+        if (gamemodeCanvas) {
+            gamemodeRenderer = new THREE.WebGLRenderer({ canvas: gamemodeCanvas, antialias: true });
+            gamemodeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            gamemodeRenderer.shadowMap.enabled = true;
+            gamemodeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
         }
 
         // Preview renderer created lazily when camera preview first shown (canvas hidden during init)
@@ -7203,6 +7265,27 @@ var SashaEngineAPI = (function() {
                     if (transformCtrl) transformCtrl.visible = gvTcVis;
                 }
             }
+
+            // --- Game Mode Overlay: fullscreen game view ---
+            if (gamemodeRenderer && gamemodeCanvas && gameViewActive && gameCamera) {
+                var gmW = gamemodeCanvas.clientWidth;
+                var gmH = gamemodeCanvas.clientHeight;
+                if (gmW > 0 && gmH > 0) {
+                    var gmPr = gamemodeRenderer.getPixelRatio();
+                    if (Math.round(gmW * gmPr) !== gamemodeRenderer.domElement.width || Math.round(gmH * gmPr) !== gamemodeRenderer.domElement.height) {
+                        gamemodeRenderer.setSize(gmW, gmH);
+                    }
+                    gameCamera.aspect = gmW / gmH;
+                    gameCamera.updateProjectionMatrix();
+                    gamemodeRenderer.render(scene, gameCamera);
+                }
+                // Update FPS info in game mode overlay
+                var gmInfoEl = document.getElementById('gamemode-info');
+                if (gmInfoEl) {
+                    var gmStats = getStats ? getStats() : null;
+                    gmInfoEl.textContent = 'FPS: ' + (gmStats ? gmStats.fps : '--') + ' | Objs: ' + (gmStats ? gmStats.objects : '--');
+                }
+            }
         }
     }
 
@@ -7737,11 +7820,14 @@ var EngineApp = (function() {
         var gameLabel = document.getElementById('game-view-label');
         if (sceneLabel) sceneLabel.classList.remove('active-label');
         if (gameLabel) gameLabel.classList.add('active-label');
+        // Show Game Mode fullscreen overlay
+        var gmOverlay = document.getElementById('gamemode-overlay');
+        if (gmOverlay) gmOverlay.classList.add('active');
         // Force layout recalc so renderers pick up new canvas sizes on next frame
         requestAnimationFrame(function() {
             window.dispatchEvent(new Event('resize'));
         });
-        log('▶ Play mode — Game view active', 'info');
+        log('▶ Play mode — Game Mode active', 'info');
     }
 
     function pause() {
@@ -7763,6 +7849,9 @@ var EngineApp = (function() {
         var gameLabel = document.getElementById('game-view-label');
         if (sceneLabel) sceneLabel.classList.add('active-label');
         if (gameLabel) gameLabel.classList.remove('active-label');
+        // Hide Game Mode fullscreen overlay
+        var gmOverlay = document.getElementById('gamemode-overlay');
+        if (gmOverlay) gmOverlay.classList.remove('active');
         refreshInspector();
         // Force layout recalc so renderers pick up new canvas sizes on next frame
         requestAnimationFrame(function() {
