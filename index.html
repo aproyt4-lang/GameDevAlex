@@ -1059,6 +1059,7 @@
                                     <div style="flex:1"></div>
                                     <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add State</button>
                                     <button class="eng-tab" onclick="EngineApp.acAddTransition()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-arrow-right"></i> Add Transition</button>
+                                    <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-sliders-h"></i> Add Param</button>
                                     <button class="eng-tab" onclick="EngineApp.acToggleFullscreen()" id="ac-fullscreen-btn" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-expand"></i> Fullscreen</button>
                                 </div>
                                 <!-- Transition conditions bar (shown when transition selected) -->
@@ -9192,13 +9193,16 @@ var EngineApp = (function() {
             c.addEventListener('mousemove', _acCanvasMouseMove);
             c.addEventListener('mouseup', _acCanvasMouseUp);
             c.addEventListener('dblclick', _acCanvasDblClick);
+            c.addEventListener('contextmenu', _acCanvasContextMenu);
         }
     }
     var _acState = {
         selectedState: null, selectedTransition: -1,
         draggingNode: false, dragNodeName: '', dragOffX: 0, dragOffY: 0,
         nodes: {}, // stateName → { x, y }
-        _transPaths: [] // cached transition bezier paths for hit detection
+        _transPaths: [], // cached transition bezier paths for hit detection
+        panX: 0, panY: 0, panning: false, panStartX: 0, panStartY: 0, panStartPanX: 0, panStartPanY: 0,
+        contextMenu: null // { x, y, type, stateName }
     };
 
     function acRefresh() {
@@ -9545,13 +9549,50 @@ var EngineApp = (function() {
         ctx.scale(dpr, dpr);
         ctx.clearRect(0, 0, w, h);
 
-        // Grid
+        // Grid (with pan offset)
         ctx.strokeStyle = '#1a1a2e';
         ctx.lineWidth = 1;
-        for (var gx = 0; gx < w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-        for (var gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+        var offX = _acState.panX % 40, offY = _acState.panY % 40;
+        for (var gx = offX; gx < w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+        for (var gy = offY; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
 
         if (!ctrl) return;
+
+        // Apply pan transform
+        ctx.save();
+        ctx.translate(_acState.panX, _acState.panY);
+
+        // Draw Entry node (orange triangle on the left)
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(10, 50);
+        ctx.lineTo(30, 42);
+        ctx.lineTo(30, 58);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#fb923c';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Entry label
+        ctx.fillStyle = '#f97316';
+        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.fillText('Entry', 6, 72);
+
+        // Draw Any State node (top center)
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(120, 10); ctx.lineTo(260, 10);
+        ctx.lineTo(260, 35); ctx.lineTo(120, 35);
+        ctx.closePath();
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#f97316';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Any State', 190, 28);
+        ctx.textAlign = 'left';
 
         // Clear cached transition paths for hit detection
         _acState._transPaths = [];
@@ -9722,6 +9763,33 @@ var EngineApp = (function() {
                 ctx.fill();
             }
         }
+
+        // Restore pan transform
+        ctx.restore();
+
+        // Draw context menu overlay if open
+        if (_acState.contextMenu) {
+            var cm = _acState.contextMenu;
+            ctx.fillStyle = 'rgba(20,20,40,0.95)';
+            ctx.strokeStyle = '#4f46e5';
+            ctx.lineWidth = 1;
+            var cmItems = cm.type === 'canvas' ? ['Create State', 'Create State From Clip'] : ['Make Transition', 'Set as Default', 'Assign Clip', 'Rename', 'Delete State'];
+            var cmH = cmItems.length * 24 + 8;
+            ctx.beginPath();
+            ctx.moveTo(cm.x + 4, cm.y);
+            ctx.lineTo(cm.x + 150 + 4, cm.y);
+            ctx.lineTo(cm.x + 150 + 4, cm.y + cmH);
+            ctx.lineTo(cm.x + 4, cm.y + cmH);
+            ctx.lineTo(cm.x + 4, cm.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#fff';
+            ctx.font = '11px Inter, sans-serif';
+            for (var ci = 0; ci < cmItems.length; ci++) {
+                ctx.fillText(cmItems[ci], cm.x + 12, cm.y + 18 + ci * 24);
+            }
+        }
     }
 
     function _findClipName(clipId) {
@@ -9744,11 +9812,42 @@ var EngineApp = (function() {
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
 
+        // Close context menu on any click
+        if (_acState.contextMenu) { _acState.contextMenu = null; _acRenderCanvas(); }
+
+        // Alt+drag = pan
+        if (e.altKey) {
+            _acState.panning = true;
+            _acState.panStartX = mx;
+            _acState.panStartY = my;
+            _acState.panStartPanX = _acState.panX;
+            _acState.panStartPanY = _acState.panY;
+            return;
+        }
+
+        // Adjust for pan
+        var pmx = mx - _acState.panX;
+        var pmy = my - _acState.panY;
+
+        // Check context menu click
+        if (_acState.contextMenu) {
+            var cm = _acState.contextMenu;
+            var cmItems = cm.type === 'canvas' ? ['Create State', 'Create State From Clip'] : ['Make Transition', 'Set as Default', 'Assign Clip', 'Rename', 'Delete State'];
+            var cmH = cmItems.length * 24 + 8;
+            if (mx >= cm.x && mx <= cm.x + 158 && my >= cm.y && my <= cm.y + cmH) {
+                var itemIdx = Math.floor((my - cm.y - 4) / 24);
+                _acHandleContextMenuItem(cm.type, cm.stateName, cm.canvasX, cm.canvasY, itemIdx);
+                _acState.contextMenu = null;
+                return;
+            }
+            _acState.contextMenu = null;
+        }
+
         // Check if clicking on a transition (bezier hit test)
         if (_acState._transPaths) {
             for (var ti = 0; ti < _acState._transPaths.length; ti++) {
                 var tp = _acState._transPaths[ti];
-                var dist = _acDistToBezier(mx, my, tp.fx, tp.fy, tp.cpx, tp.cpy, tp.tx, tp.ty);
+                var dist = _acDistToBezier(pmx, pmy, tp.fx, tp.fy, tp.cpx, tp.cpy, tp.tx, tp.ty);
                 if (dist < 8) {
                     _acState.selectedTransition = tp.idx;
                     _acState.selectedState = null;
@@ -9764,13 +9863,13 @@ var EngineApp = (function() {
             var st = ctrl.states[i];
             var nd = _acState.nodes[st.name];
             if (!nd) continue;
-            if (mx >= nd.x && mx <= nd.x + 140 && my >= nd.y && my <= nd.y + 50) {
+            if (pmx >= nd.x && pmx <= nd.x + 140 && pmy >= nd.y && pmy <= nd.y + 50) {
                 _acState.selectedState = st.name;
                 _acState.selectedTransition = -1;
                 _acState.draggingNode = true;
                 _acState.dragNodeName = st.name;
-                _acState.dragOffX = mx - nd.x;
-                _acState.dragOffY = my - nd.y;
+                _acState.dragOffX = pmx - nd.x;
+                _acState.dragOffY = pmy - nd.y;
                 _acRenderCanvas();
                 _acRenderTransitionBar();
                 return;
@@ -9799,21 +9898,33 @@ var EngineApp = (function() {
     }
 
     function _acCanvasMouseMove(e) {
-        if (!_acState.draggingNode || !_tlEditingCtrlId) return;
+        if (!_tlEditingCtrlId) return;
         var canvas = document.getElementById('ac-canvas');
         if (!canvas) return;
         var rect = canvas.getBoundingClientRect();
         var mx = e.clientX - rect.left;
         var my = e.clientY - rect.top;
+        // Pan
+        if (_acState.panning) {
+            _acState.panX = _acState.panStartPanX + (mx - _acState.panStartX);
+            _acState.panY = _acState.panStartPanY + (my - _acState.panStartY);
+            _acRenderCanvas();
+            return;
+        }
+        // Drag node
+        if (!_acState.draggingNode) return;
+        var pmx = mx - _acState.panX;
+        var pmy = my - _acState.panY;
         if (_acState.nodes[_acState.dragNodeName]) {
-            _acState.nodes[_acState.dragNodeName].x = mx - _acState.dragOffX;
-            _acState.nodes[_acState.dragNodeName].y = my - _acState.dragOffY;
+            _acState.nodes[_acState.dragNodeName].x = pmx - _acState.dragOffX;
+            _acState.nodes[_acState.dragNodeName].y = pmy - _acState.dragOffY;
             _acRenderCanvas();
         }
     }
 
     function _acCanvasMouseUp(e) {
         _acState.draggingNode = false;
+        _acState.panning = false;
     }
 
     function _acCanvasDblClick(e) {
@@ -9869,8 +9980,140 @@ var EngineApp = (function() {
         }
     }
 
+    // Right-click context menu on canvas
+    function _acCanvasContextMenu(e) {
+        e.preventDefault();
+        var canvas = document.getElementById('ac-canvas');
+        if (!canvas || !_tlEditingCtrlId) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl) return;
+
+        // Adjust for pan
+        var pmx = mx - _acState.panX;
+        var pmy = my - _acState.panY;
+
+        // Check if right-clicking on a state node
+        for (var i = 0; i < ctrl.states.length; i++) {
+            var st = ctrl.states[i];
+            var nd = _acState.nodes[st.name];
+            if (!nd) continue;
+            if (pmx >= nd.x && pmx <= nd.x + 140 && pmy >= nd.y && pmy <= nd.y + 50) {
+                _acState.contextMenu = { x: mx, y: my, type: 'state', stateName: st.name, canvasX: pmx, canvasY: pmy };
+                _acState.selectedState = st.name;
+                _acRenderCanvas();
+                return;
+            }
+        }
+
+        // Right-click on empty canvas
+        _acState.contextMenu = { x: mx, y: my, type: 'canvas', canvasX: pmx, canvasY: pmy };
+        _acRenderCanvas();
+    }
+
+    // Handle context menu item click
+    function _acHandleContextMenuItem(type, stateName, canvasX, canvasY, itemIdx) {
+        if (!_tlEditingCtrlId) return;
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl) return;
+
+        if (type === 'canvas') {
+            if (itemIdx === 0) {
+                // Create State — at click position, no prompt
+                var name = 'State_' + (ctrl.states.length + 1);
+                SashaEngineAPI.addStateToController(_tlEditingCtrlId, name, '');
+                _acState.nodes[name] = { x: canvasX - 70, y: canvasY - 25 };
+                _acState.selectedState = name;
+                acRefresh();
+                log('Created state: ' + name, 'log');
+            } else if (itemIdx === 1) {
+                // Create State From Clip
+                acAddState();
+            }
+        } else if (type === 'state') {
+            if (itemIdx === 0) {
+                // Make Transition
+                acAddTransition();
+            } else if (itemIdx === 1) {
+                // Set as Default
+                for (var j = 0; j < ctrl.states.length; j++) { ctrl.states[j].isDefault = false; }
+                var stateObj = null;
+                for (var k = 0; k < ctrl.states.length; k++) { if (ctrl.states[k].name === stateName) { stateObj = ctrl.states[k]; break; } }
+                if (stateObj) stateObj.isDefault = true;
+                acRefresh();
+                log('Set ' + stateName + ' as default', 'log');
+            } else if (itemIdx === 2) {
+                // Assign Clip
+                var allAssets = SashaAssetManager.getAll();
+                var clips = [];
+                for (var ci = 0; ci < allAssets.length; ci++) {
+                    if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) {
+                        clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name);
+                    }
+                }
+                if (clips.length === 0) { log('No clips available', 'warn'); return; }
+                var choice = prompt('Clip:\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
+                if (choice) {
+                    for (var k = 0; k < clips.length; k++) {
+                        var cn = clips[k].split(':')[1];
+                        if (cn.toLowerCase() === choice.toLowerCase()) {
+                            var so = null;
+                            for (var m = 0; m < ctrl.states.length; m++) { if (ctrl.states[m].name === stateName) { so = ctrl.states[m]; break; } }
+                            if (so) so.clipId = clips[k].split(':')[0];
+                            break;
+                        }
+                    }
+                    acRefresh();
+                }
+            } else if (itemIdx === 3) {
+                // Rename
+                var newName = prompt('New name:', stateName);
+                if (newName && newName.trim()) {
+                    var oldN = stateName;
+                    newName = newName.trim();
+                    var sObj = null;
+                    for (var n = 0; n < ctrl.states.length; n++) { if (ctrl.states[n].name === oldN) { sObj = ctrl.states[n]; break; } }
+                    if (sObj) {
+                        sObj.name = newName;
+                        _acState.nodes[newName] = _acState.nodes[oldN];
+                        delete _acState.nodes[oldN];
+                        _acState.selectedState = newName;
+                        acRefresh();
+                    }
+                }
+            } else if (itemIdx === 4) {
+                // Delete State
+                acDeleteState(stateName);
+            }
+        }
+    }
+
     function _acInitCanvasEvents() {
     }
+
+    // Keyboard shortcuts for animator canvas
+    document.addEventListener('keydown', function(e) {
+        if (!_tlEditingCtrlId) return;
+        // Make sure focus is in engine area
+        var ae = document.getElementById('animator-editor');
+        if (!ae || ae.style.display === 'none') return;
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            // Delete selected state
+            if (_acState.selectedState && !e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('select')) {
+                e.preventDefault();
+                acDeleteState(_acState.selectedState);
+            }
+        } else if (e.key === 'Escape') {
+            // Cancel transition / close context menu
+            _acState.selectedTransition = -1;
+            _acState.selectedState = null;
+            _acState.contextMenu = null;
+            _acRenderCanvas();
+            _acRenderTransitionBar();
+        }
+    });
 
     // ============ VIEWPORT SPLIT: Scene + Game View Tabs ============
     var _activeViewTab = 'both'; // 'scene', 'game', 'both'
