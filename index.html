@@ -1049,12 +1049,14 @@
                                     <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-diamond"></i> Add Key</button>
                                     <button class="eng-tab" onclick="EngineApp.tlDeleteSelectedKey()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-trash"></i> Del Key</button>
                                     <div style="flex:1"></div>
+                                    <button class="eng-tab" onclick="EngineApp.openAnimatorFromTimeline()" style="padding:2px 8px;font-size:0.68rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-project-diagram"></i> Animator Controller</button>
                                     <span id="tl-cursor-info" style="font-size:0.65rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;"></span>
                                 </div>
                             </div>
                             <!-- Animator Controller Editor (shown when animator asset selected) -->
                             <div id="animator-editor" style="width:100%;height:100%;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;">
                                 <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);min-height:32px;background:var(--bg-dark);">
+                                    <button class="eng-tab" onclick="EngineApp.closeAnimatorBackToTimeline()" style="padding:2px 8px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;cursor:pointer;"><i class="fas fa-arrow-left"></i> Timeline</button>
                                     <span id="ac-ctrl-name" style="font-size:0.72rem;color:var(--primary);font-weight:600;min-width:60px;"></span>
                                     <div style="flex:1"></div>
                                     <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add State</button>
@@ -8679,6 +8681,42 @@ var EngineApp = (function() {
         log('Timeline opened for clip: ' + clipId, 'info');
     }
 
+    // Open animator controller from timeline toolbar button (finds or creates controller)
+    function openAnimatorFromTimeline() {
+        // Find existing animator controller
+        var allAssets = SashaAssetManager.getAll();
+        var ctrlId = null;
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'animator' && allAssets[i].data && allAssets[i].data.controllerId) {
+                ctrlId = allAssets[i].data.controllerId;
+                break;
+            }
+        }
+        // If none found, create new one
+        if (!ctrlId) {
+            ctrlId = 'ctrl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            SashaEngineAPI.createAnimatorController(ctrlId, 'NewAnimatorController');
+            SashaAssetManager.addAsset('animator', 'NewAnimatorController', null, { controllerId: ctrlId });
+            refreshAssetBrowser();
+            log('Created new Animator Controller', 'log');
+        }
+        openAnimatorEditor(ctrlId);
+    }
+
+    // Switch back from animator editor to timeline
+    function closeAnimatorBackToTimeline() {
+        _tlEditingCtrlId = null;
+        _acState.selectedTransition = -1;
+        _acState.selectedState = null;
+        _acState.contextMenu = null;
+        if (_acFullscreen) acToggleFullscreen();
+        var tlPanel = document.getElementById('timeline-panel');
+        var acEditor = document.getElementById('animator-editor');
+        if (tlPanel) tlPanel.style.display = 'flex';
+        if (acEditor) acEditor.style.display = 'none';
+        tlRefresh();
+    }
+
     function openAnimatorEditor(ctrlId) {
         _tlEditingClipId = null;
         _acState.selectedTransition = -1;
@@ -11260,7 +11298,8 @@ var EngineApp = (function() {
         tlDeleteSelectedKey: tlDeleteSelectedKey, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
         tlCreateNewClip: tlCreateNewClip,
         // Animator Controller Editor
-        openAnimatorEditor: openAnimatorEditor, acAddState: acAddState, acAddParam: acAddParam,
+        openAnimatorEditor: openAnimatorEditor, openAnimatorFromTimeline: openAnimatorFromTimeline,
+        closeAnimatorBackToTimeline: closeAnimatorBackToTimeline, acAddState: acAddState, acAddParam: acAddParam,
         acAddTransition: acAddTransition, acDeleteState: acDeleteState, acDeleteTransition: acDeleteTransition,
         acSetParam: acSetParam, acTriggerParam: acTriggerParam, acRemoveParam: acRemoveParam,
         acRefresh: acRefresh,
@@ -11275,7 +11314,6 @@ var EngineApp = (function() {
 </script>
 </body>
 </html>
-
 
 
 
