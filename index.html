@@ -1068,11 +1068,14 @@
                                     </div>
                                 </div>
                                 <!-- Bottom toolbar -->
-                                <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--border);min-height:28px;background:var(--bg-dark);">
-                                    <button class="eng-tab" onclick="EngineApp.tlAddTrack()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add Track</button>
-                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-diamond"></i> Add Key</button>
-                                    <button class="eng-tab" onclick="EngineApp.tlDeleteSelectedKey()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-trash"></i> Del Key</button>
+                                <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--border);min-height:28px;background:var(--bg-dark);flex-wrap:wrap;">
+                                    <button class="eng-tab" onclick="EngineApp.tlAddTrack()" style="padding:2px 8px;font-size:0.68rem;background:#4f46e5;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> Track</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlAddTransformTracks()" title="Add pos/rot/scale XYZ" style="padding:2px 8px;font-size:0.68rem;background:#7c3aed;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-arrows-alt"></i> Transform</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" title="Add key at current time (auto value)" style="padding:2px 8px;font-size:0.68rem;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-diamond"></i> Key</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyAllTracks()" title="Snapshot all tracks at current time" style="padding:2px 8px;font-size:0.68rem;background:#06b6d4;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-camera"></i> Snap All</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlDeleteSelectedKey()" style="padding:2px 8px;font-size:0.68rem;color:#ef4444;border:1px solid #ef4444;background:transparent;border-radius:4px;cursor:pointer;"><i class="fas fa-trash"></i> Del</button>
                                     <div style="flex:1"></div>
+                                    <span style="font-size:0.6rem;color:var(--text-muted);">Dbl-click track = add key | Scroll = zoom</span>
                                     <span id="tl-cursor-info" style="font-size:0.65rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;"></span>
                                 </div>
                             </div>
@@ -8955,15 +8958,25 @@ var EngineApp = (function() {
     }
 
     // Create a new animation clip and open it in the timeline
-    function tlCreateNewClip() {
-        var name = prompt('Animation Clip name:', 'NewClip_' + (SashaAssetManager.getAll().filter(function(a){return a.type==='animation'}).length + 1));
-        if (!name || !name.trim()) return;
-        name = name.trim();
+    function tlCreateNewClip(customName) {
+        var name = customName;
+        if (!name) {
+            var count = 0;
+            var allA = SashaAssetManager.getAll();
+            for (var i = 0; i < allA.length; i++) { if (allA[i].type === 'animation') count++; }
+            name = 'Clip_' + (count + 1);
+        }
         var clipId = 'clip_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
         SashaEngineAPI.createAnimationClip(clipId, name);
         SashaAssetManager.addAsset('animation', name, null, { clipId: clipId });
         _tlEditingClipId = clipId;
         _tlEditingCtrlId = null;
+        _tlState.time = 0;
+        _tlState.playing = false;
+        _tlState.selectedTrack = -1;
+        _tlState.selectedKey = -1;
+        // Auto-set target to selected object
+        if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
         var tlPanel = document.getElementById('timeline-panel');
         var acEditor = document.getElementById('animator-editor');
         if (tlPanel) tlPanel.style.display = 'flex';
@@ -9030,22 +9043,80 @@ var EngineApp = (function() {
         if (el) el.textContent = _tlState.time.toFixed(3) + ' / ' + _tlState.duration.toFixed(3);
     }
 
-    function tlAddTrack() {
+    function tlAddTrack(prop) {
         if (!_tlEditingClipId) { tlCreateNewClip(); return; }
-        var prop = prompt('Track property (e.g. position.x, position.y, position.z, rotation.y, scale.x, material.emissiveIntensity):', 'position.y');
-        if (!prop || !prop.trim()) return;
-        SashaEngineAPI.addTrackToClip(_tlEditingClipId, prop.trim());
-        // Set target object to currently selected object
-        if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
-        tlRefresh();
+        if (prop) {
+            // Direct add with known property
+            SashaEngineAPI.addTrackToClip(_tlEditingClipId, prop);
+            if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
+            _tlState.selectedTrack = -1;
+            tlRefresh();
+            log('Added track: ' + prop, 'log');
+            return;
+        }
+        // Show quick-add UI: dropdown with common properties
+        var labels = document.getElementById('tl-track-labels');
+        if (!labels) return;
+        var old = document.getElementById('tl-track-quickadd');
+        if (old) old.remove();
+        var div = document.createElement('div');
+        div.id = 'tl-track-quickadd';
+        div.style.cssText = 'padding:6px;background:rgba(99,102,241,0.1);border:1px solid #6366f1;border-radius:4px;margin:4px;font-size:0.68rem;';
+        var commonProps = ['position.x','position.y','position.z','rotation.x','rotation.y','rotation.z','scale.x','scale.y','scale.z','material.emissiveIntensity'];
+        var opts = '';
+        for (var i = 0; i < commonProps.length; i++) {
+            opts += '<option value="' + commonProps[i] + '">' + commonProps[i] + '</option>';
+        }
+        div.innerHTML = '<div style="color:#6366f1;font-weight:600;margin-bottom:4px;font-size:0.65rem;">Add Track</div>'
+            + '<select id="tl-track-prop-sel" style="width:100%;font-size:0.65rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:3px 4px;outline:none;border-radius:3px;margin-bottom:4px;">' + opts + '</select>'
+            + '<div style="display:flex;gap:4px;">'
+            + '<button id="tl-track-add-ok" style="flex:1;font-size:0.65rem;padding:3px;background:#4f46e5;border:none;color:#fff;border-radius:3px;cursor:pointer;">Add</button>'
+            + '<button id="tl-track-add-custom" style="flex:1;font-size:0.65rem;padding:3px;background:#374151;border:none;color:#a1a1aa;border-radius:3px;cursor:pointer;">Custom</button>'
+            + '<button id="tl-track-add-cancel" style="font-size:0.65rem;padding:3px 6px;background:transparent;border:1px solid #374151;color:#71717a;border-radius:3px;cursor:pointer;">X</button>'
+            + '</div>';
+        labels.insertBefore(div, labels.firstChild);
+        document.getElementById('tl-track-add-ok').onclick = function() {
+            var p = document.getElementById('tl-track-prop-sel').value;
+            div.remove();
+            tlAddTrack(p);
+        };
+        document.getElementById('tl-track-add-custom').onclick = function() {
+            div.remove();
+            // Show custom property input
+            var old2 = document.getElementById('tl-track-custom-input');
+            if (old2) old2.remove();
+            var div2 = document.createElement('div');
+            div2.id = 'tl-track-custom-input';
+            div2.style.cssText = 'padding:6px;background:rgba(99,102,241,0.1);border:1px solid #6366f1;border-radius:4px;margin:4px;font-size:0.68rem;';
+            div2.innerHTML = '<input id="tl-custom-prop" type="text" placeholder="property.name" style="width:100%;font-size:0.65rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:3px 4px;outline:none;border-radius:3px;margin-bottom:4px;font-family:monospace;">'
+                + '<div style="display:flex;gap:4px;">'
+                + '<button id="tl-custom-ok" style="flex:1;font-size:0.65rem;padding:3px;background:#4f46e5;border:none;color:#fff;border-radius:3px;cursor:pointer;">Add</button>'
+                + '<button id="tl-custom-cancel" style="font-size:0.65rem;padding:3px 6px;background:transparent;border:1px solid #374151;color:#71717a;border-radius:3px;cursor:pointer;">X</button>'
+                + '</div>';
+            labels.insertBefore(div2, labels.firstChild);
+            var inp = document.getElementById('tl-custom-prop');
+            inp.focus();
+            document.getElementById('tl-custom-ok').onclick = function() {
+                var p = inp.value.trim();
+                div2.remove();
+                if (p) tlAddTrack(p);
+            };
+            document.getElementById('tl-custom-cancel').onclick = function() { div2.remove(); };
+            inp.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') document.getElementById('tl-custom-ok').click();
+                if (e.key === 'Escape') div2.remove();
+            });
+        };
+        document.getElementById('tl-track-add-cancel').onclick = function() { div.remove(); };
+        document.getElementById('tl-track-prop-sel').focus();
     }
 
-    function tlAddKeyframe() {
+    function tlAddKeyframe(autoValue) {
         if (!_tlEditingClipId) { tlCreateNewClip(); return; }
         if (_tlState.selectedTrack < 0) { log('Select a track first', 'warn'); return; }
         var time = _tlState.time;
         var value = 0;
-        // Auto-read current value from selected object if possible
+        // Auto-read current value from target object
         var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
         if (objName) {
             var objs = SashaEngineAPI.getObjects();
@@ -9064,12 +9135,56 @@ var EngineApp = (function() {
                 }
             }
         }
-        var valStr = prompt('Value at t=' + time.toFixed(3) + ':', String(value));
-        if (valStr === null) return;
-        value = parseFloat(valStr);
-        if (isNaN(value)) return;
         SashaEngineAPI.addKeyframe(_tlEditingClipId, _tlState.selectedTrack, time, value);
+        // Find the newly added keyframe index
+        var clip2 = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (clip2 && clip2.tracks[_tlState.selectedTrack]) {
+            _tlState.selectedKey = clip2.tracks[_tlState.selectedTrack].keyframes.length - 1;
+        }
         tlRefresh();
+        log('Key added: ' + clip.tracks[_tlState.selectedTrack].property + ' = ' + value.toFixed(3) + ' @ t=' + time.toFixed(3), 'log');
+    }
+
+    // Add keyframes for ALL tracks at current time (snapshot current pose)
+    function tlAddKeyAllTracks() {
+        if (!_tlEditingClipId) { tlCreateNewClip(); return; }
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip || clip.tracks.length === 0) { log('No tracks. Add tracks first.', 'warn'); return; }
+        var time = _tlState.time;
+        var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objName ? objs[objName] : null;
+        var count = 0;
+        for (var ti = 0; ti < clip.tracks.length; ti++) {
+            var value = 0;
+            if (obj) {
+                var prop = clip.tracks[ti].property;
+                var parts = prop.split('.');
+                if (parts.length === 2) {
+                    var parent = parts[0]; var child = parts[1];
+                    if (parent === 'position' && obj.position) value = obj.position[child];
+                    else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
+                    else if (parent === 'scale' && obj.scale) value = obj.scale[child];
+                }
+            }
+            SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, time, value);
+            count++;
+        }
+        tlRefresh();
+        log('Added keyframes for ' + count + ' tracks at t=' + time.toFixed(3), 'log');
+    }
+
+    // Quick-add standard transform tracks (pos/rot/scale XYZ)
+    function tlAddTransformTracks() {
+        if (!_tlEditingClipId) { tlCreateNewClip(); return; }
+        var props = ['position.x','position.y','position.z','rotation.x','rotation.y','rotation.z','scale.x','scale.y','scale.z'];
+        for (var i = 0; i < props.length; i++) {
+            SashaEngineAPI.addTrackToClip(_tlEditingClipId, props[i]);
+        }
+        if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
+        _tlState.selectedTrack = -1;
+        tlRefresh();
+        log('Added 9 transform tracks (pos/rot/scale XYZ)', 'log');
     }
 
     function tlDeleteSelectedKey() {
@@ -9329,12 +9444,12 @@ var EngineApp = (function() {
         var my = e.clientY - rect.top;
         var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
         if (!clip || my < _tlState.headerHeight) return;
-        // Find which track was double-clicked
+        // Find which track was double-clicked — auto-add keyframe with current value
         for (var ti = 0; ti < clip.tracks.length; ti++) {
             var y = _tlState.headerHeight + ti * _tlState.trackHeight;
             if (my >= y && my < y + _tlState.trackHeight) {
                 var time = mx / _tlState.pixelsPerSecond;
-                // Read current value
+                // Read current value from object
                 var value = 0;
                 var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
                 if (objName) {
@@ -9351,14 +9466,13 @@ var EngineApp = (function() {
                         }
                     }
                 }
-                var valStr = prompt('Keyframe value at t=' + time.toFixed(3) + ':', String(parseFloat(value.toFixed(3))));
-                if (valStr === null) return;
-                value = parseFloat(valStr);
-                if (isNaN(value)) return;
                 SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, time, value);
                 _tlState.selectedTrack = ti;
                 _tlState.selectedKey = clip.tracks[ti].keyframes.length - 1;
+                _tlState.time = time;
+                _tlApplyTimeToScene();
                 tlRefresh();
+                log('Key added at t=' + time.toFixed(3) + ' val=' + value.toFixed(3), 'log');
                 return;
             }
         }
@@ -11466,7 +11580,7 @@ var EngineApp = (function() {
         tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop,
         tlSetDuration: tlSetDuration, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
         tlDeleteSelectedKey: tlDeleteSelectedKey, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
-        tlCreateNewClip: tlCreateNewClip,
+        tlCreateNewClip: tlCreateNewClip, tlAddKeyAllTracks: tlAddKeyAllTracks, tlAddTransformTracks: tlAddTransformTracks,
         // Animator Controller Editor
         openAnimatorEditor: openAnimatorEditor, openAnimatorFromTimeline: openAnimatorFromTimeline,
         closeAnimatorBackToTimeline: closeAnimatorBackToTimeline, acAddState: acAddState, acAddParam: acAddParam,
