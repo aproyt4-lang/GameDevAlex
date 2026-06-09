@@ -8743,27 +8743,32 @@ var EngineApp = (function() {
 
     // Open animator controller from timeline toolbar button (finds or creates controller)
     function openAnimatorFromTimeline() {
-        log('AC: openAnimatorFromTimeline called', 'info');
-        // Find existing animator controller
-        var allAssets = SashaAssetManager.getAll();
-        log('AC: assets count = ' + allAssets.length, 'info');
-        var ctrlId = null;
-        for (var i = 0; i < allAssets.length; i++) {
-            if (allAssets[i].type === 'animator' && allAssets[i].data && allAssets[i].data.controllerId) {
-                ctrlId = allAssets[i].data.controllerId;
-                break;
+        try {
+            log('AC: openAnimatorFromTimeline called', 'info');
+            // Find existing animator controller
+            var allAssets = SashaAssetManager.getAll();
+            log('AC: assets count = ' + allAssets.length, 'info');
+            var ctrlId = null;
+            for (var i = 0; i < allAssets.length; i++) {
+                if (allAssets[i].type === 'animator' && allAssets[i].data && allAssets[i].data.controllerId) {
+                    ctrlId = allAssets[i].data.controllerId;
+                    break;
+                }
             }
+            // If none found, create new one
+            if (!ctrlId) {
+                ctrlId = 'ctrl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                SashaEngineAPI.createAnimatorController(ctrlId, 'NewAnimatorController');
+                SashaAssetManager.addAsset('animator', 'NewAnimatorController', 'folder_animators', { controllerId: ctrlId });
+                refreshAssetBrowser();
+                log('Created new Animator Controller', 'log');
+            }
+            log('AC: calling openAnimatorEditor with ctrlId=' + ctrlId, 'info');
+            openAnimatorEditor(ctrlId);
+        } catch(err) {
+            alert('Animator Controller Error: ' + err.message + ' (line ~' + err.lineNumber + ')');
+            log('AC ERROR in openAnimatorFromTimeline: ' + err.message, 'error');
         }
-        // If none found, create new one
-        if (!ctrlId) {
-            ctrlId = 'ctrl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-            SashaEngineAPI.createAnimatorController(ctrlId, 'NewAnimatorController');
-            SashaAssetManager.addAsset('animator', 'NewAnimatorController', 'folder_animators', { controllerId: ctrlId });
-            refreshAssetBrowser();
-            log('Created new Animator Controller', 'log');
-        }
-        log('AC: calling openAnimatorEditor with ctrlId=' + ctrlId, 'info');
-        openAnimatorEditor(ctrlId);
     }
 
     // Close animator editor and return to engine
@@ -8773,6 +8778,11 @@ var EngineApp = (function() {
         _acState.selectedState = null;
         _acState.contextMenu = null;
         _acFullscreen = false;
+        // Restore grid/section styles (safe even if not saved)
+        var grid = document.querySelector('.engine-bottom-grid');
+        if (grid && grid._origStyle) grid.setAttribute('style', grid._origStyle);
+        var section = document.querySelector('.engine-section');
+        if (section && section._origStyle) section.setAttribute('style', section._origStyle);
         var acEditor = document.getElementById('animator-editor');
         if (acEditor) {
             acEditor.style.display = 'none';
@@ -8786,34 +8796,46 @@ var EngineApp = (function() {
         }
         var btn = document.getElementById('ac-fullscreen-btn');
         if (btn) { btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen'; }
+        tlRefresh();
     }
 
     function openAnimatorEditor(ctrlId) {
-        log('AC: openAnimatorEditor ctrlId=' + ctrlId, 'info');
-        _tlEditingClipId = null;
-        _acState.selectedTransition = -1;
-        _acState.selectedState = null;
-        if (!ctrlId || !SashaEngineAPI.getAnimatorController(ctrlId)) {
-            log('AC: ERROR - no controller found for ' + ctrlId, 'error');
-            log('No Animator Controller selected. Create one in the Assets panel first.', 'warn');
-            return;
+        try {
+            log('AC: openAnimatorEditor ctrlId=' + ctrlId, 'info');
+            _tlEditingClipId = null;
+            _acState.selectedTransition = -1;
+            _acState.selectedState = null;
+            if (!ctrlId || !SashaEngineAPI.getAnimatorController(ctrlId)) {
+                log('AC: ERROR - no controller found for ' + ctrlId, 'error');
+                log('No Animator Controller selected. Create one in the Assets panel first.', 'warn');
+                return;
+            }
+            _tlEditingCtrlId = ctrlId;
+            log('AC: switchTab timeline', 'info');
+            switchTab('timeline');
+            log('AC: showing animator-editor div', 'info');
+            var acEditor = document.getElementById('animator-editor');
+            log('AC: acEditor element = ' + (acEditor ? 'FOUND' : 'NOT FOUND'), 'info');
+            if (!acEditor) { log('AC: animator-editor element NOT FOUND in DOM', 'error'); return; }
+            // Open AC editor as FULLSCREEN overlay on top of everything
+            if (!acEditor._origStyle) acEditor._origStyle = acEditor.getAttribute('style');
+            acEditor.style.position = 'fixed';
+            acEditor.style.top = '0';
+            acEditor.style.left = '0';
+            acEditor.style.width = '100vw';
+            acEditor.style.height = '100vh';
+            acEditor.style.zIndex = '50000';
+            acEditor.style.display = 'flex';
+            _acFullscreen = true;
+            var btn = document.getElementById('ac-fullscreen-btn');
+            if (btn) { btn.innerHTML = '<i class="fas fa-compress"></i> Window'; }
+            log('AC: calling acRefresh', 'info');
+            acRefresh();
+            log('Animator Controller opened fullscreen', 'info');
+        } catch(err) {
+            alert('Animator Editor Error: ' + err.message + ' (line ~' + err.lineNumber + ')');
+            log('AC ERROR in openAnimatorEditor: ' + err.message, 'error');
         }
-        _tlEditingCtrlId = ctrlId;
-        // Show animator editor as FULLSCREEN overlay — NOT inside timeline
-        var acEditor = document.getElementById('animator-editor');
-        if (!acEditor) { log('AC: animator-editor element NOT FOUND in DOM', 'error'); return; }
-        acEditor.style.position = 'fixed';
-        acEditor.style.top = '0';
-        acEditor.style.left = '0';
-        acEditor.style.width = '100vw';
-        acEditor.style.height = '100vh';
-        acEditor.style.zIndex = '50000';
-        acEditor.style.display = 'flex';
-        _acFullscreen = true;
-        var btn = document.getElementById('ac-fullscreen-btn');
-        if (btn) { btn.innerHTML = '<i class="fas fa-compress"></i> Window'; }
-        acRefresh();
-        log('Animator Controller opened fullscreen', 'info');
     }
 
     // ============ ANIMATION TIMELINE EDITOR ============
@@ -11386,6 +11408,25 @@ var EngineApp = (function() {
         switchViewTab: switchViewTab,
         isInitialized: function() { return initialized; }
     };
+})();
+
+// === DIAGNOSTIC: check if EngineApp loaded correctly ===
+(function() {
+    try {
+        var acDiv = document.getElementById('animator-editor');
+        console.log('[DIAG] animator-editor div:', acDiv ? 'FOUND' : 'NOT FOUND');
+        console.log('[DIAG] EngineApp:', typeof EngineApp);
+        console.log('[DIAG] EngineApp.openAnimatorFromTimeline:', typeof EngineApp.openAnimatorFromTimeline);
+        console.log('[DIAG] EngineApp.openAnimatorEditor:', typeof EngineApp.openAnimatorEditor);
+        console.log('[DIAG] SashaEngineAPI:', typeof SashaEngineAPI);
+        console.log('[DIAG] SashaAssetManager:', typeof SashaAssetManager);
+        if (acDiv) {
+            console.log('[DIAG] acDiv parent:', acDiv.parentElement ? acDiv.parentElement.id || acDiv.parentElement.className : 'none');
+            console.log('[DIAG] acDiv computed display:', window.getComputedStyle(acDiv).display);
+        }
+    } catch(e) {
+        console.log('[DIAG] Error:', e.message);
+    }
 })();
 </script>
 </body>
