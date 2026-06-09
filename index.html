@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ru">
 <head>
    <meta charset="UTF-8">
@@ -8786,20 +8786,18 @@ var EngineApp = (function() {
         if (section && section._origStyle) section.setAttribute('style', section._origStyle);
         var acEditor = document.getElementById('animator-editor');
         if (acEditor) {
-            acEditor.style.display = 'none';
+            // Move back to original parent
+            if (_acOrigParent) { _acOrigParent.appendChild(acEditor); _acOrigParent = null; }
             // Restore original inline styles
-            acEditor.style.position = 'absolute';
-            acEditor.style.top = '0';
-            acEditor.style.left = '0';
-            acEditor.style.width = '';
-            acEditor.style.height = '';
-            acEditor.style.zIndex = '500';
+            if (acEditor._origStyle) acEditor.setAttribute('style', acEditor._origStyle);
+            else acEditor.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;z-index:500;';
         }
         var btn = document.getElementById('ac-fullscreen-btn');
         if (btn) { btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen'; }
         tlRefresh();
     }
 
+    var _acOrigParent = null;
     function openAnimatorEditor(ctrlId) {
         try {
             log('AC: openAnimatorEditor ctrlId=' + ctrlId, 'info');
@@ -8814,9 +8812,11 @@ var EngineApp = (function() {
             _tlEditingCtrlId = ctrlId;
             var acEditor = document.getElementById('animator-editor');
             if (!acEditor) { log('AC: animator-editor element NOT FOUND in DOM', 'error'); return; }
-            // Save original style for restore on close
+            // Save original parent and style for restore on close
+            if (!_acOrigParent) _acOrigParent = acEditor.parentElement;
             if (!acEditor._origStyle) acEditor._origStyle = acEditor.getAttribute('style');
-            // Open AC editor as FULLSCREEN overlay on top of everything
+            // Move to document.body to escape parent CSS transforms that break position:fixed
+            document.body.appendChild(acEditor);
             acEditor.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:50000;display:flex;flex-direction:column;background:var(--bg-card);overflow:hidden;';
             _acFullscreen = true;
             var btn = document.getElementById('ac-fullscreen-btn');
