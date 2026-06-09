@@ -872,6 +872,8 @@
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.saveProject()" title="Save"><i class="fas fa-save"></i></button>
                     <button class="eng-btn" onclick="EngineApp.exportGame()" title="Export"><i class="fas fa-file-export"></i></button>
+                    <div class="eng-separator"></div>
+                    <button class="eng-btn" onclick="EngineApp.openAnimatorFromTimeline()" title="Animator Controller" style="background:var(--primary);border-color:var(--primary);"><i class="fas fa-project-diagram"></i> Animator</button>
                     <div class="engine-model-status">
                         <div class="status-dot" id="eng-status-dot"></div>
                         <span id="eng-status-text">AI: offline</span>
@@ -8766,7 +8768,6 @@ var EngineApp = (function() {
             log('AC: calling openAnimatorEditor with ctrlId=' + ctrlId, 'info');
             openAnimatorEditor(ctrlId);
         } catch(err) {
-            alert('Animator Controller Error: ' + err.message + ' (line ~' + err.lineNumber + ')');
             log('AC ERROR in openAnimatorFromTimeline: ' + err.message, 'error');
         }
     }
@@ -8811,29 +8812,18 @@ var EngineApp = (function() {
                 return;
             }
             _tlEditingCtrlId = ctrlId;
-            log('AC: switchTab timeline', 'info');
-            switchTab('timeline');
-            log('AC: showing animator-editor div', 'info');
             var acEditor = document.getElementById('animator-editor');
-            log('AC: acEditor element = ' + (acEditor ? 'FOUND' : 'NOT FOUND'), 'info');
             if (!acEditor) { log('AC: animator-editor element NOT FOUND in DOM', 'error'); return; }
-            // Open AC editor as FULLSCREEN overlay on top of everything
+            // Save original style for restore on close
             if (!acEditor._origStyle) acEditor._origStyle = acEditor.getAttribute('style');
-            acEditor.style.position = 'fixed';
-            acEditor.style.top = '0';
-            acEditor.style.left = '0';
-            acEditor.style.width = '100vw';
-            acEditor.style.height = '100vh';
-            acEditor.style.zIndex = '50000';
-            acEditor.style.display = 'flex';
+            // Open AC editor as FULLSCREEN overlay on top of everything
+            acEditor.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:50000;display:flex;flex-direction:column;background:var(--bg-card);overflow:hidden;';
             _acFullscreen = true;
             var btn = document.getElementById('ac-fullscreen-btn');
             if (btn) { btn.innerHTML = '<i class="fas fa-compress"></i> Window'; }
-            log('AC: calling acRefresh', 'info');
             acRefresh();
             log('Animator Controller opened fullscreen', 'info');
         } catch(err) {
-            alert('Animator Editor Error: ' + err.message + ' (line ~' + err.lineNumber + ')');
             log('AC ERROR in openAnimatorEditor: ' + err.message, 'error');
         }
     }
@@ -11409,29 +11399,9 @@ var EngineApp = (function() {
         isInitialized: function() { return initialized; }
     };
 })();
-
-// === DIAGNOSTIC: check if EngineApp loaded correctly ===
-(function() {
-    try {
-        var acDiv = document.getElementById('animator-editor');
-        console.log('[DIAG] animator-editor div:', acDiv ? 'FOUND' : 'NOT FOUND');
-        console.log('[DIAG] EngineApp:', typeof EngineApp);
-        console.log('[DIAG] EngineApp.openAnimatorFromTimeline:', typeof EngineApp.openAnimatorFromTimeline);
-        console.log('[DIAG] EngineApp.openAnimatorEditor:', typeof EngineApp.openAnimatorEditor);
-        console.log('[DIAG] SashaEngineAPI:', typeof SashaEngineAPI);
-        console.log('[DIAG] SashaAssetManager:', typeof SashaAssetManager);
-        if (acDiv) {
-            console.log('[DIAG] acDiv parent:', acDiv.parentElement ? acDiv.parentElement.id || acDiv.parentElement.className : 'none');
-            console.log('[DIAG] acDiv computed display:', window.getComputedStyle(acDiv).display);
-        }
-    } catch(e) {
-        console.log('[DIAG] Error:', e.message);
-    }
-})();
 </script>
 </body>
 </html>
-
 
 
 
