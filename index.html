@@ -7,7 +7,7 @@
    <meta http-equiv="Expires" content="0">
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>SashaAI — GameDev AI & Developer [v5-ac]</title>
+    <title>SashaAI — GameDev AI & Developer [v6.1-tlfix]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1071,8 +1071,8 @@
                                 <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--border);min-height:28px;background:var(--bg-dark);flex-wrap:wrap;">
                                     <button class="eng-tab" onclick="EngineApp.tlAddTrack()" style="padding:2px 8px;font-size:0.68rem;background:#4f46e5;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> Track</button>
                                     <button class="eng-tab" onclick="EngineApp.tlAddTransformTracks()" title="Add pos/rot/scale XYZ" style="padding:2px 8px;font-size:0.68rem;background:#7c3aed;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-arrows-alt"></i> Transform</button>
-                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" title="Add key at current time (auto value)" style="padding:2px 8px;font-size:0.68rem;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-diamond"></i> Key</button>
-                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyAllTracks()" title="Snapshot all tracks at current time" style="padding:2px 8px;font-size:0.68rem;background:#06b6d4;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-camera"></i> Snap All</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" title="Add key at current time (auto value from object)" style="padding:2px 8px;font-size:0.68rem;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-diamond"></i> Key</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlAddKeyAllTracks()" title="Snapshot ALL tracks at current time from object" style="padding:2px 8px;font-size:0.68rem;background:#06b6d4;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-camera"></i> Snap All</button>
                                     <button class="eng-tab" onclick="EngineApp.tlDeleteSelectedKey()" style="padding:2px 8px;font-size:0.68rem;color:#ef4444;border:1px solid #ef4444;background:transparent;border-radius:4px;cursor:pointer;"><i class="fas fa-trash"></i> Del</button>
                                     <div style="flex:1"></div>
                                     <span style="font-size:0.6rem;color:var(--text-muted);">Dbl-click track = add key | Scroll = zoom</span>
@@ -1129,6 +1129,14 @@
                                 </div>
                             </div>
                             <div id="ac-params-list" style="flex:1;overflow-y:auto;padding:6px;"></div>
+                            <!-- Animation Clips sub-panel -->
+                            <div style="border-top:1px solid var(--border);flex-shrink:0;">
+                                <div style="padding:8px 8px 6px 8px;display:flex;justify-content:space-between;align-items:center;">
+                                    <div style="font-size:0.72rem;color:#f59e0b;font-weight:700;"><i class="fas fa-film" style="margin-right:4px;"></i>Clips</div>
+                                    <button onclick="EngineApp.acRefreshClips()" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#374151;border:none;color:#a1a1aa;border-radius:4px;cursor:pointer;font-size:0.65rem;" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+                                </div>
+                            </div>
+                            <div id="ac-clips-list" style="max-height:200px;overflow-y:auto;padding:4px 6px 6px 6px;border-top:1px solid var(--border);"></div>
                         </div>
                         <!-- Canvas Area -->
                         <div id="ac-canvas-wrap" style="flex:1;position:relative;overflow:hidden;background:#0d0d20;">
@@ -6767,7 +6775,8 @@ var SashaEngineAPI = (function() {
     function addTrackToClip(clipId, property) {
         var clip = animationClips[clipId];
         if (!clip) return;
-        clip.tracks.push({ property: property, keyframes: [{ time: 0, value: 0 }, { time: clip.duration, value: 0 }] });
+        // Don't create default keyframes — let user add them with real values from object
+        clip.tracks.push({ property: property, keyframes: [] });
     }
 
     function addKeyframe(clipId, trackIdx, time, value) {
@@ -6801,7 +6810,7 @@ var SashaEngineAPI = (function() {
         return kfs[kfs.length - 1].value;
     }
 
-    // Apply clip to object at given time
+    // Apply clip to object at given time — only applies tracks that have keyframes
     function applyClipToObject(clipId, objName, time) {
         var clip = animationClips[clipId];
         var obj = objects[objName];
@@ -6809,6 +6818,8 @@ var SashaEngineAPI = (function() {
         var loopTime = clip.loop ? (time % clip.duration) : Math.min(time, clip.duration);
         for (var t = 0; t < clip.tracks.length; t++) {
             var track = clip.tracks[t];
+            // Skip tracks with NO keyframes — don't reset object properties!
+            if (!track.keyframes || track.keyframes.length === 0) continue;
             var val = sampleTrack(track, loopTime);
             var prop = track.property;
             if (prop === 'position.x') obj.position.x = val;
@@ -8670,10 +8681,43 @@ var EngineApp = (function() {
     }
 
     function deleteAsset(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) { SashaAssetManager.removeAsset(id); selectedAsset = null; refreshAssetBrowser(); return; }
+        // If animation asset — also delete clip data from engine + clean up controllers
+        if (asset.type === 'animation' && asset.data && asset.data.clipId) {
+            var clipId = asset.data.clipId;
+            // Remove clip data from engine
+            SashaEngineAPI.deleteAnimationClip(clipId);
+            // Remove clip references from ALL animator controllers
+            var allAssets = SashaAssetManager.getAll();
+            for (var i = 0; i < allAssets.length; i++) {
+                if (allAssets[i].type === 'animator' && allAssets[i].data && allAssets[i].data.controllerId) {
+                    var ctrl = SashaEngineAPI.getAnimatorController(allAssets[i].data.controllerId);
+                    if (ctrl && ctrl.states) {
+                        for (var s = 0; s < ctrl.states.length; s++) {
+                            if (ctrl.states[s].clipId === clipId) ctrl.states[s].clipId = '';
+                        }
+                    }
+                }
+            }
+            // Remove from virtual file system if saved there
+            try {
+                var fsFiles = ['animations/' + asset.name + '.anim', asset.name + '.anim', 'clips/' + clipId + '.json'];
+                for (var f = 0; f < fsFiles.length; f++) {
+                    if (SashaFileSystem.exists(fsFiles[f])) SashaFileSystem.deleteFile(fsFiles[f]);
+                }
+            } catch(fsErr) {}
+            log('Animation clip "' + asset.name + '" deleted (data + refs cleaned)', 'log');
+        } else if (asset.type === 'animator' && asset.data && asset.data.controllerId) {
+            // Also destroy the controller from engine
+            SashaEngineAPI.deleteAnimatorController(asset.data.controllerId);
+            log('Animator Controller "' + asset.name + '" deleted', 'log');
+        } else {
+            log('Asset deleted', 'log');
+        }
         SashaAssetManager.removeAsset(id);
         selectedAsset = null;
         refreshAssetBrowser();
-        log('Asset deleted', 'log');
     }
 
     function editScriptAsset(id) {
@@ -8996,6 +9040,31 @@ var EngineApp = (function() {
 
     function tlPlay() {
         if (_tlState.playing) return;
+        // Auto-set target if not set
+        if (!_tlState.targetObjName) {
+            var selObj = SashaEngineAPI.getSelectedObject();
+            if (selObj) {
+                _tlState.targetObjName = selObj;
+                log('Target auto-set to: ' + selObj, 'info');
+                tlRefresh();
+            } else {
+                log('Select an object first to play animation', 'warn');
+                return;
+            }
+        }
+        var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
+        if (!clip || clip.tracks.length === 0) {
+            log('No clip or no tracks — add tracks and keyframes first', 'warn');
+            return;
+        }
+        var hasKeys = false;
+        for (var i = 0; i < clip.tracks.length; i++) {
+            if (clip.tracks[i].keyframes && clip.tracks[i].keyframes.length > 0) { hasKeys = true; break; }
+        }
+        if (!hasKeys) {
+            log('No keyframes — double-click a track or use Key button to add keyframes', 'warn');
+            return;
+        }
         _tlState.playing = true;
         _tlState.lastFrameTime = performance.now();
         _tlPlaybackLoop();
@@ -9190,10 +9259,24 @@ var EngineApp = (function() {
 
     function tlDeleteSelectedKey() {
         if (!_tlEditingClipId) { log('No clip selected', 'warn'); return; }
-        if (_tlState.selectedTrack < 0 || _tlState.selectedKey < 0) return;
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip) { log('No clip data', 'warn'); return; }
+        if (_tlState.selectedTrack < 0 || _tlState.selectedKey < 0) {
+            log('Select a keyframe first (click on a diamond in the timeline)', 'warn');
+            return;
+        }
+        if (!clip.tracks[_tlState.selectedTrack] || !clip.tracks[_tlState.selectedTrack].keyframes[_tlState.selectedKey]) {
+            _tlState.selectedKey = -1;
+            log('Invalid keyframe selection', 'warn');
+            return;
+        }
+        var prop = clip.tracks[_tlState.selectedTrack].property;
+        var time = clip.tracks[_tlState.selectedTrack].keyframes[_tlState.selectedKey].time;
         SashaEngineAPI.removeKeyframe(_tlEditingClipId, _tlState.selectedTrack, _tlState.selectedKey);
         _tlState.selectedKey = -1;
         tlRefresh();
+        _tlApplyTimeToScene();
+        log('Deleted keyframe at t=' + time.toFixed(3) + ' on ' + prop, 'log');
     }
 
     function _tlRenderTrackLabels() {
@@ -9396,12 +9479,15 @@ var EngineApp = (function() {
                     return;
                 }
             }
-            // Click on track (select track, deselect key)
+            // Click on track (select track, set time to click position, deselect key)
             if (my >= y && my < y + _tlState.trackHeight) {
                 _tlState.selectedTrack = ti;
                 _tlState.selectedKey = -1;
+                _tlState.time = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
+                _tlApplyTimeToScene();
                 _tlRenderTrackLabels();
                 _tlRenderCanvas();
+                _tlUpdateTimeDisplay();
                 return;
             }
         }
@@ -9537,8 +9623,121 @@ var EngineApp = (function() {
             }
         }
         _acRenderParams();
+        _acRenderClips();
         _acRenderCanvas();
         _acRenderTransitionBar();
+    }
+
+    // ============ AC CLIPS PANEL ============
+    function _acRenderClips() {
+        var list = document.getElementById('ac-clips-list');
+        if (!list) return;
+        var allAssets = SashaAssetManager.getAll();
+        var clips = [];
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId) {
+                clips.push({ assetId: allAssets[i].id, clipId: allAssets[i].data.clipId, name: allAssets[i].name });
+            }
+        }
+        if (clips.length === 0) {
+            list.innerHTML = '<div style="color:#71717a;font-size:0.65rem;padding:6px;text-align:center;">No clips</div>';
+            return;
+        }
+        // Check which clips are used in current controller
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        var usedClipIds = {};
+        if (ctrl && ctrl.states) {
+            for (var s = 0; s < ctrl.states.length; s++) {
+                if (ctrl.states[s].clipId) usedClipIds[ctrl.states[s].clipId] = true;
+            }
+        }
+        var html = '';
+        for (var c = 0; c < clips.length; c++) {
+            var clip = clips[c];
+            var isUsed = usedClipIds[clip.clipId];
+            var usedColor = isUsed ? '#22c55e' : '#71717a';
+            var usedIcon = isUsed ? 'fa-link' : 'fa-unlink';
+            var usedLabel = isUsed ? 'Used' : 'Unused';
+            html += '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:' + (isUsed ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.02)') + ';border:1px solid ' + (isUsed ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)') + ';border-radius:5px;margin-bottom:4px;font-size:0.65rem;">';
+            html += '<i class="fas fa-film" style="color:#f59e0b;font-size:0.55rem;"></i>';
+            html += '<span style="flex:1;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + clip.name + '">' + clip.name + '</span>';
+            html += '<span style="color:' + usedColor + ';font-size:0.5rem;white-space:nowrap;"><i class="fas ' + usedIcon + '" style="margin-right:2px;"></i>' + usedLabel + '</span>';
+            html += '<button onclick="EngineApp.acDeleteClip(\'' + clip.assetId + '\',\'' + clip.clipId + '\')" style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:#71717a;cursor:pointer;font-size:0.5rem;border-radius:3px;flex-shrink:0;" onmouseover="this.style.color=\'#ef4444\';this.style.background=\'rgba(239,68,68,0.15)\'" onmouseout="this.style.color=\'#71717a\';this.style.background=\'none\'" title="Delete clip"><i class="fas fa-times"></i></button>';
+            html += '</div>';
+        }
+        // "Delete All Unused" button if there are unused clips
+        var hasUnused = clips.some(function(cl) { return !usedClipIds[cl.clipId]; });
+        if (hasUnused) {
+            html += '<button onclick="EngineApp.acDeleteUnusedClips()" style="width:100%;margin-top:4px;font-size:0.6rem;padding:4px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:4px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background=\'rgba(239,68,68,0.2)\'" onmouseout="this.style.background=\'rgba(239,68,68,0.1)\'"><i class="fas fa-trash" style="margin-right:4px;"></i>Delete All Unused</button>';
+        }
+        list.innerHTML = html;
+    }
+
+    function acRefreshClips() { _acRenderClips(); }
+
+    function acDeleteClip(assetId, clipId) {
+        if (!assetId || !clipId) return;
+        var asset = SashaAssetManager.getAsset(assetId);
+        var clipName = asset ? asset.name : clipId;
+        // Remove clip data from engine
+        SashaEngineAPI.deleteAnimationClip(clipId);
+        // Remove clip references from ALL animator controllers
+        var allAssets = SashaAssetManager.getAll();
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'animator' && allAssets[i].data && allAssets[i].data.controllerId) {
+                var ctrl = SashaEngineAPI.getAnimatorController(allAssets[i].data.controllerId);
+                if (ctrl && ctrl.states) {
+                    for (var s = 0; s < ctrl.states.length; s++) {
+                        if (ctrl.states[s].clipId === clipId) ctrl.states[s].clipId = '';
+                    }
+                }
+            }
+        }
+        // Remove from asset manager
+        SashaAssetManager.removeAsset(assetId);
+        // Remove from virtual file system
+        try {
+            var fsFiles = ['animations/' + clipName + '.anim', clipName + '.anim', 'clips/' + clipId + '.json'];
+            for (var f = 0; f < fsFiles.length; f++) {
+                if (SashaFileSystem.exists(fsFiles[f])) SashaFileSystem.deleteFile(fsFiles[f]);
+            }
+        } catch(fsErr) {}
+        _acRenderClips();
+        _acRenderCanvas();
+        log('Deleted clip: ' + clipName, 'log');
+    }
+
+    function acDeleteUnusedClips() {
+        var allAssets = SashaAssetManager.getAll();
+        var clips = [];
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId) {
+                clips.push({ assetId: allAssets[i].id, clipId: allAssets[i].data.clipId, name: allAssets[i].name });
+            }
+        }
+        // Check used in ANY controller (not just current)
+        var usedClipIds = {};
+        for (var a = 0; a < allAssets.length; a++) {
+            if (allAssets[a].type === 'animator' && allAssets[a].data && allAssets[a].data.controllerId) {
+                var ctrl = SashaEngineAPI.getAnimatorController(allAssets[a].data.controllerId);
+                if (ctrl && ctrl.states) {
+                    for (var s = 0; s < ctrl.states.length; s++) {
+                        if (ctrl.states[s].clipId) usedClipIds[ctrl.states[s].clipId] = true;
+                    }
+                }
+            }
+        }
+        var deleted = 0;
+        for (var c = 0; c < clips.length; c++) {
+            if (!usedClipIds[clips[c].clipId]) {
+                SashaEngineAPI.deleteAnimationClip(clips[c].clipId);
+                SashaAssetManager.removeAsset(clips[c].assetId);
+                deleted++;
+            }
+        }
+        _acRenderClips();
+        _acRenderCanvas();
+        log('Deleted ' + deleted + ' unused clip(s)', 'log');
     }
 
     function acAddState(customName, customX, customY) {
@@ -11616,6 +11815,7 @@ var EngineApp = (function() {
         acAddTransitionCondition: acAddTransitionCondition, acUpdateCondMode: acUpdateCondMode,
         acRemoveCondition: acRemoveCondition, acDeleteSelectedTransition: acDeleteSelectedTransition,
         acToggleFullscreen: acToggleFullscreen,
+        acDeleteClip: acDeleteClip, acDeleteUnusedClips: acDeleteUnusedClips, acRefreshClips: acRefreshClips,
         // Viewport
         switchViewTab: switchViewTab,
         isInitialized: function() { return initialized; }
@@ -11631,7 +11831,7 @@ var EngineApp = (function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[AC v5] Button clicked, EngineApp type:', typeof EngineApp);
+            console.log('[AC v6] Button clicked, EngineApp type:', typeof EngineApp);
             if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
                 EngineApp.openAnimatorFromTimeline();
             } else {
