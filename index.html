@@ -7,7 +7,7 @@
    <meta http-equiv="Expires" content="0">
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>SashaAI — GameDev AI & Developer</title>
+    <title>SashaAI — GameDev AI & Developer [v5-ac]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1137,7 +1137,7 @@
                     </div>
                     <!-- Status bar -->
                     <div style="display:flex;align-items:center;gap:12px;padding:3px 12px;min-height:24px;background:var(--bg-dark);border-top:1px solid var(--border);font-size:0.65rem;color:#a1a1aa;">
-                        <span id="ac-status-hint">Right-click canvas to create state | Drag from state output to create transition</span>
+                        <span id="ac-status-hint">Double-click canvas to create state | Right-click for menu | Drag output port to connect</span>
                         <div style="flex:1"></div>
                         <span id="ac-zoom-info">100%</span>
                     </div>
@@ -8786,12 +8786,11 @@ var EngineApp = (function() {
     // Open animator controller from timeline toolbar button (finds or creates controller)
     function openAnimatorFromTimeline() {
         try {
-            log('AC: openAnimatorFromTimeline called', 'info');
-            // Find existing animator controller asset
+            log('AC v5: opening animator controller...', 'info');
             var allAssets = SashaAssetManager.getAll();
-            log('AC: assets count = ' + allAssets.length, 'info');
             var ctrlId = null;
             var ctrlName = 'NewAnimatorController';
+            // Find existing animator asset
             for (var i = 0; i < allAssets.length; i++) {
                 if (allAssets[i].type === 'animator' && allAssets[i].data && allAssets[i].data.controllerId) {
                     ctrlId = allAssets[i].data.controllerId;
@@ -8800,21 +8799,30 @@ var EngineApp = (function() {
                 }
             }
             if (!ctrlId) {
-                // Create brand new controller + asset
+                // No asset — create new controller + asset
                 ctrlId = 'ctrl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
                 SashaEngineAPI.createAnimatorController(ctrlId, ctrlName);
                 SashaAssetManager.addAsset('animator', ctrlName, 'folder_animators', { controllerId: ctrlId });
-                refreshAssetBrowser();
-                log('Created new Animator Controller', 'log');
-            } else if (!SashaEngineAPI.getAnimatorController(ctrlId)) {
-                // Asset exists but runtime controller is missing (page reload) — recreate it
-                log('AC: controller runtime missing for ' + ctrlId + ', recreating...', 'warn');
+                try { refreshAssetBrowser(); } catch(e) {}
+                log('AC v5: created new controller ' + ctrlId, 'log');
+            }
+            // Ensure runtime controller exists (survives page reload)
+            if (!SashaEngineAPI.getAnimatorController(ctrlId)) {
+                log('AC v5: recreating missing runtime controller...', 'warn');
                 SashaEngineAPI.createAnimatorController(ctrlId, ctrlName);
             }
-            log('AC: calling openAnimatorEditor with ctrlId=' + ctrlId, 'info');
+            log('AC v5: opening editor for ' + ctrlId, 'log');
             openAnimatorEditor(ctrlId);
         } catch(err) {
-            log('AC ERROR in openAnimatorFromTimeline: ' + err.message, 'error');
+            log('AC v5 ERROR: ' + err.message + ' line:' + (err.lineNumber||'?'), 'error');
+            // Last-resort fallback — force create and open
+            try {
+                var fbId = 'ctrl_' + Date.now() + '_fb';
+                SashaEngineAPI.createAnimatorController(fbId, 'AnimatorController');
+                openAnimatorEditor(fbId);
+            } catch(err2) {
+                log('AC v5 FATAL: ' + err2.message, 'error');
+            }
         }
     }
 
@@ -8846,7 +8854,7 @@ var EngineApp = (function() {
     var _acOrigParent = null;
     function openAnimatorEditor(ctrlId) {
         try {
-            log('AC: openAnimatorEditor ctrlId=' + ctrlId, 'info');
+            log('AC v5: openAnimatorEditor ctrlId=' + ctrlId, 'info');
             _tlEditingClipId = null;
             _acState.selectedTransition = -1;
             _acState.selectedState = null;
@@ -8854,30 +8862,32 @@ var EngineApp = (function() {
                 openAnimatorFromTimeline();
                 return;
             }
-            // If controller doesn't exist in runtime, CREATE it now
+            // Ensure controller exists in runtime
             if (!SashaEngineAPI.getAnimatorController(ctrlId)) {
-                log('AC: controller missing, creating: ' + ctrlId, 'warn');
+                log('AC v5: creating missing controller: ' + ctrlId, 'warn');
                 SashaEngineAPI.createAnimatorController(ctrlId, 'AnimatorController');
             }
             _tlEditingCtrlId = ctrlId;
             _acFullscreen = true;
-            // SHOW THE EDITOR — move to body, position:fixed, z-index:99999
+            // SHOW THE EDITOR fullscreen
             var acEditor = document.getElementById('animator-editor');
-            if (acEditor) {
-                if (!_acOrigParent) _acOrigParent = acEditor.parentElement;
-                if (!acEditor._origStyle) acEditor._origStyle = acEditor.getAttribute('style');
-                if (acEditor.parentElement !== document.body) document.body.appendChild(acEditor);
-                acEditor.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;display:flex;flex-direction:column;background:#1a1a2e;overflow:hidden;box-shadow:0 0 60px rgba(99,102,241,0.4);';
-                log('AC: editor div set to fullscreen position:fixed', 'info');
-            } else {
-                log('AC: CRITICAL — animator-editor div NOT FOUND in DOM', 'error');
+            if (!acEditor) {
+                log('AC v5: CRITICAL - animator-editor div NOT FOUND in DOM', 'error');
+                return;
             }
-            var btn = document.getElementById('ac-fullscreen-btn');
-            if (btn) { btn.innerHTML = '<i class="fas fa-compress"></i> Window'; }
+            // Save original parent and style
+            if (!_acOrigParent) _acOrigParent = acEditor.parentElement;
+            if (!acEditor._origStyle) acEditor._origStyle = acEditor.getAttribute('style');
+            // Move to body if not already there
+            if (acEditor.parentElement !== document.body) {
+                document.body.appendChild(acEditor);
+            }
+            // Force fullscreen
+            acEditor.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;display:flex;flex-direction:column;background:#1a1a2e;overflow:hidden;box-shadow:0 0 60px rgba(99,102,241,0.4);';
+            log('AC v5: editor opened fullscreen OK', 'info');
             acRefresh();
-            log('Animator Controller opened fullscreen OK', 'info');
         } catch(err) {
-            log('AC ERROR in openAnimatorEditor: ' + err.message, 'error');
+            log('AC v5 ERROR openAnimatorEditor: ' + err.message, 'error');
         }
     }
 
@@ -9418,77 +9428,161 @@ var EngineApp = (function() {
 
     function acAddState(customName, customX, customY) {
         if (!_tlEditingCtrlId) return;
-        var name = customName || prompt('State name:', 'Walk');
-        if (!name || !name.trim()) return;
-        name = name.trim();
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
-        var allAssets = SashaAssetManager.getAll();
-        var clips = [];
-        for (var i = 0; i < allAssets.length; i++) {
-            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId) {
-                clips.push(allAssets[i].data.clipId + ':' + allAssets[i].name);
+        // If called from context menu with position — create directly
+        if (customName) {
+            SashaEngineAPI.addStateToController(_tlEditingCtrlId, customName, '');
+            _acState.nodes[customName] = { x: customX !== undefined ? customX : 120 + ctrl.states.length * 180, y: customY !== undefined ? customY : 80 + Math.random() * 60 };
+            _acState.selectedState = customName;
+            acRefresh();
+            log('Created state: ' + customName, 'log');
+            return;
+        }
+        // Show inline rename input on canvas (no prompt!)
+        _acShowInlineInput(customX || 120 + ctrl.states.length * 180, customY || 80, 'New State', function(name) {
+            if (name && name.trim()) {
+                var n = name.trim();
+                SashaEngineAPI.addStateToController(_tlEditingCtrlId, n, '');
+                _acState.nodes[n] = { x: 120 + ctrl.states.length * 180, y: 80 + Math.random() * 60 };
+                _acState.selectedState = n;
+                acRefresh();
+                log('Created state: ' + n, 'log');
             }
-        }
-        var clipId = '';
-        if (clips.length > 0 && !customName) {
-            var choice = prompt('Animation Clip (optional, Cancel for none):\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
-            if (choice) {
-                for (var ci = 0; ci < clips.length; ci++) {
-                    var clipName = clips[ci].split(':')[1];
-                    if (clipName.toLowerCase() === choice.toLowerCase() || clipName.toLowerCase().indexOf(choice.toLowerCase()) !== -1 || choice.toLowerCase().indexOf(clipName.toLowerCase()) !== -1) {
-                        clipId = clips[ci].split(':')[0]; break;
-                    }
-                }
+        });
+    }
+
+    // Inline text input overlay on canvas (replaces all prompt() calls)
+    function _acShowInlineInput(x, y, placeholder, callback) {
+        var wrap = document.getElementById('ac-canvas-wrap');
+        if (!wrap) return;
+        // Remove existing input if any
+        var old = document.getElementById('ac-inline-input');
+        if (old) old.remove();
+        var input = document.createElement('input');
+        input.id = 'ac-inline-input';
+        input.type = 'text';
+        input.value = placeholder || '';
+        input.placeholder = placeholder || 'Name...';
+        input.style.cssText = 'position:absolute;left:' + (x + 20) + 'px;top:' + (y + 20) + 'px;z-index:100;background:#1e1b4b;border:2px solid #6366f1;color:#fff;font-size:13px;padding:6px 10px;border-radius:6px;outline:none;min-width:160px;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(99,102,241,0.4);';
+        wrap.appendChild(input);
+        input.focus();
+        input.select();
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                callback(input.value);
+                input.remove();
+            } else if (e.key === 'Escape') {
+                input.remove();
             }
-        }
-        SashaEngineAPI.addStateToController(_tlEditingCtrlId, name, clipId);
-        if (customX !== undefined && customY !== undefined) {
-            _acState.nodes[name] = { x: customX, y: customY };
-        } else {
-            _acState.nodes[name] = { x: 120 + ctrl.states.length * 180, y: 80 + Math.random() * 60 };
-        }
-        acRefresh();
-        log('Added state: ' + name, 'log');
+        });
+        input.addEventListener('blur', function() {
+            setTimeout(function() { if (input.parentElement) { callback(input.value); input.remove(); } }, 150);
+        });
     }
 
     function acAddParam() {
         if (!_tlEditingCtrlId) return;
-        var name = prompt('Parameter name:', 'Speed');
-        if (!name || !name.trim()) return;
-        name = name.trim();
-        var type = prompt('Type (float, int, bool, trigger):', 'float');
-        if (!type) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
-        var val = 0;
-        if (type === 'bool' || type === 'trigger') val = false;
-        ctrl.parameters[name] = { type: type, value: val };
-        acRefresh();
-        log('Added parameter: ' + name + ' (' + type + ')', 'log');
+        // Show inline input in params panel instead of prompt()
+        var list = document.getElementById('ac-params-list');
+        if (!list) return;
+        var old = document.getElementById('ac-param-inline-add');
+        if (old) old.remove();
+        var div = document.createElement('div');
+        div.id = 'ac-param-inline-add';
+        div.style.cssText = 'padding:6px 8px;background:#1e1b4b;border:2px solid #6366f1;border-radius:6px;margin-bottom:6px;font-size:0.7rem;';
+        div.innerHTML = '<input id="ac-param-name-input" type="text" placeholder="Name" style="width:100%;font-size:0.7rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:4px 6px;border-radius:4px;outline:none;margin-bottom:4px;font-family:Inter,sans-serif;">'
+            + '<div style="display:flex;gap:4px;">'
+            + '<select id="ac-param-type-select" style="flex:1;font-size:0.65rem;background:#0f0f23;border:1px solid #2e2e4a;color:#a1a1aa;padding:3px 4px;cursor:pointer;outline:none;border-radius:4px;">'
+            + '<option value="float">float</option><option value="int">int</option><option value="bool">bool</option><option value="trigger">trigger</option>'
+            + '</select>'
+            + '<button id="ac-param-add-btn" style="flex:1;font-size:0.65rem;padding:3px;background:#4f46e5;border:none;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;">Add</button>'
+            + '<button id="ac-param-cancel-btn" style="font-size:0.65rem;padding:3px 6px;background:#374151;border:none;color:#a1a1aa;border-radius:4px;cursor:pointer;">X</button>'
+            + '</div>';
+        list.insertBefore(div, list.firstChild);
+        var nameInput = document.getElementById('ac-param-name-input');
+        nameInput.focus();
+        document.getElementById('ac-param-add-btn').onclick = function() {
+            var name = nameInput.value.trim();
+            var type = document.getElementById('ac-param-type-select').value;
+            if (!name) return;
+            if (ctrl.parameters[name]) { log('Param "' + name + '" already exists', 'warn'); return; }
+            var val = 0;
+            if (type === 'bool' || type === 'trigger') val = false;
+            ctrl.parameters[name] = { type: type, value: val };
+            acRefresh();
+            log('Added parameter: ' + name + ' (' + type + ')', 'log');
+        };
+        document.getElementById('ac-param-cancel-btn').onclick = function() { div.remove(); };
+        nameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('ac-param-add-btn').click();
+            if (e.key === 'Escape') div.remove();
+        });
     }
 
     function acAddTransition(fromName, toName) {
         if (!_tlEditingCtrlId) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl || ctrl.states.length < 2) { log('Need at least 2 states', 'warn'); return; }
-        var stateNames = ctrl.states.map(function(s){return s.name});
-        var from = fromName || prompt('From state:\n' + stateNames.join(', '), stateNames[0]);
-        if (!from) return;
-        var to = toName || prompt('To state:\n' + stateNames.join(', '), stateNames[stateNames.length > 1 ? 1 : 0]);
-        if (!to) return;
-        // Check if transition already exists
-        for (var i = 0; i < ctrl.transitions.length; i++) {
-            if (ctrl.transitions[i].from === from && ctrl.transitions[i].to === to) {
-                log('Transition ' + from + ' -> ' + to + ' already exists', 'warn');
-                _acState.selectedTransition = i;
-                acRefresh();
-                return;
+        // If both names provided (e.g. from drag-connect), create directly
+        if (fromName && toName) {
+            for (var i = 0; i < ctrl.transitions.length; i++) {
+                if (ctrl.transitions[i].from === fromName && ctrl.transitions[i].to === toName) {
+                    _acState.selectedTransition = i;
+                    acRefresh();
+                    return;
+                }
             }
+            SashaEngineAPI.addTransition(_tlEditingCtrlId, fromName, toName, '', true);
+            // Select the new transition
+            for (var j = 0; j < ctrl.transitions.length; j++) {
+                if (ctrl.transitions[j].from === fromName && ctrl.transitions[j].to === toName) {
+                    _acState.selectedTransition = j;
+                    break;
+                }
+            }
+            acRefresh();
+            log('Transition: ' + fromName + ' -> ' + toName, 'log');
+            return;
         }
-        SashaEngineAPI.addTransition(_tlEditingCtrlId, from, to, '', true);
-        acRefresh();
-        log('Added transition: ' + from + ' -> ' + to, 'log');
+        // Show inline dropdown UI on canvas
+        var stateNames = ctrl.states.map(function(s){return s.name});
+        var wrap = document.getElementById('ac-canvas-wrap');
+        if (!wrap) return;
+        var old = document.getElementById('ac-trans-inline');
+        if (old) old.remove();
+        var div = document.createElement('div');
+        div.id = 'ac-trans-inline';
+        div.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;background:rgba(15,15,35,0.97);border:2px solid #4f46e5;border-radius:10px;padding:16px;min-width:280px;box-shadow:0 8px 32px rgba(99,102,241,0.4);';
+        var opts = '';
+        for (var i = 0; i < stateNames.length; i++) {
+            opts += '<option value="' + stateNames[i] + '">' + stateNames[i] + '</option>';
+        }
+        div.innerHTML = '<div style="color:#6366f1;font-weight:700;font-size:0.8rem;margin-bottom:10px;">Create Transition</div>'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+            + '<span style="font-size:0.7rem;color:#a1a1aa;">From:</span>'
+            + '<select id="ac-trans-from" style="flex:1;font-size:0.7rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:4px 6px;outline:none;border-radius:4px;">' + opts + '</select>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
+            + '<span style="font-size:0.7rem;color:#a1a1aa;">To:</span>'
+            + '<select id="ac-trans-to" style="flex:1;font-size:0.7rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:4px 6px;outline:none;border-radius:4px;">' + opts + '</select>'
+            + '</div>'
+            + '<div style="display:flex;gap:8px;">'
+            + '<button id="ac-trans-create-btn" style="flex:1;font-size:0.72rem;padding:6px;background:#4f46e5;border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;">Create</button>'
+            + '<button id="ac-trans-cancel-btn" style="font-size:0.72rem;padding:6px 12px;background:#374151;border:none;color:#a1a1aa;border-radius:6px;cursor:pointer;">Cancel</button>'
+            + '</div>';
+        wrap.appendChild(div);
+        if (stateNames.length > 1) document.getElementById('ac-trans-to').selectedIndex = 1;
+        document.getElementById('ac-trans-create-btn').onclick = function() {
+            var from = document.getElementById('ac-trans-from').value;
+            var to = document.getElementById('ac-trans-to').value;
+            div.remove();
+            acAddTransition(from, to);
+        };
+        document.getElementById('ac-trans-cancel-btn').onclick = function() { div.remove(); };
     }
 
     function acDeleteState(name) {
@@ -9604,30 +9698,42 @@ var EngineApp = (function() {
         var paramNames = [];
         for (var p in ctrl.parameters) { if (ctrl.parameters.hasOwnProperty(p)) paramNames.push(p); }
         if (paramNames.length === 0) { log('No parameters. Add parameters first.', 'warn'); return; }
-        var paramName = prompt('Parameter name:\n' + paramNames.join(', '), paramNames[0]);
-        if (!paramName || !paramName.trim()) return;
-        paramName = paramName.trim();
-        if (!ctrl.parameters[paramName]) { log('Parameter "' + paramName + '" not found', 'warn'); return; }
-        var paramType = ctrl.parameters[paramName].type;
-        var mode = 'equals', value = 'true';
-        if (paramType === 'bool' || paramType === 'trigger') {
-            var ch = prompt('Value (true / false):', 'true');
-            if (!ch) return;
-            value = (ch.trim().toLowerCase() === 'true') ? 'true' : 'false';
-        } else {
-            var ch2 = prompt('Condition:\n1 = Equals\n2 = Not Equals\n3 = Greater Than\n4 = Less Than', '1');
-            if (ch2 === '2') mode = 'notEquals';
-            else if (ch2 === '3') mode = 'greater';
-            else if (ch2 === '4') mode = 'less';
-            var vs = prompt('Value:', '0');
-            if (vs === null) return;
-            value = paramType === 'float' ? parseFloat(vs) : parseInt(vs);
-            if (isNaN(value)) value = 0;
-        }
-        tr.conditions.push({ param: paramName, mode: mode, value: value });
-        SashaEngineAPI.setTransitionConditions(_tlEditingCtrlId, _acState.selectedTransition, tr.conditions);
-        _acRenderTransitionBar(); _acRenderCanvas();
-        log('Added condition: ' + paramName + ' ' + mode + ' ' + value, 'log');
+        // Show inline condition editor (no prompt!)
+        var condDiv = document.getElementById('ac-tr-conditions');
+        if (!condDiv) return;
+        var old = document.getElementById('ac-cond-inline');
+        if (old) old.remove();
+        var div = document.createElement('div');
+        div.id = 'ac-cond-inline';
+        div.style.cssText = 'display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.04);border:1px solid #6366f180;border-radius:6px;padding:4px 6px;font-size:0.65rem;';
+        var paramOpts = '';
+        for (var i = 0; i < paramNames.length; i++) paramOpts += '<option value="' + paramNames[i] + '">' + paramNames[i] + '</option>';
+        div.innerHTML = '<select id="ac-cond-param">' + paramOpts + '</select>'
+            + '<select id="ac-cond-mode"><option value="equals">==</option><option value="notEquals">!=</option><option value="greater">&gt;</option><option value="less">&lt;</option></select>'
+            + '<input id="ac-cond-value" type="text" value="0" style="width:50px;font-size:0.65rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:2px 4px;outline:none;border-radius:3px;">'
+            + '<button id="ac-cond-ok" style="background:#4f46e5;border:none;color:#fff;border-radius:3px;cursor:pointer;font-size:0.6rem;padding:2px 6px;"><i class="fas fa-check"></i></button>'
+            + '<button id="ac-cond-no" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:0.6rem;padding:2px;"><i class="fas fa-times"></i></button>';
+        condDiv.appendChild(div);
+        document.getElementById('ac-cond-param').focus();
+        document.getElementById('ac-cond-ok').onclick = function() {
+            var paramName = document.getElementById('ac-cond-param').value;
+            var mode = document.getElementById('ac-cond-mode').value;
+            var rawVal = document.getElementById('ac-cond-value').value.trim();
+            var paramType = ctrl.parameters[paramName].type;
+            var value = rawVal;
+            if (paramType === 'float') { value = parseFloat(rawVal); if (isNaN(value)) value = 0; }
+            else if (paramType === 'int') { value = parseInt(rawVal); if (isNaN(value)) value = 0; }
+            else if (paramType === 'bool' || paramType === 'trigger') { value = rawVal.toLowerCase() === 'true' ? 'true' : 'false'; }
+            tr.conditions.push({ param: paramName, mode: mode, value: value });
+            SashaEngineAPI.setTransitionConditions(_tlEditingCtrlId, _acState.selectedTransition, tr.conditions);
+            _acRenderTransitionBar(); _acRenderCanvas();
+            log('Added condition: ' + paramName + ' ' + mode + ' ' + value, 'log');
+        };
+        document.getElementById('ac-cond-no').onclick = function() { div.remove(); };
+        document.getElementById('ac-cond-value').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('ac-cond-ok').click();
+            if (e.key === 'Escape') div.remove();
+        });
     }
 
     function acUpdateCondMode(condIdx, newMode) {
@@ -10044,29 +10150,53 @@ var EngineApp = (function() {
     }
 
     function _acCanvasDblClick(e) {
-        if (!_acState.selectedState || !_tlEditingCtrlId) return;
+        var canvas = document.getElementById('ac-canvas');
+        if (!canvas || !_tlEditingCtrlId) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var pmx = mx - _acState.panX;
+        var pmy = my - _acState.panY;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
-        var name = _acState.selectedState;
-        var action = prompt('State "' + name + '"\n1 = Set Default\n2 = Assign Clip\n3 = Rename\n4 = Delete', '1');
-        if (!action) return;
-        var stateObj = null;
-        for (var i = 0; i < ctrl.states.length; i++) { if (ctrl.states[i].name === name) { stateObj = ctrl.states[i]; break; } }
-        if (!stateObj) return;
-        if (action === '1') {
-            for (var j = 0; j < ctrl.states.length; j++) { ctrl.states[j].isDefault = false; }
-            stateObj.isDefault = true; acRefresh();
-        } else if (action === '2') {
-            var allAssets = SashaAssetManager.getAll();
-            var clips = [];
-            for (var ci = 0; ci < allAssets.length; ci++) { if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name); }
-            if (clips.length === 0) { log('No clips', 'warn'); return; }
-            var choice = prompt('Clip:\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
-            if (choice) { for (var k = 0; k < clips.length; k++) { var cn = clips[k].split(':')[1]; if (cn.toLowerCase() === choice.toLowerCase() || cn.toLowerCase().indexOf(choice.toLowerCase()) !== -1) { stateObj.clipId = clips[k].split(':')[0]; break; } } acRefresh(); }
-        } else if (action === '3') {
-            var newName = prompt('New name:', name);
-            if (newName && newName.trim()) { var oldName = name; newName = newName.trim(); stateObj.name = newName; _acState.nodes[newName] = _acState.nodes[oldName]; delete _acState.nodes[oldName]; _acState.selectedState = newName; acRefresh(); }
-        } else if (action === '4') { acDeleteState(name); }
+
+        // Check if double-click on a state node — rename it
+        for (var i = 0; i < ctrl.states.length; i++) {
+            var st = ctrl.states[i];
+            var nd = _acState.nodes[st.name];
+            if (!nd) continue;
+            if (pmx >= nd.x && pmx <= nd.x + 160 && pmy >= nd.y && pmy <= nd.y + 60) {
+                _acShowInlineInput(nd.x, nd.y, st.name, function(newName) {
+                    if (newName && newName.trim() && newName.trim() !== st.name) {
+                        var oldName = st.name;
+                        newName = newName.trim();
+                        st.name = newName;
+                        _acState.nodes[newName] = _acState.nodes[oldName];
+                        delete _acState.nodes[oldName];
+                        // Update transitions referencing this state
+                        for (var j = 0; j < ctrl.transitions.length; j++) {
+                            if (ctrl.transitions[j].from === oldName) ctrl.transitions[j].from = newName;
+                            if (ctrl.transitions[j].to === oldName) ctrl.transitions[j].to = newName;
+                        }
+                        _acState.selectedState = newName;
+                        acRefresh();
+                    }
+                });
+                return;
+            }
+        }
+
+        // Double-click on empty canvas — create new state at click position
+        _acShowInlineInput(pmx - 80, pmy - 30, 'State_' + (ctrl.states.length + 1), function(name) {
+            if (name && name.trim()) {
+                var n = name.trim();
+                SashaEngineAPI.addStateToController(_tlEditingCtrlId, n, '');
+                _acState.nodes[n] = { x: pmx - 80, y: pmy - 30 };
+                _acState.selectedState = n;
+                acRefresh();
+                log('Created state: ' + n, 'log');
+            }
+        });
     }
 
     function _acCanvasContextMenu(e) {
@@ -10102,15 +10232,17 @@ var EngineApp = (function() {
         if (!ctrl) return;
         if (type === 'canvas') {
             if (itemIdx === 0) {
-                // Create empty state at click position
+                // Create empty state at click position with auto-name
                 var name = 'State_' + (ctrl.states.length + 1);
                 SashaEngineAPI.addStateToController(_tlEditingCtrlId, name, '');
                 _acState.nodes[name] = { x: canvasX - 80, y: canvasY - 30 };
                 _acState.selectedState = name;
                 acRefresh(); log('Created state: ' + name, 'log');
             } else if (itemIdx === 1) {
-                // Create state with clip (reuse acAddState)
-                acAddState(null, canvasX - 80, canvasY - 30);
+                // Create state with custom name via inline input
+                _acShowInlineInput(canvasX - 80, canvasY - 30, 'New State', function(n) {
+                    if (n && n.trim()) { acAddState(n.trim(), canvasX - 80, canvasY - 30); }
+                });
             }
         } else if (type === 'state') {
             if (itemIdx === 0) {
@@ -10121,21 +10253,45 @@ var EngineApp = (function() {
                 if (sObj) sObj.isDefault = true;
                 acRefresh(); log('Set ' + stateName + ' as default', 'log');
             } else if (itemIdx === 1) {
-                // Assign Clip
+                // Assign Clip — show dropdown
                 var allAssets = SashaAssetManager.getAll();
                 var clips = [];
-                for (var ci = 0; ci < allAssets.length; ci++) { if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name); }
-                if (clips.length === 0) { log('No clips', 'warn'); return; }
-                var choice = prompt('Clip:\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
-                if (choice) { for (var k = 0; k < clips.length; k++) { var cn = clips[k].split(':')[1]; if (cn.toLowerCase() === choice.toLowerCase()) { var so = null; for (var m = 0; m < ctrl.states.length; m++) { if (ctrl.states[m].name === stateName) { so = ctrl.states[m]; break; } } if (so) so.clipId = clips[k].split(':')[0]; break; } } acRefresh(); }
+                for (var ci = 0; ci < allAssets.length; ci++) { if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) clips.push({id: allAssets[ci].data.clipId, name: allAssets[ci].name}); }
+                if (clips.length === 0) { log('No clips available', 'warn'); return; }
+                var wrap = document.getElementById('ac-canvas-wrap');
+                if (!wrap) return;
+                var old = document.getElementById('ac-clip-picker');
+                if (old) old.remove();
+                var div = document.createElement('div');
+                div.id = 'ac-clip-picker';
+                div.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;background:rgba(15,15,35,0.97);border:2px solid #4f46e5;border-radius:10px;padding:16px;min-width:260px;box-shadow:0 8px 32px rgba(99,102,241,0.4);';
+                var clipOpts = '';
+                for (var c = 0; c < clips.length; c++) clipOpts += '<option value="' + clips[c].id + '">' + clips[c].name + '</option>';
+                clipOpts += '<option value="">No clip</option>';
+                div.innerHTML = '<div style="color:#6366f1;font-weight:700;font-size:0.8rem;margin-bottom:10px;">Assign Clip to "' + stateName + '"</div>'
+                    + '<select id="ac-clip-select" style="width:100%;font-size:0.72rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:6px 8px;outline:none;border-radius:4px;margin-bottom:10px;">' + clipOpts + '</select>'
+                    + '<div style="display:flex;gap:8px;">'
+                    + '<button id="ac-clip-ok" style="flex:1;font-size:0.72rem;padding:6px;background:#4f46e5;border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;">Assign</button>'
+                    + '<button id="ac-clip-no" style="font-size:0.72rem;padding:6px 12px;background:#374151;border:none;color:#a1a1aa;border-radius:6px;cursor:pointer;">Cancel</button>'
+                    + '</div>';
+                wrap.appendChild(div);
+                document.getElementById('ac-clip-ok').onclick = function() {
+                    var clipId = document.getElementById('ac-clip-select').value;
+                    var s = null; for (var n = 0; n < ctrl.states.length; n++) { if (ctrl.states[n].name === stateName) { s = ctrl.states[n]; break; } }
+                    if (s) s.clipId = clipId;
+                    div.remove(); acRefresh();
+                };
+                document.getElementById('ac-clip-no').onclick = function() { div.remove(); };
             } else if (itemIdx === 2) {
-                // Rename
-                var newName = prompt('New name:', stateName);
-                if (newName && newName.trim()) {
-                    var oldN = stateName; newName = newName.trim();
-                    var s = null; for (var n = 0; n < ctrl.states.length; n++) { if (ctrl.states[n].name === oldN) { s = ctrl.states[n]; break; } }
-                    if (s) { s.name = newName; _acState.nodes[newName] = _acState.nodes[oldN]; delete _acState.nodes[oldN]; _acState.selectedState = newName; acRefresh(); }
-                }
+                // Rename — inline input
+                var nd = _acState.nodes[stateName];
+                _acShowInlineInput(nd ? nd.x : canvasX - 80, nd ? nd.y : canvasY - 30, stateName, function(newName) {
+                    if (newName && newName.trim() && newName.trim() !== stateName) {
+                        var oldN = stateName; newName = newName.trim();
+                        var s = null; for (var n = 0; n < ctrl.states.length; n++) { if (ctrl.states[n].name === oldN) { s = ctrl.states[n]; break; } }
+                        if (s) { s.name = newName; _acState.nodes[newName] = _acState.nodes[oldN]; delete _acState.nodes[oldN]; _acState.selectedState = newName; acRefresh(); }
+                    }
+                });
             } else if (itemIdx === 3) { acDeleteState(stateName); }
         }
     }
@@ -11325,10 +11481,63 @@ var EngineApp = (function() {
         isInitialized: function() { return initialized; }
     };
 })();
+// ============ AC v5 SAFETY NET — ensures button works after IIFE ============
+(function() {
+    function attachACButton() {
+        var btn = document.getElementById('ac-open-btn');
+        if (!btn) return;
+        // Remove any existing onclick to avoid duplicates
+        btn.removeAttribute('onclick');
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[AC v5] Button clicked, EngineApp type:', typeof EngineApp);
+            if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
+                EngineApp.openAnimatorFromTimeline();
+            } else {
+                console.error('[AC v5] EngineApp not available yet, retrying in 100ms...');
+                setTimeout(function() {
+                    if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
+                        EngineApp.openAnimatorFromTimeline();
+                    } else {
+                        console.error('[AC v5] EngineApp still not available');
+                    }
+                }, 100);
+            }
+        }, true); // capture phase — fires first
+        console.log('[AC v5] Safety net handler attached to #ac-open-btn');
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachACButton);
+    } else {
+        attachACButton();
+    }
+    // Also attach to timeline button
+    function attachTimelineACButton() {
+        var btns = document.querySelectorAll('[onclick*="openAnimatorFromTimeline"]');
+        for (var i = 0; i < btns.length; i++) {
+            var b = btns[i];
+            if (b.id === 'ac-open-btn') continue; // already handled
+            b.removeAttribute('onclick');
+            (function(el) {
+                el.addEventListener('click', function(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
+                        EngineApp.openAnimatorFromTimeline();
+                    }
+                }, true);
+            })(b);
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachTimelineACButton);
+    } else {
+        attachTimelineACButton();
+    }
+})();
 </script>
 
 </body>
 </html>
-
 
 
