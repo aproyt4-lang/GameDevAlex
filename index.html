@@ -1105,6 +1105,7 @@
                         <span id="ac-ctrl-name" style="font-size:0.8rem;color:var(--primary);font-weight:700;min-width:60px;"></span>
                         <div style="flex:1"></div>
                         <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:4px 10px;font-size:0.72rem;background:#4f46e5;border:1px solid #6366f1;color:#fff;border-radius:6px;cursor:pointer;"><i class="fas fa-plus"></i> State</button>
+                        <button class="eng-tab" onclick="EngineApp.acAddTransition()" style="padding:4px 10px;font-size:0.72rem;background:#7c3aed;border:1px solid #8b5cf6;color:#fff;border-radius:6px;cursor:pointer;"><i class="fas fa-arrow-right"></i> Transition</button>
                         <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:4px 10px;font-size:0.72rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;"><i class="fas fa-sliders-h"></i> Param</button>
                     </div>
                     <!-- Transition Inspector Bar (shown when transition selected) -->
@@ -9553,12 +9554,18 @@ var EngineApp = (function() {
             log('Created state: ' + customName, 'log');
             return;
         }
-        // Show inline rename input on canvas (no prompt!)
-        _acShowInlineInput(customX || 120 + ctrl.states.length * 180, customY || 80, 'New State', function(name) {
+        // Show inline input at center of canvas (screen coords)
+        var wrap = document.getElementById('ac-canvas-wrap');
+        var sx = wrap ? wrap.clientWidth / 2 - 80 : 200;
+        var sy = wrap ? wrap.clientHeight / 2 - 20 : 100;
+        _acShowInlineInput(sx, sy, 'New State', function(name) {
             if (name && name.trim()) {
                 var n = name.trim();
                 SashaEngineAPI.addStateToController(_tlEditingCtrlId, n, '');
-                _acState.nodes[n] = { x: 120 + ctrl.states.length * 180, y: 80 + Math.random() * 60 };
+                // Place node at center of visible canvas area
+                var cx = (-_acState.panX) + (wrap ? wrap.clientWidth / 2 : 200) - 80;
+                var cy = (-_acState.panY) + (wrap ? wrap.clientHeight / 2 : 100) - 30;
+                _acState.nodes[n] = { x: cx, y: cy };
                 _acState.selectedState = n;
                 acRefresh();
                 log('Created state: ' + n, 'log');
@@ -9567,27 +9574,35 @@ var EngineApp = (function() {
     }
 
     // Inline text input overlay on canvas (replaces all prompt() calls)
-    function _acShowInlineInput(x, y, placeholder, callback) {
+    // x, y are SCREEN coordinates relative to ac-canvas-wrap (NOT canvas/pan coordinates)
+    function _acShowInlineInput(screenX, screenY, placeholder, callback) {
         var wrap = document.getElementById('ac-canvas-wrap');
         if (!wrap) return;
         // Remove existing input if any
         var old = document.getElementById('ac-inline-input');
         if (old) old.remove();
+        // Clamp position so input stays visible
+        var wrapRect = wrap.getBoundingClientRect();
+        var left = Math.max(4, Math.min(screenX, wrapRect.width - 180));
+        var top = Math.max(4, Math.min(screenY, wrapRect.height - 40));
         var input = document.createElement('input');
         input.id = 'ac-inline-input';
         input.type = 'text';
         input.value = placeholder || '';
         input.placeholder = placeholder || 'Name...';
-        input.style.cssText = 'position:absolute;left:' + (x + 20) + 'px;top:' + (y + 20) + 'px;z-index:100;background:#1e1b4b;border:2px solid #6366f1;color:#fff;font-size:13px;padding:6px 10px;border-radius:6px;outline:none;min-width:160px;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(99,102,241,0.4);';
+        input.style.cssText = 'position:absolute;left:' + left + 'px;top:' + top + 'px;z-index:100;background:#1e1b4b;border:2px solid #6366f1;color:#fff;font-size:13px;padding:6px 10px;border-radius:6px;outline:none;min-width:160px;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(99,102,241,0.4);';
         wrap.appendChild(input);
         input.focus();
         input.select();
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 callback(input.value);
                 input.remove();
             } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
                 input.remove();
             }
         });
@@ -10098,14 +10113,15 @@ var EngineApp = (function() {
         var my = e.clientY - rect.top;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
-        if (_acState.contextMenu) { _acState.contextMenu = null; _acRenderCanvas(); return; }
 
         // Middle mouse or Alt+left = pan
         if (e.button === 1 || (e.altKey && e.button === 0)) {
+            _acState.contextMenu = null;
             _acState.panning = true;
             _acState.panStartX = mx; _acState.panStartY = my;
             _acState.panStartPanX = _acState.panX; _acState.panStartPanY = _acState.panY;
             canvas.style.cursor = 'grabbing';
+            _acRenderCanvas();
             return;
         }
 
@@ -10118,26 +10134,31 @@ var EngineApp = (function() {
         // Check output port hit — start connecting
         var portHit = _acHitOutputPort(pmx, pmy);
         if (portHit) {
+            _acState.contextMenu = null;
             _acState.connectingFrom = portHit;
             _acState.connectMouseX = pmx;
             _acState.connectMouseY = pmy;
             _acState._outputPortHit = true;
             var hint = document.getElementById('ac-drag-hint');
             if (hint) hint.style.display = 'block';
+            _acRenderCanvas();
             return;
         }
 
-        // Check context menu click
+        // Check context menu click — MUST be before the early dismiss
         if (_acState.contextMenu) {
             var cm = _acState.contextMenu;
             var cmItems = cm.type === 'canvas' ? ['Create State', 'Create State + Clip'] : ['Set as Default', 'Assign Clip', 'Rename', 'Delete State'];
             var cmH = cmItems.length * 28 + 12;
             if (mx >= cm.x && mx <= cm.x + 170 && my >= cm.y && my <= cm.y + cmH) {
                 var itemIdx = Math.floor((my - cm.y - 4) / 28);
-                _acHandleContextMenuItem(cm.type, cm.stateName, cm.canvasX, cm.canvasY, itemIdx);
-                _acState.contextMenu = null; return;
+                if (itemIdx >= 0 && itemIdx < cmItems.length) {
+                    _acHandleContextMenuItem(cm.type, cm.stateName, cm.canvasX, cm.canvasY, itemIdx);
+                }
+                _acState.contextMenu = null; _acRenderCanvas(); return;
             }
-            _acState.contextMenu = null;
+            // Click outside menu — dismiss
+            _acState.contextMenu = null; _acRenderCanvas(); return;
         }
 
         // Check transition click
@@ -10280,7 +10301,8 @@ var EngineApp = (function() {
             var nd = _acState.nodes[st.name];
             if (!nd) continue;
             if (pmx >= nd.x && pmx <= nd.x + 160 && pmy >= nd.y && pmy <= nd.y + 60) {
-                _acShowInlineInput(nd.x, nd.y, st.name, function(newName) {
+                // Pass screen coordinates (mx, my) for input positioning
+                _acShowInlineInput(mx, my, st.name, function(newName) {
                     if (newName && newName.trim() && newName.trim() !== st.name) {
                         var oldName = st.name;
                         newName = newName.trim();
@@ -10301,7 +10323,8 @@ var EngineApp = (function() {
         }
 
         // Double-click on empty canvas — create new state at click position
-        _acShowInlineInput(pmx - 80, pmy - 30, 'State_' + (ctrl.states.length + 1), function(name) {
+        // Pass screen coords for input, canvas coords for node placement
+        _acShowInlineInput(mx, my, 'State_' + (ctrl.states.length + 1), function(name) {
             if (name && name.trim()) {
                 var n = name.trim();
                 SashaEngineAPI.addStateToController(_tlEditingCtrlId, n, '');
@@ -10344,6 +10367,9 @@ var EngineApp = (function() {
         if (!_tlEditingCtrlId) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
+        // Convert canvas coords to screen coords for inline input placement
+        var screenX = canvasX + _acState.panX;
+        var screenY = canvasY + _acState.panY;
         if (type === 'canvas') {
             if (itemIdx === 0) {
                 // Create empty state at click position with auto-name
@@ -10353,8 +10379,8 @@ var EngineApp = (function() {
                 _acState.selectedState = name;
                 acRefresh(); log('Created state: ' + name, 'log');
             } else if (itemIdx === 1) {
-                // Create state with custom name via inline input
-                _acShowInlineInput(canvasX - 80, canvasY - 30, 'New State', function(n) {
+                // Create state with custom name via inline input (screen coords)
+                _acShowInlineInput(screenX - 80, screenY - 30, 'New State', function(n) {
                     if (n && n.trim()) { acAddState(n.trim(), canvasX - 80, canvasY - 30); }
                 });
             }
@@ -10397,9 +10423,9 @@ var EngineApp = (function() {
                 };
                 document.getElementById('ac-clip-no').onclick = function() { div.remove(); };
             } else if (itemIdx === 2) {
-                // Rename — inline input
+                // Rename — inline input at state position (screen coords)
                 var nd = _acState.nodes[stateName];
-                _acShowInlineInput(nd ? nd.x : canvasX - 80, nd ? nd.y : canvasY - 30, stateName, function(newName) {
+                _acShowInlineInput(screenX - 80, screenY - 30, stateName, function(newName) {
                     if (newName && newName.trim() && newName.trim() !== stateName) {
                         var oldN = stateName; newName = newName.trim();
                         var s = null; for (var n = 0; n < ctrl.states.length; n++) { if (ctrl.states[n].name === oldN) { s = ctrl.states[n]; break; } }
