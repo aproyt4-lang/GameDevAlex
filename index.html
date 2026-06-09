@@ -527,114 +527,23 @@
     </style>
 </head>
 <body>
-    <!-- BULLETPROOF AC OPENER v4 — attaches click handler DIRECTLY to button by ID, no function calls needed -->
+    <!-- AC opener handled by EngineApp.openAnimatorFromTimeline() — no extra scripts needed -->
     <script>
-    (function() {
-        var _V = 'v4';
-        document.addEventListener('DOMContentLoaded', function() {
-            // Patch title with version so user can verify cache is busted
-            var t = document.querySelector('title');
-            if (t && t.textContent.indexOf(_V) === -1) t.textContent = t.textContent + ' [' + _V + ']';
-
-            // === ATTACH CLICK HANDLER DIRECTLY TO BUTTON ===
-            var btn = document.getElementById('ac-open-btn');
-            if (btn) {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('AC_' + _V + ': BUTTON CLICKED — opening animator editor');
-                    try {
-                        // 1. Find or create controller
-                        var ctrlId = null;
-                        var ctrlName = 'NewAnimatorController';
-                        if (window.SashaAssetManager && SashaAssetManager.getAll) {
-                            var assets = SashaAssetManager.getAll();
-                            for (var i = 0; i < assets.length; i++) {
-                                if (assets[i].type === 'animator' && assets[i].data && assets[i].data.controllerId) {
-                                    ctrlId = assets[i].data.controllerId;
-                                    ctrlName = assets[i].name || ctrlName;
-                                    break;
-                                }
-                            }
-                        }
-                        if (ctrlId && window.SashaEngineAPI && SashaEngineAPI.getAnimatorController && !SashaEngineAPI.getAnimatorController(ctrlId)) {
-                            // Controller missing in runtime (page reload) — recreate
-                            console.log('AC_' + _V + ': recreating missing controller ' + ctrlId);
-                            SashaEngineAPI.createAnimatorController(ctrlId, ctrlName);
-                        }
-                        if (!ctrlId) {
-                            ctrlId = 'ctrl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-                            console.log('AC_' + _V + ': creating new controller ' + ctrlId);
-                            if (window.SashaEngineAPI && SashaEngineAPI.createAnimatorController) {
-                                SashaEngineAPI.createAnimatorController(ctrlId, ctrlName);
-                            }
-                            if (window.SashaAssetManager && SashaAssetManager.addAsset) {
-                                SashaAssetManager.addAsset('animator', ctrlName, 'folder_animators', { controllerId: ctrlId });
-                            }
-                        }
-                        // 2. Show editor — ALWAYS, no conditions
-                        var ae = document.getElementById('animator-editor');
-                        if (!ae) { console.error('AC_' + _V + ': animator-editor div NOT FOUND'); return; }
-                        if (ae.parentElement !== document.body) document.body.appendChild(ae);
-                        ae.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;display:flex;flex-direction:column;background:#1a1a2e;overflow:hidden;box-shadow:0 0 60px rgba(99,102,241,0.4);';
-                        // 3. Set controller name
-                        var ne = document.getElementById('ac-ctrl-name');
-                        if (ne) {
-                            var ctrl = (window.SashaEngineAPI && SashaEngineAPI.getAnimatorController) ? SashaEngineAPI.getAnimatorController(ctrlId) : null;
-                            ne.textContent = ctrl ? (ctrl.name || 'Animator Controller') : 'Animator Controller';
-                        }
-                        // 4. Update fullscreen button
-                        var fb = document.getElementById('ac-fullscreen-btn');
-                        if (fb) fb.innerHTML = '<i class="fas fa-compress"></i> Window';
-                        // 5. Set internal state for EngineApp functions
-                        if (window.EngineApp) {
-                            // We need to set _tlEditingCtrlId for EngineApp.acRefresh to work
-                            // Since it's inside the IIFE closure, we call openAnimatorEditor if available
-                            if (typeof EngineApp.openAnimatorEditor === 'function') {
-                                try { EngineApp.openAnimatorEditor(ctrlId); } catch(ex) { console.log('AC_' + _V + ': EngineApp.openAnimatorEditor error:', ex); }
-                            } else if (typeof EngineApp.acRefresh === 'function') {
-                                try { EngineApp.acRefresh(); } catch(ex2) {}
-                            } else {
-                                // Fallback canvas render
-                                var cvs = document.getElementById('ac-canvas');
-                                var wrap = document.getElementById('ac-canvas-wrap');
-                                if (cvs && wrap) {
-                                    var dpr = window.devicePixelRatio || 1;
-                                    var w = Math.max(wrap.clientWidth, 600), h = Math.max(wrap.clientHeight, 400);
-                                    cvs.width = w * dpr; cvs.height = h * dpr;
-                                    cvs.style.width = w + 'px'; cvs.style.height = h + 'px';
-                                    var ctx = cvs.getContext('2d');
-                                    if (ctx) { ctx.scale(dpr, dpr); ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0,0,w,h); ctx.fillStyle = '#6366f1'; ctx.font = 'bold 18px Inter,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Animator Controller [' + _V + ']', w/2, h/2); ctx.textAlign = 'left'; }
-                                }
-                            }
-                        }
-                        console.log('AC_' + _V + ': OPENED ctrlId=' + ctrlId);
-                    } catch(err) {
-                        console.error('AC_' + _V + ' ERROR:', err);
-                    }
-                });
-                console.log('AC_' + _V + ': Click handler attached to #ac-open-btn');
-            } else {
-                console.error('AC_' + _V + ': #ac-open-btn NOT FOUND in DOM');
-            }
-
-            // Also attach to Close button
-            var closeBtns = document.querySelectorAll('[onclick*="closeAnimatorBackToTimeline"]');
-            for (var c = 0; c < closeBtns.length; c++) {
-                (function(el) {
-                    var orig = el.getAttribute('onclick');
-                    el.removeAttribute('onclick');
-                    el.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        var ae = document.getElementById('animator-editor');
-                        if (ae) ae.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;z-index:500;';
-                        if (window.EngineApp && typeof EngineApp.tlRefresh === 'function') try { EngineApp.tlRefresh(); } catch(x) {}
-                    });
-                })(closeBtns[c]);
-            }
-        });
-        console.log('AC_' + _V + ': Script loaded, waiting for DOM');
-    })();
+    // Polyfill for CanvasRenderingContext2D.roundRect
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+            if (!Array.isArray(radii)) radii = [radii, radii, radii, radii];
+            var r = typeof radii[0] === 'number' ? radii : radii[0];
+            var tl = Array.isArray(r) ? r[0] : r, tr = Array.isArray(r) ? r[1] || r[0] : r;
+            var br = Array.isArray(r) ? r[2] || r[0] : r, bl = Array.isArray(r) ? r[3] || r[0] : r;
+            this.moveTo(x + tl, y);
+            this.lineTo(x + w - tr, y); this.quadraticCurveTo(x + w, y, x + w, y + tr);
+            this.lineTo(x + w, y + h - br); this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+            this.lineTo(x + bl, y + h); this.quadraticCurveTo(x, y + h, x, y + h - bl);
+            this.lineTo(x, y + tl); this.quadraticCurveTo(x, y, x + tl, y);
+            this.closePath(); return this;
+        };
+    }
     </script>
     <div class="bg-animation"></div>
     <div class="grid-overlay"></div>
@@ -985,7 +894,7 @@
                     <button class="eng-btn" onclick="EngineApp.saveProject()" title="Save"><i class="fas fa-save"></i></button>
                     <button class="eng-btn" onclick="EngineApp.exportGame()" title="Export"><i class="fas fa-file-export"></i></button>
                     <div class="eng-separator"></div>
-                    <button class="eng-btn" id="ac-open-btn" title="Animator Controller" style="background:var(--primary);border-color:var(--primary);"><i class="fas fa-project-diagram"></i> Animator</button>
+                    <button class="eng-btn" id="ac-open-btn" onclick="EngineApp.openAnimatorFromTimeline()" title="Animator Controller" style="background:var(--primary);border-color:var(--primary);"><i class="fas fa-project-diagram"></i> Animator</button>
                     <div class="engine-model-status">
                         <div class="status-dot" id="eng-status-dot"></div>
                         <span id="eng-status-text">AI: offline</span>
@@ -1185,33 +1094,52 @@
                     </div>
                 </div>
                 <!-- Animator Controller Editor: overlay on entire engine section -->
-                <div id="animator-editor" style="position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;z-index:500;">
-                    <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);min-height:32px;background:var(--bg-dark);">
-                        <button class="eng-tab" onclick="EngineApp.closeAnimatorBackToTimeline()" style="padding:2px 8px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;cursor:pointer;"><i class="fas fa-arrow-left"></i> Close</button>
-                        <span id="ac-ctrl-name" style="font-size:0.72rem;color:var(--primary);font-weight:600;min-width:60px;"></span>
+                <div id="animator-editor" style="position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;background:#12122a;overflow:hidden;z-index:500;">
+                    <!-- AC Toolbar -->
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);min-height:36px;background:var(--bg-dark);">
+                        <button class="eng-tab" onclick="EngineApp.closeAnimatorBackToTimeline()" style="padding:4px 10px;font-size:0.72rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='#ef4444';this.style.color='#fff';this.style.borderColor='#ef4444'" onmouseout="this.style.background='var(--bg-hover)';this.style.color='var(--text-secondary)';this.style.borderColor='var(--border)'"><i class="fas fa-arrow-left"></i> Close</button>
+                        <span style="font-size:0.75rem;color:#a1a1aa;">|</span>
+                        <span id="ac-ctrl-name" style="font-size:0.8rem;color:var(--primary);font-weight:700;min-width:60px;"></span>
                         <div style="flex:1"></div>
-                        <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-plus"></i> Add State</button>
-                        <button class="eng-tab" onclick="EngineApp.acAddTransition()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-arrow-right"></i> Add Transition</button>
-                        <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-sliders-h"></i> Add Param</button>
-                        <button class="eng-tab" onclick="EngineApp.acToggleFullscreen()" id="ac-fullscreen-btn" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-expand"></i> Fullscreen</button>
+                        <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:4px 10px;font-size:0.72rem;background:#4f46e5;border:1px solid #6366f1;color:#fff;border-radius:6px;cursor:pointer;"><i class="fas fa-plus"></i> State</button>
+                        <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:4px 10px;font-size:0.72rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;"><i class="fas fa-sliders-h"></i> Param</button>
                     </div>
-                    <div id="ac-transition-bar" style="display:none;padding:4px 8px;border-bottom:1px solid var(--border);min-height:28px;background:var(--bg-dark);gap:6px;align-items:center;flex-wrap:wrap;">
-                        <span style="font-size:0.65rem;color:var(--text-muted);"><i class="fas fa-arrow-right" style="color:#f59e0b;margin-right:3px;"></i> Transition: <b id="ac-tr-label" style="color:#f59e0b;"></b></span>
-                        <div id="ac-tr-conditions" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"></div>
-                        <button onclick="EngineApp.acAddTransitionCondition()" style="padding:1px 6px;font-size:0.62rem;background:var(--primary);border:none;color:#fff;border-radius:3px;cursor:pointer;"><i class="fas fa-plus"></i> Add Condition</button>
-                        <button onclick="EngineApp.acDeleteSelectedTransition()" style="padding:1px 6px;font-size:0.62rem;background:var(--error);border:none;color:#fff;border-radius:3px;cursor:pointer;"><i class="fas fa-trash"></i> Delete</button>
+                    <!-- Transition Inspector Bar (shown when transition selected) -->
+                    <div id="ac-transition-bar" style="display:none;padding:6px 12px;border-bottom:1px solid var(--border);min-height:36px;background:var(--bg-dark);gap:8px;align-items:center;flex-wrap:wrap;">
+                        <span style="font-size:0.7rem;color:#f59e0b;font-weight:600;"><i class="fas fa-arrow-right" style="margin-right:4px;"></i> Transition: <span id="ac-tr-label" style="color:#fbbf24;"></span></span>
+                        <div style="width:1px;height:20px;background:var(--border);"></div>
+                        <span style="font-size:0.65rem;color:#a1a1aa;">Conditions:</span>
+                        <div id="ac-tr-conditions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"></div>
+                        <button onclick="EngineApp.acAddTransitionCondition()" style="padding:3px 8px;font-size:0.65rem;background:#4f46e5;border:none;color:#fff;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> Condition</button>
+                        <div style="flex:1"></div>
+                        <button onclick="EngineApp.acDeleteSelectedTransition()" style="padding:3px 8px;font-size:0.65rem;background:#ef4444;border:none;color:#fff;border-radius:4px;cursor:pointer;"><i class="fas fa-trash"></i> Delete</button>
                     </div>
+                    <!-- Main area: Params + Canvas -->
                     <div style="display:flex;flex:1;min-height:0;">
-                        <div id="ac-params-panel" style="width:180px;min-width:180px;display:flex;flex-direction:column;background:var(--bg-dark);border-right:1px solid var(--border);">
-                            <div style="padding:6px 6px 4px 6px;border-bottom:1px solid var(--border);flex-shrink:0;">
-                                <div style="font-size:0.72rem;color:var(--primary);font-weight:600;margin-bottom:4px;">Parameters</div>
-                                <button onclick="EngineApp.acAddParam()" style="width:100%;padding:3px 6px;font-size:0.65rem;background:var(--primary);border:none;color:#fff;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> Add Parameter</button>
+                        <!-- Parameters Panel (left sidebar) -->
+                        <div id="ac-params-panel" style="width:200px;min-width:200px;display:flex;flex-direction:column;background:var(--bg-dark);border-right:1px solid var(--border);">
+                            <div style="padding:8px 8px 6px 8px;border-bottom:1px solid var(--border);flex-shrink:0;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                    <div style="font-size:0.75rem;color:var(--primary);font-weight:700;">Parameters</div>
+                                    <button onclick="EngineApp.acAddParam()" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#4f46e5;border:none;color:#fff;border-radius:4px;cursor:pointer;font-size:0.65rem;"><i class="fas fa-plus"></i></button>
+                                </div>
                             </div>
                             <div id="ac-params-list" style="flex:1;overflow-y:auto;padding:6px;"></div>
                         </div>
-                        <div id="ac-canvas-wrap" style="flex:1;position:relative;overflow:auto;">
-                            <canvas id="ac-canvas" style="display:block;"></canvas>
+                        <!-- Canvas Area -->
+                        <div id="ac-canvas-wrap" style="flex:1;position:relative;overflow:hidden;background:#0d0d20;">
+                            <canvas id="ac-canvas" style="display:block;cursor:default;"></canvas>
+                            <!-- Drag hint overlay -->
+                            <div id="ac-drag-hint" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(79,70,229,0.9);color:#fff;padding:8px 16px;border-radius:8px;font-size:0.75rem;pointer-events:none;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+                                <i class="fas fa-link" style="margin-right:4px;"></i> Drop on target state to create transition
+                            </div>
                         </div>
+                    </div>
+                    <!-- Status bar -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:3px 12px;min-height:24px;background:var(--bg-dark);border-top:1px solid var(--border);font-size:0.65rem;color:#a1a1aa;">
+                        <span id="ac-status-hint">Right-click canvas to create state | Drag from state output to create transition</span>
+                        <div style="flex:1"></div>
+                        <span id="ac-zoom-info">100%</span>
                     </div>
                 </div>
             </div>
@@ -9459,13 +9387,17 @@ var EngineApp = (function() {
             c.addEventListener('contextmenu', _acCanvasContextMenu);
         }
     }
+    // ============ ANIMATOR CONTROLLER EDITOR — Unity-style ============
     var _acState = {
         selectedState: null, selectedTransition: -1,
         draggingNode: false, dragNodeName: '', dragOffX: 0, dragOffY: 0,
-        nodes: {}, // stateName → { x, y }
-        _transPaths: [], // cached transition bezier paths for hit detection
+        // Drag-to-connect: dragging from output port of a state
+        connectingFrom: null, connectMouseX: 0, connectMouseY: 0,
+        nodes: {},
+        _transPaths: [],
         panX: 0, panY: 0, panning: false, panStartX: 0, panStartY: 0, panStartPanX: 0, panStartPanY: 0,
-        contextMenu: null // { x, y, type, stateName }
+        contextMenu: null,
+        _outputPortHit: false // track if mousedown was on output port
     };
 
     function acRefresh() {
@@ -9474,10 +9406,9 @@ var EngineApp = (function() {
         if (!ctrl) { var n = document.getElementById('ac-ctrl-name'); if (n) n.textContent = 'No controller'; return; }
         var n = document.getElementById('ac-ctrl-name');
         if (n) n.textContent = ctrl.name || 'Animator Controller';
-        // Init node positions if not set
         for (var i = 0; i < ctrl.states.length; i++) {
             if (!_acState.nodes[ctrl.states[i].name]) {
-                _acState.nodes[ctrl.states[i].name] = { x: 80 + i * 180, y: 60 + (i % 2) * 80 };
+                _acState.nodes[ctrl.states[i].name] = { x: 120 + i * 200, y: 80 + (i % 3) * 90 };
             }
         }
         _acRenderParams();
@@ -9485,14 +9416,13 @@ var EngineApp = (function() {
         _acRenderTransitionBar();
     }
 
-    function acAddState() {
+    function acAddState(customName, customX, customY) {
         if (!_tlEditingCtrlId) return;
-        var name = prompt('State name:', 'Walk');
+        var name = customName || prompt('State name:', 'Walk');
         if (!name || !name.trim()) return;
         name = name.trim();
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
-        // Find available clips
         var allAssets = SashaAssetManager.getAll();
         var clips = [];
         for (var i = 0; i < allAssets.length; i++) {
@@ -9501,10 +9431,9 @@ var EngineApp = (function() {
             }
         }
         var clipId = '';
-        if (clips.length > 0) {
-            var choice = prompt('Animation Clip (optional, press Cancel for none):\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
+        if (clips.length > 0 && !customName) {
+            var choice = prompt('Animation Clip (optional, Cancel for none):\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
             if (choice) {
-                // Flexible matching: case-insensitive, partial match
                 for (var ci = 0; ci < clips.length; ci++) {
                     var clipName = clips[ci].split(':')[1];
                     if (clipName.toLowerCase() === choice.toLowerCase() || clipName.toLowerCase().indexOf(choice.toLowerCase()) !== -1 || choice.toLowerCase().indexOf(clipName.toLowerCase()) !== -1) {
@@ -9514,7 +9443,11 @@ var EngineApp = (function() {
             }
         }
         SashaEngineAPI.addStateToController(_tlEditingCtrlId, name, clipId);
-        _acState.nodes[name] = { x: 80 + ctrl.states.length * 160, y: 60 + Math.random() * 60 };
+        if (customX !== undefined && customY !== undefined) {
+            _acState.nodes[name] = { x: customX, y: customY };
+        } else {
+            _acState.nodes[name] = { x: 120 + ctrl.states.length * 180, y: 80 + Math.random() * 60 };
+        }
         acRefresh();
         log('Added state: ' + name, 'log');
     }
@@ -9535,17 +9468,25 @@ var EngineApp = (function() {
         log('Added parameter: ' + name + ' (' + type + ')', 'log');
     }
 
-    function acAddTransition() {
+    function acAddTransition(fromName, toName) {
         if (!_tlEditingCtrlId) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl || ctrl.states.length < 2) { log('Need at least 2 states', 'warn'); return; }
         var stateNames = ctrl.states.map(function(s){return s.name});
-        var from = prompt('From state:\n' + stateNames.join(', '), stateNames[0]);
+        var from = fromName || prompt('From state:\n' + stateNames.join(', '), stateNames[0]);
         if (!from) return;
-        var to = prompt('To state:\n' + stateNames.join(', '), stateNames[stateNames.length > 1 ? 1 : 0]);
+        var to = toName || prompt('To state:\n' + stateNames.join(', '), stateNames[stateNames.length > 1 ? 1 : 0]);
         if (!to) return;
-        var condition = prompt('Condition (e.g. Speed > 1, IsGrounded == false):', '');
-        SashaEngineAPI.addTransition(_tlEditingCtrlId, from, to, condition || '', true);
+        // Check if transition already exists
+        for (var i = 0; i < ctrl.transitions.length; i++) {
+            if (ctrl.transitions[i].from === from && ctrl.transitions[i].to === to) {
+                log('Transition ' + from + ' -> ' + to + ' already exists', 'warn');
+                _acState.selectedTransition = i;
+                acRefresh();
+                return;
+            }
+        }
+        SashaEngineAPI.addTransition(_tlEditingCtrlId, from, to, '', true);
         acRefresh();
         log('Added transition: ' + from + ' -> ' + to, 'log');
     }
@@ -9570,35 +9511,45 @@ var EngineApp = (function() {
         var list = document.getElementById('ac-params-list');
         if (!list) return;
         var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (!ctrl) { list.innerHTML = '<div style="color:var(--text-muted);font-size:0.68rem">No parameters</div>'; return; }
+        if (!ctrl) { list.innerHTML = '<div style="color:#71717a;font-size:0.7rem;padding:8px;">No parameters</div>'; return; }
         var html = '';
         for (var p in ctrl.parameters) {
             if (!ctrl.parameters.hasOwnProperty(p)) continue;
             var param = ctrl.parameters[p];
-            html += '<div style="padding:4px 6px;background:var(--bg-hover);border-radius:4px;margin-bottom:4px;font-size:0.68rem;">';
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">';
-            html += '<span style="color:#6366f1;font-size:0.6rem;text-transform:uppercase;">' + param.type + '</span>';
-            html += '<button onclick="EngineApp.acRemoveParam(\'' + p + '\')" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.6rem;"><i class="fas fa-times"></i></button>';
+            var typeColor = param.type === 'float' ? '#6366f1' : param.type === 'int' ? '#06b6d4' : param.type === 'bool' ? '#22c55e' : '#f59e0b';
+            html += '<div style="padding:6px 8px;background:#1e1b4b;border:1px solid #2e2e4a;border-radius:6px;margin-bottom:6px;font-size:0.7rem;">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
+            html += '<div style="display:flex;align-items:center;gap:4px;">';
+            html += '<span style="color:' + typeColor + ';font-size:0.55rem;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">' + param.type + '</span>';
             html += '</div>';
-            html += '<span style="color:#fff;">' + p + '</span>';
+            html += '<button onclick="EngineApp.acRemoveParam(\'' + p.replace(/'/g, "\\'") + '\')" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:0.6rem;width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:all 0.15s;" onmouseover="this.style.color=#ef4444;this.style.background=\'rgba(239,68,68,0.15)\'" onmouseout="this.style.color=\'#71717a\';this.style.background=\'none\'"><i class="fas fa-times"></i></button>';
+            html += '</div>';
+            html += '<div style="color:#fff;font-weight:600;font-size:0.72rem;">' + p + '</div>';
             if (param.type === 'float') {
-                html += '<input type="range" min="-10" max="10" step="0.1" value="' + param.value + '" style="width:100%;margin-top:2px;" onchange="EngineApp.acSetParam(\'' + p + '\',parseFloat(this.value))" oninput="this.nextElementSibling.textContent=this.value">';
-                html += '<span style="font-size:0.6rem;color:var(--text-muted);">' + param.value + '</span>';
+                html += '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;">';
+                html += '<input type="range" min="-10" max="10" step="0.1" value="' + param.value + '" style="flex:1;height:4px;cursor:pointer;" onchange="EngineApp.acSetParam(\'' + p.replace(/'/g, "\\'") + '\',parseFloat(this.value))" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">';
+                html += '<span style="font-size:0.65rem;color:#a1a1aa;min-width:28px;text-align:right;">' + param.value.toFixed(1) + '</span>';
+                html += '</div>';
             } else if (param.type === 'int') {
-                html += '<input type="number" value="' + param.value + '" style="width:100%;margin-top:2px;font-size:0.65rem;background:var(--bg-dark);border:1px solid var(--border);color:#fff;padding:2px 4px;border-radius:3px;outline:none;" onchange="EngineApp.acSetParam(\'' + p + '\',parseInt(this.value))">';
+                html += '<input type="number" value="' + param.value + '" style="width:100%;margin-top:4px;font-size:0.7rem;background:#0f0f23;border:1px solid #2e2e4a;color:#fff;padding:4px 6px;border-radius:4px;outline:none;" onchange="EngineApp.acSetParam(\'' + p.replace(/'/g, "\\'") + '\',parseInt(this.value))">';
             } else if (param.type === 'bool') {
-                html += '<label style="margin-top:2px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" ' + (param.value ? 'checked' : '') + ' onchange="EngineApp.acSetParam(\'' + p + '\',this.checked)"><span style="font-size:0.6rem;color:var(--text-muted);">' + (param.value ? 'true' : 'false') + '</span></label>';
+                html += '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;cursor:pointer;" onclick="EngineApp.acSetParam(\'' + p.replace(/'/g, "\\'") + '\',!(' + param.value + '))">';
+                html += '<div style="width:32px;height:18px;border-radius:9px;background:' + (param.value ? '#22c55e' : '#374151') + ';position:relative;transition:background 0.2s;">';
+                html += '<div style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:' + (param.value ? '16px' : '2px') + ';transition:left 0.2s;"></div>';
+                html += '</div>';
+                html += '<span style="font-size:0.65rem;color:#a1a1aa;">' + (param.value ? 'true' : 'false') + '</span>';
+                html += '</div>';
             } else if (param.type === 'trigger') {
-                html += '<button onclick="EngineApp.acTriggerParam(\'' + p + '\')" style="width:100%;margin-top:2px;font-size:0.65rem;padding:2px;background:var(--primary);border:none;color:#fff;border-radius:3px;cursor:pointer;">Trigger</button>';
+                html += '<button onclick="EngineApp.acTriggerParam(\'' + p.replace(/'/g, "\\'") + '\')" style="width:100%;margin-top:4px;font-size:0.68rem;padding:5px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.95)\'" onmouseup="this.style.transform=\'scale(1)\'">TRIGGER</button>';
             }
             html += '</div>';
         }
-        list.innerHTML = html;
+        list.innerHTML = html || '<div style="color:#71717a;font-size:0.7rem;padding:8px;">No parameters</div>';
     }
 
     function acSetParam(name, value) {
         var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (ctrl && ctrl.parameters[name]) { ctrl.parameters[name].value = value; _acRenderParams(); }
+        if (ctrl && ctrl.parameters[name]) { ctrl.parameters[name].value = value; _acRenderParams(); _acRenderCanvas(); }
     }
 
     function acTriggerParam(name) {
@@ -9617,102 +9568,68 @@ var EngineApp = (function() {
         var label = document.getElementById('ac-tr-label');
         var condDiv = document.getElementById('ac-tr-conditions');
         if (!bar || !label || !condDiv) return;
-        if (_acState.selectedTransition < 0) {
-            bar.style.display = 'none';
-            return;
-        }
+        if (_acState.selectedTransition < 0) { bar.style.display = 'none'; return; }
         var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
-        if (!ctrl || !ctrl.transitions[_acState.selectedTransition]) {
-            bar.style.display = 'none';
-            return;
-        }
+        if (!ctrl || !ctrl.transitions[_acState.selectedTransition]) { bar.style.display = 'none'; return; }
         var tr = ctrl.transitions[_acState.selectedTransition];
         bar.style.display = 'flex';
         label.textContent = tr.from + ' -> ' + tr.to;
-
-        // Render condition chips
         var html = '';
         if (!tr.conditions) tr.conditions = [];
         for (var ci = 0; ci < tr.conditions.length; ci++) {
             var c = tr.conditions[ci];
-            var modeIcon = c.mode === 'equals' ? '==' : c.mode === 'notEquals' ? '!=' : c.mode === 'greater' ? '>' : '<';
+            var modeSym = c.mode === 'equals' ? '==' : c.mode === 'notEquals' ? '!=' : c.mode === 'greater' ? '>' : '<';
             var modeColor = c.mode === 'equals' ? '#22c55e' : c.mode === 'notEquals' ? '#ef4444' : c.mode === 'greater' ? '#f59e0b' : '#6366f1';
-            html += '<div style="display:flex;align-items:center;gap:3px;background:rgba(255,255,255,0.05);border:1px solid ' + modeColor + ';border-radius:4px;padding:2px 5px;font-size:0.62rem;">';
-            html += '<span style="color:#fff;">' + c.param + '</span>';
-            html += '<select onchange="EngineApp.acUpdateCondMode(' + ci + ',this.value)" style="font-size:0.6rem;background:var(--bg-dark);color:' + modeColor + ';border:none;padding:0 2px;cursor:pointer;outline:none;">';
+            html += '<div style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.04);border:1px solid ' + modeColor + '40;border-radius:6px;padding:3px 6px;font-size:0.65rem;">';
+            html += '<span style="color:#fff;font-weight:600;">' + c.param + '</span>';
+            html += '<select onchange="EngineApp.acUpdateCondMode(' + ci + ',this.value)" style="font-size:0.6rem;background:#0f0f23;color:' + modeColor + ';border:1px solid ' + modeColor + '40;padding:1px 4px;cursor:pointer;outline:none;border-radius:3px;">';
             html += '<option value="equals"' + (c.mode === 'equals' ? ' selected' : '') + '>==</option>';
             html += '<option value="notEquals"' + (c.mode === 'notEquals' ? ' selected' : '') + '>!=</option>';
             html += '<option value="greater"' + (c.mode === 'greater' ? ' selected' : '') + '>&gt;</option>';
             html += '<option value="less"' + (c.mode === 'less' ? ' selected' : '') + '>&lt;</option>';
             html += '</select>';
-            html += '<span style="color:' + modeColor + ';">' + c.value + '</span>';
-            html += '<button onclick="EngineApp.acRemoveCondition(' + ci + ')" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.55rem;padding:0;"><i class="fas fa-times"></i></button>';
+            html += '<span style="color:' + modeColor + ';font-weight:600;">' + c.value + '</span>';
+            html += '<button onclick="EngineApp.acRemoveCondition(' + ci + ')" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:0.55rem;padding:0;width:14px;height:14px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color=\'#ef4444\'" onmouseout="this.style.color=\'#71717a\'"><i class="fas fa-times"></i></button>';
             html += '</div>';
         }
         condDiv.innerHTML = html;
     }
 
-    // Add a new condition to the selected transition
     function acAddTransitionCondition() {
         if (_acState.selectedTransition < 0 || !_tlEditingCtrlId) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl || !ctrl.transitions[_acState.selectedTransition]) return;
         var tr = ctrl.transitions[_acState.selectedTransition];
         if (!tr.conditions) tr.conditions = [];
-
-        // Get available parameter names
         var paramNames = [];
-        for (var p in ctrl.parameters) {
-            if (ctrl.parameters.hasOwnProperty(p)) paramNames.push(p);
-        }
-        if (paramNames.length === 0) {
-            log('No parameters. Add parameters first.', 'warn');
-            return;
-        }
+        for (var p in ctrl.parameters) { if (ctrl.parameters.hasOwnProperty(p)) paramNames.push(p); }
+        if (paramNames.length === 0) { log('No parameters. Add parameters first.', 'warn'); return; }
         var paramName = prompt('Parameter name:\n' + paramNames.join(', '), paramNames[0]);
         if (!paramName || !paramName.trim()) return;
         paramName = paramName.trim();
-        // Check param exists
-        if (!ctrl.parameters[paramName]) {
-            log('Parameter "' + paramName + '" not found', 'warn');
-            return;
-        }
+        if (!ctrl.parameters[paramName]) { log('Parameter "' + paramName + '" not found', 'warn'); return; }
         var paramType = ctrl.parameters[paramName].type;
-        var mode = 'equals';
-        var value = 'true';
+        var mode = 'equals', value = 'true';
         if (paramType === 'bool' || paramType === 'trigger') {
-            var choice = prompt('Value (true / false):', 'true');
-            if (!choice) return;
-            value = (choice.trim().toLowerCase() === 'true') ? 'true' : 'false';
-        } else if (paramType === 'float') {
-            var choice2 = prompt('Condition:\n1 = Equals\n2 = Not Equals\n3 = Greater Than\n4 = Less Than', '1');
-            if (choice2 === '2') mode = 'notEquals';
-            else if (choice2 === '3') mode = 'greater';
-            else if (choice2 === '4') mode = 'less';
-            var valStr = prompt('Value:', '0');
-            if (valStr === null) return;
-            value = parseFloat(valStr);
-            if (isNaN(value)) value = 0;
-        } else if (paramType === 'int') {
-            var choice3 = prompt('Condition:\n1 = Equals\n2 = Not Equals\n3 = Greater Than\n4 = Less Than', '1');
-            if (choice3 === '2') mode = 'notEquals';
-            else if (choice3 === '3') mode = 'greater';
-            else if (choice3 === '4') mode = 'less';
-            var valStr2 = prompt('Value:', '0');
-            if (valStr2 === null) return;
-            value = parseInt(valStr2);
+            var ch = prompt('Value (true / false):', 'true');
+            if (!ch) return;
+            value = (ch.trim().toLowerCase() === 'true') ? 'true' : 'false';
+        } else {
+            var ch2 = prompt('Condition:\n1 = Equals\n2 = Not Equals\n3 = Greater Than\n4 = Less Than', '1');
+            if (ch2 === '2') mode = 'notEquals';
+            else if (ch2 === '3') mode = 'greater';
+            else if (ch2 === '4') mode = 'less';
+            var vs = prompt('Value:', '0');
+            if (vs === null) return;
+            value = paramType === 'float' ? parseFloat(vs) : parseInt(vs);
             if (isNaN(value)) value = 0;
         }
-
         tr.conditions.push({ param: paramName, mode: mode, value: value });
-        // Sync to condition string
         SashaEngineAPI.setTransitionConditions(_tlEditingCtrlId, _acState.selectedTransition, tr.conditions);
-        _acRenderTransitionBar();
-        _acRenderCanvas();
+        _acRenderTransitionBar(); _acRenderCanvas();
         log('Added condition: ' + paramName + ' ' + mode + ' ' + value, 'log');
     }
 
-    // Update condition mode
     function acUpdateCondMode(condIdx, newMode) {
         if (_acState.selectedTransition < 0 || !_tlEditingCtrlId) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
@@ -9721,11 +9638,9 @@ var EngineApp = (function() {
         if (!tr.conditions || !tr.conditions[condIdx]) return;
         tr.conditions[condIdx].mode = newMode;
         SashaEngineAPI.setTransitionConditions(_tlEditingCtrlId, _acState.selectedTransition, tr.conditions);
-        _acRenderTransitionBar();
-        _acRenderCanvas();
+        _acRenderTransitionBar(); _acRenderCanvas();
     }
 
-    // Remove a condition
     function acRemoveCondition(condIdx) {
         if (_acState.selectedTransition < 0 || !_tlEditingCtrlId) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
@@ -9734,54 +9649,17 @@ var EngineApp = (function() {
         if (!tr.conditions) return;
         tr.conditions.splice(condIdx, 1);
         SashaEngineAPI.setTransitionConditions(_tlEditingCtrlId, _acState.selectedTransition, tr.conditions);
-        _acRenderTransitionBar();
-        _acRenderCanvas();
-        log('Removed condition', 'log');
+        _acRenderTransitionBar(); _acRenderCanvas();
     }
 
-    // Delete selected transition
     function acDeleteSelectedTransition() {
         if (_acState.selectedTransition < 0 || !_tlEditingCtrlId) return;
         acDeleteTransition(_acState.selectedTransition);
-        _acRenderTransitionBar();
     }
 
     // ============ ANIMATOR FULLSCREEN MODE ============
     var _acFullscreen = false;
-    function acToggleFullscreen() {
-        _acFullscreen = !_acFullscreen;
-        var btn = document.getElementById('ac-fullscreen-btn');
-        var ae = document.getElementById('animator-editor');
-        if (!ae) return;
-        if (_acFullscreen) {
-            if (!ae._origStyle) ae._origStyle = ae.getAttribute('style');
-            ae.style.position = 'fixed';
-            ae.style.top = '0';
-            ae.style.left = '0';
-            ae.style.right = '0';
-            ae.style.bottom = '0';
-            ae.style.width = '100vw';
-            ae.style.height = '100vh';
-            ae.style.zIndex = '50000';
-            if (btn) { btn.innerHTML = '<i class="fas fa-compress"></i> Exit FS'; }
-        } else {
-            if (ae._origStyle) {
-                ae.setAttribute('style', ae._origStyle);
-            } else {
-                ae.style.position = 'absolute';
-                ae.style.top = '0';
-                ae.style.left = '0';
-                ae.style.right = '0';
-                ae.style.bottom = '0';
-                ae.style.width = '';
-                ae.style.height = '';
-                ae.style.zIndex = '500';
-            }
-            if (btn) { btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen'; }
-        }
-        setTimeout(function() { _acRenderCanvas(); }, 100);
-        setTimeout(function() { _acRenderCanvas(); }, 300);
-    }
+    function acToggleFullscreen() { _acFullscreen = !_acFullscreen; var ae = document.getElementById('animator-editor'); if (!ae) return; if (_acFullscreen) { if (!ae._origStyle) ae._origStyle = ae.getAttribute('style'); if (ae.parentElement !== document.body) document.body.appendChild(ae); ae.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;display:flex;flex-direction:column;background:#12122a;overflow:hidden;'; } else { if (ae._origStyle) ae.setAttribute('style', ae._origStyle); } setTimeout(function() { _acRenderCanvas(); }, 100); }
 
     function _acRenderCanvas() {
         var canvas = document.getElementById('ac-canvas');
@@ -9795,250 +9673,175 @@ var EngineApp = (function() {
         canvas.height = h * dpr;
         canvas.style.width = w + 'px';
         canvas.style.height = h + 'px';
-
         var ctx = canvas.getContext('2d');
         ctx.scale(dpr, dpr);
         ctx.clearRect(0, 0, w, h);
 
-        // Grid (with pan offset)
-        ctx.strokeStyle = '#1a1a2e';
-        ctx.lineWidth = 1;
-        var offX = _acState.panX % 40, offY = _acState.panY % 40;
-        for (var gx = offX; gx < w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-        for (var gy = offY; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+        // Background
+        ctx.fillStyle = '#0d0d20';
+        ctx.fillRect(0, 0, w, h);
+
+        // Grid dots (like Unity)
+        var gridSize = 24;
+        var offX = ((_acState.panX % gridSize) + gridSize) % gridSize;
+        var offY = ((_acState.panY % gridSize) + gridSize) % gridSize;
+        for (var gx = offX; gx < w; gx += gridSize) {
+            for (var gy = offY; gy < h; gy += gridSize) {
+                ctx.fillStyle = 'rgba(99,102,241,0.08)';
+                ctx.fillRect(gx, gy, 1.5, 1.5);
+            }
+        }
 
         if (!ctrl) return;
 
-        // Apply pan transform
         ctx.save();
         ctx.translate(_acState.panX, _acState.panY);
 
-        // Draw Entry node (orange triangle on the left)
+        // Entry node
         ctx.fillStyle = '#f97316';
         ctx.beginPath();
-        ctx.moveTo(10, 50);
-        ctx.lineTo(30, 42);
-        ctx.lineTo(30, 58);
-        ctx.closePath();
+        ctx.moveTo(10, 60); ctx.lineTo(30, 48); ctx.lineTo(30, 72); ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#fb923c';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        // Entry label
-        ctx.fillStyle = '#f97316';
-        ctx.font = 'bold 9px Inter, sans-serif';
-        ctx.fillText('Entry', 6, 72);
+        ctx.fillStyle = '#f97316'; ctx.font = 'bold 9px Inter, sans-serif'; ctx.fillText('Entry', 6, 82);
 
-        // Draw Any State node (top center)
-        ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(120, 10); ctx.lineTo(260, 10);
-        ctx.lineTo(260, 35); ctx.lineTo(120, 35);
-        ctx.closePath();
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#f97316';
-        ctx.font = 'bold 10px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Any State', 190, 28);
-        ctx.textAlign = 'left';
+        // Any State
+        ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(120, 15, 140, 28, 6); ctx.fillStyle = '#0d0d20'; ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#f97316'; ctx.font = 'bold 10px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Any State', 190, 33); ctx.textAlign = 'left';
 
-        // Clear cached transition paths for hit detection
+        // Transitions
         _acState._transPaths = [];
-
-        // Draw transitions (arrows)
         for (var ti = 0; ti < ctrl.transitions.length; ti++) {
             var tr = ctrl.transitions[ti];
             var fromNode = _acState.nodes[tr.from];
             var toNode = _acState.nodes[tr.to];
             if (!fromNode || !toNode) continue;
-            var fx = fromNode.x + 140, fy = fromNode.y + 25;
-            var tx = toNode.x, ty = toNode.y + 25;
+            var nw = 160, nh = 60;
+            var fx = fromNode.x + nw, fy = fromNode.y + nh / 2;
+            var tx = toNode.x, ty = toNode.y + nh / 2;
             var isTrSel = (_acState.selectedTransition === ti);
-
-            // Bezier control point
             var cpx = (fx + tx) / 2;
-            var cpy = Math.min(fy, ty) - 40;
-
-            // Cache path for hit detection
+            var cpy = Math.min(fy, ty) - 50;
             _acState._transPaths.push({ idx: ti, fx: fx, fy: fy, tx: tx, ty: ty, cpx: cpx, cpy: cpy });
-
-            // Arrow line — highlight selected
-            if (isTrSel) {
-                ctx.strokeStyle = '#22c55e';
-                ctx.lineWidth = 3.5;
-                ctx.shadowColor = 'rgba(34,197,94,0.6)';
-                ctx.shadowBlur = 8;
-            } else {
-                ctx.strokeStyle = '#f59e0b';
-                ctx.lineWidth = 2;
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-            }
-            ctx.beginPath();
-            ctx.moveTo(fx, fy);
-            ctx.quadraticCurveTo(cpx, cpy, tx, ty);
-            ctx.stroke();
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-
-            // Arrow head
+            if (isTrSel) { ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 3; ctx.shadowColor = 'rgba(34,197,94,0.5)'; ctx.shadowBlur = 10; }
+            else { ctx.strokeStyle = 'rgba(245,158,11,0.7)'; ctx.lineWidth = 2; ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
+            ctx.beginPath(); ctx.moveTo(fx, fy); ctx.quadraticCurveTo(cpx, cpy, tx, ty); ctx.stroke();
+            ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+            // Arrowhead
             var angle = Math.atan2(ty - cpy, tx - cpx);
             ctx.fillStyle = isTrSel ? '#22c55e' : '#f59e0b';
-            ctx.beginPath();
-            ctx.moveTo(tx, ty);
+            ctx.beginPath(); ctx.moveTo(tx, ty);
             ctx.lineTo(tx - 10 * Math.cos(angle - 0.4), ty - 10 * Math.sin(angle - 0.4));
             ctx.lineTo(tx - 10 * Math.cos(angle + 0.4), ty - 10 * Math.sin(angle + 0.4));
-            ctx.closePath();
-            ctx.fill();
-
+            ctx.closePath(); ctx.fill();
             // Condition label
-            var condText = tr.condition || 'always';
+            var condText = 'always';
             if (tr.conditions && tr.conditions.length > 0) {
                 condText = tr.conditions.map(function(c){return c.param + ' ' + (c.mode === 'equals' ? '==' : c.mode === 'notEquals' ? '!=' : c.mode === 'greater' ? '>' : '<') + ' ' + c.value}).join(' && ');
             }
-            var labelW = Math.max(ctx.measureText(condText).width + 12, 40);
-            var midX = cpx, midY = (fy + ty) / 2 - 15;
-            ctx.fillStyle = isTrSel ? 'rgba(34,197,94,0.2)' : 'rgba(15,15,35,0.85)';
-            ctx.strokeStyle = isTrSel ? '#22c55e' : 'rgba(245,158,11,0.3)';
+            var labelW = Math.max(ctx.measureText(condText).width + 16, 50);
+            var midX = cpx, midY = (fy + ty) / 2 - 18;
+            ctx.fillStyle = isTrSel ? 'rgba(34,197,94,0.15)' : 'rgba(13,13,32,0.9)';
+            ctx.strokeStyle = isTrSel ? 'rgba(34,197,94,0.5)' : 'rgba(245,158,11,0.25)';
             ctx.lineWidth = 1;
-            // rounded rect for label
-            var lbr = 4;
-            ctx.beginPath();
-            ctx.moveTo(midX - labelW/2 + lbr, midY - 9);
-            ctx.lineTo(midX + labelW/2 - lbr, midY - 9);
-            ctx.quadraticCurveTo(midX + labelW/2, midY - 9, midX + labelW/2, midY - 9 + lbr);
-            ctx.lineTo(midX + labelW/2, midY + 9 - lbr);
-            ctx.quadraticCurveTo(midX + labelW/2, midY + 9, midX + labelW/2 - lbr, midY + 9);
-            ctx.lineTo(midX - labelW/2 + lbr, midY + 9);
-            ctx.quadraticCurveTo(midX - labelW/2, midY + 9, midX - labelW/2, midY + 9 - lbr);
-            ctx.lineTo(midX - labelW/2, midY - 9 + lbr);
-            ctx.quadraticCurveTo(midX - labelW/2, midY - 9, midX - labelW/2 + lbr, midY - 9);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+            ctx.beginPath(); ctx.roundRect(midX - labelW/2, midY - 10, labelW, 20, 4); ctx.fill(); ctx.stroke();
             ctx.fillStyle = isTrSel ? '#22c55e' : '#f59e0b';
-            ctx.font = '9px JetBrains Mono, monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText(condText, midX, midY + 3);
-            ctx.textAlign = 'left';
+            ctx.font = '8px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+            ctx.fillText(condText, midX, midY + 3); ctx.textAlign = 'left';
         }
 
-        // Draw state nodes
+        // State nodes
         for (var si = 0; si < ctrl.states.length; si++) {
             var st = ctrl.states[si];
             var nd = _acState.nodes[st.name];
             if (!nd) continue;
             var nx = nd.x, ny = nd.y;
-            var nw = 140, nh = 50;
+            var nw = 160, nh = 60;
             var isSel = (_acState.selectedState === st.name);
             var isDef = st.isDefault;
-
-            // Node shadow
-            ctx.shadowColor = isSel ? 'rgba(99,102,241,0.5)' : 'rgba(0,0,0,0.3)';
-            ctx.shadowBlur = isSel ? 12 : 6;
-
-            // Node body
+            // Shadow
+            ctx.shadowColor = isSel ? 'rgba(99,102,241,0.5)' : 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = isSel ? 16 : 8;
+            // Body
             var grad = ctx.createLinearGradient(nx, ny, nx, ny + nh);
-            if (isDef) {
-                grad.addColorStop(0, '#4f46e5');
-                grad.addColorStop(1, '#3730a3');
-            } else if (isSel) {
-                grad.addColorStop(0, '#6366f1');
-                grad.addColorStop(1, '#4f46e5');
-            } else {
-                grad.addColorStop(0, '#1e1b4b');
-                grad.addColorStop(1, '#1a1a2e');
-            }
+            if (isDef) { grad.addColorStop(0, '#3730a3'); grad.addColorStop(1, '#1e1b4b'); }
+            else if (isSel) { grad.addColorStop(0, '#4f46e5'); grad.addColorStop(1, '#3730a3'); }
+            else { grad.addColorStop(0, '#1e1b4b'); grad.addColorStop(1, '#0f0f23'); }
             ctx.fillStyle = grad;
-
-            // Rounded rect
-            var r = 8;
-            ctx.beginPath();
-            ctx.moveTo(nx + r, ny);
-            ctx.lineTo(nx + nw - r, ny);
-            ctx.quadraticCurveTo(nx + nw, ny, nx + nw, ny + r);
-            ctx.lineTo(nx + nw, ny + nh - r);
-            ctx.quadraticCurveTo(nx + nw, ny + nh, nx + nw - r, ny + nh);
-            ctx.lineTo(nx + r, ny + nh);
-            ctx.quadraticCurveTo(nx, ny + nh, nx, ny + nh - r);
-            ctx.lineTo(nx, ny + r);
-            ctx.quadraticCurveTo(nx, ny, nx + r, ny);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-
+            ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 10); ctx.fill();
+            ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
             // Border
             ctx.strokeStyle = isDef ? '#818cf8' : (isSel ? '#a5b4fc' : '#2e2e4a');
-            ctx.lineWidth = isSel ? 2 : 1;
+            ctx.lineWidth = isSel || isDef ? 2 : 1;
             ctx.stroke();
-
+            // Color accent bar at top
+            var accentColor = isDef ? '#22c55e' : isSel ? '#6366f1' : '#4f46e5';
+            ctx.fillStyle = accentColor;
+            ctx.beginPath(); ctx.roundRect(nx, ny, nw, 4, [10, 10, 0, 0]); ctx.fill();
             // State name
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 12px Inter, sans-serif';
-            ctx.fillText(st.name, nx + 10, ny + 20);
-
-            // Clip name (smaller)
-            ctx.fillStyle = '#a1a1aa';
-            ctx.font = '9px JetBrains Mono, monospace';
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 13px Inter, sans-serif';
+            ctx.fillText(st.name.length > 14 ? st.name.substring(0, 12) + '..' : st.name, nx + 12, ny + 26);
+            // Clip label
+            ctx.fillStyle = '#71717a'; ctx.font = '9px JetBrains Mono, monospace';
             var clipLabel = st.clipId ? _findClipName(st.clipId) : 'No clip';
-            if (clipLabel.length > 16) clipLabel = clipLabel.substring(0, 14) + '..';
-            ctx.fillText(clipLabel, nx + 10, ny + 36);
-
+            ctx.fillText(clipLabel.length > 18 ? clipLabel.substring(0, 16) + '..' : clipLabel, nx + 12, ny + 42);
             // Default badge
             if (isDef) {
-                ctx.fillStyle = '#22c55e';
-                ctx.font = 'bold 8px Inter, sans-serif';
-                ctx.fillText('DEFAULT', nx + nw - 52, ny + 12);
+                ctx.fillStyle = '#22c55e'; ctx.font = 'bold 7px Inter, sans-serif';
+                ctx.fillText('DEFAULT', nx + nw - 52, ny + 16);
             }
-
+            // Output port (circle on right side)
+            var portX = nx + nw, portY = ny + nh / 2;
+            ctx.beginPath(); ctx.arc(portX, portY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = _acState.connectingFrom === st.name ? '#6366f1' : '#2e2e4a';
+            ctx.fill();
+            ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 1.5; ctx.stroke();
             // Entry arrow for default
             if (isDef) {
-                ctx.strokeStyle = '#22c55e';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(nx - 20, ny + nh / 2);
-                ctx.lineTo(nx, ny + nh / 2);
-                ctx.stroke();
-                // Arrowhead
-                ctx.fillStyle = '#22c55e';
-                ctx.beginPath();
-                ctx.moveTo(nx, ny + nh / 2);
-                ctx.lineTo(nx - 6, ny + nh / 2 - 4);
-                ctx.lineTo(nx - 6, ny + nh / 2 + 4);
-                ctx.closePath();
-                ctx.fill();
+                ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(nx - 25, ny + nh / 2); ctx.lineTo(nx, ny + nh / 2); ctx.stroke();
+                ctx.fillStyle = '#22c55e'; ctx.beginPath();
+                ctx.moveTo(nx, ny + nh / 2); ctx.lineTo(nx - 6, ny + nh / 2 - 4); ctx.lineTo(nx - 6, ny + nh / 2 + 4); ctx.closePath(); ctx.fill();
             }
         }
 
-        // Restore pan transform
+        // Drag-to-connect line
+        if (_acState.connectingFrom) {
+            var fromNd = _acState.nodes[_acState.connectingFrom];
+            if (fromNd) {
+                var nw = 160, nh = 60;
+                var sx = fromNd.x + nw, sy = fromNd.y + nh / 2;
+                ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+                ctx.beginPath(); ctx.moveTo(sx, sy);
+                ctx.quadraticCurveTo((sx + _acState.connectMouseX) / 2, sy - 40, _acState.connectMouseX, _acState.connectMouseY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
         ctx.restore();
 
-        // Draw context menu overlay if open
+        // Context menu overlay
         if (_acState.contextMenu) {
             var cm = _acState.contextMenu;
-            ctx.fillStyle = 'rgba(20,20,40,0.95)';
+            var cmItems = cm.type === 'canvas' ? ['Create State', 'Create State + Clip'] : ['Set as Default', 'Assign Clip', 'Rename', 'Delete State'];
+            var cmH = cmItems.length * 28 + 12;
+            var cmW = 170;
+            ctx.fillStyle = 'rgba(15,15,35,0.97)';
             ctx.strokeStyle = '#4f46e5';
             ctx.lineWidth = 1;
-            var cmItems = cm.type === 'canvas' ? ['Create State', 'Create State From Clip'] : ['Make Transition', 'Set as Default', 'Assign Clip', 'Rename', 'Delete State'];
-            var cmH = cmItems.length * 24 + 8;
-            ctx.beginPath();
-            ctx.moveTo(cm.x + 4, cm.y);
-            ctx.lineTo(cm.x + 150 + 4, cm.y);
-            ctx.lineTo(cm.x + 150 + 4, cm.y + cmH);
-            ctx.lineTo(cm.x + 4, cm.y + cmH);
-            ctx.lineTo(cm.x + 4, cm.y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#fff';
-            ctx.font = '11px Inter, sans-serif';
+            ctx.beginPath(); ctx.roundRect(cm.x, cm.y, cmW, cmH, 8); ctx.fill(); ctx.stroke();
+            ctx.font = '12px Inter, sans-serif';
             for (var ci = 0; ci < cmItems.length; ci++) {
-                ctx.fillText(cmItems[ci], cm.x + 12, cm.y + 18 + ci * 24);
+                var itemY = cm.y + 8 + ci * 28;
+                var isHovered = (cm.hoverIdx === ci);
+                if (isHovered) {
+                    ctx.fillStyle = 'rgba(99,102,241,0.2)';
+                    ctx.beginPath(); ctx.roundRect(cm.x + 4, itemY - 2, cmW - 8, 24, 4); ctx.fill();
+                }
+                ctx.fillStyle = isHovered ? '#fff' : '#a1a1aa';
+                ctx.fillText(cmItems[ci], cm.x + 16, itemY + 15);
             }
         }
     }
@@ -10046,14 +9849,27 @@ var EngineApp = (function() {
     function _findClipName(clipId) {
         var allAssets = SashaAssetManager.getAll();
         for (var i = 0; i < allAssets.length; i++) {
-            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId === clipId) {
-                return allAssets[i].name;
-            }
+            if (allAssets[i].type === 'animation' && allAssets[i].data && allAssets[i].data.clipId === clipId) return allAssets[i].name;
         }
         return clipId.substring(0, 12);
     }
 
-    // Animator canvas mouse events
+    // Hit test: is (px,py) on output port of a state?
+    function _acHitOutputPort(px, py) {
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        if (!ctrl) return null;
+        for (var i = 0; i < ctrl.states.length; i++) {
+            var st = ctrl.states[i];
+            var nd = _acState.nodes[st.name];
+            if (!nd) continue;
+            var portX = nd.x + 160, portY = nd.y + 30;
+            var dx = px - portX, dy = py - portY;
+            if (dx * dx + dy * dy < 144) return st.name; // radius 12
+        }
+        return null;
+    }
+
+    // ============ ANIMATOR CANVAS MOUSE EVENTS ============
     function _acCanvasMouseDown(e) {
         var canvas = document.getElementById('ac-canvas');
         if (!canvas || !_tlEditingCtrlId) return;
@@ -10062,96 +9878,86 @@ var EngineApp = (function() {
         var my = e.clientY - rect.top;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
+        if (_acState.contextMenu) { _acState.contextMenu = null; _acRenderCanvas(); return; }
 
-        // Close context menu on any click
-        if (_acState.contextMenu) { _acState.contextMenu = null; _acRenderCanvas(); }
-
-        // Alt+drag = pan
-        if (e.altKey) {
+        // Middle mouse or Alt+left = pan
+        if (e.button === 1 || (e.altKey && e.button === 0)) {
             _acState.panning = true;
-            _acState.panStartX = mx;
-            _acState.panStartY = my;
-            _acState.panStartPanX = _acState.panX;
-            _acState.panStartPanY = _acState.panY;
+            _acState.panStartX = mx; _acState.panStartY = my;
+            _acState.panStartPanX = _acState.panX; _acState.panStartPanY = _acState.panY;
+            canvas.style.cursor = 'grabbing';
             return;
         }
 
-        // Adjust for pan
+        // Only handle left click for rest
+        if (e.button !== 0) return;
+
         var pmx = mx - _acState.panX;
         var pmy = my - _acState.panY;
+
+        // Check output port hit — start connecting
+        var portHit = _acHitOutputPort(pmx, pmy);
+        if (portHit) {
+            _acState.connectingFrom = portHit;
+            _acState.connectMouseX = pmx;
+            _acState.connectMouseY = pmy;
+            _acState._outputPortHit = true;
+            var hint = document.getElementById('ac-drag-hint');
+            if (hint) hint.style.display = 'block';
+            return;
+        }
 
         // Check context menu click
         if (_acState.contextMenu) {
             var cm = _acState.contextMenu;
-            var cmItems = cm.type === 'canvas' ? ['Create State', 'Create State From Clip'] : ['Make Transition', 'Set as Default', 'Assign Clip', 'Rename', 'Delete State'];
-            var cmH = cmItems.length * 24 + 8;
-            if (mx >= cm.x && mx <= cm.x + 158 && my >= cm.y && my <= cm.y + cmH) {
-                var itemIdx = Math.floor((my - cm.y - 4) / 24);
+            var cmItems = cm.type === 'canvas' ? ['Create State', 'Create State + Clip'] : ['Set as Default', 'Assign Clip', 'Rename', 'Delete State'];
+            var cmH = cmItems.length * 28 + 12;
+            if (mx >= cm.x && mx <= cm.x + 170 && my >= cm.y && my <= cm.y + cmH) {
+                var itemIdx = Math.floor((my - cm.y - 4) / 28);
                 _acHandleContextMenuItem(cm.type, cm.stateName, cm.canvasX, cm.canvasY, itemIdx);
-                _acState.contextMenu = null;
-                return;
+                _acState.contextMenu = null; return;
             }
             _acState.contextMenu = null;
         }
 
-        // Check if clicking on a transition (bezier hit test)
+        // Check transition click
         if (_acState._transPaths) {
             for (var ti = 0; ti < _acState._transPaths.length; ti++) {
                 var tp = _acState._transPaths[ti];
                 var dist = _acDistToBezier(pmx, pmy, tp.fx, tp.fy, tp.cpx, tp.cpy, tp.tx, tp.ty);
-                if (dist < 8) {
+                if (dist < 10) {
                     _acState.selectedTransition = tp.idx;
                     _acState.selectedState = null;
-                    _acRenderCanvas();
-                    _acRenderTransitionBar();
-                    return;
+                    _acRenderCanvas(); _acRenderTransitionBar(); return;
                 }
             }
         }
 
-        // Check if clicking on a state node
+        // Check state node click
         for (var i = 0; i < ctrl.states.length; i++) {
             var st = ctrl.states[i];
             var nd = _acState.nodes[st.name];
             if (!nd) continue;
-            if (pmx >= nd.x && pmx <= nd.x + 140 && pmy >= nd.y && pmy <= nd.y + 50) {
+            if (pmx >= nd.x && pmx <= nd.x + 160 && pmy >= nd.y && pmy <= nd.y + 60) {
                 _acState.selectedState = st.name;
                 _acState.selectedTransition = -1;
                 _acState.draggingNode = true;
                 _acState.dragNodeName = st.name;
                 _acState.dragOffX = pmx - nd.x;
                 _acState.dragOffY = pmy - nd.y;
-                _acRenderCanvas();
-                _acRenderTransitionBar();
-                return;
+                canvas.style.cursor = 'move';
+                _acRenderCanvas(); _acRenderTransitionBar(); return;
             }
         }
-        // Click on empty space — deselect
+        // Empty click — deselect
         _acState.selectedState = null;
         _acState.selectedTransition = -1;
-        _acRenderCanvas();
-        _acRenderTransitionBar();
-    }
-
-    // Distance from point to quadratic bezier curve (approximate with line segments)
-    function _acDistToBezier(px, py, x0, y0, cpx, cpy, x1, y1) {
-        var minDist = Infinity;
-        var steps = 20;
-        for (var i = 0; i <= steps; i++) {
-            var t = i / steps;
-            var bx = (1-t)*(1-t)*x0 + 2*(1-t)*t*cpx + t*t*x1;
-            var by = (1-t)*(1-t)*y0 + 2*(1-t)*t*cpy + t*t*y1;
-            var dx = px - bx, dy = py - by;
-            var d = Math.sqrt(dx*dx + dy*dy);
-            if (d < minDist) minDist = d;
-        }
-        return minDist;
+        _acRenderCanvas(); _acRenderTransitionBar();
     }
 
     function _acCanvasMouseMove(e) {
-        if (!_tlEditingCtrlId) return;
         var canvas = document.getElementById('ac-canvas');
-        if (!canvas) return;
+        if (!canvas || !_tlEditingCtrlId) return;
         var rect = canvas.getBoundingClientRect();
         var mx = e.clientX - rect.left;
         var my = e.clientY - rect.top;
@@ -10159,23 +9965,82 @@ var EngineApp = (function() {
         if (_acState.panning) {
             _acState.panX = _acState.panStartPanX + (mx - _acState.panStartX);
             _acState.panY = _acState.panStartPanY + (my - _acState.panStartY);
-            _acRenderCanvas();
-            return;
+            _acRenderCanvas(); return;
         }
-        // Drag node
-        if (!_acState.draggingNode) return;
         var pmx = mx - _acState.panX;
         var pmy = my - _acState.panY;
-        if (_acState.nodes[_acState.dragNodeName]) {
-            _acState.nodes[_acState.dragNodeName].x = pmx - _acState.dragOffX;
-            _acState.nodes[_acState.dragNodeName].y = pmy - _acState.dragOffY;
+        // Connecting
+        if (_acState.connectingFrom) {
+            _acState.connectMouseX = pmx;
+            _acState.connectMouseY = pmy;
             _acRenderCanvas();
+            // Check if over target state
+            var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+            if (ctrl) {
+                for (var i = 0; i < ctrl.states.length; i++) {
+                    var st = ctrl.states[i];
+                    if (st.name === _acState.connectingFrom) continue;
+                    var nd = _acState.nodes[st.name];
+                    if (!nd) continue;
+                    if (pmx >= nd.x && pmx <= nd.x + 160 && pmy >= nd.y && pmy <= nd.y + 60) {
+                        canvas.style.cursor = 'copy'; return;
+                    }
+                }
+            }
+            canvas.style.cursor = 'crosshair'; return;
         }
+        // Drag node
+        if (_acState.draggingNode) {
+            if (_acState.nodes[_acState.dragNodeName]) {
+                _acState.nodes[_acState.dragNodeName].x = pmx - _acState.dragOffX;
+                _acState.nodes[_acState.dragNodeName].y = pmy - _acState.dragOffY;
+                _acRenderCanvas();
+            }
+            return;
+        }
+        // Hover cursor update
+        var portHit = _acHitOutputPort(pmx, pmy);
+        if (portHit) { canvas.style.cursor = 'crosshair'; return; }
+        canvas.style.cursor = 'default';
     }
 
     function _acCanvasMouseUp(e) {
+        var canvas = document.getElementById('ac-canvas');
+        if (!canvas) return;
+        var hint = document.getElementById('ac-drag-hint');
+        if (hint) hint.style.display = 'none';
+
+        // Complete drag-to-connect
+        if (_acState.connectingFrom) {
+            var rect = canvas.getBoundingClientRect();
+            var mx = e.clientX - rect.left;
+            var my = e.clientY - rect.top;
+            var pmx = mx - _acState.panX;
+            var pmy = my - _acState.panY;
+            var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+            if (ctrl) {
+                for (var i = 0; i < ctrl.states.length; i++) {
+                    var st = ctrl.states[i];
+                    if (st.name === _acState.connectingFrom) continue;
+                    var nd = _acState.nodes[st.name];
+                    if (!nd) continue;
+                    if (pmx >= nd.x && pmx <= nd.x + 160 && pmy >= nd.y && pmy <= nd.y + 60) {
+                        // Create transition!
+                        SashaEngineAPI.addTransition(_tlEditingCtrlId, _acState.connectingFrom, st.name, '', true);
+                        log('Created transition: ' + _acState.connectingFrom + ' -> ' + st.name, 'log');
+                        acRefresh();
+                        break;
+                    }
+                }
+            }
+            _acState.connectingFrom = null;
+            _acState._outputPortHit = false;
+            _acRenderCanvas();
+        }
+
         _acState.draggingNode = false;
         _acState.panning = false;
+        canvas.style.cursor = 'default';
     }
 
     function _acCanvasDblClick(e) {
@@ -10183,55 +10048,27 @@ var EngineApp = (function() {
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
         var name = _acState.selectedState;
-        // Context menu for state
-        var action = prompt('State "' + name + '"\nActions:\n1 = Set as Default\n2 = Assign Clip\n3 = Rename\n4 = Delete\nEnter number:', '1');
+        var action = prompt('State "' + name + '"\n1 = Set Default\n2 = Assign Clip\n3 = Rename\n4 = Delete', '1');
         if (!action) return;
         var stateObj = null;
-        for (var i = 0; i < ctrl.states.length; i++) {
-            if (ctrl.states[i].name === name) { stateObj = ctrl.states[i]; break; }
-        }
+        for (var i = 0; i < ctrl.states.length; i++) { if (ctrl.states[i].name === name) { stateObj = ctrl.states[i]; break; } }
         if (!stateObj) return;
         if (action === '1') {
             for (var j = 0; j < ctrl.states.length; j++) { ctrl.states[j].isDefault = false; }
-            stateObj.isDefault = true;
-            acRefresh();
+            stateObj.isDefault = true; acRefresh();
         } else if (action === '2') {
             var allAssets = SashaAssetManager.getAll();
             var clips = [];
-            for (var ci = 0; ci < allAssets.length; ci++) {
-                if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) {
-                    clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name);
-                }
-            }
-            if (clips.length === 0) { log('No animation clips. Create one first.', 'warn'); return; }
+            for (var ci = 0; ci < allAssets.length; ci++) { if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name); }
+            if (clips.length === 0) { log('No clips', 'warn'); return; }
             var choice = prompt('Clip:\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
-            if (choice) {
-                // Flexible matching: case-insensitive, partial match
-                for (var k = 0; k < clips.length; k++) {
-                    var cn = clips[k].split(':')[1];
-                    if (cn.toLowerCase() === choice.toLowerCase() || cn.toLowerCase().indexOf(choice.toLowerCase()) !== -1 || choice.toLowerCase().indexOf(cn.toLowerCase()) !== -1) {
-                        stateObj.clipId = clips[k].split(':')[0]; break;
-                    }
-                }
-                acRefresh();
-            }
+            if (choice) { for (var k = 0; k < clips.length; k++) { var cn = clips[k].split(':')[1]; if (cn.toLowerCase() === choice.toLowerCase() || cn.toLowerCase().indexOf(choice.toLowerCase()) !== -1) { stateObj.clipId = clips[k].split(':')[0]; break; } } acRefresh(); }
         } else if (action === '3') {
             var newName = prompt('New name:', name);
-            if (newName && newName.trim()) {
-                var oldName = name;
-                newName = newName.trim();
-                stateObj.name = newName;
-                _acState.nodes[newName] = _acState.nodes[oldName];
-                delete _acState.nodes[oldName];
-                _acState.selectedState = newName;
-                acRefresh();
-            }
-        } else if (action === '4') {
-            acDeleteState(name);
-        }
+            if (newName && newName.trim()) { var oldName = name; newName = newName.trim(); stateObj.name = newName; _acState.nodes[newName] = _acState.nodes[oldName]; delete _acState.nodes[oldName]; _acState.selectedState = newName; acRefresh(); }
+        } else if (action === '4') { acDeleteState(name); }
     }
 
-    // Right-click context menu on canvas
     function _acCanvasContextMenu(e) {
         e.preventDefault();
         var canvas = document.getElementById('ac-canvas');
@@ -10241,131 +10078,92 @@ var EngineApp = (function() {
         var my = e.clientY - rect.top;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
-
-        // Adjust for pan
         var pmx = mx - _acState.panX;
         var pmy = my - _acState.panY;
-
-        // Check if right-clicking on a state node
+        // Check right-click on state
         for (var i = 0; i < ctrl.states.length; i++) {
             var st = ctrl.states[i];
             var nd = _acState.nodes[st.name];
             if (!nd) continue;
-            if (pmx >= nd.x && pmx <= nd.x + 140 && pmy >= nd.y && pmy <= nd.y + 50) {
-                _acState.contextMenu = { x: mx, y: my, type: 'state', stateName: st.name, canvasX: pmx, canvasY: pmy };
+            if (pmx >= nd.x && pmx <= nd.x + 160 && pmy >= nd.y && pmy <= nd.y + 60) {
+                _acState.contextMenu = { x: mx, y: my, type: 'state', stateName: st.name, canvasX: pmx, canvasY: pmy, hoverIdx: -1 };
                 _acState.selectedState = st.name;
-                _acRenderCanvas();
-                return;
+                _acRenderCanvas(); return;
             }
         }
-
-        // Right-click on empty canvas
-        _acState.contextMenu = { x: mx, y: my, type: 'canvas', canvasX: pmx, canvasY: pmy };
+        // Right-click on empty canvas — create state
+        _acState.contextMenu = { x: mx, y: my, type: 'canvas', canvasX: pmx, canvasY: pmy, hoverIdx: -1 };
         _acRenderCanvas();
     }
 
-    // Handle context menu item click
     function _acHandleContextMenuItem(type, stateName, canvasX, canvasY, itemIdx) {
         if (!_tlEditingCtrlId) return;
         var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
         if (!ctrl) return;
-
         if (type === 'canvas') {
             if (itemIdx === 0) {
-                // Create State — at click position, no prompt
+                // Create empty state at click position
                 var name = 'State_' + (ctrl.states.length + 1);
                 SashaEngineAPI.addStateToController(_tlEditingCtrlId, name, '');
-                _acState.nodes[name] = { x: canvasX - 70, y: canvasY - 25 };
+                _acState.nodes[name] = { x: canvasX - 80, y: canvasY - 30 };
                 _acState.selectedState = name;
-                acRefresh();
-                log('Created state: ' + name, 'log');
+                acRefresh(); log('Created state: ' + name, 'log');
             } else if (itemIdx === 1) {
-                // Create State From Clip
-                acAddState();
+                // Create state with clip (reuse acAddState)
+                acAddState(null, canvasX - 80, canvasY - 30);
             }
         } else if (type === 'state') {
             if (itemIdx === 0) {
-                // Make Transition
-                acAddTransition();
-            } else if (itemIdx === 1) {
                 // Set as Default
                 for (var j = 0; j < ctrl.states.length; j++) { ctrl.states[j].isDefault = false; }
-                var stateObj = null;
-                for (var k = 0; k < ctrl.states.length; k++) { if (ctrl.states[k].name === stateName) { stateObj = ctrl.states[k]; break; } }
-                if (stateObj) stateObj.isDefault = true;
-                acRefresh();
-                log('Set ' + stateName + ' as default', 'log');
-            } else if (itemIdx === 2) {
+                var sObj = null;
+                for (var k = 0; k < ctrl.states.length; k++) { if (ctrl.states[k].name === stateName) { sObj = ctrl.states[k]; break; } }
+                if (sObj) sObj.isDefault = true;
+                acRefresh(); log('Set ' + stateName + ' as default', 'log');
+            } else if (itemIdx === 1) {
                 // Assign Clip
                 var allAssets = SashaAssetManager.getAll();
                 var clips = [];
-                for (var ci = 0; ci < allAssets.length; ci++) {
-                    if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) {
-                        clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name);
-                    }
-                }
-                if (clips.length === 0) { log('No clips available', 'warn'); return; }
+                for (var ci = 0; ci < allAssets.length; ci++) { if (allAssets[ci].type === 'animation' && allAssets[ci].data && allAssets[ci].data.clipId) clips.push(allAssets[ci].data.clipId + ':' + allAssets[ci].name); }
+                if (clips.length === 0) { log('No clips', 'warn'); return; }
                 var choice = prompt('Clip:\n' + clips.map(function(c){return c.split(':')[1]}).join(', '), clips[0].split(':')[1]);
-                if (choice) {
-                    for (var k = 0; k < clips.length; k++) {
-                        var cn = clips[k].split(':')[1];
-                        if (cn.toLowerCase() === choice.toLowerCase()) {
-                            var so = null;
-                            for (var m = 0; m < ctrl.states.length; m++) { if (ctrl.states[m].name === stateName) { so = ctrl.states[m]; break; } }
-                            if (so) so.clipId = clips[k].split(':')[0];
-                            break;
-                        }
-                    }
-                    acRefresh();
-                }
-            } else if (itemIdx === 3) {
+                if (choice) { for (var k = 0; k < clips.length; k++) { var cn = clips[k].split(':')[1]; if (cn.toLowerCase() === choice.toLowerCase()) { var so = null; for (var m = 0; m < ctrl.states.length; m++) { if (ctrl.states[m].name === stateName) { so = ctrl.states[m]; break; } } if (so) so.clipId = clips[k].split(':')[0]; break; } } acRefresh(); }
+            } else if (itemIdx === 2) {
                 // Rename
                 var newName = prompt('New name:', stateName);
                 if (newName && newName.trim()) {
-                    var oldN = stateName;
-                    newName = newName.trim();
-                    var sObj = null;
-                    for (var n = 0; n < ctrl.states.length; n++) { if (ctrl.states[n].name === oldN) { sObj = ctrl.states[n]; break; } }
-                    if (sObj) {
-                        sObj.name = newName;
-                        _acState.nodes[newName] = _acState.nodes[oldN];
-                        delete _acState.nodes[oldN];
-                        _acState.selectedState = newName;
-                        acRefresh();
-                    }
+                    var oldN = stateName; newName = newName.trim();
+                    var s = null; for (var n = 0; n < ctrl.states.length; n++) { if (ctrl.states[n].name === oldN) { s = ctrl.states[n]; break; } }
+                    if (s) { s.name = newName; _acState.nodes[newName] = _acState.nodes[oldN]; delete _acState.nodes[oldN]; _acState.selectedState = newName; acRefresh(); }
                 }
-            } else if (itemIdx === 4) {
-                // Delete State
-                acDeleteState(stateName);
-            }
+            } else if (itemIdx === 3) { acDeleteState(stateName); }
         }
     }
 
-    function _acInitCanvasEvents() {
+    function _acDistToBezier(px, py, x0, y0, cpx, cpy, x1, y1) {
+        var minDist = Infinity, steps = 20;
+        for (var i = 0; i <= steps; i++) { var t = i / steps; var bx = (1-t)*(1-t)*x0 + 2*(1-t)*t*cpx + t*t*x1; var by = (1-t)*(1-t)*y0 + 2*(1-t)*t*cpy + t*t*y1; var d = Math.sqrt((px-bx)*(px-bx) + (py-by)*(py-by)); if (d < minDist) minDist = d; }
+        return minDist;
     }
 
     // Keyboard shortcuts for animator canvas
     document.addEventListener('keydown', function(e) {
         if (!_tlEditingCtrlId) return;
-        // Make sure animator editor is visible
         var ae = document.getElementById('animator-editor');
         if (!ae) return;
-        // Check if actually visible (display:none or display not set means hidden)
         var st = getComputedStyle(ae);
         if (st.display === 'none' || st.visibility === 'hidden') return;
         if (e.key === 'Delete' || e.key === 'Backspace') {
-            // Delete selected state
             if (_acState.selectedState && !e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('select')) {
                 e.preventDefault();
                 acDeleteState(_acState.selectedState);
             }
         } else if (e.key === 'Escape') {
-            // Cancel transition / close context menu
             _acState.selectedTransition = -1;
             _acState.selectedState = null;
             _acState.contextMenu = null;
-            _acRenderCanvas();
-            _acRenderTransitionBar();
+            _acState.connectingFrom = null;
+            _acRenderCanvas(); _acRenderTransitionBar();
         }
     });
 
@@ -11528,29 +11326,9 @@ var EngineApp = (function() {
     };
 })();
 </script>
-<!-- POST-IIFE PATCH: ensure _openACFullscreen survives IIFE override -->
-<script>
-(function() {
-    // Re-attach _openACFullscreen to EngineApp (IIFE overwrites v3)
-    if (!window.EngineApp) window.EngineApp = {};
-    window.EngineApp._openACFullscreen = window.EngineApp._openACFullscreen || function(ctrlId) {
-        var ae = document.getElementById('animator-editor');
-        if (!ae) return;
-        if (ae.parentElement !== document.body) document.body.appendChild(ae);
-        ae.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;display:flex;flex-direction:column;background:#1a1a2e;overflow:hidden;box-shadow:0 0 60px rgba(99,102,241,0.4);';
-        var nameEl = document.getElementById('ac-ctrl-name');
-        if (nameEl) {
-            var ctrl = window.SashaEngineAPI && SashaEngineAPI.getAnimatorController ? SashaEngineAPI.getAnimatorController(ctrlId) : null;
-            nameEl.textContent = ctrl ? (ctrl.name || 'Animator Controller') : 'Animator Controller';
-        }
-        if (window.EngineApp.acRefresh) { try { EngineApp.acRefresh(); } catch(e) {} }
-    };
-    console.log('AC_POST: Post-IIFE patch applied, _openACFullscreen ready');
-})();
-</script>
+
 </body>
 </html>
-
 
 
 
