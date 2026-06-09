@@ -1,13 +1,11 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
+
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
    <meta http-equiv="Pragma" content="no-cache">
    <meta http-equiv="Expires" content="0">
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>SashaAI — GameDev AI & Developer [v6.1-tlfix]</title>
+    <title>SashaAI — GameDev AI & Developer [v6.2-tlauto]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1044,6 +1042,7 @@
                                 <!-- Timeline header: clip info + controls -->
                                 <div id="timeline-header" style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap;min-height:32px;background:var(--bg-dark);">
                                     <span id="timeline-clip-name" style="font-size:0.72rem;color:var(--text-secondary);min-width:60px;"></span>
+                                    <button class="eng-tab" id="tl-autokey-btn" onclick="EngineApp.tlToggleAutoKey()" title="Auto Key ON: moving scrubber records pose automatically" style="padding:3px 8px;font-size:0.65rem;background:#ef4444;color:#fff;border:1px solid #ef4444;border-radius:4px;cursor:pointer;font-weight:600;"><i class="fas fa-key"></i> Auto Key</button>
                                     <button class="eng-tab" onclick="EngineApp.tlCreateNewClip()" title="New Clip" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> New Clip</button>
                                     <div style="display:flex;gap:3px;align-items:center;">
                                         <button class="eng-tab" onclick="EngineApp.tlPlay()" title="Play" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-play"></i></button>
@@ -8944,7 +8943,8 @@ var EngineApp = (function() {
         playing: false, looping: true, time: 0, duration: 1.0,
         selectedTrack: -1, selectedKey: -1, draggingKey: false, dragTrack: -1, dragKey: -1,
         pixelsPerSecond: 120, trackHeight: 28, headerHeight: 24,
-        lastFrameTime: 0, rafId: null, targetObjName: null
+        lastFrameTime: 0, rafId: null, targetObjName: null,
+        autoKey: true // Auto Key mode — moving scrubber records pose automatically
     };
 
     function tlRefresh() {
@@ -9039,35 +9039,52 @@ var EngineApp = (function() {
     }
 
     function tlPlay() {
-        if (_tlState.playing) return;
+        if (_tlState.playing) {
+            // Toggle to pause
+            _tlState.playing = false;
+            if (_tlState.rafId) { cancelAnimationFrame(_tlState.rafId); _tlState.rafId = null; }
+            _updatePlayButton();
+            return;
+        }
         // Auto-set target if not set
         if (!_tlState.targetObjName) {
             var selObj = SashaEngineAPI.getSelectedObject();
             if (selObj) {
                 _tlState.targetObjName = selObj;
-                log('Target auto-set to: ' + selObj, 'info');
-                tlRefresh();
+                log('Target: ' + selObj, 'info');
+                _tlRenderTrackLabels();
             } else {
-                log('Select an object first to play animation', 'warn');
+                log('Select an object on scene first!', 'warn');
                 return;
             }
         }
         var clip = _tlEditingClipId ? SashaEngineAPI.getAnimationClip(_tlEditingClipId) : null;
-        if (!clip || clip.tracks.length === 0) {
-            log('No clip or no tracks — add tracks and keyframes first', 'warn');
-            return;
-        }
+        if (!clip) { log('No clip open', 'warn'); return; }
+        // Check has any keyframes
         var hasKeys = false;
         for (var i = 0; i < clip.tracks.length; i++) {
             if (clip.tracks[i].keyframes && clip.tracks[i].keyframes.length > 0) { hasKeys = true; break; }
         }
-        if (!hasKeys) {
-            log('No keyframes — double-click a track or use Key button to add keyframes', 'warn');
-            return;
-        }
+        if (!hasKeys) { log('No keyframes! Move object then press Key', 'warn'); return; }
+        // Start from time 0 if at end
+        if (_tlState.time >= _tlState.duration) _tlState.time = 0;
         _tlState.playing = true;
         _tlState.lastFrameTime = performance.now();
+        _updatePlayButton();
         _tlPlaybackLoop();
+    }
+
+    function _updatePlayButton() {
+        var btns = document.querySelectorAll('[onclick*="tlPlay"]');
+        for (var i = 0; i < btns.length; i++) {
+            if (_tlState.playing) {
+                btns[i].innerHTML = '<i class="fas fa-pause"></i>';
+                btns[i].style.color = '#22c55e';
+            } else {
+                btns[i].innerHTML = '<i class="fas fa-play"></i>';
+                btns[i].style.color = '';
+            }
+        }
     }
 
     function tlStop() {
@@ -9077,6 +9094,7 @@ var EngineApp = (function() {
         _tlApplyTimeToScene();
         _tlRenderCanvas();
         _tlUpdateTimeDisplay();
+        _updatePlayButton();
     }
 
     function tlToggleLoop() {
@@ -9087,25 +9105,95 @@ var EngineApp = (function() {
         if (loopBtn) loopBtn.style.opacity = _tlState.looping ? '1' : '0.4';
     }
 
-    function tlPlaybackLoop() {
+    function tlToggleAutoKey() {
+        _tlState.autoKey = !_tlState.autoKey;
+        var btn = document.getElementById('tl-autokey-btn');
+        if (btn) {
+            btn.style.background = _tlState.autoKey ? '#ef4444' : 'transparent';
+            btn.style.color = _tlState.autoKey ? '#fff' : '#a1a1aa';
+            btn.style.borderColor = _tlState.autoKey ? '#ef4444' : '#374151';
+        }
+        log('Auto Key: ' + (_tlState.autoKey ? 'ON — moving scrubber records pose' : 'OFF — press Key manually'), 'info');
+    }
+
+    function _tlPlaybackLoop() {
         if (!_tlState.playing) return;
         var now = performance.now();
         var dt = (now - _tlState.lastFrameTime) / 1000;
         _tlState.lastFrameTime = now;
         _tlState.time += dt;
         if (_tlState.time >= _tlState.duration) {
-            if (_tlState.looping) { _tlState.time = _tlState.time % _tlState.duration; }
-            else { _tlState.time = _tlState.duration; _tlState.playing = false; }
+            if (_tlState.looping) {
+                _tlState.time = _tlState.time % _tlState.duration;
+            } else {
+                _tlState.time = _tlState.duration;
+                _tlState.playing = false;
+                _updatePlayButton();
+            }
         }
-        _tlApplyTimeToScene();
+        // ALWAYS apply when playing (preview ON during playback)
+        _tlApplyTimeToScene(true);
         _tlRenderCanvas();
         _tlUpdateTimeDisplay();
-        if (_tlState.playing) _tlState.rafId = requestAnimationFrame(tlPlaybackLoop);
+        if (_tlState.playing) _tlState.rafId = requestAnimationFrame(_tlPlaybackLoop);
     }
 
-    function _tlApplyTimeToScene() {
+    function _tlApplyTimeToScene(forceApply) {
         if (!_tlEditingClipId || !_tlState.targetObjName) return;
+        // In Auto Key mode, only apply during playback (not while editing)
+        // In non-auto-key mode, always apply (preview)
+        if (!forceApply && _tlState.autoKey && !_tlState.playing) return;
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip) return;
+        // Only apply if clip has at least one keyframe
+        var hasKeys = false;
+        for (var i = 0; i < clip.tracks.length; i++) {
+            if (clip.tracks[i].keyframes && clip.tracks[i].keyframes.length > 0) { hasKeys = true; break; }
+        }
+        if (!hasKeys) return;
         SashaEngineAPI.applyClipToObject(_tlEditingClipId, _tlState.targetObjName, _tlState.time);
+    }
+
+    // Auto-record current object pose at current time (for all tracks)
+    function _tlAutoRecordPose() {
+        if (!_tlEditingClipId || !_tlState.targetObjName) return;
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip || clip.tracks.length === 0) return;
+        var time = _tlState.time;
+        var objName = _tlState.targetObjName;
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[objName];
+        if (!obj) return;
+        for (var ti = 0; ti < clip.tracks.length; ti++) {
+            var prop = clip.tracks[ti].property;
+            var value = 0;
+            var parts = prop.split('.');
+            if (parts.length === 2) {
+                var parent = parts[0]; var child = parts[1];
+                if (parent === 'position' && obj.position) value = obj.position[child];
+                else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
+                else if (parent === 'scale' && obj.scale) value = obj.scale[child];
+                else if (parent === 'material' && obj.material && obj.material[child] !== undefined) {
+                    if (child === 'color') value = '#' + obj.material.color.getHexString();
+                    else value = obj.material[child];
+                }
+            }
+            // Find if keyframe already exists at this exact time
+            var track = clip.tracks[ti];
+            var found = false;
+            if (track.keyframes) {
+                for (var ki = 0; ki < track.keyframes.length; ki++) {
+                    if (Math.abs(track.keyframes[ki].time - time) < 0.001) {
+                        track.keyframes[ki].value = value;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, time, value);
+            }
+        }
     }
 
     function _tlUpdateTimeDisplay() {
@@ -9452,10 +9540,24 @@ var EngineApp = (function() {
         var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
         if (!clip) return;
 
-        // Check if clicking in header (seek)
+        // Stop playing when clicking on timeline
+        if (_tlState.playing) {
+            _tlState.playing = false;
+            if (_tlState.rafId) { cancelAnimationFrame(_tlState.rafId); _tlState.rafId = null; }
+            _updatePlayButton();
+        }
+
+        // Check if clicking in header (seek / scrub)
         if (my < _tlState.headerHeight) {
-            _tlState.time = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
-            _tlApplyTimeToScene();
+            var newTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
+            _tlState.time = newTime;
+            // In Auto Key mode — record current pose at new time
+            if (_tlState.autoKey && _tlState.targetObjName && clip.tracks.length > 0) {
+                _tlAutoRecordPose();
+                log('Auto-keyed pose at t=' + newTime.toFixed(3), 'info');
+            } else {
+                _tlApplyTimeToScene();
+            }
             _tlRenderCanvas();
             _tlUpdateTimeDisplay();
             return;
@@ -9474,17 +9576,26 @@ var EngineApp = (function() {
                     _tlState.draggingKey = true;
                     _tlState.dragTrack = ti;
                     _tlState.dragKey = ki;
+                    _tlState.time = kf.time;
                     _tlRenderTrackLabels();
                     _tlRenderCanvas();
+                    _tlUpdateTimeDisplay();
                     return;
                 }
             }
-            // Click on track (select track, set time to click position, deselect key)
+            // Click on track row
             if (my >= y && my < y + _tlState.trackHeight) {
                 _tlState.selectedTrack = ti;
                 _tlState.selectedKey = -1;
-                _tlState.time = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
-                _tlApplyTimeToScene();
+                var clickTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
+                _tlState.time = clickTime;
+                // In Auto Key mode — auto-record current pose for this track at click time
+                if (_tlState.autoKey && _tlState.targetObjName) {
+                    _tlAutoRecordPose();
+                    log('Auto-keyed at t=' + clickTime.toFixed(3), 'info');
+                } else {
+                    _tlApplyTimeToScene();
+                }
                 _tlRenderTrackLabels();
                 _tlRenderCanvas();
                 _tlUpdateTimeDisplay();
@@ -11802,7 +11913,7 @@ var EngineApp = (function() {
         // Inspector helpers
         setRBConstraint: setRBConstraint, setColliderField: setColliderField,
         // Animation Timeline
-        tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop,
+        tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop, tlToggleAutoKey: tlToggleAutoKey,
         tlSetDuration: tlSetDuration, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
         tlDeleteSelectedKey: tlDeleteSelectedKey, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
         tlCreateNewClip: tlCreateNewClip, tlAddKeyAllTracks: tlAddKeyAllTracks, tlAddTransformTracks: tlAddTransformTracks,
