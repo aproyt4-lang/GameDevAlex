@@ -195,7 +195,7 @@
         @media (max-width: 768px) { .chat-header { flex-direction: column; align-items: flex-start; } .chat-header-controls { width: 100%; justify-content: flex-start; } .memory-panel, .tts-settings-popup { width: 280px; } }
 
         /* ===== Engine Section ===== */
-        .engine-section { display: flex; flex-direction: column; height: 100%; flex: 1; min-height: 0; }
+        .engine-section { display: flex; flex-direction: column; height: 100%; flex: 1; min-height: 0; position: relative; }
         .engine-toolbar {
             display: flex; align-items: center; gap: 6px; padding: 6px 12px;
             background: var(--bg-card); border-bottom: 1px solid var(--border); flex-wrap: wrap;
@@ -1033,6 +1033,7 @@
                                     <input type="number" id="tl-duration" step="0.1" min="0.1" max="60" value="1.0" style="width:50px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;" onchange="EngineApp.tlSetDuration(this.value)">
                                     <span style="font-size:0.65rem;color:var(--text-muted);">FPS:</span>
                                     <input type="number" id="tl-fps" step="1" min="1" max="120" value="60" style="width:40px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;">
+                                    <button class="eng-tab" onclick="EngineApp.openAnimatorFromTimeline()" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px;"><i class="fas fa-project-diagram"></i> Animator Controller</button>
                                 </div>
                                 <!-- Timeline tracks + canvas area -->
                                 <div style="display:flex;flex:1;min-height:0;">
@@ -1049,12 +1050,13 @@
                                     <button class="eng-tab" onclick="EngineApp.tlAddKeyframe()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-diamond"></i> Add Key</button>
                                     <button class="eng-tab" onclick="EngineApp.tlDeleteSelectedKey()" style="padding:2px 8px;font-size:0.68rem;"><i class="fas fa-trash"></i> Del Key</button>
                                     <div style="flex:1"></div>
-                                    <button class="eng-tab" onclick="EngineApp.openAnimatorFromTimeline()" style="padding:2px 8px;font-size:0.68rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-project-diagram"></i> Animator Controller</button>
                                     <span id="tl-cursor-info" style="font-size:0.65rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;"></span>
                                 </div>
                             </div>
-                            <!-- Animator Controller Editor (shown when animator asset selected) -->
-                            <div id="animator-editor" style="width:100%;height:100%;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;">
+                    </div>
+                </div>
+                <!-- Animator Controller Editor: independent overlay, covers full engine area -->
+                <div id="animator-editor" style="position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;background:var(--bg-card);overflow:hidden;z-index:500;">
                                 <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);min-height:32px;background:var(--bg-dark);">
                                     <button class="eng-tab" onclick="EngineApp.closeAnimatorBackToTimeline()" style="padding:2px 8px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;cursor:pointer;"><i class="fas fa-arrow-left"></i> Timeline</button>
                                     <span id="ac-ctrl-name" style="font-size:0.72rem;color:var(--primary);font-weight:600;min-width:60px;"></span>
@@ -8763,11 +8765,15 @@ var EngineApp = (function() {
         _acState.selectedTransition = -1;
         _acState.selectedState = null;
         _acState.contextMenu = null;
-        if (_acFullscreen) acToggleFullscreen();
-        var tlPanel = document.getElementById('timeline-panel');
+        _acFullscreen = false;
+        var grid = document.querySelector('.engine-bottom-grid');
+        if (grid && grid._origStyle) grid.setAttribute('style', grid._origStyle);
+        var section = document.querySelector('.engine-section');
+        if (section && section._origStyle) section.setAttribute('style', section._origStyle);
         var acEditor = document.getElementById('animator-editor');
-        if (tlPanel) tlPanel.style.display = 'flex';
         if (acEditor) acEditor.style.display = 'none';
+        var btn = document.getElementById('ac-fullscreen-btn');
+        if (btn) { btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen'; }
         tlRefresh();
     }
 
@@ -8781,9 +8787,7 @@ var EngineApp = (function() {
         }
         _tlEditingCtrlId = ctrlId;
         switchTab('timeline');
-        var tlPanel = document.getElementById('timeline-panel');
         var acEditor = document.getElementById('animator-editor');
-        if (tlPanel) tlPanel.style.display = 'none';
         if (acEditor) acEditor.style.display = 'flex';
         acRefresh();
         log('Animator Controller opened', 'info');
@@ -9274,7 +9278,14 @@ var EngineApp = (function() {
             c.addEventListener('mousemove', _tlCanvasMouseMove);
             c.addEventListener('mouseup', _tlCanvasMouseUp);
             c.addEventListener('dblclick', _tlCanvasDblClick);
+            c.addEventListener('wheel', _tlCanvasWheel);
         }
+    }
+    function _tlCanvasWheel(e) {
+        e.preventDefault();
+        var delta = e.deltaY > 0 ? -10 : 10;
+        _tlState.pixelsPerSecond = Math.max(20, Math.min(600, _tlState.pixelsPerSecond + delta));
+        _tlRenderCanvas();
     }
     function _acEnsureEvents() {
         if (_acEventsInit) return;
@@ -9580,46 +9591,34 @@ var EngineApp = (function() {
     function acToggleFullscreen() {
         _acFullscreen = !_acFullscreen;
         var btn = document.getElementById('ac-fullscreen-btn');
-        // Target the engine bottom grid (contains tabs + content)
-        var grid = document.querySelector('.engine-bottom-grid');
-        if (!grid) return;
+        var ae = document.getElementById('animator-editor');
+        if (!ae) return;
         if (_acFullscreen) {
-            // Save original styles
-            if (!grid._origStyle) grid._origStyle = grid.getAttribute('style');
-            // Also save the engine-section style
-            var section = document.querySelector('.engine-section');
-            if (section && !section._origStyle) section._origStyle = section.getAttribute('style');
-            // Make bottom grid cover the full viewport minus top bar
-            grid.style.position = 'fixed';
-            grid.style.top = '0';
-            grid.style.left = '200px';
-            grid.style.right = '0';
-            grid.style.bottom = '0';
-            grid.style.zIndex = '10000';
-            grid.style.width = 'calc(100vw - 200px)';
-            grid.style.height = '100vh';
-            grid.style.flexDirection = 'column';
+            if (!ae._origStyle) ae._origStyle = ae.getAttribute('style');
+            ae.style.position = 'fixed';
+            ae.style.top = '0';
+            ae.style.left = '0';
+            ae.style.right = '0';
+            ae.style.bottom = '0';
+            ae.style.width = '100vw';
+            ae.style.height = '100vh';
+            ae.style.zIndex = '50000';
             if (btn) { btn.innerHTML = '<i class="fas fa-compress"></i> Exit FS'; }
         } else {
-            // Restore original styles
-            if (grid._origStyle) {
-                grid.setAttribute('style', grid._origStyle);
+            if (ae._origStyle) {
+                ae.setAttribute('style', ae._origStyle);
             } else {
-                grid.style.position = '';
-                grid.style.top = '';
-                grid.style.left = '';
-                grid.style.right = '';
-                grid.style.bottom = '';
-                grid.style.zIndex = '';
-                grid.style.width = '';
-                grid.style.height = '';
-                grid.style.flexDirection = '';
+                ae.style.position = 'absolute';
+                ae.style.top = '0';
+                ae.style.left = '0';
+                ae.style.right = '0';
+                ae.style.bottom = '0';
+                ae.style.width = '';
+                ae.style.height = '';
+                ae.style.zIndex = '500';
             }
-            var section = document.querySelector('.engine-section');
-            if (section && section._origStyle) section.setAttribute('style', section._origStyle);
             if (btn) { btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen'; }
         }
-        // Re-render canvas after layout change
         setTimeout(function() { _acRenderCanvas(); }, 100);
         setTimeout(function() { _acRenderCanvas(); }, 300);
     }
