@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
+
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
    <meta http-equiv="Pragma" content="no-cache">
@@ -8,7 +6,7 @@
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
-    <title>SashaAI — GameDev AI & Developer [v7.2-about-chat-1706]</title>
+    <title>SashaAI — GameDev AI & Developer [v7.4-clean-1706]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -48,13 +46,9 @@
         main { margin-top: 70px; min-height: calc(100vh - 70px); }
         .section { display: none; padding: 30px; max-width: 1600px; margin: 0 auto; }
         .section.active { display: block; animation: fadeIn 0.5s ease; }
-        #about.section.active { display: flex; flex-direction: column; gap: 20px; }
         #engine.section.active { display: flex; padding: 0; max-width: none; width: 100%; flex-direction: column; height: calc(100vh - 65px); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        #about .about-top { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-        #about .chat-panel { flex: 1; min-height: 300px; height: 50vh; }
-        @media (max-width: 1200px) { #about .about-top { grid-template-columns: 1fr; } .ai-container { height: 50vh; } }
         #home { display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start; }
         .ai-container { position: relative; height: calc(100vh - 130px); background: var(--bg-card); border-radius: 20px; border: 1px solid var(--border); overflow: hidden; }
         #canvas-container { width: 100%; height: 100%; position: relative; }
@@ -612,9 +606,8 @@
 
     <!-- Main Content -->
     <main>
-        <!-- About Section (first for SEO + AI Chat) -->
+        <!-- About Section (first for SEO) -->
         <section id="about" class="section active">
-            <div class="about-top">
             <div class="about-grid">
                 <div class="about-avatar">
                     <div class="avatar-placeholder">
@@ -679,6 +672,25 @@
                     </div>
                 </div>
             </div>
+        </section>
+
+        <!-- Home Section with 3D Model and Chat -->
+        <section id="home" class="section">
+            <div class="ai-container">
+                <div id="canvas-container">
+                    <canvas id="sasha-canvas"></canvas>
+                </div>
+                <div class="ai-overlay">
+                    <div class="ai-status">
+                        <div class="status-dot"></div>
+                        <span>SashaAI is online and ready to help</span>
+                    </div>
+                    <div class="ai-controls-hint">
+                        <kbd>Click</kbd> to interact &middot; 
+                        <kbd>Drag</kbd> to rotate &middot; 
+                        <kbd>Scroll</kbd> to zoom
+                    </div>
+                </div>
             </div>
 
             <div class="chat-panel">
@@ -724,7 +736,7 @@
                 
                 <div class="chat-messages" id="chat-messages">
                     <div class="message ai">
-                        <div class="message-body">Привет! Я SashaAI — твой GameDev помощник. Спроси меня что угодно, я расскажу о себе, своих навыках, проектах или помогу с кодом!</div>
+                        <div class="message-body">Привет! Я SashaAI — твой GameDev помощник. Я могу писать код, искать информацию, обучаться и многое другое. Выбери режим вверху и спроси что угодно!</div>
                         <div class="message-time">Just now</div>
                     </div>
                 </div>
@@ -734,7 +746,7 @@
                         <textarea 
                             class="chat-input" 
                             id="chat-input"
-                            placeholder="Спроси что угодно..."
+                            placeholder="Напиши сообщение..."
                             rows="1"
                         ></textarea>
                         <div class="chat-actions">
@@ -750,30 +762,11 @@
                         </div>
                     </div>
                     <div class="quick-prompts">
-                        <button class="quick-prompt" onclick="sendQuick('Расскажи о себе подробно')">👤 О себе</button>
-                        <button class="quick-prompt" onclick="sendQuick('Какие у тебя навыки и технологии?')">💻 Навыки</button>
+                        <button class="quick-prompt" onclick="sendQuick('Расскажи о себе')">👤 О себе</button>
+                        <button class="quick-prompt" onclick="sendQuick('Напиши код перемещения для Unity')">💻 Unity код</button>
+                        <button class="quick-prompt" onclick="sendQuick('Что такое procedural generation')">🔍 Поиск</button>
                         <button class="quick-prompt" onclick="sendQuick('Покажи свои проекты')">🎮 Проекты</button>
-                        <button class="quick-prompt" onclick="sendQuick('Чем ты можешь помочь?')">🤖 Помощь</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Home Section with 3D Model -->
-        <section id="home" class="section">
-            <div class="ai-container" style="max-width:100%;width:100%;">
-                <div id="canvas-container">
-                    <canvas id="sasha-canvas"></canvas>
-                </div>
-                <div class="ai-overlay">
-                    <div class="ai-status">
-                        <div class="status-dot"></div>
-                        <span>SashaAI 3D Avatar</span>
-                    </div>
-                    <div class="ai-controls-hint">
-                        <kbd>Click</kbd> to interact &middot; 
-                        <kbd>Drag</kbd> to rotate &middot; 
-                        <kbd>Scroll</kbd> to zoom
+                        <button class="quick-prompt" onclick="sendQuick('Обучи: когда спрашивают про GameForge, скажи что это моя игровая платформа')">🧠 Обучить</button>
                     </div>
                 </div>
             </div>
@@ -9155,42 +9148,12 @@ var EngineApp = (function() {
             if (clip.tracks[i].keyframes && clip.tracks[i].keyframes.length > 0) { hasKeys = true; break; }
         }
         if (!hasKeys) { log('No keyframes! Move object then press Key', 'warn'); return; }
-        // Save object's current transform before playback — restore on stop
-        _tlSaveObjectPose();
         // Start from time 0 if at end
         if (_tlState.time >= _tlState.duration) _tlState.time = 0;
         _tlState.playing = true;
         _tlState.lastFrameTime = performance.now();
         _updatePlayButton();
         _tlPlaybackLoop();
-    }
-
-    // Save current object pose so we can restore on stop
-    function _tlSaveObjectPose() {
-        if (!_tlState.targetObjName) return;
-        var objs = SashaEngineAPI.getObjects();
-        var obj = objs[_tlState.targetObjName];
-        if (!obj) return;
-        _tlState._savedPose = {
-            px: obj.position.x, py: obj.position.y, pz: obj.position.z,
-            rx: obj.rotation.x, ry: obj.rotation.y, rz: obj.rotation.z,
-            sx: obj.scale.x, sy: obj.scale.y, sz: obj.scale.z,
-            vis: obj.visible
-        };
-    }
-
-    // Restore object pose after playback stops
-    function _tlRestoreObjectPose() {
-        if (!_tlState._savedPose || !_tlState.targetObjName) return;
-        var objs = SashaEngineAPI.getObjects();
-        var obj = objs[_tlState.targetObjName];
-        if (!obj) return;
-        var p = _tlState._savedPose;
-        obj.position.set(p.px, p.py, p.pz);
-        obj.rotation.set(p.rx, p.ry, p.rz);
-        obj.scale.set(p.sx, p.sy, p.sz);
-        obj.visible = p.vis;
-        _tlState._savedPose = null;
     }
 
     function _updatePlayButton() {
@@ -9472,27 +9435,6 @@ var EngineApp = (function() {
             if (!exists) SashaEngineAPI.addTrackToClip(_tlEditingClipId, props[i]);
         }
         if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
-        // Auto-record current pose at time 0 for all new tracks
-        if (_tlState.targetObjName) {
-            var obj = SashaEngineAPI.getObjects()[_tlState.targetObjName];
-            if (obj) {
-                var clip2 = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-                if (clip2) {
-                    for (var ti = 0; ti < clip2.tracks.length; ti++) {
-                        var prop = clip2.tracks[ti].property;
-                        var parts = prop.split('.');
-                        var val = 0;
-                        if (parts.length === 2) {
-                            if (parts[0] === 'position' && obj.position) val = obj.position[parts[1]];
-                            else if (parts[0] === 'rotation' && obj.rotation) val = obj.rotation[parts[1]];
-                            else if (parts[0] === 'scale' && obj.scale) val = obj.scale[parts[1]];
-                        }
-                        SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, 0, val);
-                    }
-                    log('Auto-recorded current pose at t=0', 'info');
-                }
-            }
-        }
         _tlState.selectedTrack = -1;
         tlRefresh();
         log('Added 9 transform tracks (pos/rot/scale XYZ)', 'log');
@@ -12158,21 +12100,21 @@ var EngineApp = (function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[AC v7.2-about-chat-1706] Button clicked, EngineApp type:', typeof EngineApp);
+            console.log('[AC v7.4-clean-1706] Button clicked, EngineApp type:', typeof EngineApp);
             if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
                 EngineApp.openAnimatorFromTimeline();
             } else {
-                console.error('[AC v7.2-about-chat-1706] EngineApp not available yet, retrying in 100ms...');
+                console.error('[AC v7.4-clean-1706] EngineApp not available yet, retrying in 100ms...');
                 setTimeout(function() {
                     if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
                         EngineApp.openAnimatorFromTimeline();
                     } else {
-                        console.error('[AC v7.2-about-chat-1706] EngineApp still not available');
+                        console.error('[AC v7.4-clean-1706] EngineApp still not available');
                     }
                 }, 100);
             }
         }, true); // capture phase — fires first
-        console.log('[AC v7.2-about-chat-1706] Safety net handler attached to #ac-open-btn');
+        console.log('[AC v7.4-clean-1706] Safety net handler attached to #ac-open-btn');
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', attachACButton);
@@ -12206,5 +12148,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
