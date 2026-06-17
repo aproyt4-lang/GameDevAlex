@@ -7,7 +7,8 @@
    <meta http-equiv="Expires" content="0">
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>SashaAI — GameDev AI & Developer [v7-tlfix-1706]</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+    <title>SashaAI — GameDev AI & Developer [v7.5-blender-key-1706]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -582,7 +583,11 @@
         </div>
         
         <nav>
-            <button class="active" onclick="showSection('home')">
+            <button class="active" onclick="showSection('about')">
+                <i class="fas fa-user"></i>
+                <span>About</span>
+            </button>
+            <button onclick="showSection('home')">
                 <i class="fas fa-home"></i>
                 <span>Home</span>
             </button>
@@ -598,17 +603,81 @@
                 <i class="fas fa-cube"></i>
                 <span>Engine</span>
             </button>
-            <button onclick="showSection('about')">
-                <i class="fas fa-user"></i>
-                <span>About</span>
-            </button>
         </nav>
     </header>
 
     <!-- Main Content -->
     <main>
+        <!-- About Section (first for SEO) -->
+        <section id="about" class="section active">
+            <div class="about-grid">
+                <div class="about-avatar">
+                    <div class="avatar-placeholder">
+                        <i class="fas fa-user-astronaut"></i>
+                        <span>Sasha AI</span>
+                    </div>
+                </div>
+                
+                <div class="about-content">
+                    <h1>Привет, я Sasha!</h1>
+                    <p>
+                        Я разработчик игр, 3D художник и AI ассистент. Создаю immersive игровые 
+                        миры, процедурные системы и интерактивный контент. Моя 3D модель - 
+                        это цифровое воплощение меня, с которым ты можешь общаться прямо на этом сайте.
+                    </p>
+                    <p>
+                        Специализируюсь на Unity, Unreal Engine, procedural generation и AI-driven 
+                        content creation. Люблю экспериментировать с новыми технологиями и делиться 
+                        знаниями.
+                    </p>
+
+                    <div class="skills-grid">
+                        <div class="skill-card">
+                            <div class="skill-icon">
+                                <i class="fas fa-gamepad"></i>
+                            </div>
+                            <div class="skill-name">Unity</div>
+                            <div class="skill-level">
+                                <div class="skill-progress" style="width: 95%"></div>
+                            </div>
+                        </div>
+
+                        <div class="skill-card">
+                            <div class="skill-icon">
+                                <i class="fas fa-cube"></i>
+                            </div>
+                            <div class="skill-name">Blender</div>
+                            <div class="skill-level">
+                                <div class="skill-progress" style="width: 90%"></div>
+                            </div>
+                        </div>
+
+                        <div class="skill-card">
+                            <div class="skill-icon">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <div class="skill-name">C# / C++</div>
+                            <div class="skill-level">
+                                <div class="skill-progress" style="width: 92%"></div>
+                            </div>
+                        </div>
+
+                        <div class="skill-card">
+                            <div class="skill-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="skill-name">AI/ML</div>
+                            <div class="skill-level">
+                                <div class="skill-progress" style="width: 85%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Home Section with 3D Model and Chat -->
-        <section id="home" class="section active">
+        <section id="home" class="section">
             <div class="ai-container">
                 <div id="canvas-container">
                     <canvas id="sasha-canvas"></canvas>
@@ -1178,73 +1247,6 @@
             </div>
         </section>
 
-        <!-- About Section -->
-        <section id="about" class="section">
-            <div class="about-grid">
-                <div class="about-avatar">
-                    <div class="avatar-placeholder">
-                        <i class="fas fa-user-astronaut"></i>
-                        <span>Sasha AI</span>
-                    </div>
-                </div>
-                
-                <div class="about-content">
-                    <h1>Привет, я Sasha!</h1>
-                    <p>
-                        Я разработчик игр, 3D художник и AI ассистент. Создаю immersive игровые 
-                        миры, процедурные системы и интерактивный контент. Моя 3D модель - 
-                        это цифровое воплощение меня, с которым ты можешь общаться прямо на этом сайте.
-                    </p>
-                    <p>
-                        Специализируюсь на Unity, Unreal Engine, procedural generation и AI-driven 
-                        content creation. Люблю экспериментировать с новыми технологиями и делиться 
-                        знаниями.
-                    </p>
-
-                    <div class="skills-grid">
-                        <div class="skill-card">
-                            <div class="skill-icon">
-                                <i class="fas fa-gamepad"></i>
-                            </div>
-                            <div class="skill-name">Unity</div>
-                            <div class="skill-level">
-                                <div class="skill-progress" style="width: 95%"></div>
-                            </div>
-                        </div>
-
-                        <div class="skill-card">
-                            <div class="skill-icon">
-                                <i class="fas fa-cube"></i>
-                            </div>
-                            <div class="skill-name">Blender</div>
-                            <div class="skill-level">
-                                <div class="skill-progress" style="width: 90%"></div>
-                            </div>
-                        </div>
-
-                        <div class="skill-card">
-                            <div class="skill-icon">
-                                <i class="fas fa-code"></i>
-                            </div>
-                            <div class="skill-name">C# / C++</div>
-                            <div class="skill-level">
-                                <div class="skill-progress" style="width: 92%"></div>
-                            </div>
-                        </div>
-
-                        <div class="skill-card">
-                            <div class="skill-icon">
-                                <i class="fas fa-brain"></i>
-                            </div>
-                            <div class="skill-name">AI/ML</div>
-                            <div class="skill-level">
-                                <div class="skill-progress" style="width: 85%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </main>
 
     <!-- Project Modal -->
@@ -6842,6 +6844,12 @@ var SashaEngineAPI = (function() {
         var clip = animationClips[clipId];
         var obj = objects[objName];
         if (!clip || !obj) return;
+        // Safety: never make object invisible during animation preview
+        if (obj.visible === false) obj.visible = true;
+        // Safety: never let scale go to 0
+        if (obj.scale.x === 0) obj.scale.x = 0.001;
+        if (obj.scale.y === 0) obj.scale.y = 0.001;
+        if (obj.scale.z === 0) obj.scale.z = 0.001;
         var loopTime = clip.loop ? (time % clip.duration) : Math.min(time, clip.duration);
         for (var t = 0; t < clip.tracks.length; t++) {
             var track = clip.tracks[t];
@@ -6855,9 +6863,9 @@ var SashaEngineAPI = (function() {
             else if (prop === 'rotation.x') obj.rotation.x = val;
             else if (prop === 'rotation.y') obj.rotation.y = val;
             else if (prop === 'rotation.z') obj.rotation.z = val;
-            else if (prop === 'scale.x') obj.scale.x = val;
-            else if (prop === 'scale.y') obj.scale.y = val;
-            else if (prop === 'scale.z') obj.scale.z = val;
+            else if (prop === 'scale.x') obj.scale.x = (val === 0) ? 0.001 : val;
+            else if (prop === 'scale.y') obj.scale.y = (val === 0) ? 0.001 : val;
+            else if (prop === 'scale.z') obj.scale.z = (val === 0) ? 0.001 : val;
             else if (prop.indexOf('material.') === 0 && obj.material) {
                 var matProp = prop.substring(9);
                 if (obj.material[matProp] !== undefined) {
@@ -7925,7 +7933,7 @@ var EngineApp = (function() {
 
             var selClass = (name === selected) ? ' selected' : '';
             var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
-            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "'") + '\')" ondblclick="EngineApp.startRename(\'' + name.replace(/'/g, "'") + '\',this)">' +
+            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "'") + '\')" ondblclick="EngineApp.focusOnObject(\'' + name.replace(/'/g, "'") + '\')">' +
                 '<span class="hier-icon"><i class="fas ' + ico + '"></i></span>' +
                 '<span class="hier-name">' + name + '</span>' +
                 '<button class="hier-vis" onclick="event.stopPropagation(); EngineApp.toggleVis(\'' + name.replace(/'/g, "'") + '\')"><i class="fas ' + visIcon + '"></i></button>' +
@@ -7941,6 +7949,53 @@ var EngineApp = (function() {
         refreshHierarchy();
         refreshInspector();
     }
+
+    // Smooth camera focus on object — double-click in hierarchy
+    var _focusAnim = null;
+    function focusOnObject(name) {
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[name];
+        if (!obj) return;
+        // Also select the object
+        SashaEngineAPI.selectObject(name);
+        refreshHierarchy();
+        refreshInspector();
+        // Cancel any running focus animation
+        if (_focusAnim) { cancelAnimationFrame(_focusAnim); _focusAnim = null; }
+        var controls = EngineApp._getControls();
+        if (!controls) return;
+        var targetPos = obj.position.clone();
+        // Calculate desired camera position: offset from object
+        var box = new THREE.Box3().setFromObject(obj);
+        var size = box.getSize(new THREE.Vector3());
+        var dist = Math.max(size.x, size.y, size.z, 1) * 3;
+        var camTarget = new THREE.Vector3(
+            targetPos.x + dist * 0.5,
+            targetPos.y + dist * 0.4,
+            targetPos.z + dist * 0.8
+        );
+        var startTarget = controls.target.clone();
+        var startCam = controls.object.position.clone();
+        var startTime = performance.now();
+        var duration = 400; // ms
+        function animateFocus() {
+            var elapsed = performance.now() - startTime;
+            var t = Math.min(elapsed / duration, 1);
+            // Ease out cubic
+            var ease = 1 - Math.pow(1 - t, 3);
+            controls.target.lerpVectors(startTarget, targetPos, ease);
+            controls.object.position.lerpVectors(startCam, camTarget, ease);
+            controls.update();
+            if (t < 1) {
+                _focusAnim = requestAnimationFrame(animateFocus);
+            } else {
+                _focusAnim = null;
+            }
+        }
+        animateFocus();
+    }
+
+    function _getControls() { return controls; }
 
     // --- Rename ---
 
@@ -9120,7 +9175,7 @@ var EngineApp = (function() {
         _tlState.playing = false;
         if (_tlState.rafId) { cancelAnimationFrame(_tlState.rafId); _tlState.rafId = null; }
         _tlState.time = 0;
-        _tlApplyTimeToScene();
+        _tlApplyTimeToScene(true);
         _tlRenderCanvas();
         _tlUpdateTimeDisplay();
         _updatePlayButton();
@@ -9302,7 +9357,11 @@ var EngineApp = (function() {
     function tlAddKeyframe(autoValue) {
         if (!_tlEditingClipId) { tlCreateNewClip(); }
         if (!_tlEditingClipId) return;
-        if (_tlState.selectedTrack < 0) { log('Select a track first', 'warn'); return; }
+        // No track selected — record ALL tracks (like Blender's I key)
+        if (_tlState.selectedTrack < 0) {
+            tlAddKeyAllTracks();
+            return;
+        }
         var time = _tlState.time;
         var value = 0;
         // Auto-read current value from target object
@@ -9339,29 +9398,49 @@ var EngineApp = (function() {
         if (!_tlEditingClipId) { tlCreateNewClip(); }
         if (!_tlEditingClipId) return;
         var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-        if (!clip || clip.tracks.length === 0) { log('No tracks. Add tracks first.', 'warn'); return; }
+        if (!clip || clip.tracks.length === 0) { log('No tracks. Click Transform first.', 'warn'); return; }
+        if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
         var time = _tlState.time;
-        var objName = _tlState.targetObjName || SashaEngineAPI.getSelectedObject();
+        var objName = _tlState.targetObjName;
         var objs = SashaEngineAPI.getObjects();
         var obj = objName ? objs[objName] : null;
+        if (!obj) { log('No target object', 'warn'); return; }
         var count = 0;
+        var updated = 0;
         for (var ti = 0; ti < clip.tracks.length; ti++) {
             var value = 0;
-            if (obj) {
-                var prop = clip.tracks[ti].property;
-                var parts = prop.split('.');
-                if (parts.length === 2) {
-                    var parent = parts[0]; var child = parts[1];
-                    if (parent === 'position' && obj.position) value = obj.position[child];
-                    else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
-                    else if (parent === 'scale' && obj.scale) value = obj.scale[child];
+            var prop = clip.tracks[ti].property;
+            var parts = prop.split('.');
+            if (parts.length === 2) {
+                var parent = parts[0]; var child = parts[1];
+                if (parent === 'position' && obj.position) value = obj.position[child];
+                else if (parent === 'rotation' && obj.rotation) value = obj.rotation[child];
+                else if (parent === 'scale' && obj.scale) value = obj.scale[child];
+                else if (parent === 'material' && obj.material && obj.material[child] !== undefined) {
+                    if (child === 'color') value = '#' + obj.material.color.getHexString();
+                    else value = obj.material[child];
                 }
             }
-            SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, time, value);
-            count++;
+            // Update existing keyframe at same time, or add new one
+            var track = clip.tracks[ti];
+            var found = false;
+            if (track.keyframes) {
+                for (var ki = 0; ki < track.keyframes.length; ki++) {
+                    if (Math.abs(track.keyframes[ki].time - time) < 0.001) {
+                        track.keyframes[ki].value = value;
+                        found = true;
+                        updated++;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                SashaEngineAPI.addKeyframe(_tlEditingClipId, ti, time, value);
+                count++;
+            }
         }
         tlRefresh();
-        log('Added keyframes for ' + count + ' tracks at t=' + time.toFixed(3), 'log');
+        log((updated > 0 ? 'Updated ' + updated + ' + added ' + count : 'Added ' + count) + ' keys at t=' + time.toFixed(3), 'log');
     }
 
     // Quick-add standard transform tracks (pos/rot/scale XYZ)
@@ -9384,7 +9463,10 @@ var EngineApp = (function() {
         if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
         _tlState.selectedTrack = -1;
         tlRefresh();
-        log('Added 9 transform tracks (pos/rot/scale XYZ)', 'log');
+        // Auto-record initial pose at current time (like pressing I in Blender)
+        _tlAutoRecordPose();
+        tlRefresh();
+        log('Added 9 transform tracks + recorded initial pose at t=' + _tlState.time.toFixed(3), 'log');
     }
 
     function tlDeleteSelectedKey() {
@@ -11983,7 +12065,7 @@ var EngineApp = (function() {
         play: play, pause: pause, stop: stop,
         addObject: addObject, deleteSelected: deleteSelected, duplicateSelected: duplicateSelected,
         refreshHierarchy: refreshHierarchy, refreshInspector: refreshInspector,
-        selectHierItem: selectHierItem, toggleVis: toggleVis,
+        selectHierItem: selectHierItem, focusOnObject: focusOnObject, _getControls: _getControls, toggleVis: toggleVis,
         switchTab: switchTab,
         setTransform: setTransform, setColor: setColor,
         setMaterialProp: setMaterialProp, setLightProp: setLightProp,
@@ -12047,21 +12129,21 @@ var EngineApp = (function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[AC v7-tlfix-1706] Button clicked, EngineApp type:', typeof EngineApp);
+            console.log('[AC v7.4-clean-1706] Button clicked, EngineApp type:', typeof EngineApp);
             if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
                 EngineApp.openAnimatorFromTimeline();
             } else {
-                console.error('[AC v7-tlfix-1706] EngineApp not available yet, retrying in 100ms...');
+                console.error('[AC v7.4-clean-1706] EngineApp not available yet, retrying in 100ms...');
                 setTimeout(function() {
                     if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
                         EngineApp.openAnimatorFromTimeline();
                     } else {
-                        console.error('[AC v7-tlfix-1706] EngineApp still not available');
+                        console.error('[AC v7.4-clean-1706] EngineApp still not available');
                     }
                 }, 100);
             }
         }, true); // capture phase — fires first
-        console.log('[AC v7-tlfix-1706] Safety net handler attached to #ac-open-btn');
+        console.log('[AC v7.4-clean-1706] Safety net handler attached to #ac-open-btn');
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', attachACButton);
@@ -12095,6 +12177,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
