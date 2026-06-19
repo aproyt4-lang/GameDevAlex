@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head><!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ru">
 <head>
    <meta charset="UTF-8">
@@ -10,7 +8,7 @@
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
-    <title>SashaAI — GameDev AI & Developer [v7.5-blender-key-1706]</title>
+    <title>SashaAI — GameDev AI & Developer [v7.8-manual-key-1706]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1135,7 +1133,7 @@
                                 <!-- Timeline header: clip info + controls -->
                                 <div id="timeline-header" style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap;min-height:32px;background:var(--bg-dark);">
                                     <span id="timeline-clip-name" style="font-size:0.72rem;color:var(--text-secondary);min-width:60px;"></span>
-                                    <button class="eng-tab" id="tl-autokey-btn" onclick="EngineApp.tlToggleAutoKey()" title="Auto Key ON: moving scrubber records pose automatically" style="padding:3px 8px;font-size:0.65rem;background:#ef4444;color:#fff;border:1px solid #ef4444;border-radius:4px;cursor:pointer;font-weight:600;"><i class="fas fa-key"></i> Auto Key</button>
+                                    <button class="eng-tab" id="tl-autokey-btn" onclick="EngineApp.tlToggleAutoKey()" title="Auto Key OFF" style="padding:3px 8px;font-size:0.65rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:4px;cursor:pointer;font-weight:600;"><i class="fas fa-key"></i> Auto Key</button>
                                     <button class="eng-tab" onclick="EngineApp.tlCreateNewClip()" title="New Clip" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> New Clip</button>
                                     <div style="display:flex;gap:3px;align-items:center;">
                                         <button class="eng-tab" onclick="EngineApp.tlPlay()" title="Play" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-play"></i></button>
@@ -1144,10 +1142,10 @@
                                     </div>
                                     <span id="tl-time-display" style="font-size:0.68rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">0.000 / 1.000</span>
                                     <div style="flex:1"></div>
-                                    <span style="font-size:0.65rem;color:var(--text-muted);">Duration:</span>
-                                    <input type="number" id="tl-duration" step="0.1" min="0.1" max="60" value="1.0" style="width:50px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;" onchange="EngineApp.tlSetDuration(this.value)">
+                                    <span style="font-size:0.65rem;color:var(--text-muted);">Frames:</span>
+                                    <input type="number" id="tl-frames" step="1" min="1" max="1000" value="250" style="width:50px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;" onchange="EngineApp.tlRefresh()">
                                     <span style="font-size:0.65rem;color:var(--text-muted);">FPS:</span>
-                                    <input type="number" id="tl-fps" step="1" min="1" max="120" value="60" style="width:40px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;">
+                                    <input type="number" id="tl-fps" step="1" min="1" max="250" value="60" style="width:40px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;" onchange="EngineApp.tlRefresh()">
                                     <button class="eng-tab" onclick="EngineApp.openAnimatorFromTimeline()" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px;"><i class="fas fa-project-diagram"></i> Open Animator</button>
                                 </div>
                                 <!-- Timeline tracks + canvas area -->
@@ -9030,7 +9028,13 @@ var EngineApp = (function() {
         selectedTrack: -1, selectedKey: -1, draggingKey: false, dragTrack: -1, dragKey: -1,
         pixelsPerSecond: 120, trackHeight: 28, headerHeight: 24,
         lastFrameTime: 0, rafId: null, targetObjName: null,
-        autoKey: true // Auto Key mode — moving scrubber records pose automatically
+        autoKey: false,
+        // Frame system
+        fps: 60, totalFrames: 250,
+        // Multi-key selection (all keys at same time)
+        multiKeys: [],
+        // Undo/Redo
+        undoStack: [], redoStack: [], maxUndo: 50
     };
 
     function tlRefresh() {
@@ -9042,12 +9046,21 @@ var EngineApp = (function() {
             _tlRenderNoClipUI();
             return;
         }
-        _tlState.duration = clip.duration;
-        _tlState.looping = clip.loop;
+        // Read FPS from input
+        var fpsEl = document.getElementById('tl-fps');
+        if (fpsEl) _tlState.fps = Math.max(1, parseInt(fpsEl.value) || 60);
+        // Read total frames from input
+        var framesEl = document.getElementById('tl-frames');
+        if (framesEl) _tlState.totalFrames = Math.max(1, Math.min(1000, parseInt(framesEl.value) || 250));
+        _tlState.duration = _tlState.totalFrames / _tlState.fps;
+        clip.duration = _tlState.duration;
+        clip.loop = _tlState.looping;
         var nameEl = document.getElementById('timeline-clip-name');
         if (nameEl) nameEl.textContent = clip.name || 'Animation Clip';
         var durEl = document.getElementById('tl-duration');
-        if (durEl) durEl.value = clip.duration;
+        if (durEl) durEl.value = _tlState.duration.toFixed(2);
+        var framesEl2 = document.getElementById('tl-frames');
+        if (framesEl2) framesEl2.value = _tlState.totalFrames;
         var loopBtn = document.getElementById('tl-loop-btn');
         if (loopBtn) loopBtn.style.opacity = clip.loop ? '1' : '0.4';
         _tlRenderTrackLabels();
@@ -9116,6 +9129,43 @@ var EngineApp = (function() {
         refreshAssetBrowser();
         log('Created & opened clip: ' + name, 'result');
     }
+
+    // ============ UNDO / REDO ============
+    function _tlPushUndo() {
+        if (!_tlEditingClipId) return;
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip) return;
+        var snapshot = JSON.stringify(clip.tracks);
+        _tlState.undoStack.push(snapshot);
+        if (_tlState.undoStack.length > _tlState.maxUndo) _tlState.undoStack.shift();
+        _tlState.redoStack = [];
+    }
+    function _tlUndo() {
+        if (_tlState.undoStack.length === 0) { log('Nothing to undo', 'warn'); return; }
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip) return;
+        _tlState.redoStack.push(JSON.stringify(clip.tracks));
+        var snapshot = _tlState.undoStack.pop();
+        clip.tracks = JSON.parse(snapshot);
+        _tlState.multiKeys = [];
+        tlRefresh();
+        log('Undo', 'log');
+    }
+    function _tlRedo() {
+        if (_tlState.redoStack.length === 0) { log('Nothing to redo', 'warn'); return; }
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        if (!clip) return;
+        _tlState.undoStack.push(JSON.stringify(clip.tracks));
+        var snapshot = _tlState.redoStack.pop();
+        clip.tracks = JSON.parse(snapshot);
+        _tlState.multiKeys = [];
+        tlRefresh();
+        log('Redo', 'log');
+    }
+    // ============ FRAME HELPERS ============
+    function _tlTimeToFrame(t) { return Math.round(t * _tlState.fps); }
+    function _tlFrameToTime(f) { return f / _tlState.fps; }
+    function _tlSnapToFrame(t) { return Math.round(t * _tlState.fps) / _tlState.fps; }
 
     function tlSetDuration(val) {
         var v = parseFloat(val);
@@ -9245,7 +9295,7 @@ var EngineApp = (function() {
         if (!_tlEditingClipId || !_tlState.targetObjName) return;
         var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
         if (!clip || clip.tracks.length === 0) return;
-        var time = _tlState.time;
+        var time = _tlSnapToFrame(_tlState.time);
         var objName = _tlState.targetObjName;
         var objs = SashaEngineAPI.getObjects();
         var obj = objs[objName];
@@ -9284,7 +9334,10 @@ var EngineApp = (function() {
 
     function _tlUpdateTimeDisplay() {
         var el = document.getElementById('tl-time-display');
-        if (el) el.textContent = _tlState.time.toFixed(3) + ' / ' + _tlState.duration.toFixed(3);
+        if (el) {
+            var curFrame = _tlTimeToFrame(_tlState.time);
+            el.textContent = 'F' + curFrame + ' / ' + _tlState.totalFrames + '  (' + _tlState.time.toFixed(3) + 's)';
+        }
     }
 
     function tlAddTrack(prop) {
@@ -9400,9 +9453,16 @@ var EngineApp = (function() {
         if (!_tlEditingClipId) { tlCreateNewClip(); }
         if (!_tlEditingClipId) return;
         var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-        if (!clip || clip.tracks.length === 0) { log('No tracks. Click Transform first.', 'warn'); return; }
+        if (!clip) return;
+        // Auto-create transform tracks if none exist
+        if (clip.tracks.length === 0) {
+            tlAddTransformTracks();
+            clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+            if (!clip || clip.tracks.length === 0) return;
+        }
+        _tlPushUndo();
         if (!_tlState.targetObjName) { _tlState.targetObjName = SashaEngineAPI.getSelectedObject(); }
-        var time = _tlState.time;
+        var time = _tlSnapToFrame(_tlState.time);
         var objName = _tlState.targetObjName;
         var objs = SashaEngineAPI.getObjects();
         var obj = objName ? objs[objName] : null;
@@ -9475,6 +9535,28 @@ var EngineApp = (function() {
         if (!_tlEditingClipId) { log('No clip selected', 'warn'); return; }
         var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
         if (!clip) { log('No clip data', 'warn'); return; }
+        _tlPushUndo();
+
+        // If multi-keys selected (column select), delete all of them
+        if (_tlState.multiKeys.length > 0) {
+            var delCount = 0;
+            // Sort by track index desc to avoid index shift
+            var sorted = _tlState.multiKeys.slice().sort(function(a,b) { return b.trackIdx - a.trackIdx; });
+            for (var mi = 0; mi < sorted.length; mi++) {
+                var mk = sorted[mi];
+                if (clip.tracks[mk.trackIdx] && clip.tracks[mk.trackIdx].keyframes[mk.keyIdx]) {
+                    clip.tracks[mk.trackIdx].keyframes.splice(mk.keyIdx, 1);
+                    delCount++;
+                }
+            }
+            _tlState.multiKeys = [];
+            _tlState.selectedKey = -1;
+            tlRefresh();
+            _tlApplyTimeToScene();
+            log('Deleted ' + delCount + ' keys at column', 'log');
+            _flashDelButton();
+            return;
+        }
 
         // If specific keyframe selected — delete it
         if (_tlState.selectedTrack >= 0 && _tlState.selectedKey >= 0) {
@@ -9620,23 +9702,27 @@ var EngineApp = (function() {
         ctx.strokeStyle = '#2e2e4a';
         ctx.lineWidth = 1;
 
-        // Time marks
-        var step = 1;
-        if (_tlState.duration > 5) step = 1;
-        if (_tlState.duration > 10) step = 2;
-        if (_tlState.duration > 30) step = 5;
-        for (var t = 0; t <= _tlState.duration + step; t += step) {
-            var x = t * _tlState.pixelsPerSecond;
+        // Frame marks — show every N frames depending on zoom
+        var frameStep = 1;
+        var pxPerFrame = _tlState.pixelsPerSecond / _tlState.fps;
+        if (pxPerFrame < 4) frameStep = Math.ceil(5 / pxPerFrame);
+        else if (pxPerFrame < 8) frameStep = 5;
+        else if (pxPerFrame < 3) frameStep = 10;
+        for (var f = 0; f <= _tlState.totalFrames; f += frameStep) {
+            var x = _tlFrameToTime(f) * _tlState.pixelsPerSecond;
+            if (x > totalWidth + 20) break;
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, _tlState.headerHeight); ctx.stroke();
             ctx.fillStyle = '#a1a1aa';
             ctx.font = '10px JetBrains Mono, monospace';
-            ctx.fillText(t + 's', x + 2, _tlState.headerHeight - 4);
+            ctx.fillText(f + '', x + 2, _tlState.headerHeight - 4);
         }
-        // Sub-marks (0.5s)
+        // Sub-frame marks
         ctx.strokeStyle = '#1e1e3a';
-        for (var t2 = 0.5; t2 <= _tlState.duration; t2 += 1) {
-            var x2 = t2 * _tlState.pixelsPerSecond;
-            ctx.beginPath(); ctx.moveTo(x2, _tlState.headerHeight - 8); ctx.lineTo(x2, _tlState.headerHeight); ctx.stroke();
+        var subStep = frameStep > 1 ? frameStep : 5;
+        for (var f2 = subStep / 2; f2 <= _tlState.totalFrames; f2 += subStep) {
+            var x2 = _tlFrameToTime(f2) * _tlState.pixelsPerSecond;
+            if (x2 > totalWidth + 20) break;
+            ctx.beginPath(); ctx.moveTo(x2, _tlState.headerHeight - 6); ctx.lineTo(x2, _tlState.headerHeight); ctx.stroke();
         }
 
         // Playhead
@@ -9671,11 +9757,18 @@ var EngineApp = (function() {
                     var kx = kf.time * _tlState.pixelsPerSecond;
                     var ky = y + _tlState.trackHeight / 2;
                     var isKeySel = (isSelected && _tlState.selectedKey === ki);
+                    // Check if this key is in multi-selection
+                    var isMultiSel = false;
+                    for (var ms = 0; ms < _tlState.multiKeys.length; ms++) {
+                        if (_tlState.multiKeys[ms].trackIdx === ti && _tlState.multiKeys[ms].keyIdx === ki) {
+                            isMultiSel = true; break;
+                        }
+                    }
 
                     // Keyframe diamond
-                    ctx.fillStyle = isKeySel ? '#fff' : col;
-                    ctx.strokeStyle = isKeySel ? col : '#fff';
-                    ctx.lineWidth = isKeySel ? 2 : 1;
+                    ctx.fillStyle = (isKeySel || isMultiSel) ? '#fff' : col;
+                    ctx.strokeStyle = (isKeySel || isMultiSel) ? '#f59e0b' : '#fff';
+                    ctx.lineWidth = (isKeySel || isMultiSel) ? 2.5 : 1;
                     ctx.beginPath();
                     ctx.moveTo(kx, ky - 6);
                     ctx.lineTo(kx + 6, ky);
@@ -9738,21 +9831,17 @@ var EngineApp = (function() {
 
         // Check if clicking in header (seek / scrub)
         if (my < _tlState.headerHeight) {
-            var newTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
-            _tlState.time = newTime;
-            // In Auto Key mode — record current pose at new time
-            if (_tlState.autoKey && _tlState.targetObjName && clip.tracks.length > 0) {
-                _tlAutoRecordPose();
-                log('Auto-keyed pose at t=' + newTime.toFixed(3), 'info');
-            } else {
-                _tlApplyTimeToScene();
-            }
+            var rawTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
+            _tlState.time = _tlSnapToFrame(rawTime);
+            _tlState.multiKeys = [];
+            // Always apply scene (so user sees object position at this frame)
+            _tlApplyTimeToScene();
             _tlRenderCanvas();
             _tlUpdateTimeDisplay();
             return;
         }
 
-        // Check keyframe hit
+        // Check keyframe hit — select ALL keys at this time (column select)
         for (var ti = 0; ti < clip.tracks.length; ti++) {
             var y = _tlState.headerHeight + ti * _tlState.trackHeight;
             for (var ki = 0; ki < clip.tracks[ti].keyframes.length; ki++) {
@@ -9766,6 +9855,17 @@ var EngineApp = (function() {
                     _tlState.dragTrack = ti;
                     _tlState.dragKey = ki;
                     _tlState.time = kf.time;
+                    // Column select: find all keys at same time
+                    _tlState.multiKeys = [];
+                    var hitTime = kf.time;
+                    for (var mt = 0; mt < clip.tracks.length; mt++) {
+                        for (var mk = 0; mk < clip.tracks[mt].keyframes.length; mk++) {
+                            if (Math.abs(clip.tracks[mt].keyframes[mk].time - hitTime) < 0.001) {
+                                _tlState.multiKeys.push({trackIdx: mt, keyIdx: mk});
+                            }
+                        }
+                    }
+                    _tlPushUndo(); // for drag
                     _tlRenderTrackLabels();
                     _tlRenderCanvas();
                     _tlUpdateTimeDisplay();
@@ -9776,7 +9876,8 @@ var EngineApp = (function() {
             if (my >= y && my < y + _tlState.trackHeight) {
                 _tlState.selectedTrack = ti;
                 _tlState.selectedKey = -1;
-                var clickTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
+                _tlState.multiKeys = [];
+                var clickTime = _tlSnapToFrame(Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration)));
                 _tlState.time = clickTime;
                 // In Auto Key mode — auto-record current pose for this track at click time
                 if (_tlState.autoKey && _tlState.targetObjName) {
@@ -9800,20 +9901,31 @@ var EngineApp = (function() {
         var rect = canvas.getBoundingClientRect();
         var mx = e.clientX - rect.left;
         var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
-        if (!clip || !clip.tracks[_tlState.dragTrack]) return;
-        var newTime = Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration));
-        clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey].time = newTime;
-        clip.tracks[_tlState.dragTrack].keyframes.sort(function(a, b) { return a.time - b.time; });
-        // Recalculate selectedKey index after sort
-        for (var i = 0; i < clip.tracks[_tlState.dragTrack].keyframes.length; i++) {
-            if (clip.tracks[_tlState.dragTrack].keyframes[i] === clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey]) {
-                // find the moved keyframe
+        if (!clip) return;
+
+        var newTime = _tlSnapToFrame(Math.max(0, Math.min(mx / _tlState.pixelsPerSecond, _tlState.duration)));
+        var oldTime = clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey].time;
+        var dt = newTime - oldTime;
+        if (Math.abs(dt) < 0.0001) return;
+
+        // Move ALL multi-selected keys
+        if (_tlState.multiKeys.length > 1) {
+            for (var mi = 0; mi < _tlState.multiKeys.length; mi++) {
+                var mk = _tlState.multiKeys[mi];
+                if (clip.tracks[mk.trackIdx] && clip.tracks[mk.trackIdx].keyframes[mk.keyIdx]) {
+                    clip.tracks[mk.trackIdx].keyframes[mk.keyIdx].time += dt;
+                    clip.tracks[mk.trackIdx].keyframes.sort(function(a, b) { return a.time - b.time; });
+                }
             }
+        } else {
+            clip.tracks[_tlState.dragTrack].keyframes[_tlState.dragKey].time = newTime;
+            clip.tracks[_tlState.dragTrack].keyframes.sort(function(a, b) { return a.time - b.time; });
         }
+
         _tlRenderCanvas();
         _tlUpdateTimeDisplay();
         var info = document.getElementById('tl-cursor-info');
-        if (info) info.textContent = 't=' + newTime.toFixed(3);
+        if (info) info.textContent = 'F' + _tlTimeToFrame(newTime);
     }
 
     function _tlCanvasMouseUp(e) {
@@ -9879,6 +9991,13 @@ var EngineApp = (function() {
             c.addEventListener('dblclick', _tlCanvasDblClick);
             c.addEventListener('wheel', _tlCanvasWheel);
         }
+        // Keyboard: Ctrl+Z undo, Ctrl+Y / Ctrl+Shift+Z redo, Delete key
+        document.addEventListener('keydown', function(e) {
+            if (!_tlEditingClipId) return;
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); _tlUndo(); }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); _tlRedo(); }
+            if (e.key === 'Delete' && _tlState.multiKeys.length > 0) { e.preventDefault(); tlDeleteSelectedKey(); }
+        });
     }
     function _tlCanvasWheel(e) {
         e.preventDefault();
@@ -12103,7 +12222,7 @@ var EngineApp = (function() {
         setRBConstraint: setRBConstraint, setColliderField: setColliderField,
         // Animation Timeline
         tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop, tlToggleAutoKey: tlToggleAutoKey,
-        tlSetDuration: tlSetDuration, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
+        tlSetDuration: tlSetDuration, tlRefresh: tlRefresh, _tlUndo: _tlUndo, _tlRedo: _tlRedo, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
         tlDeleteSelectedKey: tlDeleteSelectedKey, tlDeleteTrack: tlDeleteTrack, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
         tlCreateNewClip: tlCreateNewClip, tlAddKeyAllTracks: tlAddKeyAllTracks, tlAddTransformTracks: tlAddTransformTracks,
         // Animator Controller Editor
