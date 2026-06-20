@@ -8,7 +8,7 @@
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
-    <title>SashaAI — GameDev AI & Developer [v7.8-manual-key-1706]</title>
+    <title>SashaAI — GameDev AI & Developer [v8.0-github-ac-1906]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -484,7 +484,47 @@
         .asset-toolbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); position: relative; }
         .asset-create-btn, .asset-btn { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; display: flex; align-items: center; gap: 4px; transition: all 0.15s; }
         .asset-create-btn:hover, .asset-btn:hover { border-color: var(--primary); color: #fff; }
+        .asset-btn.danger:hover { border-color: #ef4444; color: #ef4444; }
+        .asset-btn.danger { color: #a1a1aa; }
         .asset-create-dropdown { position: absolute; top: 100%; left: 0; z-index: 100; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 4px 0; min-width: 160px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+        
+        /* Asset Grid View (Unity-style icons) */
+        .asset-grid-view { flex:1; overflow-y:auto; padding:8px; display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:4px; align-content:start; }
+        .asset-grid-item { display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 4px 6px; border-radius:4px; cursor:pointer; border:1px solid transparent; transition:all 0.1s; background:transparent; position:relative; user-select:none; }
+        .asset-grid-item:hover { background:rgba(255,255,255,0.04); }
+        .asset-grid-item.selected { background:rgba(99,102,241,0.2); border-color:rgba(99,102,241,0.6); box-shadow:inset 0 0 0 1px rgba(99,102,241,0.3); }
+        .asset-grid-icon { width:52px; height:52px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; position:relative; overflow:hidden; }
+        .asset-grid-icon::before { content:''; position:absolute; inset:0; border-radius:6px; opacity:0.12; }
+        .asset-grid-icon.folder { color:#fbbf24; background:rgba(251,191,36,0.1); }
+        .asset-grid-icon.folder::before { background:#f59e0b; }
+        .asset-grid-icon.script { color:#22d3ee; background:rgba(6,182,212,0.1); }
+        .asset-grid-icon.script::before { background:#06b6d4; }
+        .asset-grid-icon.material { color:#f472b6; background:rgba(236,72,153,0.1); }
+        .asset-grid-icon.material::before { background:#ec4899; }
+        .asset-grid-icon.prefab { color:#4ade80; background:rgba(34,197,94,0.1); }
+        .asset-grid-icon.prefab::before { background:#22c55e; }
+        .asset-grid-icon.scene { color:#818cf8; background:rgba(99,102,241,0.1); }
+        .asset-grid-icon.scene::before { background:#6366f1; }
+        .asset-grid-icon.shader { color:#a78bfa; background:rgba(139,92,246,0.1); }
+        .asset-grid-icon.shader::before { background:#8b5cf6; }
+        .asset-grid-icon.animation { color:#f87171; background:rgba(239,68,68,0.1); }
+        .asset-grid-icon.animation::before { background:#ef4444; }
+        .asset-grid-icon.animator { color:#fb923c; background:rgba(249,115,22,0.1); }
+        .asset-grid-icon.animator::before { background:#f97316; }
+        .asset-grid-icon.model { color:#2dd4bf; background:rgba(20,184,166,0.1); }
+        .asset-grid-icon.model::before { background:#14b8a6; }
+        .asset-grid-name { font-size:0.62rem; color:var(--text-secondary); text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; line-height:1.2; padding:0 2px; }
+        .asset-grid-item.selected .asset-grid-name { color:#fff; }
+        .asset-grid-name.folder-label { color:#fbbf24; }
+        .asset-grid-item.selected .asset-grid-name.folder-label { color:#fde68a; }
+        /* Asset breadcrumb */
+        .asset-breadcrumb { display:flex; align-items:center; gap:4px; padding:4px 8px; font-size:0.65rem; color:var(--text-muted); background:var(--bg-dark); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:wrap; }
+        .asset-breadcrumb span { cursor:pointer; padding:2px 4px; border-radius:3px; }
+        .asset-breadcrumb span:hover { background:var(--bg-hover); color:#fff; }
+        .asset-breadcrumb span.current { color:#fff; cursor:default; }
+        .asset-breadcrumb .sep { color:var(--text-muted); cursor:default; padding:0; }
+        .asset-breadcrumb .sep:hover { background:transparent; }
+
         .asset-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
         .asset-tree { width: 200px; min-width: 150px; overflow-y: auto; padding: 4px; border-right: 1px solid var(--border); flex-shrink: 0; }
         .asset-item { display: flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all 0.1s; border-left: 2px solid transparent; }
@@ -1070,7 +1110,7 @@
                                 <div class="asset-toolbar">
                                     <button class="asset-create-btn" onclick="EngineApp.createAsset()"><i class="fas fa-plus"></i> Create</button>
                                     <div class="asset-create-dropdown" id="asset-create-menu" style="display:none;">
-                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('folder')"><i class="fas fa-folder"></i> Folder</div>
+                                        <div class="ctx-item" onclick="EngineApp.createAssetItem('folder')"><i class="fas fa-folder-plus"></i> Folder</div>
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('script')"><i class="fas fa-file-code"></i> Script</div>
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('material')"><i class="fas fa-palette"></i> Material</div>
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('prefab')"><i class="fas fa-cube"></i> Prefab</div>
@@ -1079,17 +1119,18 @@
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('animation')"><i class="fas fa-play-circle"></i> Animation Clip</div>
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('animator')"><i class="fas fa-project-diagram"></i> Animator Controller</div>
                                     </div>
-                                    <button class="asset-btn" onclick="EngineApp.importAsset()"><i class="fas fa-file-import"></i> Import</button>
-                                    <button class="asset-btn" onclick="EngineApp.saveAllAssets()"><i class="fas fa-save"></i> Save All</button>
+                                    <button class="asset-btn" onclick="EngineApp.assetCreateFolderQuick()" title="New Folder"><i class="fas fa-folder-plus"></i></button>
+                                    <div style="flex:1"></div>
+                                    <button class="asset-btn danger" onclick="EngineApp.assetDeleteSelected()" title="Delete Selected (Del)"><i class="fas fa-trash"></i></button>
+                                    <button class="asset-btn" onclick="EngineApp.importAsset()"><i class="fas fa-file-import"></i></button>
+                                    <button class="asset-btn" onclick="EngineApp.saveAllAssets()"><i class="fas fa-save"></i></button>
                                 </div>
                                 <div class="asset-body">
                                     <div class="asset-tree" id="asset-tree"></div>
-                                    <div class="asset-content" id="asset-content">
-                                        <div class="asset-empty">
-                                            <i class="fas fa-folder-open"></i>
-                                            <div>Select an asset to view content</div>
-                                            <div style="font-size:0.68rem;opacity:0.5">Create scripts, scenes, prefabs & more</div>
-                                        </div>
+                                    <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
+                                        <div class="asset-breadcrumb" id="asset-breadcrumb"><span class="current">Assets</span></div>
+                                        <div class="asset-grid-view" id="asset-grid"></div>
+                                        <div class="asset-content" id="asset-content" style="display:none;"></div>
                                     </div>
                                 </div>
                             </div>
@@ -1135,6 +1176,7 @@
                                     <span id="timeline-clip-name" style="font-size:0.72rem;color:var(--text-secondary);min-width:60px;"></span>
                                     <button class="eng-tab" id="tl-autokey-btn" onclick="EngineApp.tlToggleAutoKey()" title="Auto Key OFF" style="padding:3px 8px;font-size:0.65rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:4px;cursor:pointer;font-weight:600;"><i class="fas fa-key"></i> Auto Key</button>
                                     <button class="eng-tab" onclick="EngineApp.tlCreateNewClip()" title="New Clip" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-plus"></i> New Clip</button>
+                                    <button class="eng-tab" onclick="EngineApp.tlDeleteClip()" title="Delete Clip" style="padding:3px 8px;font-size:0.65rem;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-trash"></i> Del Clip</button>
                                     <div style="display:flex;gap:3px;align-items:center;">
                                         <button class="eng-tab" onclick="EngineApp.tlPlay()" title="Play" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-play"></i></button>
                                         <button class="eng-tab" onclick="EngineApp.tlStop()" title="Stop" style="padding:3px 8px;font-size:0.7rem;"><i class="fas fa-stop"></i></button>
@@ -1147,6 +1189,11 @@
                                     <span style="font-size:0.65rem;color:var(--text-muted);">FPS:</span>
                                     <input type="number" id="tl-fps" step="1" min="1" max="250" value="60" style="width:40px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;" onchange="EngineApp.tlRefresh()">
                                     <button class="eng-tab" onclick="EngineApp.openAnimatorFromTimeline()" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px;"><i class="fas fa-project-diagram"></i> Open Animator</button>
+                                    <div class="eng-separator" style="margin:0 2px;"></div>
+                                    <button class="eng-tab" onclick="EngineApp.githubSaveAnimations()" title="Save to GitHub" style="padding:3px 8px;font-size:0.6rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:4px;cursor:pointer;"><i class="fab fa-github"></i> Save</button>
+                                    <button class="eng-tab" onclick="EngineApp.githubLoadAnimations()" title="Load from GitHub" style="padding:3px 8px;font-size:0.6rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:4px;cursor:pointer;"><i class="fab fa-github"></i> Load</button>
+                                    <button class="eng-tab" onclick="EngineApp.saveAnimationsLocal()" title="Download as JSON" style="padding:3px 8px;font-size:0.6rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:4px;cursor:pointer;"><i class="fas fa-download"></i></button>
+                                    <button class="eng-tab" onclick="EngineApp.loadAnimationsLocal()" title="Upload JSON" style="padding:3px 8px;font-size:0.6rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:4px;cursor:pointer;"><i class="fas fa-upload"></i></button>
                                 </div>
                                 <!-- Timeline tracks + canvas area -->
                                 <div style="display:flex;flex:1;min-height:0;">
@@ -1197,6 +1244,11 @@
                         <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:4px 10px;font-size:0.72rem;background:#4f46e5;border:1px solid #6366f1;color:#fff;border-radius:6px;cursor:pointer;"><i class="fas fa-plus"></i> State</button>
                         <button class="eng-tab" onclick="EngineApp.acAddTransition()" style="padding:4px 10px;font-size:0.72rem;background:#7c3aed;border:1px solid #8b5cf6;color:#fff;border-radius:6px;cursor:pointer;"><i class="fas fa-arrow-right"></i> Transition</button>
                         <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:4px 10px;font-size:0.72rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;"><i class="fas fa-sliders-h"></i> Param</button>
+                        <div style="flex:1"></div>
+                        <button class="eng-tab" onclick="EngineApp.githubSaveAnimations()" title="Save All to GitHub" style="padding:4px 10px;font-size:0.65rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:6px;cursor:pointer;"><i class="fab fa-github"></i> Save</button>
+                        <button class="eng-tab" onclick="EngineApp.githubLoadAnimations()" title="Load from GitHub" style="padding:4px 10px;font-size:0.65rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:6px;cursor:pointer;"><i class="fab fa-github"></i> Load</button>
+                        <button class="eng-tab" onclick="EngineApp.saveAnimationsLocal()" title="Download JSON" style="padding:4px 10px;font-size:0.65rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:6px;cursor:pointer;"><i class="fas fa-download"></i></button>
+                        <button class="eng-tab" onclick="EngineApp.loadAnimationsLocal()" title="Upload JSON" style="padding:4px 10px;font-size:0.65rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:6px;cursor:pointer;"><i class="fas fa-upload"></i></button>
                     </div>
                     <!-- Transition Inspector Bar (shown when transition selected) -->
                     <div id="ac-transition-bar" style="display:none;padding:6px 12px;border-bottom:1px solid var(--border);min-height:36px;background:var(--bg-dark);gap:8px;align-items:center;flex-wrap:wrap;">
@@ -7462,7 +7514,19 @@ var SashaAssetManager = (function() {
     }
 
     function removeAsset(id) {
-        assets = assets.filter(function(a) { return a.id !== id && a.parent !== id; });
+        // Recursive: collect this id + all children recursively
+        var toRemove = [id];
+        var i = 0;
+        while (i < toRemove.length) {
+            var cid = toRemove[i];
+            for (var j = assets.length - 1; j >= 0; j--) {
+                if (assets[j].id === cid || assets[j].parent === cid) {
+                    if (toRemove.indexOf(assets[j].id) === -1) toRemove.push(assets[j].id);
+                }
+            }
+            i++;
+        }
+        assets = assets.filter(function(a) { return toRemove.indexOf(a.id) === -1; });
         save();
     }
 
@@ -8500,7 +8564,7 @@ var EngineApp = (function() {
     var selectedAsset = null;
     var openFolders = {};
 
-    function refreshAssetBrowser() {
+    function refreshAssetBrowser() { refreshAssetGrid();
         var tree = document.getElementById('asset-tree');
         if (!tree) return;
         var html = '';
@@ -8703,9 +8767,12 @@ var EngineApp = (function() {
         if (menu) menu.style.display = 'none';
         var name = prompt('Name:');
         if (!name) return;
-        var parentFolder = null;
-        var folderMap = { script: 'folder_scripts', material: 'folder_materials', prefab: 'folder_prefabs', scene: 'folder_scenes', shader: 'folder_shaders', animation: 'folder_animations', animator: 'folder_animators', folder: null };
-        parentFolder = folderMap[type] || null;
+        // Use current folder as parent — if root, try to auto-assign to default folder
+        var parentFolder = _assetCurrentFolder;
+        if (!parentFolder && type !== 'folder') {
+            var folderMap = { script: 'folder_scripts', material: 'folder_materials', prefab: 'folder_prefabs', scene: 'folder_scenes', shader: 'folder_shaders', animation: 'folder_animations', animator: 'folder_animators' };
+            parentFolder = folderMap[type] || null;
+        }
         if (type === 'script') {
             var templates = SashaAssetManager.getScriptTemplates();
             var templateNames = Object.keys(templates);
@@ -12178,6 +12245,638 @@ var EngineApp = (function() {
         log('Game exported as HTML', 'result');
     }
 
+    // ============ ASSET GRID VIEW (Unity-style) ============
+    var _assetCurrentFolder = null;
+    var _assetGridSelected = null;
+
+    var _assetGridMulti = {}; // multi-select: id -> true
+
+    function refreshAssetGrid() {
+        var grid = document.getElementById('asset-grid');
+        var bc = document.getElementById('asset-breadcrumb');
+        if (!grid) return;
+
+        var bcHtml = '<span onclick="EngineApp.assetNavigateTo(null)"><i class="fas fa-home" style="margin-right:3px;font-size:0.6rem;"></i>Assets</span>';
+        if (_assetCurrentFolder) {
+            var path = [];
+            var fid = _assetCurrentFolder;
+            while (fid) {
+                var fa = SashaAssetManager.getAsset(fid);
+                if (!fa) break;
+                path.unshift({id: fa.id, name: fa.name});
+                fid = fa.parent;
+            }
+            for (var p = 0; p < path.length; p++) {
+                bcHtml += '<span class="sep">/</span>';
+                if (p < path.length - 1) {
+                    bcHtml += '<span onclick="EngineApp.assetNavigateTo(\'' + path[p].id + '\')">' + path[p].name + '</span>';
+                } else {
+                    bcHtml += '<span class="current">' + path[p].name + '</span>';
+                }
+            }
+        }
+        if (bc) bc.innerHTML = bcHtml;
+
+        var allAssets = SashaAssetManager.getAll();
+        var items = allAssets.filter(function(a) { return a.parent === _assetCurrentFolder; });
+        // Sort: folders first, then alphabetical
+        items.sort(function(a, b) {
+            if (a.type === 'folder' && b.type !== 'folder') return -1;
+            if (a.type !== 'folder' && b.type === 'folder') return 1;
+            return a.name.localeCompare(b.name);
+        });
+        var ghtml = '';
+        if (items.length === 0 && !_assetCurrentFolder) {
+            ghtml = '<div style="grid-column:1/-1;color:var(--text-muted);font-size:0.72rem;padding:20px;text-align:center;">Right-click or use Create to add assets</div>';
+        } else if (items.length === 0 && _assetCurrentFolder) {
+            ghtml = '<div style="grid-column:1/-1;color:var(--text-muted);font-size:0.72rem;padding:20px;text-align:center;">Empty folder</div>';
+        }
+        for (var i = 0; i < items.length; i++) {
+            var a = items[i];
+            var isSel = (_assetGridSelected === a.id) || _assetGridMulti[a.id];
+            var sel = isSel ? ' selected' : '';
+            var iconClass = a.type || 'folder';
+            var iconName = 'fa-file';
+            if (a.type === 'folder') iconName = 'fa-folder';
+            else if (a.type === 'script') iconName = 'fa-file-code';
+            else if (a.type === 'material') iconName = 'fa-palette';
+            else if (a.type === 'prefab') iconName = 'fa-cube';
+            else if (a.type === 'scene') iconName = 'fa-film';
+            else if (a.type === 'shader') iconName = 'fa-wand-magic-sparkles';
+            else if (a.type === 'animation') iconName = 'fa-film';
+            else if (a.type === 'animator') iconName = 'fa-project-diagram';
+            else if (a.type === 'model') iconName = 'fa-cube';
+            var nameClass = a.type === 'folder' ? ' asset-grid-name folder-label' : ' asset-grid-name';
+            ghtml += '<div class="asset-grid-item' + sel + '" data-aid="' + a.id + '" onclick="EngineApp._assetGridClickEx(event,\'' + a.id + '\')" ondblclick="EngineApp.assetGridDblClick(\'' + a.id + '\')" oncontextmenu="event.preventDefault();EngineApp.assetGridContext(event,\'' + a.id + '\')">';
+            ghtml += '<div class="asset-grid-icon ' + iconClass + '"><i class="fas ' + iconName + '"></i></div>';
+            ghtml += '<div class="' + nameClass + '">' + a.name + '</div>';
+            ghtml += '</div>';
+        }
+        grid.innerHTML = ghtml;
+        // Attach keyboard listener for Delete key
+        grid.onkeydown = function(e) {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                assetDeleteSelected();
+            }
+        };
+        grid.setAttribute('tabindex', '0');
+    }
+
+    // Extended click with Ctrl/Shift multi-select
+    function _assetGridClickEx(e, id) {
+        if (e.ctrlKey || e.metaKey) {
+            // Toggle multi-select
+            if (_assetGridMulti[id]) {
+                delete _assetGridMulti[id];
+                if (_assetGridSelected === id) _assetGridSelected = null;
+            } else {
+                _assetGridMulti[id] = true;
+                _assetGridSelected = id;
+            }
+        } else if (e.shiftKey && _assetGridSelected) {
+            // Range select
+            var allAssets = SashaAssetManager.getAll();
+            var items = allAssets.filter(function(a) { return a.parent === _assetCurrentFolder; });
+            var ids = [];
+            for (var i = 0; i < items.length; i++) ids.push(items[i].id);
+            var startIdx = ids.indexOf(_assetGridSelected);
+            var endIdx = ids.indexOf(id);
+            if (startIdx < 0) startIdx = 0;
+            if (endIdx < 0) endIdx = 0;
+            if (startIdx > endIdx) { var tmp = startIdx; startIdx = endIdx; endIdx = tmp; }
+            _assetGridMulti = {};
+            for (var j = startIdx; j <= endIdx; j++) {
+                _assetGridMulti[ids[j]] = true;
+            }
+            _assetGridSelected = id;
+        } else {
+            // Normal click — clear multi
+            _assetGridMulti = {};
+            _assetGridSelected = id;
+        }
+        refreshAssetGrid();
+        refreshAssetBrowser();
+        var asset = SashaAssetManager.getAsset(id);
+        if (asset && asset.type !== 'folder') {
+            showAssetPreview(id);
+            var content = document.getElementById('asset-content');
+            if (content) content.style.display = 'flex';
+        } else {
+            var content2 = document.getElementById('asset-content');
+            if (content2) content2.style.display = 'none';
+        }
+    }
+
+    // Quick create folder in current directory
+    function assetCreateFolderQuick() {
+        var name = prompt('Folder name:');
+        if (!name || !name.trim()) return;
+        SashaAssetManager.addAsset('folder', name.trim(), _assetCurrentFolder, {});
+        if (_assetCurrentFolder) openFolders[_assetCurrentFolder] = true;
+        refreshAssetGrid();
+        refreshAssetBrowser();
+        log('Folder created: ' + name.trim(), 'log');
+    }
+
+    // Delete selected asset(s) — works for folders too (recursively via SashaAssetManager.removeAsset)
+    function assetDeleteSelected() {
+        var toDelete = [];
+        if (_assetGridSelected) {
+            toDelete.push(_assetGridSelected);
+            for (var k in _assetGridMulti) {
+                if (_assetGridMulti.hasOwnProperty(k) && k !== _assetGridSelected) {
+                    toDelete.push(k);
+                }
+            }
+        }
+        if (toDelete.length === 0) { log('Nothing selected', 'warn'); return; }
+        var msg = toDelete.length === 1 ? 'Delete "' + (SashaAssetManager.getAsset(toDelete[0]) || {}).name + '"?' : 'Delete ' + toDelete.length + ' items?';
+        if (!confirm(msg)) return;
+        for (var i = 0; i < toDelete.length; i++) {
+            var asset = SashaAssetManager.getAsset(toDelete[i]);
+            // If animation — also clean engine data
+            if (asset && asset.type === 'animation' && asset.data && asset.data.clipId) {
+                SashaEngineAPI.deleteAnimationClip(asset.data.clipId);
+            }
+            if (asset && asset.type === 'animator' && asset.data && asset.data.controllerId) {
+                SashaEngineAPI.deleteAnimatorController(asset.data.controllerId);
+            }
+            SashaAssetManager.removeAsset(toDelete[i]);
+        }
+        _assetGridSelected = null;
+        _assetGridMulti = {};
+        refreshAssetGrid();
+        refreshAssetBrowser();
+        log('Deleted ' + toDelete.length + ' item(s)', 'log');
+    }
+
+    function assetGridClick(id) {
+        _assetGridSelected = id;
+        selectedAsset = id;
+        refreshAssetGrid();
+        refreshAssetBrowser();
+        var asset = SashaAssetManager.getAsset(id);
+        if (asset && asset.type !== 'folder') {
+            showAssetPreview(id);
+            var content = document.getElementById('asset-content');
+            if (content) content.style.display = 'flex';
+        } else {
+            var content2 = document.getElementById('asset-content');
+            if (content2) content2.style.display = 'none';
+        }
+    }
+
+    function assetGridDblClick(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) return;
+        if (asset.type === 'folder') {
+            _assetCurrentFolder = id;
+            _assetGridSelected = null;
+            refreshAssetGrid();
+        } else if (asset.type === 'animation' && asset.data && asset.data.clipId) {
+            openAnimationTimeline(asset.data.clipId);
+        } else if (asset.type === 'animator' && asset.data && asset.data.controllerId) {
+            openAnimatorEditor(asset.data.controllerId);
+        } else if (asset.type === 'script') {
+            editScriptAsset(id);
+        } else {
+            assetGridClick(id);
+        }
+    }
+
+    function assetNavigateTo(folderId) {
+        _assetCurrentFolder = folderId;
+        _assetGridSelected = null;
+        refreshAssetGrid();
+    }
+
+    function assetGridContext(e, id) {
+        var existing = document.getElementById('asset-ctx-menu');
+        if (existing) existing.remove();
+        var div = document.createElement('div');
+        div.id = 'asset-ctx-menu';
+        div.style.cssText = 'position:fixed;left:' + e.clientX + 'px;top:' + e.clientY + 'px;background:#1e1e3a;border:1px solid #374151;border-radius:8px;padding:4px;z-index:99999;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+        var mhtml = '';
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetGridDblClick(\'' + id + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-folder-open" style="width:14px;text-align:center;"></i>Open</div>';
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetRename(\'' + id + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-pen" style="width:14px;text-align:center;"></i>Rename</div>';
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\'' + id + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#ef4444;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete</div>';
+        div.innerHTML = mhtml;
+        document.body.appendChild(div);
+        setTimeout(function() {
+            document.addEventListener('click', function handler() { div.remove(); document.removeEventListener('click', handler); });
+        }, 10);
+    }
+
+    function assetRename(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) return;
+        var name = prompt('Rename:', asset.name);
+        if (name && name.trim()) {
+            SashaAssetManager.renameAsset(id, name.trim());
+            refreshAssetGrid();
+            refreshAssetBrowser();
+            log('Renamed to: ' + name.trim(), 'log');
+        }
+    }
+
+    // ============ DELETE CLIP ============
+    function tlDeleteClip() {
+        if (!_tlEditingClipId) { log('No clip to delete', 'warn'); return; }
+        var clip = SashaEngineAPI.getAnimationClip(_tlEditingClipId);
+        var name = clip ? clip.name : _tlEditingClipId;
+        if (!confirm('Delete clip?')) return;
+        var allAssets = SashaAssetManager.getAll();
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].data && allAssets[i].data.clipId === _tlEditingClipId) {
+                SashaAssetManager.removeAsset(allAssets[i].id);
+                break;
+            }
+        }
+        SashaEngineAPI.deleteAnimationClip(_tlEditingClipId);
+        _tlEditingClipId = null;
+        tlRefresh();
+        refreshAssetBrowser();
+        refreshAssetGrid();
+        log('Deleted clip: ' + name, 'log');
+    }
+
+    // ============ GITHUB SAVE / LOAD SYSTEM ============
+    var _githubToken = '';
+    var _githubRepo = '';
+    var _githubUser = '';
+
+    // Load GitHub settings from localStorage
+    function _loadGitHubSettings() {
+        try {
+            _githubToken = localStorage.getItem('sasha_github_token') || '';
+            _githubRepo = localStorage.getItem('sasha_github_repo') || '';
+            _githubUser = localStorage.getItem('sasha_github_user') || '';
+        } catch(e) {}
+    }
+    _loadGitHubSettings();
+
+    function _saveGitHubSettings(token, user, repo) {
+        _githubToken = token; _githubUser = user; _githubRepo = repo;
+        try {
+            localStorage.setItem('sasha_github_token', token);
+            localStorage.setItem('sasha_github_user', user);
+            localStorage.setItem('sasha_github_repo', repo);
+        } catch(e) {}
+    }
+
+    // Export all animation clips + animator controllers to JSON
+    function _exportAnimationsJSON() {
+        var data = {
+            version: '8.0',
+            engine: 'SashaAI',
+            exportedAt: new Date().toISOString(),
+            clips: {},
+            controllers: {},
+            assets: []
+        };
+        // Export all clips from SashaEngineAPI
+        var animClips = SashaEngineAPI.getAnimClips();
+        for (var id in animClips) {
+            if (animClips.hasOwnProperty(id)) {
+                data.clips[id] = JSON.parse(JSON.stringify(animClips[id]));
+            }
+        }
+        // Export all controllers
+        var controllers = SashaEngineAPI.getAnimatorControllers();
+        for (var cid in controllers) {
+            if (controllers.hasOwnProperty(cid)) {
+                data.controllers[cid] = JSON.parse(JSON.stringify(controllers[cid]));
+            }
+        }
+        // Export animation + animator assets
+        var allAssets = SashaAssetManager.getAll();
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'animation' || allAssets[i].type === 'animator') {
+                data.assets.push(JSON.parse(JSON.stringify(allAssets[i])));
+            }
+        }
+        return data;
+    }
+
+    // Import animation data from JSON
+    function _importAnimationsJSON(data) {
+        if (!data || !data.clips) { log('Invalid animation data', 'error'); return 0; }
+        var imported = 0;
+        // Import clips
+        if (data.clips) {
+            for (var id in data.clips) {
+                if (data.clips.hasOwnProperty(id)) {
+                    var clip = data.clips[id];
+                    SashaEngineAPI.createAnimationClip(id, clip.name);
+                    var existing = SashaEngineAPI.getAnimationClip(id);
+                    if (existing) {
+                        existing.duration = clip.duration;
+                        existing.loop = clip.loop !== false;
+                        existing.tracks = clip.tracks || [];
+                    }
+                    imported++;
+                }
+            }
+        }
+        // Import controllers
+        if (data.controllers) {
+            for (var cid in data.controllers) {
+                if (data.controllers.hasOwnProperty(cid)) {
+                    var ctrl = data.controllers[cid];
+                    if (!SashaEngineAPI.getAnimatorController(cid)) {
+                        SashaEngineAPI.createAnimatorController(cid, ctrl.name);
+                    }
+                    var existingCtrl = SashaEngineAPI.getAnimatorController(cid);
+                    if (existingCtrl) {
+                        existingCtrl.parameters = ctrl.parameters || {};
+                        existingCtrl.states = ctrl.states || [];
+                        existingCtrl.transitions = ctrl.transitions || [];
+                    }
+                    imported++;
+                }
+            }
+        }
+        // Import assets
+        if (data.assets) {
+            for (var a = 0; a < data.assets.length; a++) {
+                var asset = data.assets[a];
+                // Check if asset with same id already exists
+                var exists = SashaAssetManager.getAsset(asset.id);
+                if (!exists) {
+                    // Use addAsset which generates new id — map old clipId to new
+                    SashaAssetManager.addAsset(asset.type, asset.name, asset.parent, asset.data);
+                }
+            }
+        }
+        return imported;
+    }
+
+    // Save animation package to GitHub Gist
+    function githubSaveAnimations() {
+        var token = _githubToken;
+        var user = _githubUser;
+        var repo = _githubRepo;
+        // Show settings dialog if not configured
+        if (!token || !user || !repo) {
+            _showGitHubSettingsDialog(function() {
+                githubSaveAnimations();
+            });
+            return;
+        }
+        var data = _exportAnimationsJSON();
+        var jsonStr = JSON.stringify(data, null, 2);
+        var filename = 'sasha_animations_' + Date.now() + '.json';
+        var path = 'animations/' + filename;
+        log('Saving animations to GitHub...', 'info');
+        // Create/update file via GitHub API
+        var xhr = new XMLHttpRequest();
+        xhr.open('PUT', 'https://api.github.com/repos/' + user + '/' + repo + '/contents/' + path);
+        xhr.setRequestHeader('Authorization', 'token ' + token);
+        xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        var body = JSON.stringify({
+            message: 'Save SashaAI animations - ' + new Date().toLocaleString(),
+            content: btoa(unescape(encodeURIComponent(jsonStr)))
+        });
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                log('Saved ' + Object.keys(data.clips).length + ' clips + ' + Object.keys(data.controllers).length + ' controllers to GitHub', 'result');
+            } else {
+                log('GitHub save error: ' + xhr.status + ' - ' + xhr.responseText.substring(0, 200), 'error');
+            }
+        };
+        xhr.onerror = function() { log('Network error saving to GitHub', 'error'); };
+        xhr.send(body);
+    }
+
+    // Load animation package from GitHub
+    function githubLoadAnimations() {
+        var token = _githubToken;
+        var user = _githubUser;
+        var repo = _githubRepo;
+        if (!token || !user || !repo) {
+            _showGitHubSettingsDialog(function() {
+                githubLoadAnimations();
+            });
+            return;
+        }
+        log('Loading animations from GitHub...', 'info');
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://api.github.com/repos/' + user + '/' + repo + '/contents/animations');
+        xhr.setRequestHeader('Authorization', 'token ' + token);
+        xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var files = JSON.parse(xhr.responseText);
+                if (!Array.isArray(files) || files.length === 0) {
+                    log('No animation files found in GitHub', 'warn');
+                    return;
+                }
+                // Find latest file
+                files.sort(function(a, b) { return (b.name > a.name ? 1 : -1); });
+                var latest = files[0];
+                _githubDownloadFile(latest.download_url, function(jsonStr) {
+                    try {
+                        var data = JSON.parse(jsonStr);
+                        var count = _importAnimationsJSON(data);
+                        refreshAssetBrowser();
+                        refreshAssetGrid();
+                        if (_tlEditingCtrlId) acRefresh();
+                        if (_tlEditingClipId) tlRefresh();
+                        log('Loaded ' + count + ' items from GitHub', 'result');
+                    } catch(e) {
+                        log('Error parsing animation data: ' + e.message, 'error');
+                    }
+                });
+            } else {
+                log('GitHub load error: ' + xhr.status, 'error');
+            }
+        };
+        xhr.onerror = function() { log('Network error loading from GitHub', 'error'); };
+        xhr.send();
+    }
+
+    function _githubDownloadFile(url, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.onload = function() {
+            if (xhr.status === 200) callback(xhr.responseText);
+            else log('Download error: ' + xhr.status, 'error');
+        };
+        xhr.onerror = function() { log('Download network error', 'error'); };
+        xhr.send();
+    }
+
+    // Show GitHub settings dialog (inline, no alert/prompt)
+    function _showGitHubSettingsDialog(callback) {
+        var old = document.getElementById('github-settings-dialog');
+        if (old) old.remove();
+        var div = document.createElement('div');
+        div.id = 'github-settings-dialog';
+        div.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+        div.innerHTML = '<div style="background:#1a1a2e;border:2px solid #6366f1;border-radius:16px;padding:24px;width:420px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.5);">'
+            + '<div style="font-size:1.1rem;font-weight:700;color:#6366f1;margin-bottom:16px;"><i class="fab fa-github" style="margin-right:8px;"></i>GitHub Settings</div>'
+            + '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:4px;">GitHub Token</label><input type="password" id="gh-token-input" placeholder="ghp_xxxx..." value="' + _githubToken + '" style="width:100%;padding:8px 12px;background:#0f0f23;border:1px solid #2e2e4a;border-radius:8px;color:#fff;font-size:0.82rem;outline:none;font-family:inherit;box-sizing:border-box;"></div>'
+            + '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:4px;">Username</label><input type="text" id="gh-user-input" placeholder="your-username" value="' + _githubUser + '" style="width:100%;padding:8px 12px;background:#0f0f23;border:1px solid #2e2e4a;border-radius:8px;color:#fff;font-size:0.82rem;outline:none;font-family:inherit;box-sizing:border-box;"></div>'
+            + '<div style="margin-bottom:16px;"><label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:4px;">Repository</label><input type="text" id="gh-repo-input" placeholder="my-repo" value="' + _githubRepo + '" style="width:100%;padding:8px 12px;background:#0f0f23;border:1px solid #2e2e4a;border-radius:8px;color:#fff;font-size:0.82rem;outline:none;font-family:inherit;box-sizing:border-box;"></div>'
+            + '<div style="font-size:0.65rem;color:#71717a;margin-bottom:16px;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Token needs repo permissions. Animations save to /animations/ folder.</div>'
+            + '<div style="display:flex;gap:8px;justify-content:flex-end;"><button id="gh-cancel-btn" style="padding:8px 16px;background:#374151;border:none;color:#a1a1aa;border-radius:8px;cursor:pointer;font-size:0.82rem;">Cancel</button><button id="gh-save-btn" style="padding:8px 16px;background:#6366f1;border:none;color:#fff;border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;"><i class="fab fa-github" style="margin-right:4px;"></i>Save & Connect</button></div>'
+            + '</div>';
+        document.body.appendChild(div);
+        // Close on backdrop click
+        div.addEventListener('click', function(e) { if (e.target === div) div.remove(); });
+        document.getElementById('gh-cancel-btn').onclick = function() { div.remove(); };
+        document.getElementById('gh-save-btn').onclick = function() {
+            var t = document.getElementById('gh-token-input').value.trim();
+            var u = document.getElementById('gh-user-input').value.trim();
+            var r = document.getElementById('gh-repo-input').value.trim();
+            if (!t || !u || !r) { log('Fill all GitHub fields', 'warn'); return; }
+            _saveGitHubSettings(t, u, r);
+            div.remove();
+            log('GitHub settings saved', 'result');
+            if (callback) callback();
+        };
+        // Enter key to save
+        var inputs = div.querySelectorAll('input');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') document.getElementById('gh-save-btn').click();
+                if (e.key === 'Escape') div.remove();
+            });
+        }
+    }
+
+    // Save/Load animations as local JSON file (no GitHub needed)
+    function saveAnimationsLocal() {
+        var data = _exportAnimationsJSON();
+        var jsonStr = JSON.stringify(data, null, 2);
+        var blob = new Blob([jsonStr], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'sasha_animations_' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        log('Downloaded animations as JSON', 'result');
+    }
+
+    function loadAnimationsLocal() {
+        var old = document.getElementById('local-load-input');
+        if (old) old.remove();
+        var input = document.createElement('input');
+        input.id = 'local-load-input';
+        input.type = 'file';
+        input.accept = '.json';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.onchange = function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    var data = JSON.parse(ev.target.result);
+                    var count = _importAnimationsJSON(data);
+                    refreshAssetBrowser();
+                    refreshAssetGrid();
+                    if (_tlEditingCtrlId) acRefresh();
+                    if (_tlEditingClipId) tlRefresh();
+                    log('Loaded ' + count + ' items from file', 'result');
+                } catch(err) {
+                    log('Error loading file: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            input.remove();
+        };
+        input.click();
+    }
+
+    // ============ SKELETAL ANIMATION SUPPORT ============
+    var _skeletonData = {};
+
+    function loadGLBModel(url, x, y, z, s) {
+        var loader = new THREE.GLTFLoader();
+        var n = gn('model');
+        loader.load(url, function(gltf) {
+            var m = gltf.scene;
+            m.position.set(x || 0, y || 0, z || 0);
+            if (s) m.scale.set(s, s, s);
+            m.name = n;
+            m.traverse(function(child) {
+                if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+            });
+            scene.add(m);
+            objects[n] = m;
+            objectTypes[n] = 'model';
+            if (gltf.animations && gltf.animations.length > 0) {
+                var mixer = new THREE.AnimationMixer(m);
+                var clips = [];
+                for (var ai = 0; ai < gltf.animations.length; ai++) {
+                    var ac = gltf.animations[ai];
+                    clips.push(ac);
+                    var clipId = 'clip_glb_' + Date.now() + '_' + ai;
+                    SashaEngineAPI.createAnimationClip(clipId, ac.name || ('Anim_' + ai));
+                    var createdClip = SashaEngineAPI.getAnimationClip(clipId);
+                    if (createdClip) { createdClip.duration = ac.duration; createdClip.loop = true; }
+                    for (var ti = 0; ti < ac.tracks.length; ti++) {
+                        var track = ac.tracks[ti];
+                        SashaEngineAPI.addTrackToClip(clipId, track.name);
+                        var times = track.times;
+                        var values = track.values;
+                        var valueSize = track.getValueSize();
+                        for (var ki = 0; ki < times.length; ki++) {
+                            var val = values[ki * valueSize];
+                            SashaEngineAPI.addKeyframe(clipId, ti, times[ki], val);
+                        }
+                    }
+                    SashaAssetManager.addAsset('animation', ac.name || ('Anim_' + ai), _assetCurrentFolder, { clipId: clipId });
+                }
+                _skeletonData[n] = { mixer: mixer, clips: clips, actions: [] };
+                log('Loaded model with ' + clips.length + ' anims: ' + n, 'result');
+            } else {
+                log('Loaded model: ' + n, 'result');
+            }
+            refreshHierarchy();
+            refreshAssetBrowser();
+            refreshAssetGrid();
+        }, undefined, function(err) {
+            log('Failed to load GLB: ' + (err.message || err), 'error');
+        });
+        return n;
+    }
+
+    function playSkeletalAnimation(objName, clipName, loop) {
+        var sd = _skeletonData[objName];
+        if (!sd || !sd.clips.length) { log('No skeletal anims on: ' + objName, 'warn'); return; }
+        var clip = null;
+        for (var i = 0; i < sd.clips.length; i++) {
+            if (sd.clips[i].name === clipName) { clip = sd.clips[i]; break; }
+        }
+        if (!clip) clip = sd.clips[0];
+        for (var j = 0; j < sd.actions.length; j++) { sd.actions[j].stop(); }
+        sd.actions = [];
+        var action = sd.mixer.clipAction(clip);
+        action.setLoop(loop !== false ? THREE.LoopRepeat : THREE.LoopOnce, 1);
+        action.play();
+        sd.actions.push(action);
+        log('Playing skeletal anim: ' + clip.name, 'log');
+    }
+
+    function stopSkeletalAnimation(objName) {
+        var sd = _skeletonData[objName];
+        if (!sd) return;
+        for (var j = 0; j < sd.actions.length; j++) { sd.actions[j].stop(); }
+        sd.actions = [];
+    }
+
+    function updateSkeletonMixers(dt) {
+        for (var key in _skeletonData) {
+            if (_skeletonData[key].mixer) _skeletonData[key].mixer.update(dt);
+        }
+    }
+
     return {
         init: init, runCode: runCode, toggleLive: toggleLive,
         clearScene: clearScene, loadModelFromURL: loadModelFromURL,
@@ -12222,7 +12921,15 @@ var EngineApp = (function() {
         setRBConstraint: setRBConstraint, setColliderField: setColliderField,
         // Animation Timeline
         tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop, tlToggleAutoKey: tlToggleAutoKey,
-        tlSetDuration: tlSetDuration, tlRefresh: tlRefresh, _tlUndo: _tlUndo, _tlRedo: _tlRedo, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
+        tlSetDuration: tlSetDuration, tlRefresh: tlRefresh, _tlUndo: _tlUndo, _tlRedo: _tlRedo,
+        tlDeleteClip: tlDeleteClip,
+        refreshAssetGrid: refreshAssetGrid, assetGridClick: assetGridClick, assetGridDblClick: assetGridDblClick, assetNavigateTo: assetNavigateTo, assetGridContext: assetGridContext, assetRename: assetRename,
+        assetCreateFolderQuick: assetCreateFolderQuick, assetDeleteSelected: assetDeleteSelected, _assetGridClickEx: _assetGridClickEx,
+        loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, updateSkeletonMixers: updateSkeletonMixers, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
+        // GitHub Save/Load
+        githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
+        saveAnimationsLocal: saveAnimationsLocal, loadAnimationsLocal: loadAnimationsLocal,
+        _showGitHubSettingsDialog: _showGitHubSettingsDialog,
         tlDeleteSelectedKey: tlDeleteSelectedKey, tlDeleteTrack: tlDeleteTrack, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
         tlCreateNewClip: tlCreateNewClip, tlAddKeyAllTracks: tlAddKeyAllTracks, tlAddTransformTracks: tlAddTransformTracks,
         // Animator Controller Editor
@@ -12250,7 +12957,7 @@ var EngineApp = (function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[AC v7.4-clean-1706] Button clicked, EngineApp type:', typeof EngineApp);
+            console.log('[AC v8.0-github-ac-1906] Button clicked, EngineApp type:', typeof EngineApp);
             if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
                 EngineApp.openAnimatorFromTimeline();
             } else {
@@ -12264,7 +12971,7 @@ var EngineApp = (function() {
                 }, 100);
             }
         }, true); // capture phase — fires first
-        console.log('[AC v7.4-clean-1706] Safety net handler attached to #ac-open-btn');
+        console.log('[AC v8.0-github-ac-1906] Safety net handler attached to #ac-open-btn');
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', attachACButton);
