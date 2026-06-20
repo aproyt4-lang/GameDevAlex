@@ -1,7 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><!DOCTYPE html>
-<html lang="ru">
 <head>
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -8354,6 +8352,32 @@ var EngineApp = (function() {
             }
             return chtml;
          })());
+        // --- Bone Inspector for skeletal models ---
+        if (_skeletonData[selected]) {
+            var sd = _skeletonData[selected];
+            html += iSection('fa-bone', 'Skeleton (' + sd.clips.length + ' anims)', '<div id="bone-tree-inspector"></div>');
+            html += '<div style="padding:4px 8px;display:flex;gap:4px;">';
+            html += '<button class="insp-btn" onclick="EngineApp.togglePoseMode(\x27' + selected + '\x27)" id="pose-mode-btn" style="flex:1;"><i class="fas fa-child"></i> Pose Mode</button>';
+            html += '<button class="insp-btn" onclick="EngineApp.keyframeBonePose(\x27' + selected + '\x27)" id="key-pose-btn" style="flex:1;display:none;background:#22c55e;border-color:#22c55e;"><i class="fas fa-key"></i> Key Pose</button>';
+            html += '</div>';
+            // Defer bone tree rendering
+            setTimeout(function() {
+                var bt = document.getElementById('bone-tree-inspector');
+                if (!bt || !objects[selected]) return;
+                var boneHtml = '';
+                objects[selected].traverse(function(child) {
+                    if (child.isBone) {
+                        boneHtml += '<div class="bone-item" style="display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:0.68rem;color:#a1a1aa;cursor:pointer;border-radius:3px;border-left:2px solid transparent;" onclick="EngineApp.selectBone(\'' + selected + '\',\'' + child.name + '\')" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'">';
+                        boneHtml += '<i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:12px;text-align:center;"></i>';
+                        boneHtml += '<span>' + child.name + '</span></div>';
+                    }
+                });
+                if (!boneHtml) boneHtml = '<div style="padding:6px 10px;font-size:0.68rem;color:#71717a;">No bones found</div>';
+                bt.innerHTML = boneHtml;
+            }, 50);
+        }
+
+        
         html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option><option value="animator">Animator</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
         html += '<div style="display:flex;gap:4px;padding:4px 8px;"><button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button><button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button></div>';
         container.innerHTML = html;
@@ -10124,6 +10148,22 @@ var EngineApp = (function() {
     }
 
     // ============ AC CLIPS PANEL ============
+
+    // Assign clip to currently selected AC state
+    function _acAssignClipToState(clipId) {
+        if (!_tlEditingCtrlId || !_acState.selectedState) return;
+        var ctrl = SashaEngineAPI.getAnimatorController(_tlEditingCtrlId);
+        if (!ctrl) return;
+        for (var i = 0; i < ctrl.states.length; i++) {
+            if (ctrl.states[i].name === _acState.selectedState) {
+                ctrl.states[i].clipId = clipId;
+                log('Assigned ' + _findClipName(clipId) + ' to ' + _acState.selectedState, 'result');
+                acRefresh();
+                return;
+            }
+        }
+    }
+
     function _acRenderClips() {
         var list = document.getElementById('ac-clips-list');
         if (!list) return;
@@ -10153,7 +10193,10 @@ var EngineApp = (function() {
             var usedColor = isUsed ? '#22c55e' : '#71717a';
             var usedIcon = isUsed ? 'fa-link' : 'fa-unlink';
             var usedLabel = isUsed ? 'Used' : 'Unused';
-            html += '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:' + (isUsed ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.02)') + ';border:1px solid ' + (isUsed ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)') + ';border-radius:5px;margin-bottom:4px;font-size:0.65rem;">';
+            var isSelState = _acState.selectedState;
+            var assignHint = (!isUsed && isSelState) ? 'cursor:pointer;' : '';
+            var assignClick = (!isUsed && isSelState) ? ' onclick="EngineApp._acAssignClipToState(\'' + clip.clipId + '\')" title="Click to assign to ' + (_acState.selectedState || '') + '"' : '';
+            html += '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:' + (isUsed ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.02)') + ';border:1px solid ' + (isUsed ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)') + ';border-radius:5px;margin-bottom:4px;font-size:0.65rem;' + assignHint + '"' + assignClick + '>';
             html += '<i class="fas fa-film" style="color:#f59e0b;font-size:0.55rem;"></i>';
             html += '<span style="flex:1;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + clip.name + '">' + clip.name + '</span>';
             html += '<span style="color:' + usedColor + ';font-size:0.5rem;white-space:nowrap;"><i class="fas ' + usedIcon + '" style="margin-right:2px;"></i>' + usedLabel + '</span>';
@@ -12836,6 +12879,151 @@ var EngineApp = (function() {
         input.click();
     }
 
+
+    // ============ POSE MODE & BONE EDITING ============
+    var _poseMode = false;
+    var _poseModel = null;
+    var _selectedBone = null;
+
+    function togglePoseMode(objName) {
+        if (_poseMode && _poseModel === objName) {
+            _poseMode = false;
+            _poseModel = null;
+            _selectedBone = null;
+            log('Pose mode OFF', 'log');
+        } else {
+            _poseMode = true;
+            _poseModel = objName;
+            _selectedBone = null;
+            log('Pose mode ON — select bones, then Key Pose', 'result');
+        }
+        var btn = document.getElementById('pose-mode-btn');
+        var kbtn = document.getElementById('key-pose-btn');
+        if (btn) { btn.style.background = _poseMode ? '#f59e0b' : ''; btn.style.borderColor = _poseMode ? '#f59e0b' : ''; btn.style.color = _poseMode ? '#000' : ''; }
+        if (kbtn) kbtn.style.display = _poseMode ? '' : 'none';
+    }
+
+    function selectBone(modelName, boneName) {
+        if (!_poseMode || _poseModel !== modelName) return;
+        _selectedBone = boneName;
+        log('Bone selected: ' + boneName, 'log');
+        // Show bone transform in inspector
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[modelName];
+        if (!obj) return;
+        var bone = null;
+        obj.traverse(function(child) { if (child.isBone && child.name === boneName) bone = child; });
+        if (!bone) return;
+        var container = document.getElementById('eng-inspector');
+        if (!container) return;
+        // Add/replace bone transform section
+        var btSection = document.getElementById('bone-transform-section');
+        if (btSection) btSection.remove();
+        var div = document.createElement('div');
+        div.id = 'bone-transform-section';
+        div.className = 'insp-section';
+        div.innerHTML = '<div class="insp-section-header"><i class="fas fa-arrows-alt"></i> Bone: ' + boneName + '</div>'
+            + '<div class="insp-section-body">'
+            + '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Position</div>'
+            + '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.01" value="' + bone.position.x.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'position\',\'x\',this.value)"></div>'
+            + '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.01" value="' + bone.position.y.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'position\',\'y\',this.value)"></div>'
+            + '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.01" value="' + bone.position.z.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'position\',\'z\',this.value)"></div>'
+            + '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Rotation (deg)</div>'
+            + '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="1" value="' + (bone.rotation.x * 180 / Math.PI).toFixed(1) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'rotation\',\'x\',this.value)"></div>'
+            + '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="1" value="' + (bone.rotation.y * 180 / Math.PI).toFixed(1) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'rotation\',\'y\',this.value)"></div>'
+            + '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="1" value="' + (bone.rotation.z * 180 / Math.PI).toFixed(1) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'rotation\',\'z\',this.value)"></div>'
+            + '<div style="padding:2px 10px 4px;font-size:0.68rem;color:var(--text-muted);">Scale</div>'
+            + '<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.01" value="' + bone.scale.x.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'scale\',\'x\',this.value)"></div>'
+            + '<div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.01" value="' + bone.scale.y.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'scale\',\'y\',this.value)"></div>'
+            + '<div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.01" value="' + bone.scale.z.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'' + modelName + '\',\'' + boneName + '\',\'scale\',\'z\',this.value)"></div>'
+            + '</div>';
+        container.appendChild(div);
+    }
+
+    function _setBoneProp(modelName, boneName, prop, axis, val) {
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[modelName];
+        if (!obj) return;
+        var bone = null;
+        obj.traverse(function(child) { if (child.isBone && child.name === boneName) bone = child; });
+        if (!bone) return;
+        var v = parseFloat(val);
+        if (isNaN(v)) return;
+        if (prop === 'position') bone.position[axis] = v;
+        else if (prop === 'rotation') bone.rotation[axis] = v * Math.PI / 180;
+        else if (prop === 'scale') bone.scale[axis] = v;
+    }
+
+    function keyframeBonePose(modelName) {
+        if (!_poseMode || !_poseModel) return;
+        if (!_tlEditingClipId) { log('Open an animation clip in Timeline first', 'warn'); return; }
+        var objs = SashaEngineAPI.getObjects();
+        var obj = objs[modelName];
+        if (!obj) return;
+        var frame = _tlState ? _tlState.frame : 0;
+        var time = frame / (_tlState ? _tlState.fps : 60);
+        var count = 0;
+        obj.traverse(function(child) {
+            if (child.isBone) {
+                var trackName = modelName + '.' + child.name + '.position';
+                // Add keyframe for X position
+                SashaEngineAPI.addKeyframe(_tlEditingClipId, trackName, time, child.position.x);
+                count++;
+            }
+        });
+        tlRefresh();
+        log('Keyframed ' + count + ' bone positions at frame ' + frame, 'result');
+    }
+
+
+    // ============ AC SKELETAL BRIDGE — plays skeletal anims on state change ============
+    var _acLastStates = {}; // ctrlId -> last state name
+
+    function _acSkeletalTick() {
+        for (var key in animatorControllers) {
+            if (!animatorControllers.hasOwnProperty(key)) continue;
+            var ctrl = animatorControllers[key];
+            var state = ctrl._runtimeState;
+            if (!state || !state.currentState) continue;
+            // Check if state changed
+            if (_acLastStates[key] !== state.currentState) {
+                _acLastStates[key] = state.currentState;
+                // Find the state obj
+                var stObj = null;
+                for (var si = 0; si < ctrl.states.length; si++) {
+                    if (ctrl.states[si].name === state.currentState) { stObj = ctrl.states[si]; break; }
+                }
+                if (!stObj || !stObj.clipId) continue;
+                // Find which object has this animator controller
+                var allComps = SashaEngineAPI._getAllComponents ? SashaEngineAPI._getAllComponents() : {};
+                for (var objName in allComps) {
+                    if (!allComps.hasOwnProperty(objName)) continue;
+                    var comps = allComps[objName];
+                    for (var ci = 0; ci < comps.length; ci++) {
+                        if (comps[ci].type === 'animator' && comps[ci].controllerId === key) {
+                            // Found the object — play skeletal animation
+                            if (_skeletonData[objName]) {
+                                // Find original clip name
+                                var sd = _skeletonData[objName];
+                                var clipId = stObj.clipId;
+                                var clipName = null;
+                                // Try to find by matching clipId prefix
+                                for (var ai = 0; ai < sd.clips.length; ai++) {
+                                    if (clipId.indexOf(sd.clips[ai].name) !== -1 || sd.clips[ai].name.indexOf(clipId.replace('clip_glb_','')) !== -1) {
+                                        clipName = sd.clips[ai].name;
+                                        break;
+                                    }
+                                }
+                                if (clipName) playSkeletalAnimation(objName, clipName, true);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ============ SKELETAL ANIMATION SUPPORT ============
     var _skeletonData = {};
 
@@ -12969,6 +13157,8 @@ var EngineApp = (function() {
         refreshAssetGrid: refreshAssetGrid, assetGridClick: assetGridClick, assetGridDblClick: assetGridDblClick, assetNavigateTo: assetNavigateTo, assetGridContext: assetGridContext, assetRename: assetRename,
         assetCreateFolderQuick: assetCreateFolderQuick, assetDeleteSelected: assetDeleteSelected, _assetGridClickEx: _assetGridClickEx,
         assetNavigateBack: assetNavigateBack, assetTreeContext: assetTreeContext,
+        togglePoseMode: togglePoseMode, selectBone: selectBone, keyframeBonePose: keyframeBonePose,
+        _setBoneProp: _setBoneProp, _acAssignClipToState: _acAssignClipToState,
         loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, updateSkeletonMixers: updateSkeletonMixers, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
         // GitHub Save/Load
         githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
