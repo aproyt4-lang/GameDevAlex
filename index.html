@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
+<head><!DOCTYPE html>
+<html lang="ru">
 <head>
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -486,6 +488,9 @@
         .asset-create-btn:hover, .asset-btn:hover { border-color: var(--primary); color: #fff; }
         .asset-btn.danger:hover { border-color: #ef4444; color: #ef4444; }
         .asset-btn.danger { color: #a1a1aa; }
+        .asset-tree-del { display:none; cursor:pointer; padding:2px; border-radius:3px; color:var(--text-muted); flex-shrink:0; }
+        .asset-item:hover .asset-tree-del { display:inline-flex; }
+        .asset-tree-del:hover { color:#ef4444 !important; opacity:1 !important; background:rgba(239,68,68,0.1); }
         .asset-create-dropdown { position: absolute; top: 100%; left: 0; z-index: 100; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 4px 0; min-width: 160px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
         
         /* Asset Grid View (Unity-style icons) */
@@ -1130,6 +1135,9 @@
                                     <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
                                         <div class="asset-breadcrumb" id="asset-breadcrumb"><span class="current">Assets</span></div>
                                         <div class="asset-grid-view" id="asset-grid"></div>
+                                        <div id="asset-back-bar" style="display:none;padding:4px 8px;border-top:1px solid var(--border);background:var(--bg-dark);">
+                                            <button class="asset-btn" onclick="EngineApp.assetNavigateBack()" style="width:100%;justify-content:center;"><i class="fas fa-arrow-left"></i> Back</button>
+                                        </div>
                                         <div class="asset-content" id="asset-content" style="display:none;"></div>
                                     </div>
                                 </div>
@@ -8576,9 +8584,10 @@ var EngineApp = (function() {
             var isOpen = openFolders[a.id];
             var icon = 'fa-folder';
             if (a.icon) icon = a.icon;
-            html += '<div class="asset-item folder' + (selectedAsset === a.id ? ' selected' : '') + '" onclick="EngineApp.selectAsset(\'' + a.id + '\')" ondblclick="EngineApp.toggleFolder(\'' + a.id + '\')">';
+            html += '<div class="asset-item folder' + (selectedAsset === a.id ? ' selected' : '') + '" onclick="EngineApp.selectAsset(\'' + a.id + '\')" ondblclick="EngineApp.toggleFolder(\'' + a.id + '\')" oncontextmenu="event.preventDefault();EngineApp.assetTreeContext(event,\'' + a.id + '\')">';
             html += '<span class="asset-icon"><i class="fas ' + icon + '"></i></span>';
-            html += '<span class="asset-name">' + a.name + '</span>';
+            html += '<span class="asset-name" style="flex:1;">' + a.name + '</span>';
+            html += '<span class="asset-tree-del" onclick="event.stopPropagation();EngineApp.assetDeleteSelected();EngineApp.selectAsset(\'' + a.id + '\');" title="Delete"><i class="fas fa-times" style="font-size:0.55rem;opacity:0.4;"></i></span>';
             html += '</div>';
             // Render children if open
             if (isOpen) {
@@ -8600,10 +8609,10 @@ var EngineApp = (function() {
                     } else if (child.type === 'animation' && child.data && child.data.clipId) {
                         dblClick = ' ondblclick="EngineApp.openAnimationTimeline(\'' + child.data.clipId + '\')"';
                     }
-                    html += '<div class="asset-item ' + child.type + (selectedAsset === child.id ? ' selected' : '') + '" style="padding-left:24px;" onclick="EngineApp.selectAsset(\'' + child.id + '\')"' + dblClick + '>';
+                    html += '<div class="asset-item ' + child.type + (selectedAsset === child.id ? ' selected' : '') + '" style="padding-left:24px;" onclick="EngineApp.selectAsset(\'' + child.id + '\')"' + dblClick + ' oncontextmenu="event.preventDefault();EngineApp.assetGridContext(event,\'' + child.id + '\')">';
                     html += '<span class="asset-icon"><i class="fas ' + cIcon + '"></i></span>';
-                    html += '<span class="asset-name">' + child.name + '</span>';
-                    html += '<div class="asset-actions"><button onclick="event.stopPropagation();EngineApp.deleteAsset(\'' + child.id + '\')"><i class="fas fa-trash"></i></button></div>';
+                    html += '<span class="asset-name" style="flex:1;">' + child.name + '</span>';
+                    html += '<span class="asset-tree-del" onclick="event.stopPropagation();EngineApp.deleteAsset(\'' + child.id + '\')" title="Delete"><i class="fas fa-times" style="font-size:0.55rem;opacity:0.4;"></i></span>';
                     html += '</div>';
                 }
             }
@@ -12321,6 +12330,9 @@ var EngineApp = (function() {
             }
         };
         grid.setAttribute('tabindex', '0');
+        // Show/hide Back button
+        var backBar = document.getElementById('asset-back-bar');
+        if (backBar) backBar.style.display = _assetCurrentFolder ? 'block' : 'none';
     }
 
     // Extended click with Ctrl/Shift multi-select
@@ -12377,6 +12389,37 @@ var EngineApp = (function() {
         refreshAssetGrid();
         refreshAssetBrowser();
         log('Folder created: ' + name.trim(), 'log');
+    }
+
+    // Navigate back (go to parent folder)
+    function assetNavigateBack() {
+        if (!_assetCurrentFolder) return;
+        var folder = SashaAssetManager.getAsset(_assetCurrentFolder);
+        _assetCurrentFolder = (folder && folder.parent) ? folder.parent : null;
+        _assetGridSelected = null;
+        _assetGridMulti = {};
+        refreshAssetGrid();
+        refreshAssetBrowser();
+    }
+
+    // Right-click context on tree items (delete root folders)
+    function assetTreeContext(e, id) {
+        var existing = document.getElementById('asset-ctx-menu');
+        if (existing) existing.remove();
+        var div = document.createElement('div');
+        div.id = 'asset-ctx-menu';
+        div.style.cssText = 'position:fixed;left:' + e.clientX + 'px;top:' + e.clientY + 'px;background:#1e1e3a;border:1px solid #374151;border-radius:8px;padding:4px;z-index:99999;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+        var asset = SashaAssetManager.getAsset(id);
+        var mhtml = '';
+        if (asset && asset.type === 'folder') {
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();_assetCurrentFolder=\'' + id + '\';_assetGridSelected=null;refreshAssetGrid();refreshAssetBrowser();" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-folder-open" style="width:14px;text-align:center;"></i>Open in Grid</div>';
+        }
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\'' + id + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#ef4444;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete</div>';
+        div.innerHTML = mhtml;
+        document.body.appendChild(div);
+        setTimeout(function() {
+            document.addEventListener('click', function handler() { div.remove(); document.removeEventListener('click', handler); });
+        }, 10);
     }
 
     // Delete selected asset(s) — works for folders too (recursively via SashaAssetManager.removeAsset)
@@ -12925,6 +12968,7 @@ var EngineApp = (function() {
         tlDeleteClip: tlDeleteClip,
         refreshAssetGrid: refreshAssetGrid, assetGridClick: assetGridClick, assetGridDblClick: assetGridDblClick, assetNavigateTo: assetNavigateTo, assetGridContext: assetGridContext, assetRename: assetRename,
         assetCreateFolderQuick: assetCreateFolderQuick, assetDeleteSelected: assetDeleteSelected, _assetGridClickEx: _assetGridClickEx,
+        assetNavigateBack: assetNavigateBack, assetTreeContext: assetTreeContext,
         loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, updateSkeletonMixers: updateSkeletonMixers, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
         // GitHub Save/Load
         githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
@@ -13005,6 +13049,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
