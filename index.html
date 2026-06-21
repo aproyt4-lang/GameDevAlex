@@ -1,4 +1,6 @@
-
+<!DOCTYPE html>
+<html lang="ru">
+<head>
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
    <meta http-equiv="Pragma" content="no-cache">
@@ -1355,7 +1357,7 @@ var RussianNLP = (function() {
 
     function tokenize(text) {
         if (!text) return [];
-        var words = text.toLowerCase().replace(/[^a-zA-Z\u0041-\u005A\u0061-\u007A\u0400-\u04FF0-9\s\-]/g, ' ').split(/\s+/);
+        var words = text.toLowerCase().replace(/[^\w0-9\s\-]/gu, ' ').split(/\s+/);
         var tokens = [];
         for (var i = 0; i < words.length; i++) {
             var w = words[i].trim();
@@ -8076,7 +8078,7 @@ var EngineApp = (function() {
     }
 
     function finishRename(oldName, newName) {
-        newName = newName.trim().replace(/[^a-zA-Z0-9_\-Р°-СЏРђ-РЇС‘РЃ]/g, '');
+        newName = newName.trim().replace(/[^\w\-]/gu, '');
         if (!newName || newName === oldName) { refreshHierarchy(); return; }
         if (SashaEngineAPI.renameObject(oldName, newName)) {
             refreshHierarchy();
@@ -8453,7 +8455,7 @@ var EngineApp = (function() {
         if (compType === 'script') {
             var scriptName = prompt('Enter script name:', 'PlayerController');
             if (!scriptName || !scriptName.trim()) return;
-            scriptName = scriptName.trim().replace(/[^a-zA-Z0-9_\-Р°-СЏРђ-РЇС‘РЃ]/g, '');
+            scriptName = scriptName.trim().replace(/[^\w\-]/gu, '');
             if (!scriptName) return;
             // Check for duplicate script name on same object
             var existingComps = SashaEngineAPI.getAllComponents(name);
@@ -11575,7 +11577,7 @@ var EngineApp = (function() {
                 isCode = true;
             }
             if (!isCode && ln.length < 40 && /^[A-Z][a-z]+$/.test(ln)) continue;
-            if (!isCode && /[Р°-СЏРђ-РЇС‘РЃ]/.test(ln)) continue;
+            if (!isCode && /[^\x00-\x7F]/.test(ln)) continue;
             codeLines.push(lines[i]);
         }
         return codeLines.join('\n').trim();
