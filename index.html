@@ -401,6 +401,34 @@
         .insp-section-header .insp-collapse-icon { margin-left: auto; font-size: 0.6rem; transition: transform 0.2s; }
         .insp-section.collapsed .insp-section-body { display: none; }
         .insp-section.collapsed .insp-collapse-icon { transform: rotate(-90deg); }
+        /* Model Import Inspector Tabs */
+        .model-import-tabs { display: flex; border-bottom: 1px solid var(--border); background: rgba(15,15,30,0.6); margin: 0 -8px; }
+        .model-import-tab { flex: 1; padding: 6px 4px; text-align: center; font-size: 0.68rem; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; user-select: none; }
+        .model-import-tab:hover { color: var(--text-secondary); background: var(--bg-hover); }
+        .model-import-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(99,102,241,0.08); }
+        .model-import-tab i { display: block; font-size: 0.7rem; margin-bottom: 2px; }
+        .model-import-panel { display: none; }
+        .model-import-panel.active { display: block; }
+        .mi-row { display: flex; align-items: center; padding: 3px 10px; gap: 8px; font-size: 0.72rem; }
+        .mi-label { color: var(--text-muted); width: 100px; flex-shrink: 0; font-size: 0.68rem; }
+        .mi-input { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); padding: 3px 6px; border-radius: 4px; font-size: 0.68rem; width: 100%; outline: none; font-family: inherit; }
+        .mi-input:focus { border-color: var(--primary); }
+        .mi-select { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); padding: 3px 6px; border-radius: 4px; font-size: 0.68rem; width: 100%; outline: none; font-family: inherit; cursor: pointer; }
+        .mi-checkbox { accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer; }
+        .mi-toggle-row { display: flex; align-items: center; padding: 3px 10px; gap: 8px; }
+        .mi-toggle-row label { font-size: 0.68rem; color: var(--text-secondary); cursor: pointer; flex: 1; }
+        .mi-section-title { padding: 6px 10px 3px; font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border); margin-top: 4px; }
+        .mi-section-title:first-child { border-top: none; margin-top: 0; }
+        .mi-clip-item { display: flex; align-items: center; padding: 4px 10px; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
+        .mi-clip-item:hover { background: var(--bg-hover); }
+        .mi-clip-item.selected { background: rgba(99,102,241,0.12); }
+        .mi-clip-icon { color: #22c55e; font-size: 0.65rem; width: 14px; text-align: center; }
+        .mi-clip-name { flex: 1; font-size: 0.7rem; color: var(--text-secondary); }
+        .mi-clip-props { display: none; padding: 4px 10px 4px 30px; background: rgba(0,0,0,0.15); }
+        .mi-clip-props.open { display: block; }
+        .mi-mat-item { display: flex; align-items: center; padding: 4px 10px; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .mi-mat-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border); flex-shrink: 0; }
+        .mi-mat-name { flex: 1; font-size: 0.7rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .render-setting-row {
             display: flex; align-items: center; padding: 3px 10px; gap: 6px;
         }
@@ -533,6 +561,8 @@
         .asset-item { display: flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all 0.1s; border-left: 2px solid transparent; }
         .asset-item:hover { background: var(--bg-hover); color: #fff; }
         .asset-item.selected { background: var(--bg-hover); color: #fff; border-left-color: var(--primary); }
+        .asset-item.active-folder { background: rgba(99,102,241,0.15); color: #c7d2fe; border-left-color: #818cf8; }
+        .asset-item.active-folder .asset-icon { color: #818cf8 !important; }
         .asset-item .asset-icon { width: 16px; text-align: center; font-size: 0.7rem; }
         .asset-item.folder .asset-icon { color: #f59e0b; }
         .asset-item.script .asset-icon { color: #06b6d4; }
@@ -8352,29 +8382,114 @@ var EngineApp = (function() {
             }
             return chtml;
          })());
-        // --- Bone Inspector for skeletal models ---
-        if (_skeletonData[selected]) {
-            var sd = _skeletonData[selected];
-            html += iSection('fa-bone', 'Skeleton (' + sd.clips.length + ' anims)', '<div id="bone-tree-inspector"></div>');
-            html += '<div style="padding:4px 8px;display:flex;gap:4px;">';
-            html += '<button class="insp-btn" onclick="EngineApp.togglePoseMode(\x27' + selected + '\x27)" id="pose-mode-btn" style="flex:1;"><i class="fas fa-child"></i> Pose Mode</button>';
-            html += '<button class="insp-btn" onclick="EngineApp.keyframeBonePose(\x27' + selected + '\x27)" id="key-pose-btn" style="flex:1;display:none;background:#22c55e;border-color:#22c55e;"><i class="fas fa-key"></i> Key Pose</button>';
+        // --- Model Import Inspector (Model / Rig / Animation / Materials) ---
+        if (_modelImportSettings[selected] || _skeletonData[selected]) {
+            var mis = _modelImportSettings[selected] || {};
+            var info = mis.info || {};
+            html += '<div style="margin-top:4px;">';
+            html += '<div class="model-import-tabs" id="mi-tabs-' + selected + '">';
+            html += '<div class="model-import-tab active" onclick="EngineApp._miSwitchTab(\'' + selected + '\',\'model\',this)"><i class="fas fa-cube"></i>Model</div>';
+            html += '<div class="model-import-tab" onclick="EngineApp._miSwitchTab(\'' + selected + '\',\'rig\',this)"><i class="fas fa-bone"></i>Rig</div>';
+            html += '<div class="model-import-tab" onclick="EngineApp._miSwitchTab(\'' + selected + '\',\'animation\',this)"><i class="fas fa-film"></i>Animation</div>';
+            html += '<div class="model-import-tab" onclick="EngineApp._miSwitchTab(\'' + selected + '\',\'materials\',this)"><i class="fas fa-palette"></i>Materials</div>';
             html += '</div>';
-            // Defer bone tree rendering
-            setTimeout(function() {
-                var bt = document.getElementById('bone-tree-inspector');
-                if (!bt || !objects[selected]) return;
-                var boneHtml = '';
-                objects[selected].traverse(function(child) {
-                    if (child.isBone) {
-                        boneHtml += '<div class="bone-item" style="display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:0.68rem;color:#a1a1aa;cursor:pointer;border-radius:3px;border-left:2px solid transparent;" onclick="EngineApp.selectBone(\'' + selected + '\',\'' + child.name + '\')" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'">';
-                        boneHtml += '<i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:12px;text-align:center;"></i>';
-                        boneHtml += '<span>' + child.name + '</span></div>';
-                    }
-                });
-                if (!boneHtml) boneHtml = '<div style="padding:6px 10px;font-size:0.68rem;color:#71717a;">No bones found</div>';
-                bt.innerHTML = boneHtml;
-            }, 50);
+            // --- MODEL TAB ---
+            html += '<div class="model-import-panel active" id="mi-panel-model-' + selected + '">';
+            html += '<div class="mi-section-title">Model Info</div>';
+            html += '<div class="mi-row"><span class="mi-label">Bones</span><span style="font-size:0.7rem;color:var(--text-secondary);">' + (info.bones || 0) + '</span></div>';
+            html += '<div class="mi-row"><span class="mi-label">Meshes</span><span style="font-size:0.7rem;color:var(--text-secondary);">' + (info.meshes || 0) + '</span></div>';
+            html += '<div class="mi-row"><span class="mi-label">Vertices</span><span style="font-size:0.7rem;color:var(--text-secondary);">' + (info.vertices || 0) + '</span></div>';
+            html += '<div class="mi-row"><span class="mi-label">Animations</span><span style="font-size:0.7rem;color:var(--text-secondary);">' + (info.clipCount || 0) + '</span></div>';
+            html += '<div class="mi-section-title">Scale</div>';
+            html += '<div class="mi-row"><span class="mi-label">Scale Factor</span><input class="mi-input" type="number" step="0.01" min="0.001" value="' + (mis.scaleFactor || 1) + '" onchange="EngineApp._miSetScaleFactor(\'' + selected + '\',this.value)"></div>';
+            html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" id="mi-useFileScale-' + selected + '" ' + (mis.useFileScale !== false ? 'checked' : '') + ' onchange="EngineApp._miToggle(\'' + selected + '\',\'useFileScale\',this.checked)"><label for="mi-useFileScale-' + selected + '">Use File Scale</label></div>';
+            html += '<div class="mi-section-title">Import Options</div>';
+            html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" id="mi-blendShapes-' + selected + '" ' + (mis.importBlendShapes !== false ? 'checked' : '') + ' onchange="EngineApp._miToggle(\'' + selected + '\',\'importBlendShapes\',this.checked)"><label for="mi-blendShapes-' + selected + '">Import BlendShapes</label></div>';
+            html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" id="mi-rw-' + selected + '" ' + (mis.readWriteEnabled ? 'checked' : '') + ' onchange="EngineApp._miToggle(\'' + selected + '\',\'readWriteEnabled\',this.checked)"><label for="mi-rw-' + selected + '">Read/Write Enabled</label></div>';
+            html += '<div class="mi-row"><span class="mi-label">Mesh Compression</span><select class="mi-select" onchange="EngineApp._miSet(\'' + selected + '\',\'meshCompression\',this.value)"><option value="Off"' + (mis.meshCompression==='Off'?' selected':'') + '>Off</option><option value="Low"' + (mis.meshCompression==='Low'?' selected':'') + '>Low</option><option value="Medium"' + (mis.meshCompression==='Medium'?' selected':'') + '>Medium</option><option value="High"' + (mis.meshCompression==='High'?' selected':'') + '>High</option></select></div>';
+            html += '</div>';
+            // --- RIG TAB ---
+            html += '<div class="model-import-panel" id="mi-panel-rig-' + selected + '">';
+            html += '<div class="mi-section-title">Animation Type</div>';
+            html += '<div class="mi-row"><span class="mi-label">Type</span><select class="mi-select" onchange="EngineApp._miSet(\'' + selected + '\',\'animationType\',this.value)"><option value="None"' + (mis.animationType==='None'?' selected':'') + '>None</option><option value="Legacy"' + (mis.animationType==='Legacy'?' selected':'') + '>Legacy</option><option value="Generic"' + (mis.animationType==='Generic'?' selected':'') + '>Generic</option><option value="Humanoid"' + (mis.animationType==='Humanoid'?' selected':'') + '>Humanoid</option></select></div>';
+            html += '<div class="mi-section-title">Avatar Definition</div>';
+            html += '<div class="mi-row"><span class="mi-label">Definition</span><select class="mi-select" onchange="EngineApp._miSet(\'' + selected + '\',\'avatarDefinition\',this.value)"><option value="CreateFromThisModel"' + (mis.avatarDefinition==='CreateFromThisModel'?' selected':'') + '>Create From This Model</option><option value="CopyFromOther"' + (mis.avatarDefinition==='CopyFromOther'?' selected':'') + '>Copy From Other Avatar</option></select></div>';
+            html += '<div style="padding:8px 10px;"><button class="insp-btn" onclick="EngineApp._miConfigureAvatar(\'' + selected + '\')" style="width:100%;"><i class="fas fa-cog"></i> Configure</button></div>';
+            if (info.hasSkeleton) {
+                html += '<div class="mi-section-title">Skeleton Hierarchy</div>';
+                html += '<div id="mi-bone-tree-' + selected + '" style="max-height:200px;overflow-y:auto;padding:2px 0;"></div>';
+            }
+            html += '</div>';
+            // --- ANIMATION TAB ---
+            html += '<div class="model-import-panel" id="mi-panel-animation-' + selected + '">';
+            html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" id="mi-importAnim-' + selected + '" ' + (mis.importAnimation !== false ? 'checked' : '') + ' onchange="EngineApp._miToggle(\'' + selected + '\',\'importAnimation\',this.checked)"><label for="mi-importAnim-' + selected + '">Import Animation</label></div>';
+            if (mis.clips) {
+                var clipKeys = Object.keys(mis.clips);
+                for (var ci = 0; ci < clipKeys.length; ci++) {
+                    var ck = clipKeys[ci];
+                    var cs = mis.clips[ck];
+                    html += '<div class="mi-clip-item" onclick="EngineApp._miToggleClipProps(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\')">';
+                    html += '<i class="fas fa-play-circle mi-clip-icon"></i>';
+                    html += '<span class="mi-clip-name">' + cs.name + '</span>';
+                    html += '<span style="font-size:0.6rem;color:var(--text-muted);">' + cs.frameRate + ' fps</span>';
+                    html += '</div>';
+                    html += '<div class="mi-clip-props" id="mi-cprops-' + selected + '-' + ci + '">';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" ' + (cs.loopTime ? 'checked' : '') + ' onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'loopTime\',this.checked)"><label>Loop Time</label></div>';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" ' + (cs.loopPose ? 'checked' : '') + ' onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'loopPose\',this.checked)"><label>Loop Pose</label></div>';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" ' + (cs.bakeIntoPose ? 'checked' : '') + ' onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'bakeIntoPose\',this.checked)"><label>Bake Into Pose</label></div>';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" ' + (cs.mirror ? 'checked' : '') + ' onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'mirror\',this.checked)"><label>Mirror</label></div>';
+                    html += '<div class="mi-section-title">Root Transform</div>';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" ' + (cs.rootTransformRotation ? 'checked' : '') + ' onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'rootTransformRotation\',this.checked)"><label>Root Transform Rotation</label></div>';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" ' + (cs.rootTransformPositionY ? 'checked' : '') + ' onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'rootTransformPositionY\',this.checked)"><label>Root Transform Position (Y)</label></div>';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" ' + (cs.rootTransformPositionXZ ? 'checked' : '') + ' onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'rootTransformPositionXZ\',this.checked)"><label>Root Transform Position (XZ)</label></div>';
+                    html += '<div class="mi-row"><span class="mi-label">Based Upon</span><select class="mi-select" onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'basedUpon\',this.value)"><option value="Original"' + (cs.basedUpon==='Original'?' selected':'') + '>Original</option><option value="BodyOrientation"' + (cs.basedUpon==='BodyOrientation'?' selected':'') + '>Body Orientation</option><option value="Feet"' + (cs.basedUpon==='Feet'?' selected':'') + '>Feet</option></select></div>';
+                    html += '<div class="mi-section-title">Frames</div>';
+                    html += '<div class="mi-row"><span class="mi-label">Start</span><input class="mi-input" type="number" min="0" value="' + cs.startFrame + '" onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'startFrame\',parseInt(this.value))"></div>';
+                    html += '<div class="mi-row"><span class="mi-label">End</span><input class="mi-input" type="number" min="0" value="' + cs.endFrame + '" onchange="EngineApp._miClipSet(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',\'endFrame\',parseInt(this.value))"></div>';
+                    html += '<div style="padding:4px 10px;display:flex;gap:4px;">';
+                    html += '<button class="insp-btn" onclick="EngineApp.playSkeletalAnimation(\'' + selected + '\',\'' + ck.replace(/'/g,"\\'") + '\',true)" style="flex:1;"><i class="fas fa-play"></i> Play</button>';
+                    html += '<button class="insp-btn" onclick="EngineApp.stopSkeletalAnimation(\'' + selected + '\')" style="flex:1;"><i class="fas fa-stop"></i> Stop</button>';
+                    html += '</div>';
+                    html += '</div>';
+                }
+            }
+            html += '</div>';
+            // --- MATERIALS TAB ---
+            html += '<div class="model-import-panel" id="mi-panel-materials-' + selected + '">';
+            html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" id="mi-importMats-' + selected + '" ' + (mis.importMaterials !== false ? 'checked' : '') + ' onchange="EngineApp._miToggle(\'' + selected + '\',\'importMaterials\',this.checked)"><label for="mi-importMats-' + selected + '">Import Materials</label></div>';
+            html += '<div class="mi-row"><span class="mi-label">Material Location</span><select class="mi-select" onchange="EngineApp._miSet(\'' + selected + '\',\'materialLocation\',this.value)"><option value="Use Embedded Materials"' + (mis.materialLocation==='Use Embedded Materials'?' selected':'') + '>Use Embedded Materials</option><option value="Use External Materials"' + (mis.materialLocation==='Use External Materials'?' selected':'') + '>Use External Materials</option></select></div>';
+            if (mis.materials && mis.materials.length > 0) {
+                html += '<div class="mi-section-title">Materials (' + mis.materials.length + ')</div>';
+                for (var mi2 = 0; mi2 < mis.materials.length; mi2++) {
+                    var mat = mis.materials[mi2];
+                    html += '<div class="mi-mat-item">';
+                    html += '<div class="mi-mat-swatch" style="background:' + mat.color + ';"></div>';
+                    html += '<span class="mi-mat-name">' + mat.name + '</span>';
+                    html += '</div>';
+                    html += '<div style="padding:2px 10px 2px 38px;font-size:0.65rem;color:var(--text-muted);">';
+                    html += 'Metalness: ' + (mat.metalness||0).toFixed(2) + ' &nbsp; Roughness: ' + (mat.roughness||0.5).toFixed(2);
+                    html += '</div>';
+                }
+            }
+            html += '</div>';
+            html += '</div>';
+            // Defer bone tree in rig tab
+            if (info.hasSkeleton) {
+                (function(selName) {
+                    setTimeout(function() {
+                        var bt = document.getElementById('mi-bone-tree-' + selName);
+                        if (!bt || !objects[selName]) return;
+                        var bhtml = '';
+                        objects[selName].traverse(function(child) {
+                            if (child.isBone) {
+                                bhtml += '<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:0.65rem;color:#a1a1aa;cursor:pointer;border-radius:3px;border-left:2px solid transparent;" onclick="EngineApp.selectBone(\'' + selName + '\',\'' + child.name + '\')" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:12px;text-align:center;"></i><span>' + child.name + '</span></div>';
+                            }
+                        });
+                        if (!bhtml) bhtml = '<div style="padding:6px 10px;font-size:0.65rem;color:#71717a;">No bones found</div>';
+                        bt.innerHTML = bhtml;
+                    }, 50);
+                })(selected);
+            }
         }
 
         
@@ -8608,7 +8723,8 @@ var EngineApp = (function() {
             var isOpen = openFolders[a.id];
             var icon = 'fa-folder';
             if (a.icon) icon = a.icon;
-            html += '<div class="asset-item folder' + (selectedAsset === a.id ? ' selected' : '') + '" onclick="EngineApp.selectAsset(\'' + a.id + '\')" ondblclick="EngineApp.toggleFolder(\'' + a.id + '\')" oncontextmenu="event.preventDefault();EngineApp.assetTreeContext(event,\'' + a.id + '\')">';
+            var isActiveFolder = (_assetCurrentFolder === a.id);
+            html += '<div class="asset-item folder' + (selectedAsset === a.id ? ' selected' : '') + (isActiveFolder ? ' active-folder' : '') + '" onclick="EngineApp.selectAsset(\'' + a.id + '\')" ondblclick="EngineApp.toggleFolder(\'' + a.id + '\')" oncontextmenu="event.preventDefault();EngineApp.assetTreeContext(event,\'' + a.id + '\')">';
             html += '<span class="asset-icon"><i class="fas ' + icon + '"></i></span>';
             html += '<span class="asset-name" style="flex:1;">' + a.name + '</span>';
             html += '<span class="asset-tree-del" onclick="event.stopPropagation();EngineApp.assetDeleteSelected();EngineApp.selectAsset(\'' + a.id + '\');" title="Delete"><i class="fas fa-times" style="font-size:0.55rem;opacity:0.4;"></i></span>';
@@ -8633,7 +8749,9 @@ var EngineApp = (function() {
                     } else if (child.type === 'animation' && child.data && child.data.clipId) {
                         dblClick = ' ondblclick="EngineApp.openAnimationTimeline(\'' + child.data.clipId + '\')"';
                     }
-                    html += '<div class="asset-item ' + child.type + (selectedAsset === child.id ? ' selected' : '') + '" style="padding-left:24px;" onclick="EngineApp.selectAsset(\'' + child.id + '\')"' + dblClick + ' oncontextmenu="event.preventDefault();EngineApp.assetGridContext(event,\'' + child.id + '\')">';
+                    var childIsFolder = (child.type === 'folder');
+                    var childIsActive = (childIsFolder && _assetCurrentFolder === child.id);
+                    html += '<div class="asset-item ' + child.type + (selectedAsset === child.id ? ' selected' : '') + (childIsActive ? ' active-folder' : '') + '" style="padding-left:24px;" onclick="EngineApp.selectAsset(\'' + child.id + '\')"' + dblClick + ' oncontextmenu="event.preventDefault();EngineApp.assetGridContext(event,\'' + child.id + '\')">';
                     html += '<span class="asset-icon"><i class="fas ' + cIcon + '"></i></span>';
                     html += '<span class="asset-name" style="flex:1;">' + child.name + '</span>';
                     html += '<span class="asset-tree-del" onclick="event.stopPropagation();EngineApp.deleteAsset(\'' + child.id + '\')" title="Delete"><i class="fas fa-times" style="font-size:0.55rem;opacity:0.4;"></i></span>';
@@ -8656,12 +8774,38 @@ var EngineApp = (function() {
 
     function selectAsset(id) {
         selectedAsset = id;
+        var asset = SashaAssetManager.getAsset(id);
+        if (asset && asset.type === 'folder') {
+            // Clicked a folder in tree — navigate grid into it
+            _assetCurrentFolder = id;
+            _assetGridSelected = null;
+            _assetGridMulti = {};
+            openFolders[id] = true;
+        } else if (asset && asset.parent) {
+            // Clicked a file in tree — navigate grid to its parent folder
+            if (_assetCurrentFolder !== asset.parent) {
+                _assetCurrentFolder = asset.parent;
+                _assetGridSelected = id;
+                _assetGridMulti = {};
+                openFolders[asset.parent] = true;
+            } else {
+                _assetGridSelected = id;
+            }
+        }
         refreshAssetBrowser();
         showAssetPreview(id);
     }
 
     function toggleFolder(id) {
         openFolders[id] = !openFolders[id];
+        // Double-click on folder in tree — navigate grid into it
+        var asset = SashaAssetManager.getAsset(id);
+        if (asset && asset.type === 'folder') {
+            _assetCurrentFolder = id;
+            _assetGridSelected = null;
+            _assetGridMulti = {};
+            openFolders[id] = true;
+        }
         refreshAssetBrowser();
     }
 
@@ -8976,7 +9120,22 @@ var EngineApp = (function() {
         log('Prefab "' + asset.name + '" instantiated', 'result');
     }
 
-    function importAsset() { log('Import: paste URL or drag file (coming soon)', 'info'); }
+    function importAsset() {
+        var inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = '.glb,.gltf';
+        inp.style.display = 'none';
+        inp.onchange = function() {
+            if (!inp.files || !inp.files.length) return;
+            var file = inp.files[0];
+            var url = URL.createObjectURL(file);
+            log('Importing ' + file.name + '...', 'info');
+            loadGLBModel(url, 0, 0, 0, 1);
+            document.body.removeChild(inp);
+        };
+        document.body.appendChild(inp);
+        inp.click();
+    }
 
     // --- Animation helper functions ---
     function addTrackToClip(clipId) {
@@ -12519,7 +12678,10 @@ var EngineApp = (function() {
         if (asset.type === 'folder') {
             _assetCurrentFolder = id;
             _assetGridSelected = null;
+            _assetGridMulti = {};
+            openFolders[id] = true;
             refreshAssetGrid();
+            refreshAssetBrowser();
         } else if (asset.type === 'animation' && asset.data && asset.data.clipId) {
             openAnimationTimeline(asset.data.clipId);
         } else if (asset.type === 'animator' && asset.data && asset.data.controllerId) {
@@ -12533,8 +12695,11 @@ var EngineApp = (function() {
 
     function assetNavigateTo(folderId) {
         _assetCurrentFolder = folderId;
+        if (folderId) openFolders[folderId] = true;
         _assetGridSelected = null;
+        _assetGridMulti = {};
         refreshAssetGrid();
+        refreshAssetBrowser();
     }
 
     function assetGridContext(e, id) {
@@ -13026,12 +13191,49 @@ var EngineApp = (function() {
 
     // ============ SKELETAL ANIMATION SUPPORT ============
     var _skeletonData = {};
+    var _modelImportSettings = {};
+
+    function _getDefaultImportSettings(hasSkeleton, clipCount, matCount) {
+        return {
+            scaleFactor: 1.0,
+            useFileScale: true,
+            importBlendShapes: true,
+            readWriteEnabled: false,
+            meshCompression: 'Off',
+            animationType: hasSkeleton ? 'Generic' : 'None',
+            avatarDefinition: 'CreateFromThisModel',
+            importAnimation: clipCount > 0,
+            clips: null,
+            importMaterials: true,
+            materialLocation: 'Use Embedded Materials',
+            materialCount: matCount
+        };
+    }
+
+    function _collectMaterials(obj) {
+        var mats = [];
+        obj.traverse(function(child) {
+            if (child.isMesh && child.material) {
+                var ml = Array.isArray(child.material) ? child.material : [child.material];
+                for (var i = 0; i < ml.length; i++) { if (mats.indexOf(ml[i]) === -1) mats.push(ml[i]); }
+            }
+        });
+        return mats;
+    }
+
+    function _hasBones(obj) {
+        var found = false;
+        obj.traverse(function(child) { if (child.isBone) found = true; });
+        return found;
+    }
 
     function loadGLBModel(url, x, y, z, s) {
         var loader = new THREE.GLTFLoader();
         var n = gn('model');
         loader.load(url, function(gltf) {
             var m = gltf.scene;
+            var hasSkeleton = _hasBones(m);
+            var mats = _collectMaterials(m);
             m.position.set(x || 0, y || 0, z || 0);
             if (s) m.scale.set(s, s, s);
             m.name = n;
@@ -13041,18 +13243,41 @@ var EngineApp = (function() {
             scene.add(m);
             objects[n] = m;
             objectTypes[n] = 'model';
+            // Build import settings
+            var settings = _getDefaultImportSettings(hasSkeleton, (gltf.animations||[]).length, mats.length);
+            settings.clips = {};
+            if (gltf.animations && gltf.animations.length > 0) {
+                for (var ai = 0; ai < gltf.animations.length; ai++) {
+                    var ac = gltf.animations[ai];
+                    var ck = ac.name || ('Anim_' + ai);
+                    settings.clips[ck] = { name: ck, loopTime: true, loopPose: false, bakeIntoPose: false, rootTransformRotation: true, rootTransformPositionY: true, rootTransformPositionXZ: true, basedUpon: 'Original', mirror: false, startFrame: 0, endFrame: Math.floor(ac.duration * 30), frameRate: 30 };
+                }
+            }
+            settings.materials = [];
+            for (var mi = 0; mi < mats.length; mi++) {
+                var mt = mats[mi];
+                settings.materials.push({ name: mt.name || ('Material_' + mi), color: mt.color ? '#' + mt.color.getHexString() : '#ffffff', metalness: mt.metalness || 0, roughness: mt.roughness || 0.5 });
+            }
+            var boneCount = 0, meshCount = 0, vertCount = 0;
+            m.traverse(function(child) {
+                if (child.isBone) boneCount++;
+                if (child.isMesh) { meshCount++; if (child.geometry && child.geometry.attributes && child.geometry.attributes.position) vertCount += child.geometry.attributes.position.count; }
+            });
+            settings.info = { bones: boneCount, meshes: meshCount, vertices: vertCount, hasSkeleton: hasSkeleton, clipCount: (gltf.animations||[]).length, sourceURL: url };
+            _modelImportSettings[n] = settings;
+
             if (gltf.animations && gltf.animations.length > 0) {
                 var mixer = new THREE.AnimationMixer(m);
                 var clips = [];
-                for (var ai = 0; ai < gltf.animations.length; ai++) {
-                    var ac = gltf.animations[ai];
-                    clips.push(ac);
-                    var clipId = 'clip_glb_' + Date.now() + '_' + ai;
-                    SashaEngineAPI.createAnimationClip(clipId, ac.name || ('Anim_' + ai));
+                for (var ai2 = 0; ai2 < gltf.animations.length; ai2++) {
+                    var ac2 = gltf.animations[ai2];
+                    clips.push(ac2);
+                    var clipId = 'clip_glb_' + Date.now() + '_' + ai2;
+                    SashaEngineAPI.createAnimationClip(clipId, ac2.name || ('Anim_' + ai2));
                     var createdClip = SashaEngineAPI.getAnimationClip(clipId);
-                    if (createdClip) { createdClip.duration = ac.duration; createdClip.loop = true; }
-                    for (var ti = 0; ti < ac.tracks.length; ti++) {
-                        var track = ac.tracks[ti];
+                    if (createdClip) { createdClip.duration = ac2.duration; createdClip.loop = true; }
+                    for (var ti = 0; ti < ac2.tracks.length; ti++) {
+                        var track = ac2.tracks[ti];
                         SashaEngineAPI.addTrackToClip(clipId, track.name);
                         var times = track.times;
                         var values = track.values;
@@ -13062,7 +13287,7 @@ var EngineApp = (function() {
                             SashaEngineAPI.addKeyframe(clipId, ti, times[ki], val);
                         }
                     }
-                    SashaAssetManager.addAsset('animation', ac.name || ('Anim_' + ai), _assetCurrentFolder, { clipId: clipId });
+                    SashaAssetManager.addAsset('animation', ac2.name || ('Anim_' + ai2), 'folder_animations', { clipId: clipId });
                 }
                 _skeletonData[n] = { mixer: mixer, clips: clips, actions: [] };
                 log('Loaded model with ' + clips.length + ' anims: ' + n, 'result');
@@ -13072,10 +13297,84 @@ var EngineApp = (function() {
             refreshHierarchy();
             refreshAssetBrowser();
             refreshAssetGrid();
+            refreshInspector();
         }, undefined, function(err) {
             log('Failed to load GLB: ' + (err.message || err), 'error');
         });
         return n;
+    }
+
+    // ============ MODEL IMPORT SETTINGS HANDLERS ============
+    function _miSwitchTab(objName, tab, el) {
+        var tabs = document.querySelectorAll('#mi-tabs-' + objName + ' .model-import-tab');
+        for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+        el.classList.add('active');
+        var panels = ['model', 'rig', 'animation', 'materials'];
+        for (var j = 0; j < panels.length; j++) {
+            var p = document.getElementById('mi-panel-' + panels[j] + '-' + objName);
+            if (p) p.classList.toggle('active', panels[j] === tab);
+        }
+    }
+
+    function _miSet(objName, key, val) {
+        if (!_modelImportSettings[objName]) return;
+        _modelImportSettings[objName][key] = val;
+    }
+
+    function _miToggle(objName, key, val) {
+        if (!_modelImportSettings[objName]) return;
+        _modelImportSettings[objName][key] = val;
+        if (key === 'useFileScale') {
+            var sfInput = document.querySelector('#mi-panel-model-' + objName + ' .mi-input[type="number"]');
+            if (sfInput) sfInput.disabled = !val;
+        }
+    }
+
+    function _miSetScaleFactor(objName, val) {
+        if (!_modelImportSettings[objName]) return;
+        var v = parseFloat(val) || 1;
+        _modelImportSettings[objName].scaleFactor = v;
+        if (objects[objName]) {
+            objects[objName].scale.set(v, v, v);
+        }
+    }
+
+    function _miConfigureAvatar(objName) {
+        log('Avatar Configure: Opened skeleton mapping for ' + objName, 'info');
+        // Select the model and switch to Rig tab to show bone hierarchy
+        _miSwitchTab(objName, 'rig', document.querySelector('#mi-tabs-' + objName + ' .model-import-tab:nth-child(2)'));
+    }
+
+    function _miToggleClipProps(objName, clipKey) {
+        var mis = _modelImportSettings[objName];
+        if (!mis || !mis.clips) return;
+        var clipKeys = Object.keys(mis.clips);
+        for (var i = 0; i < clipKeys.length; i++) {
+            var el = document.getElementById('mi-cprops-' + objName + '-' + i);
+            if (el) {
+                if (clipKeys[i] === clipKey) el.classList.toggle('open');
+                else el.classList.remove('open');
+            }
+        }
+    }
+
+    function _miClipSet(objName, clipKey, prop, val) {
+        if (!_modelImportSettings[objName] || !_modelImportSettings[objName].clips || !_modelImportSettings[objName].clips[clipKey]) return;
+        _modelImportSettings[objName].clips[clipKey][prop] = val;
+        // Apply loop setting to actual clip action if playing
+        if (prop === 'loopTime' && _skeletonData[objName]) {
+            var sd = _skeletonData[objName];
+            for (var i = 0; i < sd.clips.length; i++) {
+                if (sd.clips[i].name === clipKey) {
+                    for (var j = 0; j < sd.actions.length; j++) {
+                        if (sd.actions[j].getClip() === sd.clips[i]) {
+                            sd.actions[j].setLoop(val ? THREE.LoopRepeat : THREE.LoopOnce, 1);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     function playSkeletalAnimation(objName, clipName, loop) {
@@ -13160,6 +13459,7 @@ var EngineApp = (function() {
         togglePoseMode: togglePoseMode, selectBone: selectBone, keyframeBonePose: keyframeBonePose,
         _setBoneProp: _setBoneProp, _acAssignClipToState: _acAssignClipToState,
         loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, updateSkeletonMixers: updateSkeletonMixers, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
+        _miSwitchTab: _miSwitchTab, _miSet: _miSet, _miToggle: _miToggle, _miSetScaleFactor: _miSetScaleFactor, _miConfigureAvatar: _miConfigureAvatar, _miToggleClipProps: _miToggleClipProps, _miClipSet: _miClipSet,
         // GitHub Save/Load
         githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
         saveAnimationsLocal: saveAnimationsLocal, loadAnimationsLocal: loadAnimationsLocal,
