@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
+
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
    <meta http-equiv="Pragma" content="no-cache">
@@ -1357,7 +1355,7 @@ var RussianNLP = (function() {
 
     function tokenize(text) {
         if (!text) return [];
-        var words = text.toLowerCase().replace(/[^a-zA-ZР°-СЏРђ-РЇС‘РЃ0-9\s\-]/g, ' ').split(/\s+/);
+        var words = text.toLowerCase().replace(/[^a-zA-Z\u0041-\u005A\u0061-\u007A\u0400-\u04FF0-9\s\-]/g, ' ').split(/\s+/);
         var tokens = [];
         for (var i = 0; i < words.length; i++) {
             var w = words[i].trim();
@@ -8269,84 +8267,9 @@ var EngineApp = (function() {
         var types = SashaEngineAPI.getObjectTypes();
         var type = types[selected] || 'cube';
         var html = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);">'+selected+'</div>';
-        html += iSection('fa-arrows-alt', 'Transform', iVec3('Position', obj.position, 'setTransform', 'p', selected)+iVec3('Rotation', obj.rotation, 'setTransform', 'r', selected)+iVec3('Scale', obj.scale, 'setTransform', 's', selected));
-        if (obj.isMesh || obj.isLight === undefined) {
-            var mbody = iRow('Type', '<span style="font-size:0.72rem;color:#fff;">'+type+'</span>');
-            if (obj.material && obj.material.color) {
-                var colHex = '#' + obj.material.color.getHexString();
-                mbody += iRow('Color', '<input class="insp-color-input" type="color" value="'+colHex+'" onchange="EngineApp.setColor(\''+selected+'\',this.value)">');
-                mbody += '<div class="render-setting-row"><span class="render-setting-label">Metalness</span><input class="insp-input" type="number" step="0.05" min="0" max="1" value="'+(obj.material.metalness||0).toFixed(2)+'" onchange="EngineApp.setMaterialProp(\''+selected+'\',\'metalness\',this.value)"></div>';
-                mbody += '<div class="render-setting-row"><span class="render-setting-label">Roughness</span><input class="insp-input" type="number" step="0.05" min="0" max="1" value="'+(obj.material.roughness||0.5).toFixed(2)+'" onchange="EngineApp.setMaterialProp(\''+selected+'\',\'roughness\',this.value)"></div>';
-                mbody += '<div class="render-setting-row"><span class="render-setting-label">Opacity</span><input class="insp-input" type="number" step="0.05" min="0" max="1" value="'+(obj.material.opacity!==undefined?obj.material.opacity:1).toFixed(2)+'" onchange="EngineApp.setMaterialProp(\''+selected+'\',\'opacity\',this.value)"></div>';
-                mbody += '<div class="render-setting-row"><span class="render-setting-label">Wireframe</span><input type="checkbox" class="insp-checkbox" '+(obj.material.wireframe?'checked':'')+' onchange="EngineApp.setMaterialProp(\''+selected+'\',\'wireframe\',this.checked)"></div>';
-            }
-            html += iSection('fa-shapes', 'Mesh', mbody);
-        }
-        if (obj.isLight) {
-            var lbody = iRow('Type', '<span style="font-size:0.72rem;color:#fff;">'+type+'</span>');
-            if (obj.color) { var lColHex = '#' + obj.color.getHexString(); lbody += iRow('Color', '<input class="insp-color-input" type="color" value="'+lColHex+'" onchange="EngineApp.setLightProp(\''+selected+'\',\'color\',this.value)">'); }
-            lbody += iRow('Intensity', '<input class="insp-input" type="number" step="0.1" min="0" value="'+(obj.intensity||1).toFixed(2)+'" onchange="EngineApp.setLightProp(\''+selected+'\',\'intensity\',this.value)">');
-            if (obj.isDirectionalLight || obj.isSpotLight) { lbody += iRow('Shadows', '<input type="checkbox" class="insp-checkbox" '+(obj.castShadow?'checked':'')+' onchange="EngineApp.setLightProp(\''+selected+'\',\'castShadow\',this.checked)">'); }
-            html += iSection('fa-lightbulb', 'Light', lbody);
-        }
-        html += iSection('fa-puzzle-piece', 'Components', 
-        (function(){ 
-            var chtml='';
-            var comps=SashaEngineAPI.getAllComponents(selected);
-            if(comps.length===0){ return '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">No components</div>'; }
-            for(var i=0;i<comps.length;i++){
-                var comp=comps[i];
-                var compIcon='fa-file-code';
-                var compName=comp.type;
-                if(comp.type==='script'){compIcon='fa-file-code';compName=(comp.name||'Script');}else if(comp.type==='rigidbody'){compIcon='fa-atom';compName='RigidBody';}else if(comp.type==='boxcollider'){compIcon='fa-vector-square';compName='BoxCollider';}else if(comp.type==='spherecollider'){compIcon='fa-circle';compName='SphereCollider';}else if(comp.type==='meshcollider'){compIcon='fa-draw-polygon';compName='MeshCollider';}else if(comp.type==='capsulecollider'){compIcon='fa-capsules';compName='CapsuleCollider';}else if(comp.type==='cylindercollider'){compIcon='fa-database';compName='CylinderCollider';}else if(comp.type==='wheelcollider'){compIcon='fa-circle-notch';compName='WheelCollider';}else if(comp.type==='planecollider'){compIcon='fa-minus';compName='PlaneCollider';}else if(comp.type==='terraincollider'){compIcon='fa-mountain';compName='TerrainCollider';}else if(comp.type==='animator'){compIcon='fa-project-diagram';compName='Animator';}
-                chtml+='<div class="comp-item"><i class="fas '+compIcon+'"></i><span class="comp-name">'+compName;
-                if(comp.type==='rigidbody'){chtml+='<span class="phys-badge">PHYS</span>';}
-                chtml+='</span><button class="comp-del" onclick="EngineApp.removeComp(\''+selected+'\',\''+comp.type+'\',\''+(comp.name||'')+ '\')"><i class="fas fa-times"></i></button></div>';
-                if(comp.type==='script'){var code=(comp.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');chtml+='<textarea class="comp-script" onchange="EngineApp.updateScriptCode(\''+selected+'\',\''+(comp.name||'')+'\',this.value)">'+code+'</textarea>';}
-                                if(comp.type==='rigidbody'){
-                    chtml+=iRField('RBField','Mass',0.1,undefined,undefined,(comp.mass||1),selected);
-                    chtml+=iRField('RBField','Drag',0.01,0,1,(comp.drag||0),selected);
-                    chtml+=iRField('RBField','Ang Drag',0.01,0,1,(comp.angularDrag||0.05),selected);
-                    chtml+=iRow('Gravity','<input type="checkbox" class="insp-checkbox" '+(comp.useGravity?'checked':'')+' onchange="EngineApp.setRBField(\''+selected+'\',\'useGravity\',this.checked)">');
-                    chtml+=sh('Velocity');
-                    chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.x:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.y:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+(comp.velocity?comp.velocity.z:0).toFixed(2)+'" onchange="EngineApp.setRBVel(\''+selected+'\',\'z\',this.value)"></div>';
-                    var cfx=(comp.constraints&&comp.constraints.freezeX)?'checked':'';
-                    var cfy=(comp.constraints&&comp.constraints.freezeY)?'checked':'';
-                    var cfz=(comp.constraints&&comp.constraints.freezeZ)?'checked':'';
-                    chtml+=sh('Constraints');
-                    chtml+=iRow('Freeze X','<input type="checkbox" class="insp-checkbox" '+cfx+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeX\',this.checked)">');
-                    chtml+=iRow('Freeze Y','<input type="checkbox" class="insp-checkbox" '+cfy+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeY\',this.checked)">');
-                    chtml+=iRow('Freeze Z','<input type="checkbox" class="insp-checkbox" '+cfz+' onchange="EngineApp.setRBConstraint(\''+selected+'\',\'freezeZ\',this.checked)">');
-                    chtml+=iRField('RBField','Bounce',0.05,0,1,(comp.bounciness!==undefined?comp.bounciness:0.4),selected);
-                    chtml+=iRField('RBField','Friction',0.05,0,1,(comp.friction!==undefined?comp.friction:0.6),selected);
-                }
-                                if(comp.type==='boxcollider'){
-                    var bs=comp.size||{x:1,y:1,z:1};
-                    var bc=comp.center||{x:0,y:0,z:0};
-                    chtml+=sh('Size');
-                    chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bs.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bs.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bs.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'size_z\',this.value)"></div>';
-                    chtml+=sh('Center');
-                    chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+bc.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+bc.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+bc.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'center_z\',this.value)"></div>';
-                }
-                                if(comp.type==='spherecollider'){
-                    var sc2=comp.center||{x:0,y:0,z:0};
-                    chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'radius\',this.value)">');
-                    chtml+=sh('Center');
-                    chtml+='<div class="insp-row x-row"><span class="insp-label">X</span><input class="insp-input" type="number" step="0.1" value="'+sc2.x+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_x\',this.value)"></div><div class="insp-row y-row"><span class="insp-label">Y</span><input class="insp-input" type="number" step="0.1" value="'+sc2.y+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_y\',this.value)"></div><div class="insp-row z-row"><span class="insp-label">Z</span><input class="insp-input" type="number" step="0.1" value="'+sc2.z+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'center_z\',this.value)"></div>';
-                    chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'spherecollider\',\'isTrigger\',this.checked)">');
-                }
-                if(comp.type==='meshcollider'){chtml+=iRow('Convex','<input type="checkbox" class="insp-checkbox" '+(comp.convex?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'convex\',this.checked)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'meshcollider\',\'isTrigger\',this.checked)">');}
-                if(comp.type==='capsulecollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.25)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||2)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'capsulecollider\',\'isTrigger\',this.checked)">');}
-                if(comp.type==='cylindercollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.5)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'radius\',this.value)">');chtml+=iRow('Height','<input class="insp-input" type="number" step="0.1" value="'+(comp.height||1)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'height\',this.value)">');chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'cylindercollider\',\'isTrigger\',this.checked)">');}
-                if(comp.type==='wheelcollider'){chtml+=iRow('Radius','<input class="insp-input" type="number" step="0.1" value="'+(comp.radius||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'radius\',this.value)">');chtml+=iRow('Susp Dist','<input class="insp-input" type="number" step="0.1" value="'+(comp.suspensionDistance||0.3)+'" onchange="EngineApp.setColliderField(\''+selected+'\',\'wheelcollider\',\'suspensionDistance\',this.value)">');}
-                if(comp.type==='boxcollider'){chtml+=iRow('Trigger','<input type="checkbox" class="insp-checkbox" '+(comp.isTrigger?'checked':'')+' onchange="EngineApp.setColliderField(\''+selected+'\',\'boxcollider\',\'isTrigger\',this.checked)">');}
-                if(comp.type==='animator'){var ctrl=SashaEngineAPI.getAnimatorController(comp.controllerId);chtml+=iRow('Controller',ctrl?('<span style=\"color:var(--primary);cursor:pointer;text-decoration:underline;\" onclick=\"EngineApp.openAnimatorEditor(\''+comp.controllerId+'\')\">'+ctrl.name+'</span>'):'<span style=\"color:var(--text-muted);\">None</span>');chtml+='<button onclick=\"EngineApp.openAnimatorEditor(\''+comp.controllerId+'\')\" style=\"width:100%;margin-top:4px;font-size:0.65rem;padding:3px;background:var(--primary);border:none;color:#fff;border-radius:4px;cursor:pointer;\"><i class=\"fas fa-project-diagram\"></i> Open Animator Editor</button>';}
-            }
-            return chtml;
-         })());
-        // --- Model Import Inspector (Model / Rig / Animation / Materials) ---
-        if (_skeletonData[selected]) {
-            var sd2 = _skeletonData[selected];
+        // === MODEL IMPORT INSPECTOR вЂ” show for ANY model ===
+        if (type === 'model') {
+            var sd2 = _skeletonData[selected] || { clips: [], actions: [] };
             var hasAnims = sd2.clips && sd2.clips.length > 0;
             html += '<div style="margin-top:4px;">';
             html += '<div class="model-import-tabs" id="mi-tabs-'+selected+'">';
@@ -8357,27 +8280,35 @@ var EngineApp = (function() {
             html += '</div>';
             // MODEL TAB
             html += '<div class="model-import-panel active" id="mi-panel-model-'+selected+'">';
+            html += '<div class="mi-section-title">Model</div>';
+            html += '<div class="mi-row"><span class="mi-label">Name</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+selected+'</span></div>';
+            html += '<div class="mi-row"><span class="mi-label">Type</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+type+'</span></div>';
             html += '<div class="mi-section-title">Scale</div>';
-            html += '<div class="mi-row"><span class="mi-label">Scale Factor</span><input class="mi-input" type="number" step="0.01" min="0.001" value="'+(objects[selected]?objects[selected].scale.x:1)+'" onchange="var v=parseFloat(this.value)||1;EngineApp._miApplyScale(\''+selected+'\',v)"></div>';
+            html += '<div class="mi-row"><span class="mi-label">Scale Factor</span><input class="mi-input" type="number" step="0.01" min="0.001" value="'+(obj?obj.scale.x:1)+'" onchange="var v=parseFloat(this.value)||1;EngineApp._miApplyScale(\''+selected+'\',v)"></div>';
             html += '<div class="mi-section-title">Info</div>';
-            var bCount=0,mCount=0,vCount=0;
-            if(objects[selected])objects[selected].traverse(function(c){if(c.isBone)bCount++;if(c.isMesh){mCount++;if(c.geometry&&c.geometry.attributes&&c.geometry.attributes.position)vCount+=c.geometry.attributes.position.count;}});
-            html += '<div class="mi-row"><span class="mi-label">Bones</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+bCount+'</span></div>';
-            html += '<div class="mi-row"><span class="mi-label">Meshes</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+mCount+'</span></div>';
-            html += '<div class="mi-row"><span class="mi-label">Vertices</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+vCount+'</span></div>';
+            var _miB=0,_miM=0,_miV=0;
+            if(obj)obj.traverse(function(c){if(c.isBone)_miB++;if(c.isMesh){_miM++;if(c.geometry&&c.geometry.attributes&&c.geometry.attributes.position)_miV+=c.geometry.attributes.position.count;}});
+            html += '<div class="mi-row"><span class="mi-label">Bones</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+_miB+'</span></div>';
+            html += '<div class="mi-row"><span class="mi-label">Meshes</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+_miM+'</span></div>';
+            html += '<div class="mi-row"><span class="mi-label">Vertices</span><span style="font-size:0.7rem;color:var(--text-secondary);">'+_miV+'</span></div>';
+            html += '<div class="mi-section-title">Transform</div>';
+            html += iVec3('Position', obj.position, 'setTransform', 'p', selected);
+            html += iVec3('Rotation', obj.rotation, 'setTransform', 'r', selected);
+            html += iVec3('Scale', obj.scale, 'setTransform', 's', selected);
             html += '</div>';
             // RIG TAB
             html += '<div class="model-import-panel" id="mi-panel-rig-'+selected+'">';
             html += '<div class="mi-section-title">Animation Type</div>';
-            html += '<div class="mi-row"><span class="mi-label">Type</span><select class="mi-select" id="mi-animType-'+selected+'"><option value="None">None</option><option value="Legacy">Legacy</option><option value="Generic" selected>Generic</option><option value="Humanoid">Humanoid</option></select></div>';
+            html += '<div class="mi-row"><span class="mi-label">Type</span><select class="mi-select"><option value="None">None</option><option value="Legacy">Legacy</option><option value="Generic" selected>Generic</option><option value="Humanoid">Humanoid</option></select></div>';
             html += '<div class="mi-section-title">Avatar</div>';
             html += '<div class="mi-row"><span class="mi-label">Definition</span><select class="mi-select"><option selected>Create From This Model</option><option>Copy From Other Avatar</option></select></div>';
-            html += '<div style="padding:8px 10px;"><button class="insp-btn" style="width:100%;"><i class="fas fa-cog"></i> Configure</button></div>';
+            html += '<div style="padding:8px 10px;"><button class="insp-btn" style="width:100%;" onclick="EngineApp._miConfigureAvatar(\''+selected+'\')"><i class="fas fa-cog"></i> Configure</button></div>';
             html += '<div class="mi-section-title">Skeleton Hierarchy</div>';
             html += '<div id="mi-bone-tree-'+selected+'" style="max-height:200px;overflow-y:auto;padding:2px 0;"></div>';
             html += '</div>';
             // ANIMATION TAB
             html += '<div class="model-import-panel" id="mi-panel-animation-'+selected+'">';
+            html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" checked><label>Import Animation</label></div>';
             html += '<div style="padding:6px 10px;display:flex;gap:4px;">';
             html += '<button class="insp-btn" onclick="EngineApp._miAddClip(\''+selected+'\')" style="flex:1;"><i class="fas fa-plus"></i> Add Clip</button>';
             html += '</div>';
@@ -8385,18 +8316,19 @@ var EngineApp = (function() {
                 for(var _ci=0;_ci<sd2.clips.length;_ci++){
                     var _clip=sd2.clips[_ci];
                     var _ck=_clip.name||('Anim_'+_ci);
-                    var _isLoop=sd2.actions.length>0&&sd2.actions[0].getClip()===_clip?sd2.actions[0].loop!==0:true;
+                    var _isLoop=true;
+                    if(sd2.actions.length>0){for(var _ai=0;_ai<sd2.actions.length;_ai++){if(sd2.actions[_ai].getClip()===_clip){_isLoop=sd2.actions[_ai].loop!==THREE.LoopOnce;break;}}}
                     html += '<div class="mi-clip-item" onclick="EngineApp._miToggleClipProps(\''+selected+'\','+_ci+')">';
                     html += '<i class="fas fa-play-circle mi-clip-icon"></i>';
-                    html += '<span class="mi-clip-name">'+_ck+'</span>';
+                    html += '<span class="mi-clip-name" style="flex:1;">'+_ck+'</span>';
                     html += '<span style="font-size:0.58rem;color:var(--text-muted);">'+_clip.duration.toFixed(2)+'s</span>';
                     html += '<div class="mi-clip-actions">';
-                    html += '<button onclick="event.stopPropagation();EngineApp.playSkeletalAnimation(\''+selected+'\',\''+_ck+'\',true)" title="Play"><i class="fas fa-play"></i></button>';
-                    html += '<button onclick="event.stopPropagation();EngineApp.stopSkeletalAnimation(\''+selected+'\')" title="Stop"><i class="fas fa-stop"></i></button>';
-                    html += '<button class="clip-del" onclick="event.stopPropagation();EngineApp._miRemoveClip(\''+selected+'\','+_ci+')" title="Remove"><i class="fas fa-trash"></i></button>';
+                    html += '<button onclick="event.stopPropagation();EngineApp.playSkeletalAnimation(\''+selected+'\',\''+_ck+'\',true)" title="Play" style="background:none;border:none;color:var(--primary);cursor:pointer;padding:2px 4px;"><i class="fas fa-play"></i></button>';
+                    html += '<button onclick="event.stopPropagation();EngineApp.stopSkeletalAnimation(\''+selected+'\')" title="Stop" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;"><i class="fas fa-stop"></i></button>';
+                    html += '<button onclick="event.stopPropagation();EngineApp._miRemoveClip(\''+selected+'\','+_ci+')" title="Remove" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:2px 4px;"><i class="fas fa-trash"></i></button>';
                     html += '</div></div>';
                     html += '<div class="mi-clip-props" id="mi-cprops-'+selected+'-'+_ci+'">';
-                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" checked onchange="EngineApp._miClipLoop(\''+selected+'\',\''+_ck+'\',this.checked)"><label>Loop Time</label></div>';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" '+(_isLoop?'checked':'')+' onchange="EngineApp._miClipLoop(\''+selected+'\',\''+_ck+'\',this.checked)"><label>Loop Time</label></div>';
                     html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox"><label>Loop Pose</label></div>';
                     html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox"><label>Bake Into Pose</label></div>';
                     html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox"><label>Mirror</label></div>';
@@ -8408,37 +8340,59 @@ var EngineApp = (function() {
                     html += '</div>';
                 }
             } else {
-                html += '<div style="padding:10px;color:var(--text-muted);font-size:0.7rem;text-align:center;">No animation clips.<br>Click "Add Clip" to create one.</div>';
+                html += '<div style="padding:10px;color:var(--text-muted);font-size:0.7rem;text-align:center;">No animation clips.<br>Click \"Add Clip\" to create one.</div>';
             }
             html += '</div>';
             // MATERIALS TAB
             html += '<div class="model-import-panel" id="mi-panel-materials-'+selected+'">';
             html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" checked><label>Import Materials</label></div>';
             html += '<div class="mi-row"><span class="mi-label">Location</span><select class="mi-select"><option selected>Use Embedded Materials</option><option>Use External Materials</option></select></div>';
+            html += '<div class="mi-section-title">Materials</div>';
             html += '<div id="mi-mat-list-'+selected+'"></div>';
             html += '</div>';
             html += '</div>';
-            // Defer bone tree + materials
             (function(sn){
                 setTimeout(function(){
                     var bt=document.getElementById('mi-bone-tree-'+sn);
                     if(!bt||!objects[sn])return;
                     var bh='';
-                    objects[sn].traverse(function(c){if(c.isBone){bh+='<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:0.65rem;color:#a1a1aa;cursor:pointer;border-radius:3px;border-left:2px solid transparent;" onclick="EngineApp.selectBone(\''+sn+'\',\''+c.name+'\')" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:12px;text-align:center;"></i><span>'+c.name+'</span></div>';}});
-                    bt.innerHTML=bh||'<div style="padding:6px 10px;font-size:0.65rem;color:#71717a;">No bones</div>';
+                    objects[sn].traverse(function(c){if(c.isBone){bh+='<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:0.65rem;color:#a1a1aa;cursor:pointer;border-radius:3px;border-left:2px solid transparent;" onclick="EngineApp.selectBone(\''+sn+'\',\''+c.name.replace(/'/g,"\\'")+'\')" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'" ><i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:12px;text-align:center;"></i><span>'+c.name+'</span></div>';}});
+                    bt.innerHTML=bh||'<div style="padding:6px 10px;font-size:0.65rem;color:#71717a;">No bones found</div>';
                     var ml=document.getElementById('mi-mat-list-'+sn);
                     if(ml&&objects[sn]){
                         var mh='';
                         objects[sn].traverse(function(c){
                             if(c.isMesh&&c.material){
-                                var col=c.material.color?'#'+c.material.color.getHexString():'#fff';
-                                mh+='<div class="mi-row"><div style="width:18px;height:18px;border-radius:3px;background:'+col+';border:1px solid var(--border);flex-shrink:0;"></div><span style="font-size:0.68rem;color:var(--text-secondary);flex:1;">'+(c.material.name||'Material')+'</span></div>';
+                                var mat=c.material;
+                                var col=mat.color?'#'+mat.color.getHexString():'#ffffff';
+                                mh+='<div class="mi-row" style="align-items:center;"><div style="width:22px;height:22px;border-radius:3px;background:'+col+';border:1px solid var(--border);flex-shrink:0;"></div><div style="flex:1;min-width:0;"><div style="font-size:0.68rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(mat.name||'Material')+'</div><div style="font-size:0.58rem;color:var(--text-muted);">R:'+(mat.roughness!==undefined?mat.roughness.toFixed(2):'0.50')+' M:'+(mat.metalness!==undefined?mat.metalness.toFixed(2):'0.00')+'</div></div><input class="insp-color-input" type="color" value="'+col+'" style="width:22px;height:22px;padding:0;border:none;background:none;cursor:pointer;" onchange="EngineApp.setColor(\''+sn+'\',this.value)"></div>';
                             }
                         });
                         ml.innerHTML=mh||'<div style="padding:6px 10px;font-size:0.65rem;color:#71717a;">No materials</div>';
                     }
                 },50);
             })(selected);
+        } else {
+            html += iSection('fa-arrows-alt', 'Transform', iVec3('Position', obj.position, 'setTransform', 'p', selected)+iVec3('Rotation', obj.rotation, 'setTransform', 'r', selected)+iVec3('Scale', obj.scale, 'setTransform', 's', selected));
+            if (obj.isMesh || obj.isLight === undefined) {
+                var mbody = iRow('Type', '<span style="font-size:0.72rem;color:#fff;">'+type+'</span>');
+                if (obj.material && obj.material.color) {
+                    var colHex = '#' + obj.material.color.getHexString();
+                    mbody += iRow('Color', '<input class="insp-color-input" type="color" value="'+colHex+'" onchange="EngineApp.setColor(\''+selected+'\',this.value)">');
+                    mbody += '<div class="render-setting-row"><span class="render-setting-label">Metalness</span><input class="insp-input" type="number" step="0.05" min="0" max="1" value="'+(obj.material.metalness||0).toFixed(2)+'" onchange="EngineApp.setMaterialProp(\''+selected+'\',\'metalness\',this.value)"></div>';
+                    mbody += '<div class="render-setting-row"><span class="render-setting-label">Roughness</span><input class="insp-input" type="number" step="0.05" min="0" max="1" value="'+(obj.material.roughness||0.5).toFixed(2)+'" onchange="EngineApp.setMaterialProp(\''+selected+'\',\'roughness\',this.value)"></div>';
+                    mbody += '<div class="render-setting-row"><span class="render-setting-label">Opacity</span><input class="insp-input" type="number" step="0.05" min="0" max="1" value="'+(obj.material.opacity!==undefined?obj.material.opacity:1).toFixed(2)+'" onchange="EngineApp.setMaterialProp(\''+selected+'\',\'opacity\',this.value)"></div>';
+                    mbody += '<div class="render-setting-row"><span class="render-setting-label">Wireframe</span><input type="checkbox" class="insp-checkbox" '+(obj.material.wireframe?'checked':'')+' onchange="EngineApp.setMaterialProp(\''+selected+'\',\'wireframe\',this.checked)"></div>';
+                }
+                html += iSection('fa-shapes', 'Mesh', mbody);
+            }
+            if (obj.isLight) {
+                var lbody = iRow('Type', '<span style="font-size:0.72rem;color:#fff;">'+type+'</span>');
+                if (obj.color) { var lColHex = '#' + obj.color.getHexString(); lbody += iRow('Color', '<input class="insp-color-input" type="color" value="'+lColHex+'" onchange="EngineApp.setLightProp(\''+selected+'\',\'color\',this.value)">'); }
+                lbody += iRow('Intensity', '<input class="insp-input" type="number" step="0.1" min="0" value="'+(obj.intensity||1).toFixed(2)+'" onchange="EngineApp.setLightProp(\''+selected+'\',\'intensity\',this.value)">');
+                if (obj.isDirectionalLight || obj.isSpotLight) { lbody += iRow('Shadows', '<input type="checkbox" class="insp-checkbox" '+(obj.castShadow?'checked':'')+' onchange="EngineApp.setLightProp(\''+selected+'\',\'castShadow\',this.checked)">'); }
+                html += iSection('fa-lightbulb', 'Light', lbody);
+            }
         }
 
         html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option><option value="animator">Animator</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
@@ -8730,12 +8684,14 @@ var EngineApp = (function() {
             _assetGridSelected = null;
             _assetGridMulti = {};
             openFolders[id] = true;
+            refreshAssetGrid();
         } else if (asset && asset.parent) {
             if (_assetCurrentFolder !== asset.parent) {
                 _assetCurrentFolder = asset.parent;
                 _assetGridSelected = id;
                 _assetGridMulti = {};
                 openFolders[asset.parent] = true;
+                refreshAssetGrid();
             } else {
                 _assetGridSelected = id;
             }
@@ -8752,6 +8708,7 @@ var EngineApp = (function() {
             _assetGridSelected = null;
             _assetGridMulti = {};
             openFolders[id] = true;
+            refreshAssetGrid();
         }
         refreshAssetBrowser();
     }
@@ -12466,6 +12423,7 @@ var EngineApp = (function() {
         _assetCurrentFolder = folderId;
         _assetGridSelected = null;
         refreshAssetGrid();
+        refreshAssetBrowser();
     }
 
     function assetGridContext(e, id) {
@@ -12853,6 +12811,7 @@ var EngineApp = (function() {
                 _skeletonData[n] = { mixer: mixer, clips: clips, actions: [] };
                 log('Loaded model with ' + clips.length + ' anims: ' + n, 'result');
             } else {
+                _skeletonData[n] = { mixer: null, clips: [], actions: [] };
                 log('Loaded model: ' + n, 'result');
             }
             refreshHierarchy();
@@ -12960,6 +12919,49 @@ var EngineApp = (function() {
         }
     }
 
+    // ============ ASSET TREE CONTEXT MENU (folder deletion from left panel) ============
+    function assetTreeContext(e, id) {
+        e.preventDefault();
+        e.stopPropagation();
+        var existing = document.getElementById('asset-tree-ctx-menu');
+        if (existing) existing.remove();
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) return;
+        var div = document.createElement('div');
+        div.id = 'asset-tree-ctx-menu';
+        div.style.cssText = 'position:fixed;left:'+e.clientX+'px;top:'+e.clientY+'px;background:#1e1e3a;border:1px solid #374151;border-radius:8px;padding:4px;z-index:99999;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+        var mhtml = '';
+        if (asset.type === 'folder') {
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp._assetCurrentFolder=\''+id+'\';EngineApp.refreshAssetGrid()" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-folder-open" style="width:14px;text-align:center;"></i>Open</div>';
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetRename(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-pen" style="width:14px;text-align:center;"></i>Rename</div>';
+            mhtml += '<div style="height:1px;background:var(--border);margin:2px 6px;"></div>';
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#ef4444;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete Folder</div>';
+        } else {
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.selectAsset(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-eye" style="width:14px;text-align:center;"></i>Select</div>';
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetRename(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-pen" style="width:14px;text-align:center;"></i>Rename</div>';
+            mhtml += '<div style="height:1px;background:var(--border);margin:2px 6px;"></div>';
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#ef4444;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete</div>';
+        }
+        div.innerHTML = mhtml;
+        document.body.appendChild(div);
+        setTimeout(function() {
+            document.addEventListener('click', function handler() { div.remove(); document.removeEventListener('click', handler); });
+        }, 10);
+    }
+
+    function assetNavigateBack() {
+        if (!_assetCurrentFolder) return;
+        var current = SashaAssetManager.getAsset(_assetCurrentFolder);
+        if (current && current.parent) {
+            _assetCurrentFolder = current.parent;
+        } else {
+            _assetCurrentFolder = null;
+        }
+        _assetGridSelected = null;
+        refreshAssetGrid();
+        refreshAssetBrowser();
+    }
+
     return {
         init: init, runCode: runCode, toggleLive: toggleLive,
         clearScene: clearScene, loadModelFromURL: loadModelFromURL,
@@ -13005,7 +13007,7 @@ var EngineApp = (function() {
         togglePoseMode: togglePoseMode, selectBone: selectBone, keyframeBonePose: keyframeBonePose,
         _setBoneProp: _setBoneProp, _acAssignClipToState: _acAssignClipToState,
         loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, updateSkeletonMixers: updateSkeletonMixers, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
-        _miSwitchTab: _miSwitchTab, _miApplyScale: _miApplyScale, _miToggleClipProps: _miToggleClipProps, _miClipLoop: _miClipLoop, _miAddClip: _miAddClip, _miRemoveClip: _miRemoveClip,
+        _miSwitchTab: _miSwitchTab, _miConfigureAvatar: _miConfigureAvatar, _miApplyScale: _miApplyScale, _miToggleClipProps: _miToggleClipProps, _miClipLoop: _miClipLoop, _miAddClip: _miAddClip, _miRemoveClip: _miRemoveClip,
         githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
         saveAnimationsLocal: saveAnimationsLocal, loadAnimationsLocal: loadAnimationsLocal,
         _showGitHubSettingsDialog: _showGitHubSettingsDialog,
@@ -13077,64 +13079,6 @@ var EngineApp = (function() {
     } else {
         attachTimelineACButton();
     }
-    return {
-        init: init, runCode: runCode, toggleLive: toggleLive,
-        clearScene: clearScene, loadModelFromURL: loadModelFromURL,
-        showModelPicker: showModelPicker, sendAI: sendAI, setAIMode: setAIMode,
-        log: log, saveProject: saveProject, exportGame: exportGame,
-        play: play, pause: pause, stop: stop,
-        addObject: addObject, deleteSelected: deleteSelected, duplicateSelected: duplicateSelected,
-        refreshHierarchy: refreshHierarchy, refreshInspector: refreshInspector,
-        selectHierItem: selectHierItem, focusOnObject: focusOnObject, _getControls: _getControls, toggleVis: toggleVis,
-        switchTab: switchTab,
-        setTransform: setTransform, setColor: setColor,
-        setMaterialProp: setMaterialProp, setLightProp: setLightProp,
-        addComp: addComp, removeComp: removeComp, ctxAction: ctxAction,
-        updateScriptCode: updateScriptCode,
-        setRBField: setRBField, setRBVel: setRBVel,
-        setGizmoMode: setGizmoMode, addFromDropdown: addFromDropdown,
-        focusSelected: focusSelected, startRename: startRename,
-        undo: undo, redo: redo, copySelected: copySelected, pasteSelected: pasteSelected,
-        setCameraPreset: setCameraPreset, toggleSnap: toggleSnap,
-        showContextMenu: showContextMenu, hideContextMenu: hideContextMenu,
-        refreshStats: refreshStats, setSceneBg: setSceneBg,
-        refreshAssetBrowser: refreshAssetBrowser, selectAsset: selectAsset, toggleFolder: toggleFolder,
-        createAsset: createAsset, createAssetItem: createAssetItem, deleteAsset: deleteAsset,
-        editScriptAsset: editScriptAsset, applyScriptToSelected: applyScriptToSelected,
-        applyMaterialToSelected: applyMaterialToSelected, instantiatePrefab: instantiatePrefab,
-        importAsset: importAsset, saveAllAssets: saveAllAssets,
-        addTrackToClip: addTrackToClip, addKeyframeToTrack: addKeyframeToTrack, openAnimationTimeline: openAnimationTimeline,
-        saveSceneData: saveSceneData, loadScene: loadScene,
-        addUIElement: addUIElement, renderUICanvas: renderUICanvas, selectUIElement: selectUIElement,
-        updateUIProp: updateUIProp, removeUIElement: removeUIElement,
-        startUIDrag: startUIDrag, startUIResize: startUIResize,
-        toggleUICanvas: toggleUICanvas, clearUICanvas: clearUICanvas,
-        clearAIChat: clearAIChat, setAIMode: setAIMode, sendAI: sendAI,
-        restartModel: restartModel, unloadModel: unloadModel,
-        toggleFPS: toggleFPS,
-        setRBConstraint: setRBConstraint, setColliderField: setColliderField,
-        tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop, tlToggleAutoKey: tlToggleAutoKey,
-        tlSetDuration: tlSetDuration, tlRefresh: tlRefresh, _tlUndo: _tlUndo, _tlRedo: _tlRedo,
-        tlDeleteClip: tlDeleteClip,
-        refreshAssetGrid: refreshAssetGrid, assetGridClick: assetGridClick, assetGridDblClick: assetGridDblClick, assetNavigateTo: assetNavigateTo, assetGridContext: assetGridContext, assetRename: assetRename,
-        loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, updateSkeletonMixers: updateSkeletonMixers, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
-        _miSwitchTab: _miSwitchTab, _miApplyScale: _miApplyScale, _miToggleClipProps: _miToggleClipProps, _miClipLoop: _miClipLoop, _miAddClip: _miAddClip, _miRemoveClip: _miRemoveClip,
-        githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
-        saveAnimationsLocal: saveAnimationsLocal, loadAnimationsLocal: loadAnimationsLocal,
-        _showGitHubSettingsDialog: _showGitHubSettingsDialog,
-        tlDeleteSelectedKey: tlDeleteSelectedKey, tlDeleteTrack: tlDeleteTrack, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
-        tlCreateNewClip: tlCreateNewClip, tlAddKeyAllTracks: tlAddKeyAllTracks, tlAddTransformTracks: tlAddTransformTracks,
-        openAnimatorEditor: openAnimatorEditor, openAnimatorFromTimeline: openAnimatorFromTimeline,
-        closeAnimatorBackToTimeline: closeAnimatorBackToTimeline, acAddState: acAddState, acAddParam: acAddParam,
-        acAddTransition: acAddTransition, acDeleteState: acDeleteState, acDeleteTransition: acDeleteTransition,
-        acSetParam: acSetParam, acTriggerParam: acTriggerParam, acRemoveParam: acRemoveParam,
-        acRefresh: acRefresh,
-        acAddTransitionCondition: acAddTransitionCondition, acUpdateCondMode: acUpdateCondMode,
-        acRemoveCondition: acRemoveCondition, acDeleteSelectedTransition: acDeleteSelectedTransition,
-        acToggleFullscreen: acToggleFullscreen,
-        acDeleteClip: acDeleteClip, acDeleteUnusedClips: acDeleteUnusedClips, acRefreshClips: acRefreshClips,
-        switchViewTab: switchViewTab
-    };
 })();
 </script>
 
