@@ -1357,7 +1357,7 @@ var RussianNLP = (function() {
 
     function tokenize(text) {
         if (!text) return [];
-        var words = text.toLowerCase().replace(/[^\w0-9\s\-]/gu, ' ').split(/\s+/);
+        var words = text.toLowerCase().replace(/[^a-zA-ZР°-СЏРђ-РЇС‘РЃ0-9\s\-]/g, ' ').split(/\s+/);
         var tokens = [];
         for (var i = 0; i < words.length; i++) {
             var w = words[i].trim();
@@ -8078,7 +8078,7 @@ var EngineApp = (function() {
     }
 
     function finishRename(oldName, newName) {
-        newName = newName.trim().replace(/[^\w\-]/gu, '');
+        newName = newName.trim().replace(/[^a-zA-Z0-9_\-Р°-СЏРђ-РЇС‘РЃ]/g, '');
         if (!newName || newName === oldName) { refreshHierarchy(); return; }
         if (SashaEngineAPI.renameObject(oldName, newName)) {
             refreshHierarchy();
@@ -8455,7 +8455,7 @@ var EngineApp = (function() {
         if (compType === 'script') {
             var scriptName = prompt('Enter script name:', 'PlayerController');
             if (!scriptName || !scriptName.trim()) return;
-            scriptName = scriptName.trim().replace(/[^\w\-]/gu, '');
+            scriptName = scriptName.trim().replace(/[^a-zA-Z0-9_\-Р°-СЏРђ-РЇС‘РЃ]/g, '');
             if (!scriptName) return;
             // Check for duplicate script name on same object
             var existingComps = SashaEngineAPI.getAllComponents(name);
@@ -11577,7 +11577,7 @@ var EngineApp = (function() {
                 isCode = true;
             }
             if (!isCode && ln.length < 40 && /^[A-Z][a-z]+$/.test(ln)) continue;
-            if (!isCode && /[^\x00-\x7F]/.test(ln)) continue;
+            if (!isCode && /[Р°-СЏРђ-РЇС‘РЃ]/.test(ln)) continue;
             codeLines.push(lines[i]);
         }
         return codeLines.join('\n').trim();
@@ -12962,6 +12962,38 @@ var EngineApp = (function() {
         _assetGridSelected = null;
         refreshAssetGrid();
         refreshAssetBrowser();
+    }
+
+    function assetCreateFolderQuick() {
+        var name = prompt('Folder name:', 'New Folder');
+        if (!name || !name.trim()) return;
+        name = name.trim();
+        SashaAssetManager.addAsset('folder', name, _assetCurrentFolder);
+        refreshAssetGrid();
+        refreshAssetBrowser();
+        log('Created folder: ' + name, 'log');
+    }
+
+    function assetDeleteSelected() {
+        if (!_assetGridSelected) { log('No asset selected', 'warn'); return; }
+        deleteAsset(_assetGridSelected);
+        _assetGridSelected = null;
+        refreshAssetGrid();
+        refreshAssetBrowser();
+    }
+
+    function _assetGridClickEx(id, shiftKey) {
+        if (shiftKey && _assetGridSelected) {
+            if (!_assetGridMulti) _assetGridMulti = {};
+            if (_assetGridMulti[id]) {
+                delete _assetGridMulti[id];
+            } else {
+                _assetGridMulti[id] = true;
+            }
+            refreshAssetGrid();
+        } else {
+            assetGridClick(id);
+        }
     }
 
     return {
