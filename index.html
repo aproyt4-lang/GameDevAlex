@@ -369,7 +369,7 @@
             cursor: pointer; transition: all 0.15s; font-size: 0.6rem;
         }
         .insp-anim-btn-stop:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.1); }
-        #insp-anim-preview.expanded #insp-anim-canvas-wrap { height: 260px; }
+        #insp-anim-preview.expanded #insp-anim-canvas-wrap { height: 360px; }
 
         /* Viewport */
         .engine-viewport-pane { position: relative; background: #0a0a1a; overflow: hidden; }
@@ -1144,10 +1144,10 @@
                                 <button id="insp-anim-autocam-btn" onclick="EngineApp._inspAnimToggleAutocam()" title="Авто-вращение камеры" style="background:none;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;font-size:0.6rem;padding:2px 6px;border-radius:3px;"><i class="fas fa-sync-alt"></i></button>
                                 <button id="insp-anim-expand-btn" onclick="EngineApp._inspAnimToggleExpand()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.65rem;padding:2px 4px;" title="Развернуть/Свернуть"><i class="fas fa-expand-alt"></i></button>
                             </div>
-                            <div id="insp-anim-canvas-wrap" style="position:relative;width:100%;height:160px;background:#0a0a1a;overflow:hidden;">
+                            <div id="insp-anim-canvas-wrap" style="position:relative;width:100%;height:220px;background:#0a0a1a;overflow:hidden;">
                                 <canvas id="insp-anim-canvas" style="width:100%;height:100%;display:block;"></canvas>
                                 <div id="insp-anim-clip-label" style="position:absolute;bottom:4px;left:8px;font-size:0.6rem;color:rgba(255,255,255,0.6);font-family:'JetBrains Mono',monospace;pointer-events:none;">None</div>
-                                <div id="insp-anim-hint" style="position:absolute;top:4px;right:8px;font-size:0.55rem;color:rgba(255,255,255,0.35);font-family:'JetBrains Mono',monospace;pointer-events:none;">клик по анимации → проиграть</div>
+                                <div id="insp-anim-hint" style="position:absolute;top:4px;right:8px;font-size:0.55rem;color:rgba(255,255,255,0.35);font-family:'JetBrains Mono',monospace;pointer-events:none;">drag — вращать · колесо — зум</div>
                             </div>
                             <div id="insp-anim-controls" style="padding:4px 6px;display:flex;flex-wrap:wrap;gap:3px;background:var(--bg-card);">
                             </div>
@@ -8443,8 +8443,10 @@ var EngineApp = (function() {
                     }
                 },50);
             })(selected);
-            // Show animation preview for model with skeletal animations
-            if (_skeletonData[selected] && _skeletonData[selected].clips && _skeletonData[selected].clips.length > 0) {
+            // Show animation preview for ANY 3D model — character visible immediately, animation buttons appear if clips exist
+            var _hasMeshOrBone = false;
+            if (obj) obj.traverse(function(c) { if (c.isMesh || c.isBone) _hasMeshOrBone = true; });
+            if (_hasMeshOrBone) {
                 setTimeout(function() { _inspPreviewShow(selected); }, 60);
             } else {
                 _inspPreviewHide();
@@ -13236,8 +13238,8 @@ var EngineApp = (function() {
             _inspPreviewRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
             _inspPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             var wrap = document.getElementById('insp-anim-canvas-wrap');
-            var w = wrap ? wrap.clientWidth : 260;
-            var h = wrap ? wrap.clientHeight : 160;
+            var w = wrap ? wrap.clientWidth : 280;
+            var h = wrap ? wrap.clientHeight : 220;
             _inspPreviewRenderer.setSize(w, h);
         }
         return _inspPreviewRenderer;
@@ -13258,12 +13260,17 @@ var EngineApp = (function() {
 
     function _inspPreviewShow(objName) {
         var panel = document.getElementById('insp-anim-preview');
-        if (!panel) return;
+        if (!panel) { console.warn('[Preview] Panel #insp-anim-preview not found in DOM'); return; }
         _inspPreviewInit();
+        console.log('[Preview] _inspPreviewShow called for', objName);
         // If same object, just refresh
         if (_inspPreviewObjName === objName && panel.style.display !== 'none') {
             _inspPreviewRefreshButtons(objName);
             _inspPreviewRefreshControllerSelect();
+            panel.style.display = '';
+            // Make sure renderer is initialized
+            _inspPreviewGetRenderer();
+            _inspPreviewResize();
             return;
         }
         _inspPreviewObjName = objName;
@@ -13279,7 +13286,7 @@ var EngineApp = (function() {
         _inspPreviewAnimNames = [];
 
         var srcObj = SashaEngineAPI.getObject(objName);
-        if (!srcObj) { panel.style.display = 'none'; return; }
+        if (!srcObj) { console.warn('[Preview] Source object not found:', objName); panel.style.display = 'none'; return; }
 
         var sd = _skeletonData[objName];
 
@@ -13288,7 +13295,9 @@ var EngineApp = (function() {
         if (typeof THREE.SkeletonUtils !== 'undefined' && THREE.SkeletonUtils.clone) {
             try {
                 cloned = THREE.SkeletonUtils.clone(srcObj);
+                console.log('[Preview] Cloned via SkeletonUtils');
             } catch(e) {
+                console.warn('[Preview] SkeletonUtils.clone failed:', e.message);
                 cloned = null;
             }
         }
@@ -13296,7 +13305,9 @@ var EngineApp = (function() {
             // Fallback: use Object3D.clone (works for simple models, may not for complex skeletons)
             try {
                 cloned = srcObj.clone(true);
+                console.log('[Preview] Cloned via Object3D.clone');
             } catch(e) {
+                console.warn('[Preview] Object3D.clone failed:', e.message);
                 cloned = null;
             }
         }
@@ -13304,6 +13315,7 @@ var EngineApp = (function() {
         if (!cloned) {
             // Last resort: render the original model in the preview scene
             // by temporarily moving it (not ideal but works)
+            console.warn('[Preview] Using original object as last resort');
             cloned = srcObj;
         }
 
@@ -13322,12 +13334,17 @@ var EngineApp = (function() {
                 var cn = sd.clips[i].name || ('Anim_' + i);
                 _inspPreviewAnimNames.push(cn);
             }
+            console.log('[Preview] Mixer created with', sd.clips.length, 'clips');
+        } else {
+            console.log('[Preview] No clips for this object — character will be shown static');
         }
 
         _inspPreviewScene.add(_inspPreviewModel);
         _inspPreviewAutoFrame();
+        _inspPreviewApplyCamOrbit();
 
         panel.style.display = '';
+        console.log('[Preview] Panel shown, model added to preview scene');
         _inspPreviewRefreshButtons(objName);
         _inspPreviewRefreshControllerSelect();
         _inspPreviewResize();
