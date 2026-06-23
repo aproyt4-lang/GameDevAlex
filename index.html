@@ -7231,6 +7231,13 @@ var SashaEngineAPI = (function() {
         // Update FPS
         updateFPS(delta);
 
+        // === Skeletal animation mixers (main scene) + inspector preview render ===
+        // updateSkeletonMixers() iterates _skeletonData[*].mixer.update(dt) AND
+        // calls _inspPreviewUpdate() which renders the inspector preview scene.
+        // Without this call the inspector preview canvas stays black even after
+        // a model is selected.
+        try { updateSkeletonMixers(delta); } catch(e) { console.warn('[animate] updateSkeletonMixers error:', e.message); }
+
         // Play mode: run physics, scripts, animators
         if (playState === 'playing') {
             var collisionPairs = updatePhysics(delta);
