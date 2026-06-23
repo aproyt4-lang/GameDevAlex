@@ -1139,23 +1139,26 @@
                         <div id="insp-anim-preview" style="display:none;flex-shrink:0;border-top:1px solid var(--border);background:var(--bg-dark);">
                             <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);">
                                 <i class="fas fa-running" style="font-size:0.65rem;color:var(--primary);"></i>
-                                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">Animation Preview</span>
+                                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">Превью анимаций</span>
                                 <div style="flex:1"></div>
+                                <button id="insp-anim-autocam-btn" onclick="EngineApp._inspAnimToggleAutocam()" title="Авто-вращение камеры" style="background:none;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;font-size:0.6rem;padding:2px 6px;border-radius:3px;"><i class="fas fa-sync-alt"></i></button>
                                 <button id="insp-anim-expand-btn" onclick="EngineApp._inspAnimToggleExpand()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.65rem;padding:2px 4px;" title="Развернуть/Свернуть"><i class="fas fa-expand-alt"></i></button>
                             </div>
                             <div id="insp-anim-canvas-wrap" style="position:relative;width:100%;height:160px;background:#0a0a1a;overflow:hidden;">
                                 <canvas id="insp-anim-canvas" style="width:100%;height:100%;display:block;"></canvas>
                                 <div id="insp-anim-clip-label" style="position:absolute;bottom:4px;left:8px;font-size:0.6rem;color:rgba(255,255,255,0.6);font-family:'JetBrains Mono',monospace;pointer-events:none;">None</div>
+                                <div id="insp-anim-hint" style="position:absolute;top:4px;right:8px;font-size:0.55rem;color:rgba(255,255,255,0.35);font-family:'JetBrains Mono',monospace;pointer-events:none;">клик по анимации → проиграть</div>
                             </div>
                             <div id="insp-anim-controls" style="padding:4px 6px;display:flex;flex-wrap:wrap;gap:3px;background:var(--bg-card);">
                             </div>
                             <div id="insp-anim-to-controller" style="display:none;padding:3px 6px;background:var(--bg-card);border-top:1px solid var(--border);">
                                 <div style="display:flex;align-items:center;gap:4px;">
                                     <i class="fas fa-project-diagram" style="font-size:0.55rem;color:#f59e0b;"></i>
-                                    <span style="font-size:0.6rem;color:var(--text-muted);">To Animator:</span>
+                                    <span style="font-size:0.6rem;color:var(--text-muted);">В Animator:</span>
                                     <select id="insp-anim-ctrl-select" class="insp-select" style="flex:1;font-size:0.6rem;padding:1px 4px;"></select>
-                                    <button id="insp-anim-add-state-btn" onclick="EngineApp._inspAnimAddToController()" style="padding:2px 6px;font-size:0.6rem;background:#4f46e5;border:none;color:#fff;border-radius:3px;cursor:pointer;" title="Добавить анимацию как состояние в Animator Controller"><i class="fas fa-plus"></i> Add</button>
+                                    <button id="insp-anim-add-state-btn" onclick="EngineApp._inspAnimAddToController()" style="padding:2px 6px;font-size:0.6rem;background:#4f46e5;border:none;color:#fff;border-radius:3px;cursor:pointer;" title="Добавить выбранную анимацию как состояние в Animator Controller"><i class="fas fa-plus"></i> Add</button>
                                 </div>
+                                <div style="font-size:0.55rem;color:var(--text-muted);padding:2px 0 0 14px;">Совет: нажмите <span style="color:#a5b4fc;font-weight:600;">+</span> рядом с кнопкой анимации для быстрого добавления.</div>
                             </div>
                         </div>
                     </div>
@@ -12938,33 +12941,44 @@ var EngineApp = (function() {
     }
 
     function _miAddClip(objName) {
-        var name = prompt('Animation clip name:', 'NewClip');
+        var name = prompt('Имя клипа анимации:', 'NewClip');
         if (!name) return;
         var clipId = 'clip_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
         SashaEngineAPI.createAnimationClip(clipId, name);
-        var dur = prompt('Duration (seconds):', '1.0');
+        var dur = prompt('Длительность (сек):', '1.0');
         var clip = SashaEngineAPI.getAnimationClip(clipId);
         if (clip) clip.duration = parseFloat(dur) || 1.0;
-        SashaAssetManager.addAsset('animation', name, 'folder_animations', { clipId: clipId });
-        log('Clip added: ' + name, 'result');
+        if (typeof SashaAssetManager !== 'undefined' && SashaAssetManager.addAsset) {
+            SashaAssetManager.addAsset('animation', name, 'folder_animations', { clipId: clipId });
+        }
+        log('Клип добавлен: ' + name, 'result');
         refreshInspector();
         refreshAssetBrowser();
         refreshAssetGrid();
+        // Refresh preview panel buttons so the new clip appears
+        if (_inspPreviewObjName === objName) {
+            setTimeout(function() { _inspPreviewShow(objName); }, 80);
+        }
     }
 
     function _miRemoveClip(objName, idx) {
         var sd = _skeletonData[objName];
         if (!sd || !sd.clips[idx]) return;
         var clipName = sd.clips[idx].name || ('Anim_' + idx);
-        if (!confirm('Remove clip "' + clipName + '"?')) return;
+        if (!confirm('Удалить клип "' + clipName + '"?')) return;
         // Stop if playing
         for (var j = 0; j < sd.actions.length; j++) {
             if (sd.actions[j].getClip() === sd.clips[idx]) sd.actions[j].stop();
         }
         sd.clips.splice(idx, 1);
         sd.actions = [];
-        log('Clip removed: ' + clipName, 'log');
+        log('Клип удалён: ' + clipName, 'log');
         refreshInspector();
+        // Refresh preview panel buttons (and stop if the removed clip was playing)
+        if (_inspPreviewObjName === objName) {
+            if (_inspPreviewCurrentClip === clipName) _inspPreviewStopAnim();
+            setTimeout(function() { _inspPreviewShow(objName); }, 80);
+        }
     }
 
     function playSkeletalAnimation(objName, clipName, loop) {
@@ -13017,7 +13031,8 @@ var EngineApp = (function() {
                     new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.8 })
                 );
                 _selectedBoneHelper.position.copy(wPos);
-                scene.add(_selectedBoneHelper);
+                var _boneScene = (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.getScene) ? SashaEngineAPI.getScene() : null;
+                if (_boneScene) _boneScene.add(_selectedBoneHelper);
                 // Highlight bone row in UI
                 var rows = document.querySelectorAll('#mi-bone-tree-' + modelName + ' > div');
                 for (var i = 0; i < rows.length; i++) {
@@ -13040,6 +13055,9 @@ var EngineApp = (function() {
     function keyframeBonePose() { log('Keyframe bone pose', 'log'); }
 
     // ============ ANIMATION CLIP PREVIEW (Unity inspector click-to-preview) ============
+    // Tracks last Animator Controller used for "Add to Animator" — for one-click workflow
+    var _lastUsedCtrlId = null;
+
     function _miSelectClip(objName, idx) {
         // Deselect old
         var oldItems = document.querySelectorAll('#mi-panel-animation-' + objName + ' .mi-clip-item');
@@ -13050,23 +13068,31 @@ var EngineApp = (function() {
         // If same clip clicked — stop preview
         if (_previewClipObjName === objName && _previewClipIdx === idx) {
             stopSkeletalAnimation(objName);
+            _inspPreviewStopAnim();
             _previewClipObjName = null;
             _previewClipIdx = -1;
             return;
         }
-        // Play preview
+        // Play preview on the MAIN scene (legacy behavior)
         _previewClipObjName = objName;
         _previewClipIdx = idx;
         var sd = _skeletonData[objName];
         if (!sd || !sd.clips[idx]) return;
         var clipName = sd.clips[idx].name || ('Anim_' + idx);
-        // Stop all current actions
+        // Stop all current actions on main scene
         for (var j = 0; j < sd.actions.length; j++) { sd.actions[j].stop(); }
         sd.actions = [];
-        // Create and play action
+        // Create and play action on main scene
         var action = sd.mixer.clipAction(sd.clips[idx]);
         action.reset().setLoop(THREE.LoopRepeat, 1).play();
         sd.actions.push(action);
+
+        // ALSO play in the inspector preview scene — this is what the user wants:
+        // "когда выделяеш анимацию и в ето сценке проигрывались анимации"
+        // Make sure preview panel is shown for this object
+        _inspPreviewShow(objName);
+        _inspPreviewPlayClip(clipName);
+
         // Also auto-open properties
         var props = document.getElementById('mi-cprops-' + objName + '-' + idx);
         if (props && !props.classList.contains('open')) props.classList.add('open');
@@ -13093,6 +13119,15 @@ var EngineApp = (function() {
     var _inspPreviewActions = [];       // current actions
     var _inspPreviewAnimNames = [];     // available animation names from the model
     var _inspPreviewExpanded = false;
+    var _inspPreviewAutocam = false;    // auto-rotate camera
+    var _inspPreviewAutocamAngle = 0.6; // current orbit angle
+    // Manual orbit state (mouse drag on canvas)
+    var _inspPreviewCamYaw = 0.6;
+    var _inspPreviewCamPitch = 0.4;
+    var _inspPreviewCamDist = 2.5;
+    var _inspPreviewDragging = false;
+    var _inspPreviewDragLastX = 0;
+    var _inspPreviewDragLastY = 0;
 
     function _inspPreviewInit() {
         if (_inspPreviewScene) return;
@@ -13103,12 +13138,94 @@ var EngineApp = (function() {
         var dLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dLight.position.set(3, 5, 3);
         _inspPreviewScene.add(dLight);
+        // Add a fill light from the opposite side for nicer shading
+        var fLight = new THREE.DirectionalLight(0xa5b4fc, 0.35);
+        fLight.position.set(-3, 2, -2);
+        _inspPreviewScene.add(fLight);
         // Grid helper
         _inspPreviewScene.add(new THREE.GridHelper(4, 8, 0x6366f1, 0x1a1a2e));
         // Camera
         _inspPreviewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
         _inspPreviewCamera.position.set(1.5, 1.2, 1.5);
         _inspPreviewCamera.lookAt(0, 0.8, 0);
+
+        // Attach mouse-drag handlers to the canvas
+        setTimeout(_inspPreviewAttachMouseHandlers, 200);
+    }
+
+    function _inspPreviewAttachMouseHandlers() {
+        var canvas = document.getElementById('insp-anim-canvas');
+        if (!canvas) return;
+        if (canvas._inspMouseAttached) return;
+        canvas._inspMouseAttached = true;
+
+        canvas.addEventListener('mousedown', function(e) {
+            _inspPreviewDragging = true;
+            _inspPreviewDragLastX = e.clientX;
+            _inspPreviewDragLastY = e.clientY;
+            // Disable autocam when user takes manual control
+            _inspPreviewAutocam = false;
+            var btn = document.getElementById('insp-anim-autocam-btn');
+            if (btn) btn.style.color = 'var(--text-muted)';
+            canvas.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+        window.addEventListener('mousemove', function(e) {
+            if (!_inspPreviewDragging) return;
+            var dx = e.clientX - _inspPreviewDragLastX;
+            var dy = e.clientY - _inspPreviewDragLastY;
+            _inspPreviewDragLastX = e.clientX;
+            _inspPreviewDragLastY = e.clientY;
+            _inspPreviewCamYaw   -= dx * 0.01;
+            _inspPreviewCamPitch += dy * 0.01;
+            // Clamp pitch
+            if (_inspPreviewCamPitch > 1.5) _inspPreviewCamPitch = 1.5;
+            if (_inspPreviewCamPitch < -1.5) _inspPreviewCamPitch = -1.5;
+            _inspPreviewApplyCamOrbit();
+        });
+        window.addEventListener('mouseup', function() {
+            if (_inspPreviewDragging) {
+                _inspPreviewDragging = false;
+                canvas.style.cursor = 'grab';
+            }
+        });
+        canvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            var factor = e.deltaY > 0 ? 1.1 : 0.9;
+            _inspPreviewCamDist *= factor;
+            if (_inspPreviewCamDist < 0.3) _inspPreviewCamDist = 0.3;
+            if (_inspPreviewCamDist > 30)  _inspPreviewCamDist = 30;
+            _inspPreviewApplyCamOrbit();
+        }, { passive: false });
+        canvas.style.cursor = 'grab';
+    }
+
+    function _inspPreviewApplyCamOrbit() {
+        if (!_inspPreviewCamera || !_inspPreviewModel) return;
+        var box = new THREE.Box3().setFromObject(_inspPreviewModel);
+        var center = box.getCenter(new THREE.Vector3());
+        var boxSize = box.getSize(new THREE.Vector3());
+        var maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
+        if (maxDim < 0.01) maxDim = 1;
+        var dist = _inspPreviewCamDist * (maxDim / 1.5);
+        if (dist < 0.5) dist = 0.5;
+        _inspPreviewCamera.position.x = center.x + Math.cos(_inspPreviewCamYaw) * Math.cos(_inspPreviewCamPitch) * dist;
+        _inspPreviewCamera.position.z = center.z + Math.sin(_inspPreviewCamYaw) * Math.cos(_inspPreviewCamPitch) * dist;
+        _inspPreviewCamera.position.y = center.y + Math.sin(_inspPreviewCamPitch) * dist;
+        _inspPreviewCamera.lookAt(center);
+    }
+
+    function _inspAnimToggleAutocam() {
+        _inspPreviewAutocam = !_inspPreviewAutocam;
+        var btn = document.getElementById('insp-anim-autocam-btn');
+        if (btn) {
+            btn.style.color = _inspPreviewAutocam ? '#22c55e' : 'var(--text-muted)';
+            btn.style.borderColor = _inspPreviewAutocam ? '#22c55e' : 'var(--border)';
+        }
+        if (_inspPreviewAutocam) {
+            // Sync autocam angle with current yaw so the rotation continues smoothly
+            _inspPreviewAutocamAngle = _inspPreviewCamYaw;
+        }
     }
 
     function _inspPreviewGetRenderer() {
@@ -13232,9 +13349,9 @@ var EngineApp = (function() {
         var size = box.getSize(new THREE.Vector3());
         var maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim < 0.01) maxDim = 1;
-        var dist = maxDim * 2.0;
-        _inspPreviewCamera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist * 0.6);
-        _inspPreviewCamera.lookAt(center.x, center.y, center.z);
+        // Set orbit distance and re-apply orbit transform
+        _inspPreviewCamDist = Math.max(1.5, maxDim * 1.5);
+        _inspPreviewApplyCamOrbit();
     }
 
     function _inspPreviewPlayClip(clipName) {
@@ -13355,21 +13472,198 @@ var EngineApp = (function() {
                 if (clipLower.indexOf(key) !== -1) { icon = animIcons[key]; break; }
             }
 
+            // Wrapper to hold [Play button] + [+ button]
+            var wrap = document.createElement('div');
+            wrap.style.cssText = 'display:inline-flex;align-items:stretch;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--bg-dark);';
+
             var btn = document.createElement('button');
             btn.className = 'insp-anim-btn';
             btn.setAttribute('data-clip', clipName);
-            btn.title = clipName;
+            btn.title = 'Играть: ' + clipName;
             btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + clipName;
+            btn.style.cssText = 'border:none;border-radius:0;';
 
             // Use closure to capture clipName
             (function(cn) {
-                btn.onclick = function() {
+                btn.onclick = function(e) {
+                    if (e) e.stopPropagation();
                     _inspPreviewPlayClip(cn);
                 };
             })(clipName);
 
             if (_inspPreviewCurrentClip === clipName) btn.classList.add('active');
-            controls.appendChild(btn);
+
+            // "+" button — one-click add to Animator Controller
+            var addBtn = document.createElement('button');
+            addBtn.className = 'insp-anim-add-btn';
+            addBtn.title = 'Быстро добавить "' + clipName + '" как состояние в Animator Controller';
+            addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+            addBtn.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:18px;padding:0 4px;border:none;border-left:1px solid var(--border);border-radius:0;background:rgba(99,102,241,0.15);color:#a5b4fc;cursor:pointer;font-size:0.55rem;transition:all 0.15s;';
+            addBtn.onmouseover = function() { this.style.background = 'rgba(99,102,241,0.4)'; this.style.color = '#fff'; };
+            addBtn.onmouseout  = function() { this.style.background = 'rgba(99,102,241,0.15)'; this.style.color = '#a5b4fc'; };
+
+            (function(cn) {
+                addBtn.onclick = function(e) {
+                    if (e) { e.stopPropagation(); e.preventDefault(); }
+                    _inspPreviewAddClipByName(cn);
+                };
+            })(clipName);
+
+            wrap.appendChild(btn);
+            wrap.appendChild(addBtn);
+            controls.appendChild(wrap);
+        }
+    }
+
+    // Quick one-click add: if a controller is selected (or remembered), add the clip as a state immediately.
+    // If no controller exists, prompt to create one. If multiple exist but none selected, pop up a small picker.
+    function _inspPreviewAddClipByName(clipName) {
+        if (!clipName) { log('No clip name', 'warn'); return; }
+        var sel = document.getElementById('insp-anim-ctrl-select');
+        var ctrlId = sel ? sel.value : '';
+        if (!ctrlId && _lastUsedCtrlId) ctrlId = _lastUsedCtrlId;
+
+        var ctrls = SashaEngineAPI.getAnimatorControllers ? SashaEngineAPI.getAnimatorControllers() : {};
+        var ctrlCount = 0;
+        var firstCtrlId = null;
+        for (var id in ctrls) { if (ctrls.hasOwnProperty(id)) { ctrlCount++; if (!firstCtrlId) firstCtrlId = id; } }
+
+        // No controllers at all → offer to create one
+        if (ctrlCount === 0) {
+            if (!confirm('Нет ни одного Animator Controller. Создать новый и добавить "' + clipName + '" как состояние?')) return;
+            var newId = 'ctrl_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+            var newName = prompt('Имя нового контроллера:', 'AnimatorController') || 'AnimatorController';
+            SashaEngineAPI.createAnimatorController(newId, newName);
+            _inspPreviewRefreshControllerSelect();
+            if (sel) sel.value = newId;
+            _lastUsedCtrlId = newId;
+            ctrlId = newId;
+        } else if (!ctrlId) {
+            // Multiple controllers, none chosen → show quick picker
+            _inspPreviewShowControllerPicker(clipName, ctrls, function(chosenId) {
+                _inspPreviewDoAddToController(chosenId, clipName);
+            });
+            return;
+        }
+
+        _inspPreviewDoAddToController(ctrlId, clipName);
+    }
+
+    function _inspPreviewShowControllerPicker(clipName, ctrls, callback) {
+        // Remove any old picker
+        var old = document.getElementById('insp-anim-ctrl-picker');
+        if (old) old.remove();
+
+        var picker = document.createElement('div');
+        picker.id = 'insp-anim-ctrl-picker';
+        picker.style.cssText = 'position:fixed;z-index:99999;background:#1e1e3a;border:1px solid #374151;border-radius:8px;padding:6px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-family:inherit;';
+        var title = document.createElement('div');
+        title.style.cssText = 'font-size:0.65rem;color:#a1a1aa;padding:4px 6px 6px;border-bottom:1px solid #374151;margin-bottom:4px;';
+        title.innerHTML = '<i class="fas fa-project-diagram" style="color:#f59e0b;margin-right:4px;"></i>Добавить "' + clipName + '" в:';
+        picker.appendChild(title);
+
+        for (var id in ctrls) {
+            if (!ctrls.hasOwnProperty(id)) continue;
+            (function(cid, cname) {
+                var item = document.createElement('div');
+                item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:0.7rem;color:#e4e4e7;cursor:pointer;border-radius:4px;';
+                item.innerHTML = '<i class="fas fa-circle-nodes" style="color:#6366f1;width:12px;"></i><span>' + cname + '</span>';
+                item.onmouseover = function() { this.style.background = 'rgba(99,102,241,0.2)'; };
+                item.onmouseout  = function() { this.style.background = 'transparent'; };
+                item.onclick = function() {
+                    picker.remove();
+                    var selEl = document.getElementById('insp-anim-ctrl-select');
+                    if (selEl) selEl.value = cid;
+                    _lastUsedCtrlId = cid;
+                    callback(cid);
+                };
+                picker.appendChild(item);
+            })(id, ctrls[id].name || id);
+        }
+
+        var cancel = document.createElement('div');
+        cancel.style.cssText = 'padding:5px 8px;font-size:0.65rem;color:#71717a;cursor:pointer;border-top:1px solid #374151;margin-top:4px;text-align:center;';
+        cancel.textContent = 'Отмена';
+        cancel.onclick = function() { picker.remove(); };
+        picker.appendChild(cancel);
+
+        // Position near cursor (center of viewport as fallback)
+        picker.style.left = '50%';
+        picker.style.top = '50%';
+        picker.style.transform = 'translate(-50%, -50%)';
+        document.body.appendChild(picker);
+
+        // Close on outside click
+        setTimeout(function() {
+            function closer(e) {
+                if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('mousedown', closer); }
+            }
+            document.addEventListener('mousedown', closer);
+        }, 10);
+    }
+
+    function _inspPreviewDoAddToController(ctrlId, clipName) {
+        if (!ctrlId || !clipName) return;
+        var ctrl = SashaEngineAPI.getAnimatorController ? SashaEngineAPI.getAnimatorController(ctrlId) : null;
+        if (!ctrl) { log('Controller not found: ' + ctrlId, 'warn'); return; }
+
+        // Check if state with same name already exists
+        for (var i = 0; i < ctrl.states.length; i++) {
+            if (ctrl.states[i].name === clipName) {
+                log('Состояние "' + clipName + '" уже есть в "' + ctrl.name + '"', 'warn');
+                return;
+            }
+        }
+
+        // Find or create clip reference
+        var clipId = null;
+        var allClips = SashaEngineAPI.getAnimClips ? SashaEngineAPI.getAnimClips() : {};
+        for (var cid in allClips) {
+            if (allClips[cid] && allClips[cid].name === clipName) { clipId = cid; break; }
+        }
+        if (!clipId) {
+            clipId = 'clip_glb_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+            if (SashaEngineAPI.createAnimationClip) SashaEngineAPI.createAnimationClip(clipId, clipName);
+        }
+
+        // Add state to controller
+        if (SashaEngineAPI.addStateToController) {
+            SashaEngineAPI.addStateToController(ctrlId, clipName, clipId);
+        }
+
+        // Position the new state in a grid
+        if (ctrl.states) {
+            var lastState = ctrl.states[ctrl.states.length - 1];
+            if (lastState) {
+                var idx = ctrl.states.length - 1;
+                lastState.position = { x: 200 + (idx % 3) * 180, y: 80 + Math.floor(idx / 3) * 120 };
+            }
+        }
+
+        _lastUsedCtrlId = ctrlId;
+
+        // Visual feedback — flash the preview border green
+        var preview = document.getElementById('insp-anim-preview');
+        if (preview) {
+            preview.style.transition = 'box-shadow 0.3s';
+            preview.style.boxShadow = '0 0 0 2px #22c55e inset';
+            setTimeout(function() { preview.style.boxShadow = ''; }, 700);
+        }
+
+        log('✓ Добавлено состояние "' + clipName + '" → "' + ctrl.name + '"', 'result');
+
+        // Also register as asset if SashaAssetManager exists (so it shows up in asset browser)
+        if (typeof SashaAssetManager !== 'undefined' && SashaAssetManager.addAsset) {
+            var existingAssets = SashaAssetManager.getAllAssets ? SashaAssetManager.getAllAssets() : {};
+            var exists = false;
+            for (var aid in existingAssets) {
+                if (existingAssets[aid] && existingAssets[aid].name === clipName && existingAssets[aid].type === 'animation') {
+                    exists = true; break;
+                }
+            }
+            if (!exists && typeof _assetCurrentFolder !== 'undefined') {
+                SashaAssetManager.addAsset('animation', clipName, _assetCurrentFolder, { clipId: clipId });
+            }
         }
     }
 
@@ -13381,7 +13675,7 @@ var EngineApp = (function() {
         // Get all animator controllers
         var ctrls = SashaEngineAPI.getAnimatorControllers ? SashaEngineAPI.getAnimatorControllers() : {};
         var hasControllers = false;
-        sel.innerHTML = '<option value="">-- Select Controller --</option>';
+        sel.innerHTML = '<option value="">-- Выбрать контроллер --</option>';
         for (var id in ctrls) {
             if (ctrls.hasOwnProperty(id)) {
                 var opt = document.createElement('option');
@@ -13390,6 +13684,10 @@ var EngineApp = (function() {
                 sel.appendChild(opt);
                 hasControllers = true;
             }
+        }
+        // Auto-select last used controller for convenience
+        if (_lastUsedCtrlId && ctrls[_lastUsedCtrlId]) {
+            sel.value = _lastUsedCtrlId;
         }
         panel.style.display = hasControllers ? '' : 'none';
     }
@@ -13407,62 +13705,13 @@ var EngineApp = (function() {
         setTimeout(_inspPreviewResize, 50);
     }
 
+    // Legacy "Add" button (next to the controller dropdown) — delegates to the new one-click helper
     function _inspAnimAddToController() {
         var sel = document.getElementById('insp-anim-ctrl-select');
-        if (!sel) return;
-        var ctrlId = sel.value;
-        if (!ctrlId) { log('Select an Animator Controller first', 'warn'); return; }
+        if (sel && sel.value) _lastUsedCtrlId = sel.value;
         var clipName = _inspPreviewCurrentClip;
-        if (!clipName) { log('Select an animation clip first (click a button above)', 'warn'); return; }
-
-        // Find or create clip in SashaEngineAPI
-        var sd = _skeletonData[_inspPreviewObjName];
-        if (!sd) return;
-        var clipId = null;
-        // Search for existing clip asset by name
-        var allClips = SashaEngineAPI.getAnimClips ? SashaEngineAPI.getAnimClips() : {};
-        for (var cid in allClips) {
-            if (allClips[cid] && allClips[cid].name === clipName) { clipId = cid; break; }
-        }
-        if (!clipId) {
-            // Create a new clip reference
-            clipId = 'clip_glb_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
-            if (SashaEngineAPI.createAnimationClip) SashaEngineAPI.createAnimationClip(clipId, clipName);
-        }
-
-        // Add state to controller
-        var stateId = 'state_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
-        if (SashaEngineAPI.addStateToController) {
-            SashaEngineAPI.addStateToController(ctrlId, clipName, clipId);
-        }
-
-        // Get controller for position
-        var ctrl = SashaEngineAPI.getAnimatorController ? SashaEngineAPI.getAnimatorController(ctrlId) : null;
-        if (ctrl && ctrl.states) {
-            var lastState = ctrl.states[ctrl.states.length - 1];
-            if (lastState) {
-                // Position in a grid layout
-                var idx = ctrl.states.length - 1;
-                lastState.position = { x: 200 + (idx % 3) * 180, y: 80 + Math.floor(idx / 3) * 120 };
-            }
-        }
-
-        log('Added state "' + clipName + '" to controller "' + (ctrl ? ctrl.name : ctrlId) + '"', 'result');
-
-        // Also add as asset if SashaAssetManager exists
-        if (typeof SashaAssetManager !== 'undefined' && SashaAssetManager.addAsset) {
-            // Check if asset already exists
-            var existingAssets = SashaAssetManager.getAllAssets ? SashaAssetManager.getAllAssets() : {};
-            var exists = false;
-            for (var aid in existingAssets) {
-                if (existingAssets[aid] && existingAssets[aid].name === clipName && existingAssets[aid].type === 'animation') {
-                    exists = true; break;
-                }
-            }
-            if (!exists && typeof _assetCurrentFolder !== 'undefined') {
-                SashaAssetManager.addAsset('animation', clipName, _assetCurrentFolder, { clipId: clipId });
-            }
-        }
+        if (!clipName) { log('Сначала кликните по анимации выше, чтобы выбрать её', 'warn'); return; }
+        _inspPreviewAddClipByName(clipName);
     }
 
     function _inspPreviewUpdate() {
@@ -13486,6 +13735,20 @@ var EngineApp = (function() {
             _inspPreviewMixer.update(dt);
         } else {
             if (_inspPreviewClock) _inspPreviewClock.getDelta();
+        }
+        // Auto-rotate camera around the model
+        if (_inspPreviewAutocam && _inspPreviewModel) {
+            var box = new THREE.Box3().setFromObject(_inspPreviewModel);
+            var center = box.getCenter(new THREE.Vector3());
+            _inspPreviewAutocamAngle += 0.01;
+            var boxSize = box.getSize(new THREE.Vector3());
+            var maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
+            if (maxDim < 0.01) maxDim = 1;
+            var dist = maxDim * 2.0;
+            _inspPreviewCamera.position.x = center.x + Math.cos(_inspPreviewAutocamAngle) * dist * 0.7;
+            _inspPreviewCamera.position.z = center.z + Math.sin(_inspPreviewAutocamAngle) * dist * 0.7;
+            _inspPreviewCamera.position.y = center.y + dist * 0.5;
+            _inspPreviewCamera.lookAt(center);
         }
         _inspPreviewRenderer.render(_inspPreviewScene, _inspPreviewCamera);
     }
@@ -13657,7 +13920,9 @@ var EngineApp = (function() {
         acDeleteClip: acDeleteClip, acDeleteUnusedClips: acDeleteUnusedClips, acRefreshClips: acRefreshClips,
         switchViewTab: switchViewTab,
         _inspAnimToggleExpand: _inspAnimToggleExpand,
+        _inspAnimToggleAutocam: _inspAnimToggleAutocam,
         _inspAnimAddToController: _inspAnimAddToController,
+        _inspPreviewAddClipByName: _inspPreviewAddClipByName,
         isInitialized: function() { return initialized; }
     };
 })();
