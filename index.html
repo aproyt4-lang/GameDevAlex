@@ -8463,7 +8463,7 @@ var EngineApp = (function() {
             var scriptName = prompt('Enter script name:', 'PlayerController');
             if (!scriptName || !scriptName.trim()) return;
             scriptName = scriptName.trim();
-            var sn=''; for(var si=0;si<scriptName.length;si++){var sc=scriptName.charCodeAt(si);if((sc>=97&&sc<=122)||(sc>=65&&sc<=90)||(sc>=48&&sc<=57)||sc===95||sc===45||(sc>=1040&&sc<=1103)||sc===1025||sc===1105) sn+=scriptName[si];}
+            var sn='',_slen=scriptName.length; for(var si=0;si<_slen;si++){var sc=scriptName.charCodeAt(si);if((sc>=97&&sc<=122)||(sc>=65&&sc<=90)||(sc>=48&&sc<=57)||sc===95||sc===45||(sc>=1040&&sc<=1103)||sc===1025||sc===1105) sn+=scriptName[si];}
             scriptName = sn;
             if (!scriptName) return;
             // Check for duplicate script name on same object
