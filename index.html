@@ -7350,6 +7350,7 @@ var SashaEngineAPI = (function() {
         toggleFPSMode: toggleFPSMode, isFPSMode: isFPSMode, setFPSMoveSpeed: setFPSMoveSpeed,
         setGameViewActive: setGameViewActive, toggleGameViewCam: toggleGameViewCam, syncGameCamera: syncGameCamera, getGameCamera: function() { return gameCamera; },
         setBgColor: setBgColor, animate: animateObj, onFrame: onFrame, getScene: getScene,
+        addObjectDirect: function(name, obj, type) { objects[name] = obj; objectTypes[name] = type || 'model'; objectRenames[name] = name; },
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
         getAllObjectNames: getAllObjectNames, getObjectTypes: getObjectTypes,
@@ -8363,14 +8364,15 @@ var EngineApp = (function() {
             (function(sn){
                 setTimeout(function(){
                     var bt=document.getElementById('mi-bone-tree-'+sn);
-                    if(!bt||!objects[sn])return;
+                    var _obj=SashaEngineAPI.getObject(sn);
+                    if(!bt||!_obj)return;
                     var bh='';
-                    objects[sn].traverse(function(c){if(c.isBone){bh+='<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:0.65rem;color:#a1a1aa;cursor:pointer;border-radius:3px;border-left:2px solid transparent;" onclick="EngineApp.selectBone(\''+sn+'\',\''+c.name.replace(/'/g,"\\'")+'\')" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'" ><i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:12px;text-align:center;"></i><span>'+c.name+'</span></div>';}});
+                    _obj.traverse(function(c){if(c.isBone){bh+='<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:0.65rem;color:#a1a1aa;cursor:pointer;border-radius:3px;border-left:2px solid transparent;" onclick="EngineApp.selectBone(\''+sn+'\',\''+c.name.replace(/'/g,"\\'")+'\')" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'" ><i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:12px;text-align:center;"></i><span>'+c.name+'</span></div>';}});
                     bt.innerHTML=bh||'<div style="padding:6px 10px;font-size:0.65rem;color:#71717a;">No bones found</div>';
                     var ml=document.getElementById('mi-mat-list-'+sn);
-                    if(ml&&objects[sn]){
+                    if(ml&&_obj){
                         var mh='';
-                        objects[sn].traverse(function(c){
+                        _obj.traverse(function(c){
                             if(c.isMesh&&c.material){
                                 var mat=c.material;
                                 var col=mat.color?'#'+mat.color.getHexString():'#ffffff';
@@ -12793,9 +12795,9 @@ var EngineApp = (function() {
             m.traverse(function(child) {
                 if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
             });
-            scene.add(m);
-            objects[n] = m;
-            objectTypes[n] = 'model';
+            var _sc = SashaEngineAPI.getScene();
+            _sc.add(m);
+            SashaEngineAPI.addObjectDirect(n, m, 'model');
             if (gltf.animations && gltf.animations.length > 0) {
                 var mixer = new THREE.AnimationMixer(m);
                 var clips = [];
@@ -12847,7 +12849,8 @@ var EngineApp = (function() {
     }
 
     function _miApplyScale(objName, v) {
-        if (objects[objName]) objects[objName].scale.set(v, v, v);
+        var _sObj = SashaEngineAPI.getObject(objName);
+        if (_sObj) _sObj.scale.set(v, v, v);
     }
 
     function _miToggleClipProps(objName, idx) {
@@ -12937,8 +12940,9 @@ var EngineApp = (function() {
         _selectedBoneHelper = null;
         _selectedBoneName = boneName;
         _selectedBoneObj = null;
-        if (!objects[modelName]) return;
-        objects[modelName].traverse(function(c) {
+        var _mdl = SashaEngineAPI.getObject(modelName);
+        if (!_mdl) return;
+        _mdl.traverse(function(c) {
             if (c.isBone && c.name === boneName) {
                 _selectedBoneObj = c;
                 // Visual helper — small box at bone position in world space
@@ -13046,9 +13050,10 @@ var EngineApp = (function() {
 
     function _miConfigureAvatar(objName) {
         log('Avatar configuration for: ' + objName, 'log');
-        if (!objects[objName]) return;
+        var _avObj = SashaEngineAPI.getObject(objName);
+        if (!_avObj) return;
         var boneCount = 0;
-        objects[objName].traverse(function(c) { if (c.isBone) boneCount++; });
+        _avObj.traverse(function(c) { if (c.isBone) boneCount++; });
         log('Bones found: ' + boneCount, 'result');
     }
 
@@ -13236,7 +13241,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
