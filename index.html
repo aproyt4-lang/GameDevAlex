@@ -5685,39 +5685,110 @@ var SashaEngineAPI = (function() {
 
     function loadModel(url, x, y, z, scale) {
         if (!initialized) return null;
-        var loader = new THREE.GLTFLoader();
         var targetName = getUniqueName('model');
-        loader.load(url, function(gltf) {
-            var model = gltf.scene;
-            model.position.set(x || 0, y || 0, z || 0);
-            if (scale) { model.scale.set(scale, scale, scale); }
-            model.traverse(function(child) {
-                if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
-            });
-            // Save animations on userData so EngineApp._inspPreviewShow can pick them up
-            // even when _skeletonData was not populated by EngineApp.loadGLBModel.
-            if (gltf.animations && gltf.animations.length > 0) {
-                model.userData.animations = gltf.animations;
-                var mix = new THREE.AnimationMixer(model);
-                model.userData.mixer = mix;
-                for (var i = 0; i < gltf.animations.length; i++) {
-                    mix.clipAction(gltf.animations[i]).play();
-                }
-                // Notify EngineApp to populate _skeletonData for this model
-                if (typeof EngineApp !== 'undefined' && EngineApp._registerModelAnimations) {
-                    EngineApp._registerModelAnimations(targetName, mix, gltf.animations.slice());
-                }
+        log('[loadModel] Начинаю загрузку: ' + url, 'info');
+
+        // Try loading directly first; if it fails, retry through a CORS proxy.
+        _loadModelAttempt(url, x, y, z, scale, targetName, false, function(success, errMsg) {
+            if (success) return;
+            log('[loadModel] Прямая загрузка не удалась. Пробую через CORS-прокси...', 'warn');
+            // Try via CORS proxy (jsdelivr can fetch from any github URL)
+            var proxyUrl = null;
+            var ghMatch = url.match(/^https?:\/\/(?:raw\.githubusercontent\.com|github\.com)\/([^\/]+)\/([^\/]+)\/(.+)$/i);
+            if (ghMatch) {
+                // jsDelivr can serve GitHub raw content with CORS headers
+                proxyUrl = 'https://cdn.jsdelivr.net/gh/' + ghMatch[1] + '/' + ghMatch[2] + '@' + ghMatch[3];
+                log('[loadModel] CORS-прокси: ' + proxyUrl, 'info');
             }
-            model.name = targetName;
-            scene.add(model);
-            objects[targetName] = model;
-            objectTypes[targetName] = 'model';
-            EngineApp.refreshHierarchy();
-            EngineApp.refreshInspector();
-        }, undefined, function(err) {
-            console.error('Model load error:', err);
+            if (!proxyUrl) {
+                // Generic CORS proxy fallback
+                proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                log('[loadModel] Generic CORS-прокси: ' + proxyUrl, 'info');
+            }
+            _loadModelAttempt(proxyUrl, x, y, z, scale, targetName, true, function(success2, errMsg2) {
+                if (success2) return;
+                log('[loadModel] ❌ Все попытки загрузки не удались.', 'error');
+                log('  URL: ' + url, 'error');
+                log('  Ошибка: ' + (errMsg2 || errMsg || 'неизвестно'), 'error');
+                log('  Совет: Скачай файл локально и используй Assets → Import', 'warn');
+            });
         });
         return targetName;
+    }
+
+    function _loadModelAttempt(url, x, y, z, scale, targetName, isProxy, callback) {
+        var loader = new THREE.GLTFLoader();
+        var loaded = false;
+        // Timeout — abort if no response in 30s
+        var timeout = setTimeout(function() {
+            if (!loaded) {
+                log('[loadModel] Таймаут (30с) при загрузке' + (isProxy ? ' через прокси' : '') + ': ' + url, 'warn');
+                if (!callback) return;
+                var cb = callback; callback = null;
+                cb(false, 'Timeout');
+            }
+        }, 30000);
+
+        loader.load(url, function(gltf) {
+            if (loaded) return;
+            loaded = true;
+            clearTimeout(timeout);
+            try {
+                var model = gltf.scene;
+                model.position.set(x || 0, y || 0, z || 0);
+                if (scale) { model.scale.set(scale, scale, scale); }
+                model.traverse(function(child) {
+                    if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+                });
+                // Animations are registered via EngineApp._registerModelAnimations,
+                // which populates the _skeletonData side-table. We deliberately do
+                // NOT store mixer / animations on model.userData — doing so creates
+                // a cyclic reference (model → userData.mixer → AnimationMixer → model)
+                // that crashes THREE.SkeletonUtils.clone() with
+                // "Maximum call stack size exceeded" when the inspector preview
+                // tries to clone the model. _skeletonData is the single source of
+                // truth; the discovery helper falls back to userData only when
+                // _skeletonData is empty — but we always populate it here.
+                if (gltf.animations && gltf.animations.length > 0) {
+                    var mix = new THREE.AnimationMixer(model);
+                    for (var i = 0; i < gltf.animations.length; i++) {
+                        mix.clipAction(gltf.animations[i]).play();
+                    }
+                    log('[loadModel] ✅ Загружено ' + gltf.animations.length + ' анимаций', 'result');
+                    // Notify EngineApp to populate _skeletonData for this model
+                    if (typeof EngineApp !== 'undefined' && EngineApp._registerModelAnimations) {
+                        EngineApp._registerModelAnimations(targetName, mix, gltf.animations.slice());
+                    }
+                } else {
+                    log('[loadModel] ⚠️ Модель не содержит анимаций (gltf.animations пуст)', 'warn');
+                }
+                model.name = targetName;
+                scene.add(model);
+                objects[targetName] = model;
+                objectTypes[targetName] = 'model';
+                EngineApp.refreshHierarchy();
+                EngineApp.refreshInspector();
+                log('[loadModel] ✅ Модель "' + targetName + '" добавлена на сцену' + (isProxy ? ' (через прокси)' : ''), 'result');
+                if (callback) { var cb = callback; callback = null; cb(true, null); }
+            } catch(e) {
+                log('[loadModel] Ошибка обработки модели: ' + e.message, 'error');
+                if (callback) { var cb2 = callback; callback = null; cb2(false, e.message); }
+            }
+        }, function(progress) {
+            if (progress.lengthComputable) {
+                var pct = Math.round(progress.loaded / progress.total * 100);
+                if (pct % 25 === 0) {
+                    log('[loadModel] Прогресс: ' + pct + '%', 'log');
+                }
+            }
+        }, function(err) {
+            if (loaded) return;
+            loaded = true;
+            clearTimeout(timeout);
+            console.error('[loadModel] Model load error:', err);
+            var msg = (err && err.message) ? err.message : String(err);
+            if (callback) { var cb = callback; callback = null; cb(false, msg); }
+        });
     }
 
     function removeObject(name) {
@@ -5874,6 +5945,9 @@ var SashaEngineAPI = (function() {
     function getObject(name) { return objects[name] || null; }
 
     function getScene() { return scene; }
+    function getCamera() { return camera; }
+    function getRenderer() { return renderer; }
+    function getControls() { return controls; }
 
     function clear() {
         // Detach TransformControls before removing objects
@@ -7380,6 +7454,7 @@ var SashaEngineAPI = (function() {
         toggleFPSMode: toggleFPSMode, isFPSMode: isFPSMode, setFPSMoveSpeed: setFPSMoveSpeed,
         setGameViewActive: setGameViewActive, toggleGameViewCam: toggleGameViewCam, syncGameCamera: syncGameCamera, getGameCamera: function() { return gameCamera; },
         setBgColor: setBgColor, animate: animateObj, onFrame: onFrame, getScene: getScene,
+        getCamera: getCamera, getRenderer: getRenderer, getControls: getControls,
         addObjectDirect: function(name, obj, type) { objects[name] = obj; objectTypes[name] = type || 'model'; objectRenames[name] = name; },
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
@@ -8095,7 +8170,14 @@ var EngineApp = (function() {
         animateFocus();
     }
 
-    function _getControls() { return controls; }
+    function _getControls() {
+        // 'controls' is a private variable inside the SashaEngineAPI IIFE —
+        // EngineApp cannot reach it directly. Use the public accessor instead.
+        if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.getControls) {
+            return SashaEngineAPI.getControls();
+        }
+        return null;
+    }
 
     // --- Rename ---
 
@@ -9094,7 +9176,74 @@ var EngineApp = (function() {
         log('Prefab "' + asset.name + '" instantiated', 'result');
     }
 
-    function importAsset() { log('Import: paste URL or drag file (coming soon)', 'info'); }
+    function importAsset() {
+        // Local file import for GLB/GLTF models
+        var old = document.getElementById('local-glb-import');
+        if (old) old.remove();
+        var input = document.createElement('input');
+        input.id = 'local-glb-import';
+        input.type = 'file';
+        input.accept = '.glb,.gltf';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.onchange = function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            log('Импорт локального файла: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)', 'info');
+            // Read file as ArrayBuffer
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    var arrayBuffer = ev.target.result;
+                    var loader = new THREE.GLTFLoader();
+                    // Parse directly from ArrayBuffer (no URL needed)
+                    loader.parse(arrayBuffer, '', function(gltf) {
+                        var model = gltf.scene;
+                        var n = 'model_' + Date.now().toString(36);
+                        model.name = n;
+                        model.traverse(function(child) {
+                            if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+                        });
+                        var _sc = SashaEngineAPI.getScene();
+                        _sc.add(model);
+                        SashaEngineAPI.addObjectDirect(n, model, 'model');
+                        // Register animations via _registerModelAnimations only.
+                        // Do NOT store mixer/animations on userData — that creates a
+                        // cyclic ref (model → userData.mixer → AnimationMixer → model)
+                        // which crashes THREE.SkeletonUtils.clone with
+                        // "Maximum call stack size exceeded" when inspector preview
+                        // clones the model. _skeletonData is the single source of truth.
+                        if (gltf.animations && gltf.animations.length > 0) {
+                            var mix = new THREE.AnimationMixer(model);
+                            for (var i = 0; i < gltf.animations.length; i++) {
+                                mix.clipAction(gltf.animations[i]).play();
+                            }
+                            if (EngineApp._registerModelAnimations) {
+                                EngineApp._registerModelAnimations(n, mix, gltf.animations.slice());
+                            }
+                            log('✅ Импортировано: ' + n + ' с ' + gltf.animations.length + ' анимациями', 'result');
+                        } else {
+                            log('✅ Импортировано: ' + n + ' (без анимаций)', 'result');
+                        }
+                        refreshHierarchy();
+                        refreshInspector();
+                        refreshAssetBrowser();
+                        refreshAssetGrid();
+                    }, function(err) {
+                        log('❌ Ошибка парсинга GLB: ' + (err.message || err), 'error');
+                    });
+                } catch(e) {
+                    log('❌ Ошибка импорта: ' + e.message, 'error');
+                }
+            };
+            reader.onerror = function() {
+                log('❌ Не удалось прочитать файл', 'error');
+            };
+            reader.readAsArrayBuffer(file);
+            input.remove();
+        };
+        input.click();
+    }
 
     // --- Animation helper functions ---
     function addTrackToClip(clipId) {
@@ -11887,10 +12036,58 @@ var EngineApp = (function() {
     }
 
     function loadModelFromURL() {
-        var url = prompt('Enter GLB/GLTF model URL (GitHub raw link):');
+        // Show a small dialog with input + paste + helpful hint
+        var url = prompt('Введите URL GLB/GLTF модели:\n\nПоддерживаются:\n• https://raw.githubusercontent.com/user/repo/branch/path.glb\n• https://github.com/user/repo/blob/branch/path.glb (конвертируется автоматически)\n• Любой прямой URL на .glb/.gltf файл\n\nЕсли ссылка не работает — попробуйте другой raw URL или загрузите файл локально через "Assets → Import".');
         if (!url) return;
-        SashaEngineAPI.loadModel(url, 0, 0, 0, 1);
-        log('Loading model: ' + url, 'info');
+        url = url.trim();
+        if (!url) return;
+
+        // === URL NORMALIZATION ===
+        // Convert github.com/.../blob/... to raw.githubusercontent.com/.../...
+        var normalized = url;
+        var ghBlobMatch = url.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/(.+)$/i);
+        if (ghBlobMatch) {
+            normalized = 'https://raw.githubusercontent.com/' + ghBlobMatch[1] + '/' + ghBlobMatch[2] + '/' + ghBlobMatch[3];
+            log('URL конвертирован: github.com/blob → raw.githubusercontent.com', 'info');
+            log('  Было: ' + url, 'log');
+            log('  Стало: ' + normalized, 'log');
+        }
+        // Also handle github.com/.../raw/... (some repos use /raw/ instead of /blob/)
+        var ghRawMatch = url.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/raw\/(.+)$/i);
+        if (ghRawMatch) {
+            normalized = 'https://raw.githubusercontent.com/' + ghRawMatch[1] + '/' + ghRawMatch[2] + '/' + ghRawMatch[3];
+            log('URL конвертирован: github.com/raw → raw.githubusercontent.com', 'info');
+        }
+
+        log('Загрузка модели: ' + normalized, 'info');
+
+        // === PRE-FLIGHT HEAD CHECK ===
+        // Do a HEAD request first to catch 404 / CORS issues early with a clear message.
+        fetch(normalized, { method: 'HEAD', mode: 'cors' })
+            .then(function(resp) {
+                if (!resp.ok) {
+                    log('❌ HTTP ' + resp.status + ' ' + resp.statusText + ' — файл не найден или нет доступа', 'error');
+                    log('  Проверь URL: ' + normalized, 'error');
+                    log('  Если ссылка правильная, попробуй скопировать raw URL с GitHub (кнопка "Raw" на странице файла)', 'warn');
+                    return null;
+                }
+                var ct = resp.headers.get('Content-Type') || '';
+                log('✅ Файл доступен (HTTP ' + resp.status + ', Content-Type: ' + ct + ')', 'info');
+                return normalized;
+            })
+            .catch(function(err) {
+                log('⚠️ HEAD проверка не удалась (вероятно CORS): ' + (err.message || err), 'warn');
+                log('  Пробую загрузить напрямую через GLTFLoader...', 'log');
+                return normalized; // try anyway — GLTFLoader may handle it
+            })
+            .then(function(finalUrl) {
+                if (!finalUrl) return;
+                // Call SashaEngineAPI.loadModel which uses THREE.GLTFLoader internally
+                var name = SashaEngineAPI.loadModel(finalUrl, 0, 0, 0, 1);
+                if (name) {
+                    log('Модель добавляется на сцену как "' + name + '"...', 'info');
+                }
+            });
     }
 
     var _isLoading = false;
@@ -12942,54 +13139,42 @@ var EngineApp = (function() {
     }
 
     function loadGLBModel(url, x, y, z, s) {
-        var loader = new THREE.GLTFLoader();
-        var n = gn('model');
-        loader.load(url, function(gltf) {
-            var m = gltf.scene;
-            m.position.set(x || 0, y || 0, z || 0);
-            if (s) m.scale.set(s, s, s);
-            m.name = n;
-            m.traverse(function(child) {
-                if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
-            });
-            var _sc = SashaEngineAPI.getScene();
-            _sc.add(m);
-            SashaEngineAPI.addObjectDirect(n, m, 'model');
-            if (gltf.animations && gltf.animations.length > 0) {
-                var mixer = new THREE.AnimationMixer(m);
-                var clips = [];
-                for (var ai = 0; ai < gltf.animations.length; ai++) {
-                    var ac = gltf.animations[ai];
-                    clips.push(ac);
-                    var clipId = 'clip_glb_' + Date.now() + '_' + ai;
-                    SashaEngineAPI.createAnimationClip(clipId, ac.name || ('Anim_' + ai));
-                    var createdClip = SashaEngineAPI.getAnimationClip(clipId);
-                    if (createdClip) { createdClip.duration = ac.duration; createdClip.loop = true; }
-                    for (var ti = 0; ti < ac.tracks.length; ti++) {
-                        var track = ac.tracks[ti];
-                        SashaEngineAPI.addTrackToClip(clipId, track.name);
-                        var times = track.times;
-                        var values = track.values;
-                        var valueSize = track.getValueSize();
-                        for (var ki = 0; ki < times.length; ki++) {
-                            var val = values[ki * valueSize];
-                            SashaEngineAPI.addKeyframe(clipId, ti, times[ki], val);
+        // Delegate to SashaEngineAPI.loadModel — it has CORS-proxy fallback,
+        // progress logging, and proper animation discovery built in.
+        // The loaded model will automatically be registered via _registerModelAnimations.
+        log('[loadGLBModel] Загрузка через SashaEngineAPI.loadModel: ' + url, 'info');
+        var n = SashaEngineAPI.loadModel(url, x || 0, y || 0, z || 0, s);
+        if (n) {
+            // After load completes (async), _registerModelAnimations will populate
+            // _skeletonData[n] via the callback in SashaEngineAPI.loadModel.
+            // Also poll for completion to add clip assets to SashaAssetManager.
+            var _pollCount = 0;
+            var _poll = setInterval(function() {
+                _pollCount++;
+                var sd = _skeletonData[n];
+                if (sd && sd.clips && sd.clips.length > 0) {
+                    clearInterval(_poll);
+                    // Add each clip as an asset so they appear in the Asset Browser
+                    for (var ai = 0; ai < sd.clips.length; ai++) {
+                        var ac = sd.clips[ai];
+                        var clipId = 'clip_glb_' + Date.now() + '_' + ai + '_' + Math.random().toString(36).substr(2,4);
+                        if (SashaEngineAPI.createAnimationClip) SashaEngineAPI.createAnimationClip(clipId, ac.name || ('Anim_' + ai));
+                        var createdClip = SashaEngineAPI.getAnimationClip ? SashaEngineAPI.getAnimationClip(clipId) : null;
+                        if (createdClip) { createdClip.duration = ac.duration; createdClip.loop = true; }
+                        if (typeof SashaAssetManager !== 'undefined' && SashaAssetManager.addAsset) {
+                            SashaAssetManager.addAsset('animation', ac.name || ('Anim_' + ai), _assetCurrentFolder, { clipId: clipId });
                         }
                     }
-                    SashaAssetManager.addAsset('animation', ac.name || ('Anim_' + ai), _assetCurrentFolder, { clipId: clipId });
+                    refreshAssetBrowser();
+                    refreshAssetGrid();
+                    log('[loadGLBModel] ✅ Загружено ' + sd.clips.length + ' анимаций и добавлено в Assets', 'result');
+                } else if (_pollCount > 30) {
+                    // 30 * 500ms = 15s timeout
+                    clearInterval(_poll);
+                    log('[loadGLBModel] ⏱ Превышен таймаут ожидания анимаций (15с). Возможно модель не содержит анимаций.', 'warn');
                 }
-                _skeletonData[n] = { mixer: mixer, clips: clips, actions: [] };
-                log('Loaded model with ' + clips.length + ' anims: ' + n, 'result');
-            } else {
-                _skeletonData[n] = { mixer: null, clips: [], actions: [] };
-                log('Loaded model: ' + n, 'result');
-            }
-            refreshHierarchy();
-            refreshAssetBrowser();
-            refreshAssetGrid();
-        }, undefined, function(err) {
-            log('Failed to load GLB: ' + (err.message || err), 'error');
-        });
+            }, 500);
+        }
         return n;
     }
 
@@ -13382,8 +13567,50 @@ var EngineApp = (function() {
 
         // Try to use THREE.SkeletonUtils.clone if available (proper skeleton cloning)
         var cloned = null;
+        var _usedOriginal = false;
+        console.log('[Preview] SkeletonUtils available?', typeof THREE.SkeletonUtils !== 'undefined',
+                    '| clone method?', !!(THREE.SkeletonUtils && THREE.SkeletonUtils.clone));
+
+        // CRITICAL PRE-CLONE STEP: Strip circular references from userData.
+        // Three.js's Object3D.clone(true) recursively clones userData, and any
+        // circular reference (mixer, animations arrays containing tracks that
+        // reference the bones, etc.) will cause "Maximum call stack size exceeded".
+        // We save the userData aside, replace it with a clean shallow copy of
+        // primitives only, clone, then restore.
+        var _savedUserData = [];
+        srcObj.traverse(function(c) {
+            _savedUserData.push({ node: c, userData: c.userData });
+            // Replace with clean shallow copy — keep only primitive props
+            var clean = {};
+            if (c.userData) {
+                for (var k in c.userData) {
+                    if (!c.userData.hasOwnProperty(k)) continue;
+                    var v = c.userData[k];
+                    var t = typeof v;
+                    if (t === 'string' || t === 'number' || t === 'boolean') {
+                        clean[k] = v;
+                    } else if (t === 'object' && v !== null) {
+                        // Check if it's a simple array of primitives
+                        if (Array.isArray(v) && v.length < 100) {
+                            var allPrim = true;
+                            for (var ai = 0; ai < v.length; ai++) {
+                                var at = typeof v[ai];
+                                if (at !== 'string' && at !== 'number' && at !== 'boolean') { allPrim = false; break; }
+                            }
+                            if (allPrim) clean[k] = v.slice();
+                        }
+                        // Skip complex objects (mixer, animations, etc.)
+                    }
+                }
+            }
+            c.userData = clean;
+        });
+        console.log('[Preview] Stripped userData on', _savedUserData.length, 'nodes before cloning');
+
         if (typeof THREE.SkeletonUtils !== 'undefined' && THREE.SkeletonUtils.clone) {
             try {
+                // SkeletonUtils.clone is a static method on a class — call it explicitly
+                // via the class so `this` inside resolves correctly.
                 cloned = THREE.SkeletonUtils.clone(srcObj);
                 console.log('[Preview] Cloned via SkeletonUtils');
             } catch(e) {
@@ -13392,21 +13619,75 @@ var EngineApp = (function() {
             }
         }
         if (!cloned) {
-            // Fallback: use Object3D.clone (works for simple models, may not for complex skeletons)
+            // Fallback: try Object3D.clone with shallow history — pass `false` to avoid
+            // deep-cloning circular userData references which cause stack overflow.
+            // We then manually re-add mesh geometries/materials so the preview still
+            // shows something visible.
             try {
                 cloned = srcObj.clone(true);
-                console.log('[Preview] Cloned via Object3D.clone');
+                console.log('[Preview] Cloned via Object3D.clone(true)');
             } catch(e) {
-                console.warn('[Preview] Object3D.clone failed:', e.message);
-                cloned = null;
+                console.warn('[Preview] Object3D.clone(true) failed:', e.message, '— trying clone(false)');
+                try {
+                    cloned = srcObj.clone(false);
+                    console.log('[Preview] Cloned via Object3D.clone(false) — geometry only, no children');
+                } catch(e2) {
+                    console.warn('[Preview] Object3D.clone(false) also failed:', e2.message);
+                    cloned = null;
+                }
             }
         }
 
+        // RESTORE userData on the source object (we stripped it before cloning)
+        for (var _si = 0; _si < _savedUserData.length; _si++) {
+            var entry = _savedUserData[_si];
+            if (entry.node && entry.userData) {
+                entry.node.userData = entry.userData;
+            }
+        }
+        console.log('[Preview] Restored userData on source object');
+
+        // CRITICAL: NEVER use the original object as a fallback. Doing so would
+        // move it OUT of the main scene into the preview scene, making the model
+        // disappear from the user's main viewport. Instead, when all clone
+        // attempts fail, we render a simple BOUNDING BOX placeholder in the
+        // preview scene — the original stays in the main scene untouched.
         if (!cloned) {
-            // Last resort: render the original model in the preview scene
-            // by temporarily moving it (not ideal but works)
-            console.warn('[Preview] Using original object as last resort');
-            cloned = srcObj;
+            console.warn('[Preview] All clone attempts failed — using bounding-box placeholder. Original stays in main scene.');
+            // Build a wireframe bounding box matching the source object's size
+            var _box = new THREE.Box3().setFromObject(srcObj);
+            var _size = _box.getSize(new THREE.Vector3());
+            var _center = _box.getCenter(new THREE.Vector3());
+            var _maxDim = Math.max(_size.x, _size.y, _size.z, 0.001);
+            // Box geometry (1x1x1) scaled to match
+            var _placeholder = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshBasicMaterial({ color: 0x6366f1, wireframe: true, transparent: true, opacity: 0.6 })
+            );
+            _placeholder.scale.set(_size.x || 0.5, _size.y || 0.5, _size.z || 0.5);
+            _placeholder.position.set(0, 0, 0);
+            // Add a label sprite at the center
+            var _labelCanvas = document.createElement('canvas');
+            _labelCanvas.width = 256; _labelCanvas.height = 64;
+            var _lctx = _labelCanvas.getContext('2d');
+            _lctx.fillStyle = 'rgba(30,30,58,0.85)';
+            _lctx.fillRect(0, 0, 256, 64);
+            _lctx.fillStyle = '#a5b4fc';
+            _lctx.font = 'bold 16px sans-serif';
+            _lctx.textAlign = 'center';
+            _lctx.textBaseline = 'middle';
+            _lctx.fillText(objName, 128, 24);
+            _lctx.fillStyle = '#71717a';
+            _lctx.font = '11px sans-serif';
+            _lctx.fillText('clone failed — original preserved in scene', 128, 46);
+            var _labelTex = new THREE.CanvasTexture(_labelCanvas);
+            var _labelMat = new THREE.SpriteMaterial({ map: _labelTex, transparent: true });
+            var _labelSprite = new THREE.Sprite(_labelMat);
+            _labelSprite.scale.set(2, 0.5, 1);
+            _labelSprite.position.set(0, (_size.y || 0.5) / 2 + 0.4, 0);
+            _placeholder.add(_labelSprite);
+            cloned = _placeholder;
+            _usedOriginal = false; // We did NOT use the original — original is safe
         }
 
         // Reset transform for preview
@@ -14132,7 +14413,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
