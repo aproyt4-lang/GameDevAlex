@@ -3051,13 +3051,34 @@ var SashaScene3D = (function() {
     function loadAvatar() {
         // Show placeholder immediately as fallback
         createPlaceholder();
+        // Pre-check if SashaAI.glb exists on the server before attempting GLTFLoader.load.
+        // This avoids console noise like ERR_SSL_PROTOCOL_ERROR when the file is missing.
+        fetch('SashaAI.glb', { method: 'HEAD', cache: 'no-store' })
+            .then(function(resp) {
+                if (!resp.ok) {
+                    console.log('[Avatar] SashaAI.glb not available (HTTP ' + resp.status + '), using placeholder');
+                    return null;
+                }
+                return resp.url; // resolved URL
+            })
+            .catch(function() {
+                console.log('[Avatar] SashaAI.glb HEAD check failed, using placeholder');
+                return null;
+            })
+            .then(function(resolvedUrl) {
+                if (!resolvedUrl) return; // file missing — keep placeholder
+                actuallyLoadAvatar(resolvedUrl);
+            });
+    }
+
+    function actuallyLoadAvatar(url) {
         var loader = new THREE.GLTFLoader();
         var timeout = setTimeout(function() {
             console.log('SashaAI.glb: load timeout, using placeholder');
         }, 15000);
         try {
             loader.load(
-                'SashaAI.glb',
+                url,
                 function(gltf) {
                     clearTimeout(timeout);
                     // Remove placeholder
@@ -5731,10 +5752,18 @@ var SashaEngineAPI = (function() {
             model.traverse(function(child) {
                 if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
             });
+            // Save animations on userData so EngineApp._inspPreviewShow can pick them up
+            // even when _skeletonData was not populated by EngineApp.loadGLBModel.
             if (gltf.animations && gltf.animations.length > 0) {
+                model.userData.animations = gltf.animations;
                 var mix = new THREE.AnimationMixer(model);
+                model.userData.mixer = mix;
                 for (var i = 0; i < gltf.animations.length; i++) {
                     mix.clipAction(gltf.animations[i]).play();
+                }
+                // Notify EngineApp to populate _skeletonData for this model
+                if (typeof EngineApp !== 'undefined' && EngineApp._registerModelAnimations) {
+                    EngineApp._registerModelAnimations(targetName, mix, gltf.animations.slice());
                 }
             }
             model.name = targetName;
@@ -12853,6 +12882,30 @@ var EngineApp = (function() {
     // ============ SKELETAL ANIMATION SUPPORT ============
     var _skeletonData = {};
 
+    // Called by SashaEngineAPI.loadModel when a GLB with animations is loaded
+    // — this populates _skeletonData so the inspector preview can play them.
+    function _registerModelAnimations(objName, mixer, clips) {
+        if (!objName || !clips || !clips.length) return;
+        if (!_skeletonData[objName] || !_skeletonData[objName].clips || _skeletonData[objName].clips.length === 0) {
+            _skeletonData[objName] = { mixer: mixer, clips: clips, actions: [] };
+            console.log('[Preview] Registered', clips.length, 'clips for', objName);
+            // Also create engine clip assets so they appear in Animator pickers
+            try {
+                for (var i = 0; i < clips.length; i++) {
+                    var ac = clips[i];
+                    var clipId = 'clip_glb_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2,4);
+                    if (SashaEngineAPI.createAnimationClip) SashaEngineAPI.createAnimationClip(clipId, ac.name || ('Anim_' + i));
+                    var created = SashaEngineAPI.getAnimationClip ? SashaEngineAPI.getAnimationClip(clipId) : null;
+                    if (created) { created.duration = ac.duration; }
+                }
+            } catch(e) { /* ignore */ }
+            // If inspector is currently showing this object, refresh preview buttons
+            if (_inspPreviewObjName === objName) {
+                setTimeout(function() { _inspPreviewShow(objName); }, 30);
+            }
+        }
+    }
+
     function loadGLBModel(url, x, y, z, s) {
         var loader = new THREE.GLTFLoader();
         var n = gn('model');
@@ -13289,6 +13342,18 @@ var EngineApp = (function() {
         if (!srcObj) { console.warn('[Preview] Source object not found:', objName); panel.style.display = 'none'; return; }
 
         var sd = _skeletonData[objName];
+
+        // FALLBACK: if _skeletonData is missing but the model has userData.animations
+        // (e.g. loaded via SashaEngineAPI.loadModel), reconstruct _skeletonData now.
+        if ((!sd || !sd.clips || sd.clips.length === 0) && srcObj.userData && srcObj.userData.animations && srcObj.userData.animations.length > 0) {
+            console.log('[Preview] Fallback: rebuilding _skeletonData from userData.animations');
+            _skeletonData[objName] = {
+                mixer: srcObj.userData.mixer || new THREE.AnimationMixer(srcObj),
+                clips: srcObj.userData.animations.slice(),
+                actions: []
+            };
+            sd = _skeletonData[objName];
+        }
 
         // Try to use THREE.SkeletonUtils.clone if available (proper skeleton cloning)
         var cloned = null;
@@ -13940,6 +14005,7 @@ var EngineApp = (function() {
         _inspAnimToggleAutocam: _inspAnimToggleAutocam,
         _inspAnimAddToController: _inspAnimAddToController,
         _inspPreviewAddClipByName: _inspPreviewAddClipByName,
+        _registerModelAnimations: _registerModelAnimations,
         isInitialized: function() { return initialized; }
     };
 })();
@@ -14001,6 +14067,8 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
+
 
 
 
