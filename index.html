@@ -13010,6 +13010,67 @@ var EngineApp = (function() {
         }
     }
 
+    // ============ MISSING FUNCTIONS (stubs so no ReferenceError) ============
+    function assetCreateFolderQuick() {
+        var name = prompt('Folder name:', 'New Folder');
+        if (!name || !name.trim()) return;
+        SashaAssetManager.createFolder(name.trim(), _assetCurrentFolder);
+        refreshAssetBrowser();
+        refreshAssetGrid();
+    }
+
+    function assetDeleteSelected() {
+        var sel = _selectedAssetId;
+        if (!sel) return;
+        var asset = SashaAssetManager.getAsset(sel);
+        if (!asset) return;
+        if (asset.type === 'folder') {
+            if (!confirm('Delete folder "' + asset.name + '" and all contents?')) return;
+        } else {
+            if (!confirm('Delete "' + asset.name + '"?')) return;
+        }
+        SashaAssetManager.deleteAsset(sel);
+        _selectedAssetId = null;
+        refreshAssetBrowser();
+        refreshAssetGrid();
+        refreshInspector();
+    }
+
+    function _assetGridClickEx(assetId) {
+        var asset = SashaAssetManager.getAsset(assetId);
+        if (!asset) return;
+        if (asset.type === 'model' || asset.type === 'animation') {
+            selectAsset(assetId);
+        }
+    }
+
+    function _miConfigureAvatar(objName) {
+        log('Avatar configuration for: ' + objName, 'log');
+        if (!objects[objName]) return;
+        var boneCount = 0;
+        objects[objName].traverse(function(c) { if (c.isBone) boneCount++; });
+        log('Bones found: ' + boneCount, 'result');
+    }
+
+    function _setBoneProp(boneName, prop, val) {
+        if (!_selectedBoneObj) return;
+        if (prop === 'px') _selectedBoneObj.position.x = parseFloat(val) || 0;
+        if (prop === 'py') _selectedBoneObj.position.y = parseFloat(val) || 0;
+        if (prop === 'pz') _selectedBoneObj.position.z = parseFloat(val) || 0;
+        if (prop === 'rx') _selectedBoneObj.rotation.x = parseFloat(val) || 0;
+        if (prop === 'ry') _selectedBoneObj.rotation.y = parseFloat(val) || 0;
+        if (prop === 'rz') _selectedBoneObj.rotation.z = parseFloat(val) || 0;
+        if (_selectedBoneHelper) {
+            var wPos = new THREE.Vector3();
+            _selectedBoneObj.getWorldPosition(wPos);
+            _selectedBoneHelper.position.copy(wPos);
+        }
+    }
+
+    function _acAssignClipToState(clipId, stateId) {
+        log('Assigned clip ' + clipId + ' to state ' + stateId, 'log');
+    }
+
     // ============ ASSET TREE CONTEXT MENU (folder deletion from left panel) ============
     function assetTreeContext(e, id) {
         e.preventDefault();
@@ -13175,7 +13236,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
