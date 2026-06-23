@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/utils/SkeletonUtils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
     
     <!-- Monaco Editor для кода -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
@@ -1149,7 +1149,8 @@
                                 <div id="insp-anim-clip-label" style="position:absolute;bottom:4px;left:8px;font-size:0.6rem;color:rgba(255,255,255,0.6);font-family:'JetBrains Mono',monospace;pointer-events:none;">None</div>
                                 <div id="insp-anim-hint" style="position:absolute;top:4px;right:8px;font-size:0.55rem;color:rgba(255,255,255,0.35);font-family:'JetBrains Mono',monospace;pointer-events:none;">drag — вращать · колесо — зум</div>
                             </div>
-                            <div id="insp-anim-controls" style="padding:4px 6px;display:flex;flex-wrap:wrap;gap:3px;background:var(--bg-card);">
+                            <div id="insp-anim-controls" style="padding:4px 6px;display:flex;flex-wrap:wrap;gap:3px;background:var(--bg-card);align-items:center;">
+                                <span id="insp-anim-status" style="font-size:0.6rem;color:var(--text-muted);padding:2px 4px;flex:1 100%;">Загрузка...</span>
                             </div>
                             <div id="insp-anim-to-controller" style="display:none;padding:3px 6px;background:var(--bg-card);border-top:1px solid var(--border);">
                                 <div style="display:flex;align-items:center;gap:4px;">
@@ -3049,77 +3050,18 @@ var SashaScene3D = (function() {
     }
 
     function loadAvatar() {
-        // Show placeholder immediately as fallback
+        // SashaAI.glb is OPTIONAL — placeholder avatar is always shown.
+        // We deliberately do NOT attempt to fetch('SashaAI.glb') here, because
+        // when the page is opened from a custom host (e.g. "GameDevAlex/"),
+        // the relative URL resolves to an HTTPS request that fails with
+        // ERR_SSL_PROTOCOL_ERROR. The placeholder avatar is good enough for
+        // the AI assistant scene — the 3D engine itself is independent.
         createPlaceholder();
-        // Pre-check if SashaAI.glb exists on the server before attempting GLTFLoader.load.
-        // This avoids console noise like ERR_SSL_PROTOCOL_ERROR when the file is missing.
-        fetch('SashaAI.glb', { method: 'HEAD', cache: 'no-store' })
-            .then(function(resp) {
-                if (!resp.ok) {
-                    console.log('[Avatar] SashaAI.glb not available (HTTP ' + resp.status + '), using placeholder');
-                    return null;
-                }
-                return resp.url; // resolved URL
-            })
-            .catch(function() {
-                console.log('[Avatar] SashaAI.glb HEAD check failed, using placeholder');
-                return null;
-            })
-            .then(function(resolvedUrl) {
-                if (!resolvedUrl) return; // file missing — keep placeholder
-                actuallyLoadAvatar(resolvedUrl);
-            });
     }
 
     function actuallyLoadAvatar(url) {
-        var loader = new THREE.GLTFLoader();
-        var timeout = setTimeout(function() {
-            console.log('SashaAI.glb: load timeout, using placeholder');
-        }, 15000);
-        try {
-            loader.load(
-                url,
-                function(gltf) {
-                    clearTimeout(timeout);
-                    // Remove placeholder
-                    if (avatar) { scene.remove(avatar); avatar = null; }
-                    avatar = gltf.scene;
-                    var box = new THREE.Box3().setFromObject(avatar);
-                    var size = box.getSize(new THREE.Vector3());
-                    var center = box.getCenter(new THREE.Vector3());
-                    var maxDim = Math.max(size.x, size.y, size.z);
-                    if (maxDim > 0) { avatarScale = 3.0 / maxDim; }
-                    avatar.scale.set(avatarScale, avatarScale, avatarScale);
-                    avatar.position.sub(center.multiplyScalar(avatarScale));
-                    avatar.position.y += 1.5;
-                    avatar.traverse(function(child) {
-                        if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
-                    });
-                    if (gltf.animations && gltf.animations.length > 0) {
-                        mixer = new THREE.AnimationMixer(avatar);
-                        for (var i = 0; i < gltf.animations.length; i++) {
-                            mixer.clipAction(gltf.animations[i]).play();
-                        }
-                    }
-                    scene.add(avatar);
-                    avatarLoaded = true;
-                    controls.target.set(0, 1.5, 0);
-                    camera.position.set(0, 2, 5);
-                },
-                function(progress) {
-                    if (progress.lengthComputable) {
-                        var pct = Math.round(progress.loaded / progress.total * 100);
-                        console.log('Loading SashaAI.glb: ' + pct + '%');
-                    }
-                },
-                function(error) {
-                    clearTimeout(timeout);
-                    // Placeholder already visible, just log silently
-                }
-            );
-        } catch(e) {
-            clearTimeout(timeout);
-        }
+        // Reserved for future use — currently not called.
+        createPlaceholder();
     }
 
     function createPlaceholder() {
@@ -8370,6 +8312,9 @@ var EngineApp = (function() {
         var html = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);">'+selected+'</div>';
         // === MODEL IMPORT INSPECTOR — show for ANY model ===
         if (type === 'model') {
+            // Try to discover animations from userData.animations / obj.animations / children.
+            // This populates _skeletonData[selected] so the UI shows the clips.
+            _discoverAnimations(selected);
             var sd2 = _skeletonData[selected] || { clips: [], actions: [] };
             var hasAnims = sd2.clips && sd2.clips.length > 0;
             html += '<div style="margin-top:4px;">';
@@ -8410,24 +8355,33 @@ var EngineApp = (function() {
             // ANIMATION TAB
             html += '<div class="model-import-panel" id="mi-panel-animation-'+selected+'">';
             html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" checked><label>Import Animation</label></div>';
+            // Status header — shows clip count prominently
+            html += '<div style="padding:6px 10px;display:flex;align-items:center;gap:6px;background:rgba(99,102,241,0.08);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">';
+            html += '<i class="fas fa-film" style="color:#a5b4fc;font-size:0.7rem;"></i>';
+            html += '<span style="font-size:0.7rem;font-weight:600;color:#e4e4e7;">Клипы анимации</span>';
+            html += '<span id="mi-clip-count-'+selected+'" style="margin-left:auto;font-size:0.65rem;font-weight:700;color:'+(hasAnims?'#34d399':'#71717a')+';background:'+(hasAnims?'rgba(52,211,153,0.15)':'rgba(113,113,122,0.15)')+';padding:1px 8px;border-radius:8px;">'+(hasAnims?sd2.clips.length+' шт.':'нет')+'</span>';
+            html += '</div>';
             html += '<div style="padding:6px 10px;display:flex;gap:4px;">';
-            html += '<button class="insp-btn" onclick="EngineApp._miAddClip(\''+selected+'\')" style="flex:1;"><i class="fas fa-plus"></i> Add Clip</button>';
+            html += '<button class="insp-btn" onclick="EngineApp._miAddClip(\''+selected+'\')" style="flex:1;"><i class="fas fa-plus"></i> Добавить клип</button>';
             html += '</div>';
             if(hasAnims){
+                // Clip list — bigger, clearer items
+                html += '<div id="mi-clip-list-'+selected+'" style="padding:4px 6px;">';
                 for(var _ci=0;_ci<sd2.clips.length;_ci++){
                     var _clip=sd2.clips[_ci];
                     var _ck=_clip.name||('Anim_'+_ci);
                     var _isLoop=true;
                     if(sd2.actions.length>0){for(var _ai=0;_ai<sd2.actions.length;_ai++){if(sd2.actions[_ai].getClip()===_clip){_isLoop=sd2.actions[_ai].loop!==THREE.LoopOnce;break;}}}
-                    html += '<div class="mi-clip-item" data-idx="'+_ci+'" onclick="EngineApp._miSelectClip(\''+selected+'\','+_ci+')">';
-                    html += '<i class="fas fa-play-circle mi-clip-icon"></i>';
-                    html += '<span class="mi-clip-name" style="flex:1;">'+_ck+'</span>';
-                    html += '<span style="font-size:0.58rem;color:var(--text-muted);">'+_clip.duration.toFixed(2)+'s</span>';
-                    html += '<div class="mi-clip-actions">';
-                    html += '<button onclick="event.stopPropagation();EngineApp._miRemoveClip(\''+selected+'\','+_ci+')" title="Remove" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:2px 4px;"><i class="fas fa-trash"></i></button>';
-                    html += '</div></div>';
-                    html += '<div class="mi-clip-props" id="mi-cprops-'+selected+'-'+_ci+'">';
-                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" '+(_isLoop?'checked':'')+' onchange="EngineApp._miClipLoop(\''+selected+'\',\''+_ck+'\',this.checked)"><label>Loop Time</label></div>';
+                    html += '<div class="mi-clip-item" data-idx="'+_ci+'" onclick="EngineApp._miSelectClip(\''+selected+'\','+_ci+')" style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin:2px 0;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor=\'#6366f1\';this.style.background=\'rgba(99,102,241,0.08)\';" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg-card)\';">';
+                    html += '<i class="fas fa-play-circle mi-clip-icon" style="color:#34d399;font-size:0.8rem;"></i>';
+                    html += '<span class="mi-clip-name" style="flex:1;font-size:0.72rem;color:#fff;font-weight:500;">'+_ck+'</span>';
+                    html += '<span style="font-size:0.6rem;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;">'+_clip.duration.toFixed(2)+'s</span>';
+                    html += '<button onclick="event.stopPropagation();EngineApp._inspPreviewPlayClipByName(\''+selected+'\',\''+_ck.replace(/'/g,"\\'")+'\')" title="Проиграть в превью" style="background:rgba(52,211,153,0.15);border:none;color:#34d399;cursor:pointer;padding:3px 6px;border-radius:3px;font-size:0.6rem;"><i class="fas fa-play"></i></button>';
+                    html += '<button onclick="event.stopPropagation();EngineApp._inspPreviewAddClipByName(\''+_ck.replace(/'/g,"\\'")+'\')" title="Добавить в Animator Controller" style="background:rgba(99,102,241,0.15);border:none;color:#a5b4fc;cursor:pointer;padding:3px 6px;border-radius:3px;font-size:0.6rem;"><i class="fas fa-plus"></i></button>';
+                    html += '<button onclick="event.stopPropagation();EngineApp._miRemoveClip(\''+selected+'\','+_ci+')" title="Удалить" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:3px 4px;font-size:0.6rem;"><i class="fas fa-trash"></i></button>';
+                    html += '</div>';
+                    html += '<div class="mi-clip-props" id="mi-cprops-'+selected+'-'+_ci+'" style="display:none;padding:6px 10px;margin:2px 0 4px;background:rgba(0,0,0,0.2);border-left:2px solid #6366f1;">';
+                    html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox" '+(_isLoop?'checked':'')+' onchange="EngineApp._miClipLoop(\''+selected+'\',\''+_ck.replace(/'/g,"\\'")+'\',this.checked)"><label>Loop Time</label></div>';
                     html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox"><label>Loop Pose</label></div>';
                     html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox"><label>Bake Into Pose</label></div>';
                     html += '<div class="mi-toggle-row"><input type="checkbox" class="mi-checkbox"><label>Mirror</label></div>';
@@ -8438,8 +8392,13 @@ var EngineApp = (function() {
                     html += '<div class="mi-row"><span class="mi-label">Based Upon</span><select class="mi-select"><option selected>Original</option><option>Body Orientation</option><option>Feet</option></select></div>';
                     html += '</div>';
                 }
+                html += '</div>';
             } else {
-                html += '<div style="padding:10px;color:var(--text-muted);font-size:0.7rem;text-align:center;">No animation clips.<br>Click \"Add Clip\" to create one.</div>';
+                html += '<div style="padding:14px 10px;color:var(--text-muted);font-size:0.7rem;text-align:center;line-height:1.5;">';
+                html += '<i class="fas fa-info-circle" style="font-size:1rem;color:#71717a;display:block;margin-bottom:6px;"></i>';
+                html += '<b style="color:#a1a1aa;">Анимационные клипы не найдены</b><br><br>';
+                html += '<span style="font-size:0.62rem;color:#71717a;">Если на модели есть анимации, убедись что GLB файл содержит их как Animation Clips (а не как ключевые кадры transform).<br>Используй кнопку «Добавить клип» чтобы создать новый.</span>';
+                html += '</div>';
             }
             html += '</div>';
             // MATERIALS TAB
@@ -12882,6 +12841,82 @@ var EngineApp = (function() {
     // ============ SKELETAL ANIMATION SUPPORT ============
     var _skeletonData = {};
 
+    // Deep animation discovery — finds AnimationClips anywhere on the object tree.
+    // Looks in: _skeletonData, srcObj.userData.animations, srcObj.animations,
+    // srcObj.userData.mixer, and any descendant's userData.animations.
+    // If found and _skeletonData[objName] is empty, populates it.
+    // Returns the resolved sd entry (or null).
+    function _discoverAnimations(objName) {
+        if (!objName) return null;
+        var sd = _skeletonData[objName];
+        if (sd && sd.clips && sd.clips.length > 0) return sd;
+
+        var srcObj = SashaEngineAPI.getObject(objName);
+        if (!srcObj) return null;
+
+        var discoveredClips = [];
+        var discoveredMixer = null;
+
+        if (srcObj.userData) {
+            if (srcObj.userData.animations && srcObj.userData.animations.length > 0) {
+                console.log('[Discover] Found', srcObj.userData.animations.length, 'clips in', objName, '.userData.animations');
+                for (var i = 0; i < srcObj.userData.animations.length; i++) {
+                    discoveredClips.push(srcObj.userData.animations[i]);
+                }
+            }
+            if (srcObj.userData.mixer) {
+                discoveredMixer = srcObj.userData.mixer;
+            }
+        }
+
+        if (srcObj.animations && srcObj.animations.length > 0) {
+            for (var j = 0; j < srcObj.animations.length; j++) {
+                var c = srcObj.animations[j];
+                var dup = false;
+                for (var k = 0; k < discoveredClips.length; k++) {
+                    if (discoveredClips[k] === c) { dup = true; break; }
+                }
+                if (!dup) discoveredClips.push(c);
+            }
+        }
+
+        srcObj.traverse(function(child) {
+            if (child === srcObj) return;
+            if (child.userData && child.userData.animations && child.userData.animations.length > 0) {
+                console.log('[Discover] Found', child.userData.animations.length, 'clips on child', child.name || child.type, 'of', objName);
+                for (var m = 0; m < child.userData.animations.length; m++) {
+                    var cc = child.userData.animations[m];
+                    var dup2 = false;
+                    for (var n = 0; n < discoveredClips.length; n++) {
+                        if (discoveredClips[n] === cc) { dup2 = true; break; }
+                    }
+                    if (!dup2) discoveredClips.push(cc);
+                }
+            }
+        });
+
+        if (discoveredClips.length > 0) {
+            console.log('[Discover] Total discovered for', objName, ':', discoveredClips.length, 'clips');
+            _skeletonData[objName] = {
+                mixer: discoveredMixer || new THREE.AnimationMixer(srcObj),
+                clips: discoveredClips,
+                actions: []
+            };
+            // Create engine clip assets so they appear in Animator pickers
+            try {
+                for (var p = 0; p < discoveredClips.length; p++) {
+                    var ac = discoveredClips[p];
+                    var clipId = 'clip_glb_' + Date.now() + '_' + p + '_' + Math.random().toString(36).substr(2,4);
+                    if (SashaEngineAPI.createAnimationClip) SashaEngineAPI.createAnimationClip(clipId, ac.name || ('Anim_' + p));
+                    var created = SashaEngineAPI.getAnimationClip ? SashaEngineAPI.getAnimationClip(clipId) : null;
+                    if (created) { created.duration = ac.duration; }
+                }
+            } catch(e) { /* ignore */ }
+            return _skeletonData[objName];
+        }
+        return null;
+    }
+
     // Called by SashaEngineAPI.loadModel when a GLB with animations is loaded
     // — this populates _skeletonData so the inspector preview can play them.
     function _registerModelAnimations(objName, mixer, clips) {
@@ -13341,19 +13376,9 @@ var EngineApp = (function() {
         var srcObj = SashaEngineAPI.getObject(objName);
         if (!srcObj) { console.warn('[Preview] Source object not found:', objName); panel.style.display = 'none'; return; }
 
-        var sd = _skeletonData[objName];
-
-        // FALLBACK: if _skeletonData is missing but the model has userData.animations
-        // (e.g. loaded via SashaEngineAPI.loadModel), reconstruct _skeletonData now.
-        if ((!sd || !sd.clips || sd.clips.length === 0) && srcObj.userData && srcObj.userData.animations && srcObj.userData.animations.length > 0) {
-            console.log('[Preview] Fallback: rebuilding _skeletonData from userData.animations');
-            _skeletonData[objName] = {
-                mixer: srcObj.userData.mixer || new THREE.AnimationMixer(srcObj),
-                clips: srcObj.userData.animations.slice(),
-                actions: []
-            };
-            sd = _skeletonData[objName];
-        }
+        // Use shared discovery helper — populates _skeletonData[objName] if empty.
+        var sd = _discoverAnimations(objName);
+        if (!sd) sd = _skeletonData[objName] || { clips: [], actions: [] };
 
         // Try to use THREE.SkeletonUtils.clone if available (proper skeleton cloning)
         var cloned = null;
@@ -13399,9 +13424,10 @@ var EngineApp = (function() {
                 var cn = sd.clips[i].name || ('Anim_' + i);
                 _inspPreviewAnimNames.push(cn);
             }
-            console.log('[Preview] Mixer created with', sd.clips.length, 'clips');
+            console.log('[Preview] Mixer created with', sd.clips.length, 'clips:', _inspPreviewAnimNames.join(', '));
         } else {
-            console.log('[Preview] No clips for this object — character will be shown static');
+            console.log('[Preview] No clips found on this object. Checked: _skeletonData, userData.animations, obj.animations, child traversal.');
+            console.log('[Preview] If your model has animations, they may not be in a format Three.js recognizes as gltf.animations. Check that the GLB has animations exported as Animation Clips.');
         }
 
         _inspPreviewScene.add(_inspPreviewModel);
@@ -13476,6 +13502,30 @@ var EngineApp = (function() {
         }
     }
 
+    // Play clip by name — called from inspector Animation tab ▶ buttons.
+    // If the preview is hidden (no 3D model currently selected), do nothing.
+    // If the preview is showing a DIFFERENT object, switch to the requested object first.
+    function _inspPreviewPlayClipByName(objName, clipName) {
+        if (!objName || !clipName) return;
+        // Ensure preview is showing this object
+        if (_inspPreviewObjName !== objName) {
+            _inspPreviewShow(objName);
+            // Wait a tick for the mixer to be created, then play
+            setTimeout(function() {
+                _inspPreviewPlayClip(clipName);
+            }, 80);
+        } else {
+            _inspPreviewPlayClip(clipName);
+        }
+        // Visual feedback: flash the panel border
+        var panel = document.getElementById('insp-anim-preview');
+        if (panel) {
+            panel.style.transition = 'box-shadow 0.2s';
+            panel.style.boxShadow = '0 0 0 2px #34d399';
+            setTimeout(function() { panel.style.boxShadow = ''; }, 400);
+        }
+    }
+
     function _inspPreviewStopAnim() {
         for (var j = 0; j < _inspPreviewActions.length; j++) {
             _inspPreviewActions[j].stop();
@@ -13492,6 +13542,16 @@ var EngineApp = (function() {
         var controls = document.getElementById('insp-anim-controls');
         if (!controls) return;
         controls.innerHTML = '';
+
+        // Status label (top of the controls)
+        var sd = _skeletonData[objName];
+        var clipCount = (sd && sd.clips) ? sd.clips.length : 0;
+        var status = document.createElement('div');
+        status.style.cssText = 'flex:1 100%;display:flex;align-items:center;gap:6px;padding:2px 4px;border-bottom:1px solid var(--border);margin-bottom:2px;';
+        status.innerHTML = '<i class="fas fa-film" style="color:#a5b4fc;font-size:0.65rem;"></i>' +
+            '<span style="font-size:0.65rem;font-weight:600;color:#e4e4e7;">Анимации</span>' +
+            '<span style="margin-left:auto;font-size:0.6rem;font-weight:700;color:'+(clipCount > 0 ? '#34d399' : '#71717a')+';background:'+(clipCount > 0 ? 'rgba(52,211,153,0.15)' : 'rgba(113,113,122,0.15)')+';padding:1px 8px;border-radius:8px;">' + (clipCount > 0 ? clipCount + ' шт.' : 'нет') + '</span>';
+        controls.appendChild(status);
 
         // Play/Stop buttons
         var playBtn = document.createElement('button');
@@ -13520,11 +13580,10 @@ var EngineApp = (function() {
         controls.appendChild(sep);
 
         // Animation clip buttons
-        var sd = _skeletonData[objName];
         if (!sd || !sd.clips || sd.clips.length === 0) {
             var noAnim = document.createElement('span');
-            noAnim.style.cssText = 'font-size:0.6rem;color:var(--text-muted);padding:2px 4px;';
-            noAnim.textContent = 'No animations';
+            noAnim.style.cssText = 'font-size:0.6rem;color:var(--text-muted);padding:4px 6px;font-style:italic;';
+            noAnim.textContent = 'Нет анимаций на этой модели';
             controls.appendChild(noAnim);
             return;
         }
@@ -14005,6 +14064,12 @@ var EngineApp = (function() {
         _inspAnimToggleAutocam: _inspAnimToggleAutocam,
         _inspAnimAddToController: _inspAnimAddToController,
         _inspPreviewAddClipByName: _inspPreviewAddClipByName,
+        _inspPreviewPlayClipByName: _inspPreviewPlayClipByName,
+        _inspPreviewPlayClip: _inspPreviewPlayClip,
+        _inspPreviewShow: _inspPreviewShow,
+        _inspPreviewHide: _inspPreviewHide,
+        _discoverAnimations: _discoverAnimations,
+        _getSkeletonData: function() { return _skeletonData; },
         _registerModelAnimations: _registerModelAnimations,
         isInitialized: function() { return initialized; }
     };
@@ -14067,6 +14132,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
