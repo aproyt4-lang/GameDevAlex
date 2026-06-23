@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/utils/SkeletonUtils.js"></script>
     
     <!-- Monaco Editor для кода -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
@@ -339,6 +340,36 @@
             display: inline-block; font-size: 0.6rem; padding: 1px 5px;
             border-radius: 3px; background: var(--primary); color: #fff; margin-left: 4px;
         }
+
+        /* Animation Preview Scene in Inspector */
+        .insp-anim-btn {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 3px 8px; font-size: 0.62rem; font-weight: 600;
+            border: 1px solid var(--border); border-radius: 4px;
+            background: var(--bg-dark); color: var(--text-secondary);
+            cursor: pointer; transition: all 0.15s; user-select: none;
+            white-space: nowrap;
+        }
+        .insp-anim-btn:hover { border-color: var(--primary); color: #fff; background: rgba(99,102,241,0.1); }
+        .insp-anim-btn.active { border-color: var(--primary); color: #fff; background: rgba(99,102,241,0.25); box-shadow: 0 0 6px rgba(99,102,241,0.3); }
+        .insp-anim-btn i { font-size: 0.55rem; }
+        .insp-anim-btn-play {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; padding: 0;
+            border: 1px solid var(--border); border-radius: 4px;
+            background: var(--bg-dark); color: var(--text-secondary);
+            cursor: pointer; transition: all 0.15s; font-size: 0.6rem;
+        }
+        .insp-anim-btn-play:hover { border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,0.1); }
+        .insp-anim-btn-stop {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; padding: 0;
+            border: 1px solid var(--border); border-radius: 4px;
+            background: var(--bg-dark); color: var(--text-secondary);
+            cursor: pointer; transition: all 0.15s; font-size: 0.6rem;
+        }
+        .insp-anim-btn-stop:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.1); }
+        #insp-anim-preview.expanded #insp-anim-canvas-wrap { height: 260px; }
 
         /* Viewport */
         .engine-viewport-pane { position: relative; background: #0a0a1a; overflow: hidden; }
@@ -1103,6 +1134,29 @@
                         <div class="insp-section-header"><i class="fas fa-sliders-h"></i> Inspector</div>
                         <div id="eng-inspector" style="flex:1;overflow-y:auto;padding:8px;">
                             <div style="color:var(--text-secondary);font-size:0.8rem;text-align:center;padding:20px;">Select an object</div>
+                        </div>
+                        <!-- Animation Preview Scene (bottom of inspector) -->
+                        <div id="insp-anim-preview" style="display:none;flex-shrink:0;border-top:1px solid var(--border);background:var(--bg-dark);">
+                            <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);">
+                                <i class="fas fa-running" style="font-size:0.65rem;color:var(--primary);"></i>
+                                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">Animation Preview</span>
+                                <div style="flex:1"></div>
+                                <button id="insp-anim-expand-btn" onclick="EngineApp._inspAnimToggleExpand()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.65rem;padding:2px 4px;" title="Развернуть/Свернуть"><i class="fas fa-expand-alt"></i></button>
+                            </div>
+                            <div id="insp-anim-canvas-wrap" style="position:relative;width:100%;height:160px;background:#0a0a1a;overflow:hidden;">
+                                <canvas id="insp-anim-canvas" style="width:100%;height:100%;display:block;"></canvas>
+                                <div id="insp-anim-clip-label" style="position:absolute;bottom:4px;left:8px;font-size:0.6rem;color:rgba(255,255,255,0.6);font-family:'JetBrains Mono',monospace;pointer-events:none;">None</div>
+                            </div>
+                            <div id="insp-anim-controls" style="padding:4px 6px;display:flex;flex-wrap:wrap;gap:3px;background:var(--bg-card);">
+                            </div>
+                            <div id="insp-anim-to-controller" style="display:none;padding:3px 6px;background:var(--bg-card);border-top:1px solid var(--border);">
+                                <div style="display:flex;align-items:center;gap:4px;">
+                                    <i class="fas fa-project-diagram" style="font-size:0.55rem;color:#f59e0b;"></i>
+                                    <span style="font-size:0.6rem;color:var(--text-muted);">To Animator:</span>
+                                    <select id="insp-anim-ctrl-select" class="insp-select" style="flex:1;font-size:0.6rem;padding:1px 4px;"></select>
+                                    <button id="insp-anim-add-state-btn" onclick="EngineApp._inspAnimAddToController()" style="padding:2px 6px;font-size:0.6rem;background:#4f46e5;border:none;color:#fff;border-radius:3px;cursor:pointer;" title="Добавить анимацию как состояние в Animator Controller"><i class="fas fa-plus"></i> Add</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -5315,6 +5369,8 @@ var SashaEngineAPI = (function() {
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
+        // Resize inspector animation preview
+        if (typeof _inspPreviewResize === 'function') _inspPreviewResize();
     }
 
     function getUniqueName(prefix) {
@@ -8264,6 +8320,7 @@ var EngineApp = (function() {
         if (!container) return;
         var selected = SashaEngineAPI.getSelectedObject();
         if (!selected) {
+            _inspPreviewHide();
             var sc = SashaEngineAPI.getScene();
             var bgCol = '#0a0a1a';
             if (sc && sc.background) { bgCol = '#' + sc.background.getHexString(); }
@@ -8383,7 +8440,14 @@ var EngineApp = (function() {
                     }
                 },50);
             })(selected);
+            // Show animation preview for model with skeletal animations
+            if (_skeletonData[selected] && _skeletonData[selected].clips && _skeletonData[selected].clips.length > 0) {
+                setTimeout(function() { _inspPreviewShow(selected); }, 60);
+            } else {
+                _inspPreviewHide();
+            }
         } else {
+            _inspPreviewHide();
             html += iSection('fa-arrows-alt', 'Transform', iVec3('Position', obj.position, 'setTransform', 'p', selected)+iVec3('Rotation', obj.rotation, 'setTransform', 'r', selected)+iVec3('Scale', obj.scale, 'setTransform', 's', selected));
             if (obj.isMesh || obj.isLight === undefined) {
                 var mbody = iRow('Type', '<span style="font-size:0.72rem;color:#fff;">'+type+'</span>');
@@ -13012,6 +13076,418 @@ var EngineApp = (function() {
         for (var key in _skeletonData) {
             if (_skeletonData[key].mixer) _skeletonData[key].mixer.update(dt);
         }
+        // Update inspector animation preview
+        _inspPreviewUpdate();
+    }
+
+
+    // ============ INSPECTOR ANIMATION PREVIEW SCENE ============
+    var _inspPreviewScene = null;
+    var _inspPreviewCamera = null;
+    var _inspPreviewRenderer = null;
+    var _inspPreviewMixer = null;
+    var _inspPreviewClock = new THREE.Clock();
+    var _inspPreviewModel = null;       // cloned model in preview scene
+    var _inspPreviewObjName = null;     // name of the source object
+    var _inspPreviewCurrentClip = null; // name of currently playing clip
+    var _inspPreviewActions = [];       // current actions
+    var _inspPreviewAnimNames = [];     // available animation names from the model
+    var _inspPreviewExpanded = false;
+
+    function _inspPreviewInit() {
+        if (_inspPreviewScene) return;
+        _inspPreviewScene = new THREE.Scene();
+        _inspPreviewScene.background = new THREE.Color(0x0d0d20);
+        // Ambient + directional light
+        _inspPreviewScene.add(new THREE.AmbientLight(0x404060, 0.8));
+        var dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dLight.position.set(3, 5, 3);
+        _inspPreviewScene.add(dLight);
+        // Grid helper
+        _inspPreviewScene.add(new THREE.GridHelper(4, 8, 0x6366f1, 0x1a1a2e));
+        // Camera
+        _inspPreviewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+        _inspPreviewCamera.position.set(1.5, 1.2, 1.5);
+        _inspPreviewCamera.lookAt(0, 0.8, 0);
+    }
+
+    function _inspPreviewGetRenderer() {
+        _inspPreviewInit();
+        var canvas = document.getElementById('insp-anim-canvas');
+        if (!canvas) return null;
+        if (!_inspPreviewRenderer) {
+            _inspPreviewRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+            _inspPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            var wrap = document.getElementById('insp-anim-canvas-wrap');
+            var w = wrap ? wrap.clientWidth : 260;
+            var h = wrap ? wrap.clientHeight : 160;
+            _inspPreviewRenderer.setSize(w, h);
+        }
+        return _inspPreviewRenderer;
+    }
+
+    function _inspPreviewResize() {
+        var canvas = document.getElementById('insp-anim-canvas');
+        var wrap = document.getElementById('insp-anim-canvas-wrap');
+        if (!canvas || !wrap || !_inspPreviewRenderer) return;
+        var w = wrap.clientWidth;
+        var h = wrap.clientHeight;
+        if (w > 0 && h > 0) {
+            _inspPreviewRenderer.setSize(w, h);
+            _inspPreviewCamera.aspect = w / h;
+            _inspPreviewCamera.updateProjectionMatrix();
+        }
+    }
+
+    function _inspPreviewShow(objName) {
+        var panel = document.getElementById('insp-anim-preview');
+        if (!panel) return;
+        _inspPreviewInit();
+        // If same object, just refresh
+        if (_inspPreviewObjName === objName && panel.style.display !== 'none') {
+            _inspPreviewRefreshButtons(objName);
+            _inspPreviewRefreshControllerSelect();
+            return;
+        }
+        _inspPreviewObjName = objName;
+        // Remove old preview model from preview scene
+        if (_inspPreviewModel) {
+            _inspPreviewScene.remove(_inspPreviewModel);
+            _inspPreviewModel = null;
+        }
+        // Stop old actions
+        _inspPreviewStopAnim();
+        _inspPreviewMixer = null;
+        _inspPreviewCurrentClip = null;
+        _inspPreviewAnimNames = [];
+
+        var srcObj = SashaEngineAPI.getObject(objName);
+        if (!srcObj) { panel.style.display = 'none'; return; }
+
+        var sd = _skeletonData[objName];
+
+        // Try to use THREE.SkeletonUtils.clone if available (proper skeleton cloning)
+        var cloned = null;
+        if (typeof THREE.SkeletonUtils !== 'undefined' && THREE.SkeletonUtils.clone) {
+            try {
+                cloned = THREE.SkeletonUtils.clone(srcObj);
+            } catch(e) {
+                cloned = null;
+            }
+        }
+        if (!cloned) {
+            // Fallback: use Object3D.clone (works for simple models, may not for complex skeletons)
+            try {
+                cloned = srcObj.clone(true);
+            } catch(e) {
+                cloned = null;
+            }
+        }
+
+        if (!cloned) {
+            // Last resort: render the original model in the preview scene
+            // by temporarily moving it (not ideal but works)
+            cloned = srcObj;
+        }
+
+        // Reset transform for preview
+        cloned.position.set(0, 0, 0);
+        cloned.rotation.set(0, 0, 0);
+
+        _inspPreviewModel = cloned;
+
+        if (sd && sd.clips && sd.clips.length > 0) {
+            // Create a SEPARATE AnimationMixer for the preview scene
+            // This is key — it allows independent animation playback in preview
+            _inspPreviewMixer = new THREE.AnimationMixer(cloned);
+            _inspPreviewAnimNames = [];
+            for (var i = 0; i < sd.clips.length; i++) {
+                var cn = sd.clips[i].name || ('Anim_' + i);
+                _inspPreviewAnimNames.push(cn);
+            }
+        }
+
+        _inspPreviewScene.add(_inspPreviewModel);
+        _inspPreviewAutoFrame();
+
+        panel.style.display = '';
+        _inspPreviewRefreshButtons(objName);
+        _inspPreviewRefreshControllerSelect();
+        _inspPreviewResize();
+        _inspPreviewGetRenderer();
+    }
+
+    function _inspPreviewHide() {
+        var panel = document.getElementById('insp-anim-preview');
+        if (panel) panel.style.display = 'none';
+        _inspPreviewStopAnim();
+        _inspPreviewObjName = null;
+        _inspPreviewCurrentClip = null;
+    }
+
+    function _inspPreviewAutoFrame() {
+        if (!_inspPreviewModel || !_inspPreviewCamera) return;
+        var box = new THREE.Box3().setFromObject(_inspPreviewModel);
+        var center = box.getCenter(new THREE.Vector3());
+        var size = box.getSize(new THREE.Vector3());
+        var maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim < 0.01) maxDim = 1;
+        var dist = maxDim * 2.0;
+        _inspPreviewCamera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist * 0.6);
+        _inspPreviewCamera.lookAt(center.x, center.y, center.z);
+    }
+
+    function _inspPreviewPlayClip(clipName) {
+        if (!_inspPreviewMixer || !_inspPreviewObjName) return;
+        var sd = _skeletonData[_inspPreviewObjName];
+        if (!sd || !sd.clips) return;
+
+        // Find the clip
+        var clip = null;
+        for (var i = 0; i < sd.clips.length; i++) {
+            if (sd.clips[i].name === clipName) { clip = sd.clips[i]; break; }
+        }
+        if (!clip) return;
+
+        // Stop all current preview actions
+        for (var j = 0; j < _inspPreviewActions.length; j++) {
+            _inspPreviewActions[j].stop();
+        }
+        _inspPreviewActions = [];
+
+        // Play new action
+        var action = _inspPreviewMixer.clipAction(clip);
+        action.reset().setLoop(THREE.LoopRepeat, 1).play();
+        _inspPreviewActions.push(action);
+        _inspPreviewCurrentClip = clipName;
+
+        // Update UI label
+        var label = document.getElementById('insp-anim-clip-label');
+        if (label) label.textContent = clipName;
+
+        // Update button active states
+        var btns = document.querySelectorAll('#insp-anim-controls .insp-anim-btn');
+        for (var k = 0; k < btns.length; k++) {
+            var btn = btns[k];
+            if (btn.getAttribute('data-clip') === clipName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    }
+
+    function _inspPreviewStopAnim() {
+        for (var j = 0; j < _inspPreviewActions.length; j++) {
+            _inspPreviewActions[j].stop();
+        }
+        _inspPreviewActions = [];
+        _inspPreviewCurrentClip = null;
+        var label = document.getElementById('insp-anim-clip-label');
+        if (label) label.textContent = 'None';
+        var btns = document.querySelectorAll('#insp-anim-controls .insp-anim-btn');
+        for (var k = 0; k < btns.length; k++) btns[k].classList.remove('active');
+    }
+
+    function _inspPreviewRefreshButtons(objName) {
+        var controls = document.getElementById('insp-anim-controls');
+        if (!controls) return;
+        controls.innerHTML = '';
+
+        // Play/Stop buttons
+        var playBtn = document.createElement('button');
+        playBtn.className = 'insp-anim-btn-play';
+        playBtn.title = 'Play';
+        playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        playBtn.onclick = function() {
+            if (_inspPreviewCurrentClip) {
+                _inspPreviewPlayClip(_inspPreviewCurrentClip);
+            } else if (_inspPreviewAnimNames.length > 0) {
+                _inspPreviewPlayClip(_inspPreviewAnimNames[0]);
+            }
+        };
+        controls.appendChild(playBtn);
+
+        var stopBtn = document.createElement('button');
+        stopBtn.className = 'insp-anim-btn-stop';
+        stopBtn.title = 'Stop';
+        stopBtn.innerHTML = '<i class="fas fa-stop"></i>';
+        stopBtn.onclick = function() { _inspPreviewStopAnim(); };
+        controls.appendChild(stopBtn);
+
+        // Separator
+        var sep = document.createElement('div');
+        sep.style.cssText = 'width:1px;height:18px;background:var(--border);margin:0 2px;';
+        controls.appendChild(sep);
+
+        // Animation clip buttons
+        var sd = _skeletonData[objName];
+        if (!sd || !sd.clips || sd.clips.length === 0) {
+            var noAnim = document.createElement('span');
+            noAnim.style.cssText = 'font-size:0.6rem;color:var(--text-muted);padding:2px 4px;';
+            noAnim.textContent = 'No animations';
+            controls.appendChild(noAnim);
+            return;
+        }
+
+        // Icon mapping for common animation names
+        var animIcons = {
+            'idle': 'fa-person', 'stand': 'fa-person', 'breathing': 'fa-lungs',
+            'walk': 'fa-person-walking', 'run': 'fa-person-running', 'sprint': 'fa-person-running',
+            'jump': 'fa-arrow-up', 'fall': 'fa-arrow-down', 'land': 'fa-shoe-prints',
+            'attack': 'fa-hand-fist', 'hit': 'fa-burst', 'melee': 'fa-hand-fist',
+            'shoot': 'fa-crosshairs', 'cast': 'fa-wand-sparkles', 'fire': 'fa-fire',
+            'die': 'fa-skull', 'death': 'fa-skull', 'dead': 'fa-skull',
+            'hurt': 'fa-heart-crack', 'damage': 'fa-bolt',
+            'dance': 'fa-music', 'emote': 'fa-face-smile',
+            'sit': 'fa-chair', 'sleep': 'fa-moon', 'lay': 'fa-bed',
+            'swim': 'fa-water', 'fly': 'fa-dove', 'climb': 'fa-mountain',
+            'crouch': 'fa-person', 'sneak': 'fa-eye-slash', 'roll': 'fa-rotate'
+        };
+
+        for (var i = 0; i < sd.clips.length; i++) {
+            var clipName = sd.clips[i].name || ('Anim_' + i);
+            var clipLower = clipName.toLowerCase();
+
+            // Find matching icon
+            var icon = 'fa-film';
+            for (var key in animIcons) {
+                if (clipLower.indexOf(key) !== -1) { icon = animIcons[key]; break; }
+            }
+
+            var btn = document.createElement('button');
+            btn.className = 'insp-anim-btn';
+            btn.setAttribute('data-clip', clipName);
+            btn.title = clipName;
+            btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + clipName;
+
+            // Use closure to capture clipName
+            (function(cn) {
+                btn.onclick = function() {
+                    _inspPreviewPlayClip(cn);
+                };
+            })(clipName);
+
+            if (_inspPreviewCurrentClip === clipName) btn.classList.add('active');
+            controls.appendChild(btn);
+        }
+    }
+
+    function _inspPreviewRefreshControllerSelect() {
+        var sel = document.getElementById('insp-anim-ctrl-select');
+        var panel = document.getElementById('insp-anim-to-controller');
+        if (!sel || !panel) return;
+
+        // Get all animator controllers
+        var ctrls = SashaEngineAPI.getAnimatorControllers ? SashaEngineAPI.getAnimatorControllers() : {};
+        var hasControllers = false;
+        sel.innerHTML = '<option value="">-- Select Controller --</option>';
+        for (var id in ctrls) {
+            if (ctrls.hasOwnProperty(id)) {
+                var opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = ctrls[id].name || id;
+                sel.appendChild(opt);
+                hasControllers = true;
+            }
+        }
+        panel.style.display = hasControllers ? '' : 'none';
+    }
+
+    function _inspAnimToggleExpand() {
+        _inspPreviewExpanded = !_inspPreviewExpanded;
+        var preview = document.getElementById('insp-anim-preview');
+        if (preview) {
+            if (_inspPreviewExpanded) {
+                preview.classList.add('expanded');
+            } else {
+                preview.classList.remove('expanded');
+            }
+        }
+        setTimeout(_inspPreviewResize, 50);
+    }
+
+    function _inspAnimAddToController() {
+        var sel = document.getElementById('insp-anim-ctrl-select');
+        if (!sel) return;
+        var ctrlId = sel.value;
+        if (!ctrlId) { log('Select an Animator Controller first', 'warn'); return; }
+        var clipName = _inspPreviewCurrentClip;
+        if (!clipName) { log('Select an animation clip first (click a button above)', 'warn'); return; }
+
+        // Find or create clip in SashaEngineAPI
+        var sd = _skeletonData[_inspPreviewObjName];
+        if (!sd) return;
+        var clipId = null;
+        // Search for existing clip asset by name
+        var allClips = SashaEngineAPI.getAnimClips ? SashaEngineAPI.getAnimClips() : {};
+        for (var cid in allClips) {
+            if (allClips[cid] && allClips[cid].name === clipName) { clipId = cid; break; }
+        }
+        if (!clipId) {
+            // Create a new clip reference
+            clipId = 'clip_glb_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+            if (SashaEngineAPI.createAnimationClip) SashaEngineAPI.createAnimationClip(clipId, clipName);
+        }
+
+        // Add state to controller
+        var stateId = 'state_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+        if (SashaEngineAPI.addStateToController) {
+            SashaEngineAPI.addStateToController(ctrlId, clipName, clipId);
+        }
+
+        // Get controller for position
+        var ctrl = SashaEngineAPI.getAnimatorController ? SashaEngineAPI.getAnimatorController(ctrlId) : null;
+        if (ctrl && ctrl.states) {
+            var lastState = ctrl.states[ctrl.states.length - 1];
+            if (lastState) {
+                // Position in a grid layout
+                var idx = ctrl.states.length - 1;
+                lastState.position = { x: 200 + (idx % 3) * 180, y: 80 + Math.floor(idx / 3) * 120 };
+            }
+        }
+
+        log('Added state "' + clipName + '" to controller "' + (ctrl ? ctrl.name : ctrlId) + '"', 'result');
+
+        // Also add as asset if SashaAssetManager exists
+        if (typeof SashaAssetManager !== 'undefined' && SashaAssetManager.addAsset) {
+            // Check if asset already exists
+            var existingAssets = SashaAssetManager.getAllAssets ? SashaAssetManager.getAllAssets() : {};
+            var exists = false;
+            for (var aid in existingAssets) {
+                if (existingAssets[aid] && existingAssets[aid].name === clipName && existingAssets[aid].type === 'animation') {
+                    exists = true; break;
+                }
+            }
+            if (!exists && typeof _assetCurrentFolder !== 'undefined') {
+                SashaAssetManager.addAsset('animation', clipName, _assetCurrentFolder, { clipId: clipId });
+            }
+        }
+    }
+
+    function _inspPreviewUpdate() {
+        if (!_inspPreviewScene || !_inspPreviewCamera) return;
+        var panel = document.getElementById('insp-anim-preview');
+        if (!panel || panel.style.display === 'none') {
+            // Drain clock to prevent accumulation
+            if (_inspPreviewClock) _inspPreviewClock.getDelta();
+            return;
+        }
+        // Lazy-init renderer when panel becomes visible
+        if (!_inspPreviewRenderer) {
+            _inspPreviewGetRenderer();
+            if (!_inspPreviewRenderer) return;
+            _inspPreviewResize();
+        }
+        // Update mixer
+        if (_inspPreviewMixer) {
+            var dt = _inspPreviewClock.getDelta();
+            if (dt > 0.1) dt = 0.016; // Clamp to prevent jumps after tab switch
+            _inspPreviewMixer.update(dt);
+        } else {
+            if (_inspPreviewClock) _inspPreviewClock.getDelta();
+        }
+        _inspPreviewRenderer.render(_inspPreviewScene, _inspPreviewCamera);
     }
 
     // ============ MISSING FUNCTIONS (stubs so no ReferenceError) ============
@@ -13180,6 +13656,8 @@ var EngineApp = (function() {
         acToggleFullscreen: acToggleFullscreen,
         acDeleteClip: acDeleteClip, acDeleteUnusedClips: acDeleteUnusedClips, acRefreshClips: acRefreshClips,
         switchViewTab: switchViewTab,
+        _inspAnimToggleExpand: _inspAnimToggleExpand,
+        _inspAnimAddToController: _inspAnimAddToController,
         isInitialized: function() { return initialized; }
     };
 })();
@@ -13241,7 +13719,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
