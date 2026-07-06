@@ -5256,8 +5256,8 @@ var SashaEngineAPI = (function() {
                     console.log('[Engine] SashaAI.glb loaded (no animations)');
                 }
                 
-                // Refresh hierarchy and inspector
-                refreshHierarchy();
+                // Refresh hierarchy and inspector (EngineApp may not exist yet during first load)
+                if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
                 selectObject(objName);
             },
             function(progress) {
@@ -5847,7 +5847,7 @@ var SashaEngineAPI = (function() {
             }
             if (!proxyUrl) {
                 // Generic CORS proxy fallback
-                proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
                 log('[loadModel] Generic CORS-прокси: ' + proxyUrl, 'info');
             }
             _loadModelAttempt(proxyUrl, x, y, z, scale, targetName, true, function(success2, errMsg2) {
