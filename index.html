@@ -4978,6 +4978,24 @@ var SashaWebLLM = (function() {
 // ============ SashaEngineAPI — 3D Engine for Editor ============
 // ================================================================
 var SashaEngineAPI = (function() {
+    // === SKELETAL ANIMATION DATA — declared at top for hoisting ===
+    // Must be available before any function that uses it (animate, loadSashaAIOnMainScene, etc)
+    var _skeletonData = {};
+    
+    // === updateSkeletonMixers — MUST be at top for hoisting ===
+    // Updates all skeletal animation mixers + inspector preview
+    function updateSkeletonMixers(dt) {
+        for (var key in _skeletonData) {
+            if (_skeletonData[key] && _skeletonData[key].mixer) {
+                _skeletonData[key].mixer.update(dt);
+            }
+        }
+        // Update inspector animation preview (if preview is active)
+        if (typeof _inspPreviewUpdate === 'function') {
+            try { _inspPreviewUpdate(); } catch(e) {}
+        }
+    }
+    
     var scene, camera, renderer, controls;
     var transformCtrl = null;
     var _transformDragging = false;
@@ -7346,22 +7364,10 @@ var SashaEngineAPI = (function() {
         }
     }
 
-    // ============ SKELETAL ANIMATION MIXERS (moved here for hoisting) ============
-    // Must be defined before animate() which calls it.
-    // This also ensures _skeletonData is declared early (it's also declared at line ~13109).
-    var _skeletonData = _skeletonData || {}; // Keep existing if already initialized
-
-    function updateSkeletonMixers(dt) {
-        for (var key in _skeletonData) {
-            if (_skeletonData[key] && _skeletonData[key].mixer) {
-                _skeletonData[key].mixer.update(dt);
-            }
-        }
-        // Update inspector animation preview (if preview is active)
-        if (typeof _inspPreviewUpdate === 'function') {
-            try { _inspPreviewUpdate(); } catch(e) {}
-        }
-    }
+    // ============ SKELETAL ANIMATION MIXERS ============
+    // _skeletonData and updateSkeletonMixers are now declared at TOP of SashaEngineAPI
+    // (lines 4983 and 4987) for proper hoisting throughout the IIFE.
+    // The duplicate definitions here have been removed.
 
     function animate() {
         animFrameId = requestAnimationFrame(animate);
