@@ -1146,6 +1146,10 @@
                             </div>
                             <div id="insp-anim-canvas-wrap" style="position:relative;width:100%;height:220px;background:#0a0a1a;overflow:hidden;">
                                 <canvas id="insp-anim-canvas" style="width:100%;height:100%;display:block;"></canvas>
+                                <!-- Debug indicator: shows "PREVIEW READY" when the scene is initialized.
+                                     Helps diagnose "preview not visible" issues — if you see this green
+                                     badge, the WebGL canvas IS rendering. -->
+                                <div id="insp-anim-ready-badge" style="position:absolute;top:4px;left:8px;font-size:0.55rem;color:#22c55e;background:rgba(34,197,94,0.2);padding:1px 6px;border-radius:3px;font-family:'JetBrains Mono',monospace;pointer-events:none;display:none;"><i class="fas fa-check-circle"></i> PREVIEW READY</div>
                                 <div id="insp-anim-clip-label" style="position:absolute;bottom:4px;left:8px;font-size:0.6rem;color:rgba(255,255,255,0.6);font-family:'JetBrains Mono',monospace;pointer-events:none;">None</div>
                                 <div id="insp-anim-hint" style="position:absolute;top:4px;right:8px;font-size:0.55rem;color:rgba(255,255,255,0.35);font-family:'JetBrains Mono',monospace;pointer-events:none;">drag — вращать · колесо — зум</div>
                             </div>
@@ -3050,19 +3054,65 @@ var SashaScene3D = (function() {
     }
 
     function loadAvatar() {
-        // SashaAI.glb is OPTIONAL — placeholder avatar is always shown.
-        // We deliberately do NOT attempt to fetch('SashaAI.glb') here, because
-        // when the page is opened from a custom host (e.g. "GameDevAlex/"),
-        // the relative URL resolves to an HTTPS request that fails with
-        // ERR_SSL_PROTOCOL_ERROR. The placeholder avatar is good enough for
-        // the AI assistant scene — the 3D engine itself is independent.
-        createPlaceholder();
+        // Try to load SashaAI.glb from the same directory as this HTML file.
+        // If it fails (file missing, CORS, SSL), fall back to placeholder.
+        // The placeholder is kept as a backup — not as the primary.
+        var loader = new THREE.GLTFLoader();
+        var glbPath = 'SashaAI.glb';
+        
+        // Try loading with proper error handling
+        loader.load(glbPath, 
+            function(gltf) {
+                // SUCCESS — add the real GLB model to the scene
+                var model = gltf.scene;
+                model.name = 'SashaAI_avatar';
+                model.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                // Center and position the avatar
+                var box = new THREE.Box3().setFromObject(model);
+                var center = box.getCenter(new THREE.Vector3());
+                model.position.sub(center);
+                model.position.y += 1.0; // Lift so feet are near ground
+                
+                scene.add(model);
+                console.log('[Avatar] SashaAI.glb loaded successfully');
+                
+                // If there are animations, set up a mixer
+                if (gltf.animations && gltf.animations.length > 0) {
+                    var mixer = new THREE.AnimationMixer(model);
+                    // Play idle animation if available
+                    for (var i = 0; i < gltf.animations.length; i++) {
+                        var clip = gltf.animations[i];
+                        if (clip.name.toLowerCase().indexOf('idle') !== -1 || 
+                            clip.name.toLowerCase().indexOf('breath') !== -1 ||
+                            i === 0) {
+                            mixer.clipAction(clip).play();
+                            console.log('[Avatar] Playing animation:', clip.name);
+                            break;
+                        }
+                    }
+                    // Store mixer for later update
+                    _avatarMixer = mixer;
+                }
+            },
+            function(progress) {
+                // Progress callback — silent
+            },
+            function(error) {
+                // ERROR — fallback to placeholder
+                console.warn('[Avatar] SashaAI.glb not found or load failed, using placeholder');
+                createPlaceholder();
+            }
+        );
     }
 
-    function actuallyLoadAvatar(url) {
-        // Reserved for future use — currently not called.
-        createPlaceholder();
-    }
+    // Mixer for avatar animations (updated in animate loop)
+    var _avatarMixer = null;
 
     function createPlaceholder() {
         // Placeholder — ждет загрузки SashaAI.glb
@@ -3251,12 +3301,11 @@ var SashaScene3D = (function() {
         if (!particles) return;
 
         var t = Date.now() * 0.001;
+        var delta = clock ? clock.getDelta() : 0.016;
 
-        // Update animation mixer (FBX animations)
-        if (mixer) {
-            var delta = clock ? clock.getDelta() : 0.016;
-            mixer.update(delta);
-        }
+        // Update animation mixers (FBX/GLB animations)
+        if (mixer) mixer.update(delta);
+        if (_avatarMixer) _avatarMixer.update(delta);
 
         // Avatar animation based on agent state
         if (avatar && avatarLoaded) {
@@ -5131,6 +5180,76 @@ var SashaEngineAPI = (function() {
     var scriptStarted = {};
     var savedConstraintPositions = {};
 
+    // === Load SashaAI.glb onto the main engine scene ===
+    // User explicitly requested: "загрузить модельку SashaAI.glb на сцену не в движке а на главное сцене"
+    // This function loads the model into the main 3D editor viewport (engine-canvas),
+    // registering it properly in the engine's object system so it appears in hierarchy.
+    function loadSashaAIOnMainScene() {
+        var loader = new THREE.GLTFLoader();
+        var glbPath = 'SashaAI.glb';
+        
+        loader.load(glbPath,
+            function(gltf) {
+                // SUCCESS — add to main engine scene
+                var model = gltf.scene;
+                var objName = 'SashaAI';
+                
+                // Ensure unique name
+                if (objects[objName]) {
+                    objName = objName + '_' + (objCounter++);
+                }
+                model.name = objName;
+                
+                // Setup shadows
+                model.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                // Center the model
+                var box = new THREE.Box3().setFromObject(model);
+                var center = box.getCenter(new THREE.Vector3());
+                model.position.sub(center);
+                model.position.y += 1.0; // Lift so feet near ground
+                
+                // Add to scene and register in engine
+                scene.add(model);
+                objects[objName] = model;
+                objectTypes[objName] = 'model';
+                objectRenames[objName] = objName;
+                
+                // Register animations in _skeletonData (if any)
+                if (gltf.animations && gltf.animations.length > 0) {
+                    var mixer = new THREE.AnimationMixer(model);
+                    _skeletonData[objName] = {
+                        mixer: mixer,
+                        clips: gltf.animations.slice(),
+                        actions: []
+                    };
+                    // Play first animation as preview
+                    mixer.clipAction(gltf.animations[0]).play();
+                    console.log('[Engine] SashaAI.glb loaded with', gltf.animations.length, 'animations');
+                } else {
+                    console.log('[Engine] SashaAI.glb loaded (no animations)');
+                }
+                
+                // Refresh hierarchy and inspector
+                refreshHierarchy();
+                selectObject(objName);
+            },
+            function(progress) {
+                // Progress — silent
+            },
+            function(error) {
+                // ERROR — file not found or load failed
+                console.warn('[Engine] SashaAI.glb not found on main scene, skipping. Error:', error);
+                // Don't create placeholder on main scene — user can import manually
+            }
+        );
+    }
+
     function init() {
         canvas = document.getElementById('engine-canvas');
         if (!canvas) return;
@@ -5235,6 +5354,11 @@ var SashaEngineAPI = (function() {
         var grid = new THREE.GridHelper(20, 20, 0x6366f1, 0x1a1a2e);
         grid.name = '__builtin_grid';
         scene.add(grid);
+
+        // === Load SashaAI.glb onto the MAIN ENGINE scene ===
+        // This is what the user explicitly requested: the model should appear
+        // in the main 3D engine viewport, not just in the chat avatar canvas.
+        loadSashaAIOnMainScene();
 
         // Click-to-select via raycasting
         canvas.addEventListener('pointerdown', onPointerDown);
@@ -7219,6 +7343,23 @@ var SashaEngineAPI = (function() {
         if (!animatorStates[objectName] || !animatorStates[objectName].params[paramName]) return;
         if (animatorStates[objectName].params[paramName].type === 'trigger') {
             animatorStates[objectName].params[paramName].value = true;
+        }
+    }
+
+    // ============ SKELETAL ANIMATION MIXERS (moved here for hoisting) ============
+    // Must be defined before animate() which calls it.
+    // This also ensures _skeletonData is declared early (it's also declared at line ~13109).
+    var _skeletonData = _skeletonData || {}; // Keep existing if already initialized
+
+    function updateSkeletonMixers(dt) {
+        for (var key in _skeletonData) {
+            if (_skeletonData[key] && _skeletonData[key].mixer) {
+                _skeletonData[key].mixer.update(dt);
+            }
+        }
+        // Update inspector animation preview (if preview is active)
+        if (typeof _inspPreviewUpdate === 'function') {
+            try { _inspPreviewUpdate(); } catch(e) {}
         }
     }
 
@@ -13057,7 +13198,9 @@ var EngineApp = (function() {
     }
 
     // ============ SKELETAL ANIMATION SUPPORT ============
-    var _skeletonData = {};
+    // _skeletonData is now declared earlier (around line 7352) to ensure it's available
+    // before animate() and other functions that use it. Do NOT re-declare here.
+    // var _skeletonData = {};  // REMOVED — declared earlier for hoisting
 
     // Deep animation discovery — finds AnimationClips anywhere on the object tree.
     // Looks in: _skeletonData, srcObj.userData.animations, srcObj.animations,
@@ -13394,13 +13537,8 @@ var EngineApp = (function() {
         if (props && !props.classList.contains('open')) props.classList.add('open');
     }
 
-    function updateSkeletonMixers(dt) {
-        for (var key in _skeletonData) {
-            if (_skeletonData[key].mixer) _skeletonData[key].mixer.update(dt);
-        }
-        // Update inspector animation preview
-        _inspPreviewUpdate();
-    }
+    // updateSkeletonMixers is now defined earlier (around line 7354) to ensure proper hoisting.
+    // The duplicate definition here has been removed.
 
 
     // ============ INSPECTOR ANIMATION PREVIEW SCENE ============
@@ -13557,14 +13695,18 @@ var EngineApp = (function() {
         if (!panel) { console.warn('[Preview] Panel #insp-anim-preview not found in DOM'); return; }
         _inspPreviewInit();
         console.log('[Preview] _inspPreviewShow called for', objName);
-        // If same object, just refresh
+        // If same object, just refresh (but ensure render!)
         if (_inspPreviewObjName === objName && panel.style.display !== 'none') {
             _inspPreviewRefreshButtons(objName);
             _inspPreviewRefreshControllerSelect();
             panel.style.display = '';
-            // Make sure renderer is initialized
+            // Make sure renderer is initialized and sized
             _inspPreviewGetRenderer();
             _inspPreviewResize();
+            // Force immediate render — animate loop might not have called yet
+            if (_inspPreviewRenderer && _inspPreviewScene && _inspPreviewCamera && _inspPreviewModel) {
+                _inspPreviewRenderer.render(_inspPreviewScene, _inspPreviewCamera);
+            }
             return;
         }
         _inspPreviewObjName = objName;
@@ -13740,8 +13882,24 @@ var EngineApp = (function() {
         console.log('[Preview] Panel shown, model added to preview scene');
         _inspPreviewRefreshButtons(objName);
         _inspPreviewRefreshControllerSelect();
-        _inspPreviewResize();
+        // IMPORTANT: getRenderer() must be called BEFORE resize() because
+        // resize() checks !_inspPreviewRenderer and returns early. This was
+        // causing the preview canvas to stay at wrong size on first show.
         _inspPreviewGetRenderer();
+        _inspPreviewResize();
+
+        // Show the "PREVIEW READY" green badge — helps user see the preview is
+        // actually rendering. If you see this badge, the WebGL context is alive.
+        var readyBadge = document.getElementById('insp-anim-ready-badge');
+        if (readyBadge) readyBadge.style.display = '';
+
+        // Force an immediate first render — this ensures the preview canvas
+        // shows something right away, even if the animate loop hasn't ticked
+        // yet (e.g. user has old cached code or the page just loaded).
+        if (_inspPreviewRenderer && _inspPreviewScene && _inspPreviewCamera) {
+            _inspPreviewRenderer.render(_inspPreviewScene, _inspPreviewCamera);
+            console.log('[Preview] First render done — canvas should now show the model');
+        }
 
         // Auto-play the first clip IMMEDIATELY (no setTimeout) so the user
         // sees motion as soon as the preview opens. setTimeout-based playback
@@ -13757,6 +13915,9 @@ var EngineApp = (function() {
     function _inspPreviewHide() {
         var panel = document.getElementById('insp-anim-preview');
         if (panel) panel.style.display = 'none';
+        // Hide the "PREVIEW READY" badge
+        var readyBadge = document.getElementById('insp-anim-ready-badge');
+        if (readyBadge) readyBadge.style.display = 'none';
         _inspPreviewStopAnim();
         _inspPreviewObjName = null;
         _inspPreviewCurrentClip = null;
@@ -14907,6 +15068,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
