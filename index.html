@@ -8115,7 +8115,12 @@ var EngineApp = (function() {
 
             var selClass = (name === selected) ? ' selected' : '';
             var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
-            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "'") + '\')" ondblclick="EngineApp.focusOnObject(\'' + name.replace(/'/g, "'") + '\')">' +
+            // Double-click: for models → open Prefab Mode (isolated editor);
+            // for everything else → focus the main camera on the object.
+            var dblClickHandler = (type === 'model')
+                ? 'EngineApp.openPrefabMode(\'' + name.replace(/'/g, "'") + '\')'
+                : 'EngineApp.focusOnObject(\'' + name.replace(/'/g, "'") + '\')';
+            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "'") + '\')" ondblclick="' + dblClickHandler + '">' +
                 '<span class="hier-icon"><i class="fas ' + ico + '"></i></span>' +
                 '<span class="hier-name">' + name + '</span>' +
                 '<button class="hier-vis" onclick="event.stopPropagation(); EngineApp.toggleVis(\'' + name.replace(/'/g, "'") + '\')"><i class="fas ' + visIcon + '"></i></button>' +
@@ -8398,9 +8403,18 @@ var EngineApp = (function() {
         if (!obj) { container.innerHTML = '<div style="color:var(--text-secondary);font-size:0.8rem;text-align:center;padding:20px;">Select an object</div>'; return; }
         var types = SashaEngineAPI.getObjectTypes();
         var type = types[selected] || 'cube';
-        var html = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);">'+selected+'</div>';
+        var html = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;">'+selected+'</div>';
         // === MODEL IMPORT INSPECTOR — show for ANY model ===
         if (type === 'model') {
+            // Big easy-to-click "Open in Prefab Mode" button at the top of the
+            // inspector — mirrors Unity's "Open Prefab" button. Double-clicking
+            // the hierarchy item also opens it; this button is just more
+            // discoverable for users who don't know about double-click.
+            html += '<div style="padding:6px 8px;border-bottom:1px solid var(--border);background:rgba(99,102,241,0.06);">' +
+                '<button onclick="EngineApp.openPrefabMode(\'' + selected.replace(/'/g, "\\'") + '\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;background:linear-gradient(135deg,#4f46e5,#6366f1);border:none;color:#fff;border-radius:5px;cursor:pointer;font-size:0.72rem;font-weight:600;transition:all 0.15s;" onmouseover="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 4px 12px rgba(99,102,241,0.4)\';" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\';">' +
+                '<i class="fas fa-cube" style="font-size:0.75rem;"></i> Открыть как Prefab' +
+                '<span style="font-size:0.58rem;opacity:0.7;font-weight:400;margin-left:4px;">(двойной клик в иерархии)</span>' +
+                '</button></div>';
             // Try to discover animations from userData.animations / obj.animations / children.
             // This populates _skeletonData[selected] so the UI shows the clips.
             _discoverAnimations(selected);
@@ -13728,6 +13742,16 @@ var EngineApp = (function() {
         _inspPreviewRefreshControllerSelect();
         _inspPreviewResize();
         _inspPreviewGetRenderer();
+
+        // Auto-play the first clip IMMEDIATELY (no setTimeout) so the user
+        // sees motion as soon as the preview opens. setTimeout-based playback
+        // was unreliable because refreshInspector() can re-enter _inspPreviewShow
+        // before the timer fires, and the short-circuit path does not re-trigger
+        // playback — leaving the preview in a static pose that looks broken.
+        if (sd && sd.clips && sd.clips.length > 0) {
+            var firstClipName = sd.clips[0].name || 'Anim_0';
+            _inspPreviewPlayClip(firstClipName);
+        }
     }
 
     function _inspPreviewHide() {
@@ -13736,6 +13760,453 @@ var EngineApp = (function() {
         _inspPreviewStopAnim();
         _inspPreviewObjName = null;
         _inspPreviewCurrentClip = null;
+    }
+
+    // ============ PREFAB MODE ============
+    // Isolated modal editor for a single GLB model. Opened by double-clicking
+    // a model in the hierarchy. Mirrors Unity's "Open Prefab" — the model is
+    // shown alone in a big canvas with its own scene/camera/renderer, animation
+    // clips are playable from buttons, and the user can orbit/zoom. Original
+    // object in the main scene is NOT touched.
+    var _prefabState = {
+        open: false,
+        objName: null,
+        scene: null,
+        camera: null,
+        renderer: null,
+        mixer: null,
+        model: null,           // cloned model living in prefab scene
+        actions: [],
+        currentClip: null,
+        clock: null,
+        yaw: 0.6,
+        pitch: 0.3,
+        dist: 3.0,
+        dragging: false,
+        lastX: 0,
+        lastY: 0,
+        autocam: true,
+        rafId: null
+    };
+
+    function openPrefabMode(objName) {
+        if (!objName) return;
+        var srcObj = SashaEngineAPI.getObject(objName);
+        if (!srcObj) { log('[Prefab] Object not found: ' + objName, 'error'); return; }
+
+        // Already open for same object? Just focus camera.
+        if (_prefabState.open && _prefabState.objName === objName) {
+            _prefabResetCamera();
+            return;
+        }
+        // If open for different object — tear down first.
+        if (_prefabState.open) closePrefabMode();
+
+        // Ensure DOM
+        var overlay = document.getElementById('prefab-modal');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'prefab-modal';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;background:rgba(5,5,15,0.85);backdrop-filter:blur(6px);';
+            overlay.innerHTML =
+                '<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:#1a1a2e;border-bottom:1px solid #2a2a3e;color:#e4e4e7;">' +
+                  '<i class="fas fa-cube" style="color:#a5b4fc;font-size:0.85rem;"></i>' +
+                  '<span style="font-size:0.85rem;font-weight:600;">Prefab Mode</span>' +
+                  '<span id="prefab-title-name" style="font-size:0.75rem;color:#a1a1aa;font-family:JetBrains Mono,monospace;"></span>' +
+                  '<div style="flex:1"></div>' +
+                  '<button id="prefab-autocam-btn" title="Авто-вращение" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-sync-alt"></i> Авто-вращение</button>' +
+                  '<button id="prefab-frame-btn" title="Центрировать" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand"></i> Центр</button>' +
+                  '<button id="prefab-close-btn" title="Закрыть (Esc)" style="background:#ef4444;border:none;color:#fff;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-times"></i> Закрыть</button>' +
+                '</div>' +
+                '<div style="flex:1;display:flex;overflow:hidden;">' +
+                  '<div style="flex:1;position:relative;background:#0a0a1a;">' +
+                    '<canvas id="prefab-canvas" style="display:block;width:100%;height:100%;"></canvas>' +
+                    '<div id="prefab-hint" style="position:absolute;top:10px;left:10px;font-size:0.65rem;color:rgba(255,255,255,0.4);font-family:JetBrains Mono,monospace;pointer-events:none;">ЛКМ — вращать · колесо — зум · Esc — выйти</div>' +
+                    '<div id="prefab-clip-label" style="position:absolute;bottom:10px;left:10px;font-size:0.7rem;color:rgba(255,255,255,0.7);font-family:JetBrains Mono,monospace;pointer-events:none;">None</div>' +
+                  '</div>' +
+                  '<div id="prefab-sidebar" style="width:260px;background:#12121f;border-left:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
+                    '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
+                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Анимации</div>' +
+                      '<div id="prefab-anim-list" style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;"></div>' +
+                    '</div>' +
+                    '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
+                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Управление</div>' +
+                      '<div style="display:flex;gap:4px;">' +
+                        '<button id="prefab-play-btn" style="flex:1;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:6px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-play"></i> Play</button>' +
+                        '<button id="prefab-stop-btn" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:6px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-stop"></i> Stop</button>' +
+                      '</div>' +
+                    '</div>' +
+                    '<div style="padding:8px 10px;flex:1;overflow-y:auto;">' +
+                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Информация</div>' +
+                      '<div id="prefab-info" style="font-size:0.7rem;color:#a1a1aa;line-height:1.5;"></div>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>';
+            document.body.appendChild(overlay);
+
+            // Wire up buttons once
+            document.getElementById('prefab-close-btn').onclick = function() { closePrefabMode(); };
+            document.getElementById('prefab-autocam-btn').onclick = function() {
+                _prefabState.autocam = !_prefabState.autocam;
+                this.style.color = _prefabState.autocam ? '#22c55e' : '#71717a';
+                this.style.borderColor = _prefabState.autocam ? '#22c55e' : '#2a2a3e';
+            };
+            document.getElementById('prefab-frame-btn').onclick = function() { _prefabResetCamera(); };
+            document.getElementById('prefab-play-btn').onclick = function() {
+                if (_prefabState.currentClip) _prefabPlayClip(_prefabState.currentClip);
+                else if (_prefabState.clips && _prefabState.clips.length > 0) _prefabPlayClip(_prefabState.clips[0].name);
+            };
+            document.getElementById('prefab-stop-btn').onclick = function() { _prefabStopAnim(); };
+
+            // Canvas mouse handlers
+            var canvas = document.getElementById('prefab-canvas');
+            canvas.style.cursor = 'grab';
+            canvas.addEventListener('mousedown', function(e) {
+                _prefabState.dragging = true;
+                _prefabState.lastX = e.clientX;
+                _prefabState.lastY = e.clientY;
+                _prefabState.autocam = false;
+                document.getElementById('prefab-autocam-btn').style.color = '#71717a';
+                document.getElementById('prefab-autocam-btn').style.borderColor = '#2a2a3e';
+                canvas.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+            window.addEventListener('mousemove', _prefabOnMouseMove);
+            window.addEventListener('mouseup', _prefabOnMouseUp);
+            canvas.addEventListener('wheel', _prefabOnWheel, { passive: false });
+
+            // Esc to close
+            document.addEventListener('keydown', _prefabOnKey);
+        }
+
+        overlay.style.display = 'flex';
+        _prefabState.open = true;
+        _prefabState.objName = objName;
+        document.getElementById('prefab-title-name').textContent = objName;
+        document.getElementById('prefab-autocam-btn').style.color = '#22c55e';
+        document.getElementById('prefab-autocam-btn').style.borderColor = '#22c55e';
+
+        // Build isolated scene
+        _prefabState.scene = new THREE.Scene();
+        _prefabState.scene.background = new THREE.Color(0x0a0a1a);
+        _prefabState.scene.add(new THREE.AmbientLight(0x404060, 1.0));
+        var dl = new THREE.DirectionalLight(0xffffff, 1.0);
+        dl.position.set(4, 6, 4);
+        _prefabState.scene.add(dl);
+        var fl = new THREE.DirectionalLight(0xa5b4fc, 0.4);
+        fl.position.set(-4, 3, -3);
+        _prefabState.scene.add(fl);
+        var grid = new THREE.GridHelper(10, 20, 0x6366f1, 0x1a1a2e);
+        _prefabState.scene.add(grid);
+
+        _prefabState.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+        _prefabState.camera.position.set(3, 2, 3);
+        _prefabState.camera.lookAt(0, 1, 0);
+
+        // Renderer
+        var canvasEl = document.getElementById('prefab-canvas');
+        _prefabState.renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: false });
+        _prefabState.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Clone the model — same safe approach as preview (strip userData first)
+        var savedUd = [];
+        srcObj.traverse(function(c) {
+            savedUd.push({ node: c, userData: c.userData });
+            var clean = {};
+            if (c.userData) {
+                for (var k in c.userData) {
+                    if (!c.userData.hasOwnProperty(k)) continue;
+                    var v = c.userData[k];
+                    var t = typeof v;
+                    if (t === 'string' || t === 'number' || t === 'boolean') clean[k] = v;
+                }
+            }
+            c.userData = clean;
+        });
+
+        var cloned = null;
+        try {
+            cloned = THREE.SkeletonUtils.clone(srcObj);
+        } catch(e) {
+            console.warn('[Prefab] SkeletonUtils.clone failed, fallback to clone(true):', e.message);
+            try { cloned = srcObj.clone(true); } catch(e2) {
+                console.error('[Prefab] All clone attempts failed:', e2.message);
+                cloned = null;
+            }
+        }
+
+        // Restore userData on source
+        for (var si = 0; si < savedUd.length; si++) {
+            if (savedUd[si].node && savedUd[si].userData) {
+                savedUd[si].node.userData = savedUd[si].userData;
+            }
+        }
+
+        if (!cloned) {
+            log('[Prefab] Не удалось клонировать модель для Prefab Mode', 'error');
+            closePrefabMode();
+            return;
+        }
+
+        cloned.position.set(0, 0, 0);
+        cloned.rotation.set(0, 0, 0);
+        _prefabState.model = cloned;
+        _prefabState.scene.add(cloned);
+
+        // Setup animation mixer + clips from _skeletonData
+        _prefabState.actions = [];
+        _prefabState.currentClip = null;
+        var sd = _discoverAnimations(objName) || _skeletonData[objName];
+        _prefabState.clips = (sd && sd.clips) ? sd.clips : [];
+        if (_prefabState.clips.length > 0) {
+            _prefabState.mixer = new THREE.AnimationMixer(cloned);
+            _prefabState.clock = new THREE.Clock();
+        } else {
+            _prefabState.mixer = null;
+            _prefabState.clock = null;
+        }
+
+        // Populate info panel
+        var info = document.getElementById('prefab-info');
+        if (info) {
+            var nBones = 0, nMeshes = 0, nVerts = 0;
+            cloned.traverse(function(c) {
+                if (c.isBone) nBones++;
+                if (c.isMesh) {
+                    nMeshes++;
+                    if (c.geometry && c.geometry.attributes && c.geometry.attributes.position) {
+                        nVerts += c.geometry.attributes.position.count;
+                    }
+                }
+            });
+            var box = new THREE.Box3().setFromObject(cloned);
+            var sz = box.getSize(new THREE.Vector3());
+            info.innerHTML =
+                '<div>Костей: <b style="color:#fff;">' + nBones + '</b></div>' +
+                '<div>Мешей: <b style="color:#fff;">' + nMeshes + '</b></div>' +
+                '<div>Вершин: <b style="color:#fff;">' + nVerts + '</b></div>' +
+                '<div>Клипов: <b style="color:#fff;">' + _prefabState.clips.length + '</b></div>' +
+                '<div>Размер: <b style="color:#fff;font-family:JetBrains Mono,monospace;">' +
+                    sz.x.toFixed(2) + ' × ' + sz.y.toFixed(2) + ' × ' + sz.z.toFixed(2) + '</b></div>';
+        }
+
+        // Populate animation list
+        _prefabRefreshAnimList();
+
+        // Size canvas + start loop
+        _prefabResize();
+        _prefabResetCamera();
+        _prefabStartLoop();
+
+        // Auto-play first clip
+        if (_prefabState.clips.length > 0) {
+            setTimeout(function() { _prefabPlayClip(_prefabState.clips[0].name); }, 150);
+        }
+
+        log('[Prefab] Открыт Prefab Mode для "' + objName + '"', 'info');
+    }
+
+    function _prefabRefreshAnimList() {
+        var list = document.getElementById('prefab-anim-list');
+        if (!list) return;
+        list.innerHTML = '';
+        if (!_prefabState.clips || _prefabState.clips.length === 0) {
+            list.innerHTML = '<div style="font-size:0.7rem;color:#71717a;font-style:italic;padding:4px 0;">Анимаций не найдено</div>';
+            return;
+        }
+        for (var i = 0; i < _prefabState.clips.length; i++) {
+            (function(clip, idx) {
+                var cn = clip.name || ('Anim_' + idx);
+                var item = document.createElement('div');
+                item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 8px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:4px;cursor:pointer;font-size:0.7rem;color:#e4e4e7;transition:all 0.15s;';
+                item.onmouseover = function() { this.style.borderColor = '#6366f1'; this.style.background = 'rgba(99,102,241,0.1)'; };
+                item.onmouseout = function() { this.style.borderColor = '#2a2a3e'; this.style.background = '#1a1a2e'; };
+                item.innerHTML =
+                    '<i class="fas fa-play-circle" style="color:#34d399;font-size:0.75rem;"></i>' +
+                    '<span style="flex:1;">' + cn + '</span>' +
+                    '<span style="font-size:0.6rem;color:#71717a;font-family:JetBrains Mono,monospace;">' + clip.duration.toFixed(2) + 's</span>';
+                item.onclick = function() { _prefabPlayClip(cn); };
+                list.appendChild(item);
+            })(_prefabState.clips[i], i);
+        }
+    }
+
+    function _prefabPlayClip(clipName) {
+        if (!_prefabState.mixer || !_prefabState.clips) return;
+        var clip = null;
+        for (var i = 0; i < _prefabState.clips.length; i++) {
+            if (_prefabState.clips[i].name === clipName) { clip = _prefabState.clips[i]; break; }
+        }
+        if (!clip) { console.warn('[Prefab] Clip not found:', clipName); return; }
+        _prefabStopAnim();
+        var action = _prefabState.mixer.clipAction(clip);
+        action.reset().setLoop(THREE.LoopRepeat, Infinity).play();
+        _prefabState.actions.push(action);
+        _prefabState.currentClip = clipName;
+        var label = document.getElementById('prefab-clip-label');
+        if (label) label.textContent = clipName;
+        console.log('[Prefab] ▶ Playing:', clipName);
+    }
+
+    function _prefabStopAnim() {
+        for (var i = 0; i < _prefabState.actions.length; i++) _prefabState.actions[i].stop();
+        _prefabState.actions = [];
+        _prefabState.currentClip = null;
+        var label = document.getElementById('prefab-clip-label');
+        if (label) label.textContent = 'None';
+    }
+
+    function _prefabResetCamera() {
+        if (!_prefabState.model || !_prefabState.camera) return;
+        var box = new THREE.Box3().setFromObject(_prefabState.model);
+        var center = box.getCenter(new THREE.Vector3());
+        var size = box.getSize(new THREE.Vector3());
+        var maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim < 0.01) maxDim = 1;
+        _prefabState.dist = maxDim * 2.0;
+        if (_prefabState.dist < 1.0) _prefabState.dist = 1.0;
+        _prefabState.yaw = 0.6;
+        _prefabState.pitch = 0.3;
+        _prefabApplyCamOrbit(center, maxDim);
+    }
+
+    function _prefabApplyCamOrbit(center, maxDim) {
+        if (!_prefabState.camera) return;
+        if (!center) {
+            if (_prefabState.model) {
+                var b = new THREE.Box3().setFromObject(_prefabState.model);
+                center = b.getCenter(new THREE.Vector3());
+                maxDim = Math.max.apply(null, b.getSize(new THREE.Vector3()).toArray());
+            } else { center = new THREE.Vector3(); maxDim = 1; }
+        }
+        var d = Math.max(_prefabState.dist, 0.3);
+        _prefabState.camera.position.x = center.x + Math.cos(_prefabState.yaw) * Math.cos(_prefabState.pitch) * d;
+        _prefabState.camera.position.z = center.z + Math.sin(_prefabState.yaw) * Math.cos(_prefabState.pitch) * d;
+        _prefabState.camera.position.y = center.y + Math.sin(_prefabState.pitch) * d;
+        _prefabState.camera.lookAt(center);
+    }
+
+    function _prefabOnMouseMove(e) {
+        if (!_prefabState.dragging) return;
+        var dx = e.clientX - _prefabState.lastX;
+        var dy = e.clientY - _prefabState.lastY;
+        _prefabState.lastX = e.clientX;
+        _prefabState.lastY = e.clientY;
+        _prefabState.yaw -= dx * 0.01;
+        _prefabState.pitch += dy * 0.01;
+        if (_prefabState.pitch > 1.5) _prefabState.pitch = 1.5;
+        if (_prefabState.pitch < -1.5) _prefabState.pitch = -1.5;
+        _prefabApplyCamOrbit();
+    }
+
+    function _prefabOnMouseUp() {
+        if (_prefabState.dragging) {
+            _prefabState.dragging = false;
+            var c = document.getElementById('prefab-canvas');
+            if (c) c.style.cursor = 'grab';
+        }
+    }
+
+    function _prefabOnWheel(e) {
+        e.preventDefault();
+        var factor = e.deltaY > 0 ? 1.1 : 0.9;
+        _prefabState.dist *= factor;
+        if (_prefabState.dist < 0.3) _prefabState.dist = 0.3;
+        if (_prefabState.dist > 100) _prefabState.dist = 100;
+        _prefabApplyCamOrbit();
+    }
+
+    function _prefabOnKey(e) {
+        if (e.key === 'Escape' && _prefabState.open) closePrefabMode();
+    }
+
+    function _prefabResize() {
+        if (!_prefabState.renderer) return;
+        var canvas = document.getElementById('prefab-canvas');
+        if (!canvas) return;
+        var w = canvas.clientWidth;
+        var h = canvas.clientHeight;
+        if (w < 1 || h < 1) { w = window.innerWidth - 260; h = window.innerHeight - 50; }
+        _prefabState.renderer.setSize(w, h, false);
+        if (_prefabState.camera) {
+            _prefabState.camera.aspect = w / h;
+            _prefabState.camera.updateProjectionMatrix();
+        }
+    }
+
+    function _prefabStartLoop() {
+        if (_prefabState.rafId) cancelAnimationFrame(_prefabState.rafId);
+        var loop = function() {
+            if (!_prefabState.open) return;
+            _prefabState.rafId = requestAnimationFrame(loop);
+            // Update mixer
+            if (_prefabState.mixer && _prefabState.clock) {
+                var dt = _prefabState.clock.getDelta();
+                if (dt > 0.1) dt = 0.016;
+                _prefabState.mixer.update(dt);
+            }
+            // Autocam
+            if (_prefabState.autocam && _prefabState.model) {
+                _prefabState.yaw += 0.008;
+                _prefabApplyCamOrbit();
+            }
+            // Resize check
+            var canvas = document.getElementById('prefab-canvas');
+            if (canvas) {
+                var w = canvas.clientWidth, h = canvas.clientHeight;
+                var need = _prefabState.renderer.getSize(new THREE.Vector2());
+                if (Math.abs(need.x - w) > 1 || Math.abs(need.y - h) > 1) _prefabResize();
+            }
+            // Render
+            if (_prefabState.renderer && _prefabState.scene && _prefabState.camera) {
+                _prefabState.renderer.render(_prefabState.scene, _prefabState.camera);
+            }
+        };
+        loop();
+    }
+
+    function closePrefabMode() {
+        if (!_prefabState.open) return;
+        _prefabState.open = false;
+        if (_prefabState.rafId) { cancelAnimationFrame(_prefabState.rafId); _prefabState.rafId = null; }
+        // Stop animations
+        if (_prefabState.actions && _prefabState.actions.length) {
+            for (var i = 0; i < _prefabState.actions.length; i++) _prefabState.actions[i].stop();
+        }
+        _prefabState.actions = [];
+        // Dispose mixer
+        if (_prefabState.mixer) { try { _prefabState.mixer.stopAllAction(); } catch(e){} _prefabState.mixer = null; }
+        // Remove model from scene + dispose
+        if (_prefabState.scene && _prefabState.model) {
+            _prefabState.scene.remove(_prefabState.model);
+            _prefabState.model.traverse(function(c) {
+                if (c.isMesh) {
+                    if (c.geometry) c.geometry.dispose();
+                    if (c.material) {
+                        if (Array.isArray(c.material)) { for (var j = 0; j < c.material.length; j++) c.material[j].dispose(); }
+                        else c.material.dispose();
+                    }
+                }
+            });
+            _prefabState.model = null;
+        }
+        // Dispose renderer
+        if (_prefabState.renderer) { try { _prefabState.renderer.dispose(); } catch(e){} _prefabState.renderer = null; }
+        // Remove overlay from DOM entirely — so the next openPrefabMode() gets
+        // a fresh <canvas> with no prior WebGL context attached. Reusing a
+        // canvas after WebGLRenderer.dispose() gives a black screen because
+        // browsers return the same (now-disposed) GL context on second
+        // getContext() call.
+        var overlayEl = document.getElementById('prefab-modal');
+        if (overlayEl) overlayEl.remove();
+        // Remove global listeners (they were attached on first open)
+        window.removeEventListener('mousemove', _prefabOnMouseMove);
+        window.removeEventListener('mouseup', _prefabOnMouseUp);
+        document.removeEventListener('keydown', _prefabOnKey);
+        _prefabState.objName = null;
+        _prefabState.currentClip = null;
+        _prefabState.dragging = false;
+        log('[Prefab] Prefab Mode закрыт', 'info');
     }
 
     function _inspPreviewAutoFrame() {
@@ -13768,11 +14239,14 @@ var EngineApp = (function() {
         }
         _inspPreviewActions = [];
 
-        // Play new action
+        // Play new action — loop forever so the user can see the animation run.
+        // Previously used LoopRepeat,1 which played once and stopped, making it
+        // look like the animation "didn't work".
         var action = _inspPreviewMixer.clipAction(clip);
-        action.reset().setLoop(THREE.LoopRepeat, 1).play();
+        action.reset().setLoop(THREE.LoopRepeat, Infinity).play();
         _inspPreviewActions.push(action);
         _inspPreviewCurrentClip = clipName;
+        console.log('[Preview] ▶ Playing clip "' + clipName + '" on preview mixer');
 
         // Update UI label
         var label = document.getElementById('insp-anim-clip-label');
@@ -14143,6 +14617,8 @@ var EngineApp = (function() {
         _inspPreviewAddClipByName(clipName);
     }
 
+    // throttled debug log for preview mixer — at most once per ~1s
+    var _inspPreviewLogT = 0;
     function _inspPreviewUpdate() {
         if (!_inspPreviewScene || !_inspPreviewCamera) return;
         var panel = document.getElementById('insp-anim-preview');
@@ -14162,6 +14638,15 @@ var EngineApp = (function() {
             var dt = _inspPreviewClock.getDelta();
             if (dt > 0.1) dt = 0.016; // Clamp to prevent jumps after tab switch
             _inspPreviewMixer.update(dt);
+            // One-time log: confirm the mixer is actually being ticked.
+            // Helps diagnose "animation not playing" — if you see this line,
+            // the mixer IS running; if not, the animate loop isn't calling us.
+            var now = performance.now();
+            if (now - _inspPreviewLogT > 2000) {
+                _inspPreviewLogT = now;
+                var nAct = _inspPreviewActions ? _inspPreviewActions.length : 0;
+                console.log('[Preview] tick — mixer updating, active actions:', nAct, '| current clip:', _inspPreviewCurrentClip);
+            }
         } else {
             if (_inspPreviewClock) _inspPreviewClock.getDelta();
         }
@@ -14356,6 +14841,8 @@ var EngineApp = (function() {
         _inspPreviewPlayClip: _inspPreviewPlayClip,
         _inspPreviewShow: _inspPreviewShow,
         _inspPreviewHide: _inspPreviewHide,
+        openPrefabMode: openPrefabMode,
+        closePrefabMode: closePrefabMode,
         _discoverAnimations: _discoverAnimations,
         _getSkeletonData: function() { return _skeletonData; },
         _registerModelAnimations: _registerModelAnimations,
