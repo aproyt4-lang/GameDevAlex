@@ -4978,6 +4978,9 @@ var SashaWebLLM = (function() {
 // ============ SashaEngineAPI — 3D Engine for Editor ============
 // ================================================================
 var SashaEngineAPI = (function() {
+    // === VERSION MARKER v2.1 - updateSkeletonMixers removed from exports ===
+    console.log('[SashaEngineAPI v2.1] INIT - updateSkeletonMixers is INTERNAL only');
+    
     // === SKELETAL ANIMATION DATA — declared at top for hoisting ===
     // Must be available before any function that uses it (animate, loadSashaAIOnMainScene, etc)
     var _skeletonData = {};
@@ -14983,7 +14986,7 @@ var EngineApp = (function() {
         assetNavigateBack: assetNavigateBack, assetTreeContext: assetTreeContext,
         togglePoseMode: togglePoseMode, selectBone: selectBone, keyframeBonePose: keyframeBonePose,
         _setBoneProp: _setBoneProp, _acAssignClipToState: _acAssignClipToState,
-        loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, updateSkeletonMixers: updateSkeletonMixers, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
+        loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
         _miSwitchTab: _miSwitchTab, _miConfigureAvatar: _miConfigureAvatar, _miApplyScale: _miApplyScale, _miToggleClipProps: _miToggleClipProps, _miClipLoop: _miClipLoop, _miAddClip: _miAddClip, _miRemoveClip: _miRemoveClip, _miSelectClip: _miSelectClip,
         githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
         saveAnimationsLocal: saveAnimationsLocal, loadAnimationsLocal: loadAnimationsLocal,
@@ -15074,6 +15077,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
