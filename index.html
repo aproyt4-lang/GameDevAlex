@@ -1,7 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><!DOCTYPE html>
-<html lang="ru">
 <head>
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -4999,8 +4997,8 @@ var SashaEngineAPI = (function() {
             }
         }
         // Update inspector animation preview (if preview is active)
-        if (typeof _inspPreviewUpdate === 'function') {
-            try { _inspPreviewUpdate(); } catch(e) {}
+        if (typeof EngineApp !== 'undefined' && typeof EngineApp._inspPreviewUpdate === 'function') {
+            try { EngineApp._inspPreviewUpdate(); } catch(e) {}
         }
     }
     
@@ -5256,6 +5254,10 @@ var SashaEngineAPI = (function() {
                     };
                     // Play first animation as preview
                     mixer.clipAction(gltf.animations[0]).play();
+                    // Also register in EngineApp for inspector preview/Rig tab
+                    if (typeof EngineApp !== 'undefined' && EngineApp._registerModelAnimations) {
+                        EngineApp._registerModelAnimations(objName, mixer, gltf.animations.slice());
+                    }
                     console.log('[Engine] SashaAI.glb loaded with', gltf.animations.length, 'animations');
                 } else {
                     console.log('[Engine] SashaAI.glb loaded (no animations)');
@@ -5838,31 +5840,31 @@ var SashaEngineAPI = (function() {
         var targetName = getUniqueName('model');
         log('[loadModel] Начинаю загрузку: ' + url, 'info');
 
-        // Try loading directly first; if it fails, retry through a CORS proxy.
-        _loadModelAttempt(url, x, y, z, scale, targetName, false, function(success, errMsg) {
-            if (success) return;
-            log('[loadModel] Прямая загрузка не удалась. Пробую через CORS-прокси...', 'warn');
-            // Try via CORS proxy (jsdelivr can fetch from any github URL)
-            var proxyUrl = null;
-            var ghMatch = url.match(/^https?:\/\/(?:raw\.githubusercontent\.com|github\.com)\/([^\/]+)\/([^\/]+)\/(.+)$/i);
-            if (ghMatch) {
-                // jsDelivr can serve GitHub raw content with CORS headers
-                proxyUrl = 'https://cdn.jsdelivr.net/gh/' + ghMatch[1] + '/' + ghMatch[2] + '@' + ghMatch[3];
-                log('[loadModel] CORS-прокси: ' + proxyUrl, 'info');
-            }
-            if (!proxyUrl) {
-                // Generic CORS proxy fallback
-                proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-                log('[loadModel] Generic CORS-прокси: ' + proxyUrl, 'info');
-            }
-            _loadModelAttempt(proxyUrl, x, y, z, scale, targetName, true, function(success2, errMsg2) {
-                if (success2) return;
+        // Build ordered list of fallback URLs to try
+        var attempts = [{ url: url, label: 'напрямую' }];
+        var ghMatch = url.match(/^https?:\/\/(?:raw\.githubusercontent\.com|github\.com)\/([^\/]+)\/([^\/]+)\/(.+)$/i);
+        if (ghMatch) {
+            attempts.push({ url: 'https://cdn.jsdelivr.net/gh/' + ghMatch[1] + '/' + ghMatch[2] + '@' + ghMatch[3], label: 'через jsdelivr CDN' });
+        }
+        attempts.push({ url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url), label: 'через allorigins прокси' });
+
+        // Chain attempts: try each URL until one succeeds
+        function tryAttempt(idx, lastErr) {
+            if (idx >= attempts.length) {
                 log('[loadModel] ❌ Все попытки загрузки не удались.', 'error');
                 log('  URL: ' + url, 'error');
-                log('  Ошибка: ' + (errMsg2 || errMsg || 'неизвестно'), 'error');
+                log('  Ошибка: ' + (lastErr || 'неизвестно'), 'error');
                 log('  Совет: Скачай файл локально и используй Assets → Import', 'warn');
+                return;
+            }
+            var attempt = attempts[idx];
+            log('[loadModel] Попытка ' + (idx+1) + '/' + attempts.length + ' ' + attempt.label + ': ' + attempt.url, 'info');
+            _loadModelAttempt(attempt.url, x, y, z, scale, targetName, idx > 0, function(success, errMsg) {
+                if (success) return;
+                tryAttempt(idx + 1, errMsg || lastErr);
             });
-        });
+        }
+        tryAttempt(0, null);
         return targetName;
     }
 
@@ -5905,7 +5907,14 @@ var SashaEngineAPI = (function() {
                         mix.clipAction(gltf.animations[i]).play();
                     }
                     log('[loadModel] ✅ Загружено ' + gltf.animations.length + ' анимаций', 'result');
-                    // Notify EngineApp to populate _skeletonData for this model
+                    // Store in SashaEngineAPI's own _skeletonData so updateSkeletonMixers()
+                    // updates this model's mixer every frame in the main scene render loop.
+                    _skeletonData[targetName] = {
+                        mixer: mix,
+                        clips: gltf.animations.slice(),
+                        actions: []
+                    };
+                    // Also notify EngineApp to populate its own _skeletonData for inspector preview.
                     if (typeof EngineApp !== 'undefined' && EngineApp._registerModelAnimations) {
                         EngineApp._registerModelAnimations(targetName, mix, gltf.animations.slice());
                     }
@@ -12285,18 +12294,7 @@ var EngineApp = (function() {
         }
 
         log('Загрузка модели: ' + normalized, 'info');
-
-        // For GitHub URLs, try jsdelivr CDN first (reliable CORS) — no HEAD preflight.
-        // SashaEngineAPI.loadModel will also try jsdelivr as fallback if direct load fails,
-        // but passing jsdelivr URL directly avoids the initial failed attempt.
-        var ghDirectMatch = normalized.match(/^https?:\/\/raw\.githubusercontent\.com\/([^\/]+)\/([^\/]+)\/(.+)$/i);
-        var loadUrl = normalized;
-        if (ghDirectMatch) {
-            loadUrl = 'https://cdn.jsdelivr.net/gh/' + ghDirectMatch[1] + '/' + ghDirectMatch[2] + '@' + ghDirectMatch[3];
-            log('GitHub URL обнаружен — используем jsdelivr CDN: ' + loadUrl, 'info');
-        }
-
-        var name = SashaEngineAPI.loadModel(loadUrl, 0, 0, 0, 1);
+        var name = SashaEngineAPI.loadModel(normalized, 0, 0, 0, 1);
         if (name) {
             log('Модель добавляется на сцену как "' + name + '"...', 'info');
         }
@@ -13308,9 +13306,10 @@ var EngineApp = (function() {
     }
 
     // ============ SKELETAL ANIMATION SUPPORT ============
-    // _skeletonData is now declared earlier (around line 7352) to ensure it's available
-    // before animate() and other functions that use it. Do NOT re-declare here.
-    // var _skeletonData = {};  // REMOVED — declared earlier for hoisting
+    // _skeletonData stores animation data for the inspector preview system.
+    // This is EngineApp's OWN copy — separate from SashaEngineAPI's _skeletonData
+    // which drives main-scene animation playback.
+    var _skeletonData = {};
 
     // Deep animation discovery — finds AnimationClips anywhere on the object tree.
     // Looks in: _skeletonData, srcObj.userData.animations, srcObj.animations,
@@ -15112,6 +15111,7 @@ var EngineApp = (function() {
         _inspPreviewPlayClip: _inspPreviewPlayClip,
         _inspPreviewShow: _inspPreviewShow,
         _inspPreviewHide: _inspPreviewHide,
+        _inspPreviewUpdate: _inspPreviewUpdate,
         openPrefabMode: openPrefabMode,
         closePrefabMode: closePrefabMode,
         _discoverAnimations: _discoverAnimations,
