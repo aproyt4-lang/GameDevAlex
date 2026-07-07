@@ -5252,8 +5252,9 @@ var SashaEngineAPI = (function() {
                         clips: gltf.animations.slice(),
                         actions: []
                     };
-                    // Play first animation as preview
-                    mixer.clipAction(gltf.animations[0]).play();
+                    // НЕ автозапускаем анимации на основной сцене —
+                    // пользователь запустит их вручную через инспектор (Rig/Animation).
+                    // mixer.clipAction(gltf.animations[0]).play(); // ЗАКОММЕНТИРОВАНО
                     // Also register in EngineApp for inspector preview/Rig tab
                     if (typeof EngineApp !== 'undefined' && EngineApp._registerModelAnimations) {
                         EngineApp._registerModelAnimations(objName, mixer, gltf.animations.slice());
@@ -5903,10 +5904,12 @@ var SashaEngineAPI = (function() {
                 // _skeletonData is empty — but we always populate it here.
                 if (gltf.animations && gltf.animations.length > 0) {
                     var mix = new THREE.AnimationMixer(model);
-                    for (var i = 0; i < gltf.animations.length; i++) {
-                        mix.clipAction(gltf.animations[i]).play();
-                    }
-                    log('[loadModel] ✅ Загружено ' + gltf.animations.length + ' анимаций', 'result');
+                    // НЕ автозапускаем анимации на основной сцене.
+                    // Миксер создаётся, клипы сохраняются — но .play() НЕ вызывается.
+                    // Анимация проигрывается ТОЛЬКО в мини-превью инспектора когда
+                    // пользователь явно нажимает Play в вкладке Rig или Animation.
+                    // Это позволяет отдельно контролировать превью и основную сцену.
+                    log('[loadModel] ✅ Загружено ' + gltf.animations.length + ' анимаций (не воспроизводятся — нажми Play в инспекторе)', 'result');
                     // Store in SashaEngineAPI's own _skeletonData so updateSkeletonMixers()
                     // updates this model's mixer every frame in the main scene render loop.
                     _skeletonData[targetName] = {
@@ -8656,11 +8659,13 @@ var EngineApp = (function() {
                     var _ricon='fa-film'; // default
                     for(var _rk in _rigIconMap){ if(_rname.indexOf(_rk)!==-1){ _ricon=_rigIconMap[_rk]; break; } }
                     var _isCurPlaying = (_inspPreviewCurrentClip === (_rclip.name||('Anim_'+_ri)));
-                    html += '<div style="display:flex;align-items:center;gap:5px;padding:5px 8px;margin:2px 0;background:var(--bg-card);border:1px solid '+(_isCurPlaying?'#6366f1':'var(--border)')+';border-radius:4px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor=\'#6366f1\'" onmouseout="this.style.borderColor=\''+(_isCurPlaying?'#6366f1':'var(--border)')+'\'">';
-                    html += '<button onclick="event.stopPropagation();EngineApp._inspPreviewPlayClipByName(\''+selected+'\',\''+(_rclip.name||('Anim_'+_ri)).replace(/'/g,"\\'")+'\')" title="Проиграть" style="background:'+(_isCurPlaying?'rgba(99,102,241,0.25)':'rgba(52,211,153,0.15)')+';border:none;color:'+(_isCurPlaying?'#a5b4fc':'#34d399')+';cursor:pointer;padding:4px 7px;border-radius:3px;font-size:0.7rem;"><i class="fas '+( _isCurPlaying?'fa-pause':'fa-play')+'"></i></button>';
-                    html += '<i class="fas '+_ricon+'" style="color:#71717a;font-size:0.65rem;width:14px;text-align:center;"></i>';
-                    html += '<span style="flex:1;font-size:0.7rem;color:#e4e4e7;font-weight:500;">'+_rlabel+'</span>';
-                    html += '<span style="font-size:0.58rem;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;">'+_rclip.duration.toFixed(2)+'s</span>';
+                    var _escapedClipName = (_rclip.name||('Anim_'+_ri)).replace(/'/g,"\\'");
+                    // Вся строка кликабельна — играет анимацию в превью
+                    html += '<div onclick="EngineApp._inspPreviewPlayClipByName(\''+selected+'\',\''+_escapedClipName+'\')" style="display:flex;align-items:center;gap:5px;padding:5px 8px;margin:2px 0;background:var(--bg-card);border:1px solid '+(_isCurPlaying?'#6366f1':'var(--border)')+';border-radius:4px;cursor:pointer;transition:all 0.15s;user-select:none;" onmouseover="this.style.borderColor=\'#6366f1\';this.style.background=\'rgba(99,102,241,0.08)\'" onmouseout="this.style.borderColor=\''+(_isCurPlaying?'#6366f1':'var(--border)')+'\';this.style.background=\'var(--bg-card)\'">';
+                    html += '<span style="background:'+(_isCurPlaying?'rgba(99,102,241,0.25)':'rgba(52,211,153,0.15)')+';color:'+(_isCurPlaying?'#a5b4fc':'#34d399')+';padding:4px 7px;border-radius:3px;font-size:0.7rem;pointer-events:none;"><i class="fas '+(_isCurPlaying?'fa-pause':'fa-play')+'"></i></span>';
+                    html += '<i class="fas '+_ricon+'" style="color:#71717a;font-size:0.65rem;width:14px;text-align:center;pointer-events:none;"></i>';
+                    html += '<span style="flex:1;font-size:0.7rem;color:#e4e4e7;font-weight:500;pointer-events:none;">'+_rlabel+'</span>';
+                    html += '<span style="font-size:0.58rem;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;pointer-events:none;">'+_rclip.duration.toFixed(2)+'s</span>';
                     html += '</div>';
                 }
                 html += '<div style="padding:4px 0 2px;display:flex;gap:4px;">';
@@ -9454,9 +9459,7 @@ var EngineApp = (function() {
                         // clones the model. _skeletonData is the single source of truth.
                         if (gltf.animations && gltf.animations.length > 0) {
                             var mix = new THREE.AnimationMixer(model);
-                            for (var i = 0; i < gltf.animations.length; i++) {
-                                mix.clipAction(gltf.animations[i]).play();
-                            }
+                            // НЕ автозапускаем — анимация только по нажатию Play в инспекторе
                             if (EngineApp._registerModelAnimations) {
                                 EngineApp._registerModelAnimations(n, mix, gltf.animations.slice());
                             }
@@ -14010,15 +14013,24 @@ var EngineApp = (function() {
             console.log('[Preview] First render done — canvas should now show the model');
         }
 
-        // Auto-play the first clip IMMEDIATELY (no setTimeout) so the user
-        // sees motion as soon as the preview opens. setTimeout-based playback
-        // was unreliable because refreshInspector() can re-enter _inspPreviewShow
-        // before the timer fires, and the short-circuit path does not re-trigger
-        // playback — leaving the preview in a static pose that looks broken.
-        if (sd && sd.clips && sd.clips.length > 0) {
-            var firstClipName = sd.clips[0].name || 'Anim_0';
-            _inspPreviewPlayClip(firstClipName);
-        }
+        // Повторный рендер через 100мс — на случай если canvas не успел
+        // получить правильный размер или WebGL контекст ещё не полностью готов.
+        setTimeout(function() {
+            if (_inspPreviewRenderer && _inspPreviewScene && _inspPreviewCamera) {
+                _inspPreviewResize();
+                _inspPreviewRenderer.render(_inspPreviewScene, _inspPreviewCamera);
+            }
+        }, 100);
+        // Ещё один повторный рендер через 300мс для надёжности
+        setTimeout(function() {
+            if (_inspPreviewRenderer && _inspPreviewScene && _inspPreviewCamera) {
+                _inspPreviewRenderer.render(_inspPreviewScene, _inspPreviewCamera);
+            }
+        }, 300);
+
+        // НЕ автозапускаем анимацию в превью. Модель видна в статичной позе.
+        // Анимация начинается ТОЛЬКО когда пользователь нажимает Play
+        // в Rig/Animation вкладке или на кнопках внизу превью.
     }
 
     function _inspPreviewHide() {
@@ -14509,14 +14521,16 @@ var EngineApp = (function() {
         }
         _inspPreviewActions = [];
 
-        // Play new action — loop forever so the user can see the animation run.
-        // Previously used LoopRepeat,1 which played once and stopped, making it
-        // look like the animation "didn't work".
+        // Play in PREVIEW mixer
         var action = _inspPreviewMixer.clipAction(clip);
         action.reset().setLoop(THREE.LoopRepeat, Infinity).play();
         _inspPreviewActions.push(action);
         _inspPreviewCurrentClip = clipName;
         console.log('[Preview] ▶ Playing clip "' + clipName + '" on preview mixer');
+
+        // Также воспроизводим на ОСНОВНОЙ СЦЕНЕ — пользователь хочет
+        // видеть анимацию и в превью и на сцене движка одновременно.
+        playSkeletalAnimation(_inspPreviewObjName, clipName, true);
 
         // Update UI label
         var label = document.getElementById('insp-anim-clip-label');
@@ -14532,6 +14546,8 @@ var EngineApp = (function() {
                 btn.classList.remove('active');
             }
         }
+        // Обновляем кнопки в Rig и Animation вкладках инспектора
+        _inspPreviewRefreshRigTabButtons();
     }
 
     // Play clip by name — called from inspector Animation tab ▶ buttons.
@@ -14568,6 +14584,73 @@ var EngineApp = (function() {
         if (label) label.textContent = 'None';
         var btns = document.querySelectorAll('#insp-anim-controls .insp-anim-btn');
         for (var k = 0; k < btns.length; k++) btns[k].classList.remove('active');
+        // Также останавливаем на основной сцене
+        if (_inspPreviewObjName) {
+            stopSkeletalAnimation(_inspPreviewObjName);
+        }
+        // Обновляем кнопки в Rig и Animation вкладках инспектора
+        _inspPreviewRefreshRigTabButtons();
+    }
+
+    // Обновляет визуальное состояние кнопок анимаций в Риг/Animation вкладках инспектора.
+    // Вызывается после _inspPreviewPlayClip и _inspPreviewStopAnim чтобы кнопки
+    // показывали правильный active-статус (зелёная рамка, иконка pause/play).
+    function _inspPreviewRefreshRigTabButtons() {
+        if (!_inspPreviewObjName) return;
+        // Обновляем строки анимаций в Rig табе (внутри mi-panel-rig-*)
+        var rigPanel = document.getElementById('mi-panel-rig-' + _inspPreviewObjName);
+        if (rigPanel) {
+            var rigItems = rigPanel.querySelectorAll('div[onclick*="_inspPreviewPlayClipByName"]');
+            for (var ri = 0; ri < rigItems.length; ri++) {
+                var item = rigItems[ri];
+                var onclickAttr = item.getAttribute('onclick') || '';
+                var match = onclickAttr.match(/_inspPreviewPlayClipByName\('[^']*','([^']*)'\)/);
+                if (!match) continue;
+                var btnClipName = match[1];
+                var isActive = (_inspPreviewCurrentClip === btnClipName);
+                // Обновляем рамку строки
+                if (isActive) {
+                    item.style.borderColor = '#6366f1';
+                    item.style.background = 'rgba(99,102,241,0.08)';
+                } else {
+                    item.style.borderColor = 'var(--border)';
+                    item.style.background = 'var(--bg-card)';
+                }
+                // Обновляем иконку play/pause (первый span внутри div)
+                var iconSpan = item.querySelector('span');
+                if (iconSpan) {
+                    if (isActive) {
+                        iconSpan.style.background = 'rgba(99,102,241,0.25)';
+                        iconSpan.style.color = '#a5b4fc';
+                        iconSpan.innerHTML = '<i class="fas fa-pause"></i>';
+                    } else {
+                        iconSpan.style.background = 'rgba(52,211,153,0.15)';
+                        iconSpan.style.color = '#34d399';
+                        iconSpan.innerHTML = '<i class="fas fa-play"></i>';
+                    }
+                }
+            }
+        }
+        // Обновляем play-кнопки в Animation табе (внутри mi-panel-animation-*)
+        var animPanel = document.getElementById('mi-panel-animation-' + _inspPreviewObjName);
+        if (animPanel) {
+            var animBtns = animPanel.querySelectorAll('button[title="Проиграть в превью"]');
+            for (var ai = 0; ai < animBtns.length; ai++) {
+                var ab = animBtns[ai];
+                var aOnclick = ab.getAttribute('onclick') || '';
+                var aMatch = aOnclick.match(/_inspPreviewPlayClipByName\('[^']*','([^']*)'\)/);
+                if (!aMatch) continue;
+                if (_inspPreviewCurrentClip === aMatch[1]) {
+                    ab.style.background = 'rgba(99,102,241,0.25)';
+                    ab.style.color = '#a5b4fc';
+                    ab.innerHTML = '<i class="fas fa-pause"></i>';
+                } else {
+                    ab.style.background = 'rgba(52,211,153,0.15)';
+                    ab.style.color = '#34d399';
+                    ab.innerHTML = '<i class="fas fa-play"></i>';
+                }
+            }
+        }
     }
 
     function _inspPreviewRefreshButtons(objName) {
@@ -15112,6 +15195,7 @@ var EngineApp = (function() {
         _inspPreviewShow: _inspPreviewShow,
         _inspPreviewHide: _inspPreviewHide,
         _inspPreviewUpdate: _inspPreviewUpdate,
+        _inspPreviewRefreshRigTabButtons: _inspPreviewRefreshRigTabButtons,
         openPrefabMode: openPrefabMode,
         closePrefabMode: closePrefabMode,
         _discoverAnimations: _discoverAnimations,
