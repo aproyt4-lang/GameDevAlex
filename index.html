@@ -7644,6 +7644,7 @@ var SashaEngineAPI = (function() {
         setBgColor: setBgColor, animate: animateObj, onFrame: onFrame, getScene: getScene,
         getCamera: getCamera, getRenderer: getRenderer, getControls: getControls,
         addObjectDirect: function(name, obj, type) { objects[name] = obj; objectTypes[name] = type || 'model'; objectRenames[name] = name; },
+        _registerSkeletonDataDirect: function(name, mixer, clips) { _skeletonData[name] = { mixer: mixer, clips: clips, actions: [] }; },
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
         getAllObjectNames: getAllObjectNames, getObjectTypes: getObjectTypes,
@@ -9462,6 +9463,11 @@ var EngineApp = (function() {
                             // НЕ автозапускаем — анимация только по нажатию Play в инспекторе
                             if (EngineApp._registerModelAnimations) {
                                 EngineApp._registerModelAnimations(n, mix, gltf.animations.slice());
+                            }
+                            // Также регистрируем в SashaEngineAPI._skeletonData чтобы
+                            // updateSkeletonMixers() обновлял миксер на основной сцене
+                            if (SashaEngineAPI._registerSkeletonDataDirect) {
+                                SashaEngineAPI._registerSkeletonDataDirect(n, mix, gltf.animations.slice());
                             }
                             log('✅ Импортировано: ' + n + ' с ' + gltf.animations.length + ' анимациями', 'result');
                         } else {
@@ -13847,7 +13853,9 @@ var EngineApp = (function() {
                     '| clone method?', !!(THREE.SkeletonUtils && THREE.SkeletonUtils.clone));
 
         // Валидация клона — проверяет есть ли хотя бы один меш с валидной геометрией
-        function _cloneHasVisibleMesh(obj) {
+        // И проверяет что world bounding box клона имеет ненулевой размер
+        // (скелетные модели с сломанным биндингом могут иметь меши но все вершины в одной точке)
+        function _cloneIsValid(obj) {
             if (!obj) return false;
             var found = false;
             obj.traverse(function(c) {
@@ -13857,7 +13865,18 @@ var EngineApp = (function() {
                     if (pos && pos.count > 0) found = true;
                 }
             });
-            return found;
+            if (!found) return false;
+            // Критическая проверка: world bounding box должен иметь ненулевой размер
+            try {
+                var box = new THREE.Box3().setFromObject(obj);
+                var sz = box.getSize(new THREE.Vector3());
+                var maxDim = Math.max(sz.x, sz.y, sz.z);
+                if (maxDim < 0.001) {
+                    console.warn('[Preview] Clone has meshes but bounding box is ~zero (' + sz.x.toFixed(4) + ', ' + sz.y.toFixed(4) + ', ' + sz.z.toFixed(4) + ') — skeleton binding likely broken');
+                    return false;
+                }
+            } catch(e) { /* ignore — if setFromObject fails, still accept */ }
+            return true;
         }
 
         // CRITICAL PRE-CLONE STEP: Strip circular references from userData.
@@ -13900,10 +13919,12 @@ var EngineApp = (function() {
         if (typeof THREE.SkeletonUtils !== 'undefined' && THREE.SkeletonUtils.clone) {
             try {
                 cloned = THREE.SkeletonUtils.clone(srcObj);
-                if (_cloneHasVisibleMesh(cloned)) {
-                    console.log('[Preview] Cloned via SkeletonUtils — has visible meshes');
+                if (_cloneIsValid(cloned)) {
+                    console.log('[Preview] Cloned via SkeletonUtils — VALID');
                 } else {
-                    console.warn('[Preview] SkeletonUtils.clone returned object with NO visible meshes — trying fallback');
+                    console.warn('[Preview] SkeletonUtils.clone produced INVALID clone — trying fallback');
+                    // Очистить сломанный клон
+                    if (cloned) { cloned.traverse(function(c) { if(c.geometry) c.geometry = null; }); }
                     cloned = null;
                 }
             } catch(e) {
@@ -13916,10 +13937,11 @@ var EngineApp = (function() {
         if (!cloned) {
             try {
                 cloned = srcObj.clone(true);
-                if (_cloneHasVisibleMesh(cloned)) {
-                    console.log('[Preview] Cloned via Object3D.clone(true) — has visible meshes');
+                if (_cloneIsValid(cloned)) {
+                    console.log('[Preview] Cloned via Object3D.clone(true) — VALID');
                 } else {
-                    console.warn('[Preview] Object3D.clone(true) returned object with NO visible meshes — trying manual rebuild');
+                    console.warn('[Preview] Object3D.clone(true) produced INVALID clone — trying manual rebuild');
+                    if (cloned) { cloned.traverse(function(c) { if(c.geometry) c.geometry = null; }); }
                     cloned = null;
                 }
             } catch(e) {
@@ -13928,36 +13950,156 @@ var EngineApp = (function() {
             }
         }
 
-        // Метод 3: Ручная пересборка — клонируем root, затем вручную копируем каждый меш
+        // Метод 3: Полная ручная пересборка иерархии с костями
+        // Клонируем ВСЮ структуру: группы, кости, меши с правильными трансформами
         if (!cloned) {
             try {
-                console.log('[Preview] Attempting manual mesh rebuild clone...');
+                console.log('[Preview] Attempting full hierarchy rebuild clone...');
+                var _boneMap = {}; // original bone → cloned bone
+                var _parentMap = {}; // original child → original parent
+                // Собираем мапу parent-child
+                srcObj.traverse(function(c) {
+                    if (c.parent) _parentMap[c.uuid] = c.parent.uuid;
+                });
+                // Создаём корневой клон
                 cloned = new THREE.Group();
-                cloned.name = srcObj.name ? (srcObj.name + '_preview') : 'preview_clone';
-                srcObj.traverse(function(child) {
-                    if (child === srcObj) return;
-                    if (child.isMesh) {
-                        var m = new THREE.Mesh(child.geometry, child.material);
-                        m.name = child.name;
-                        m.position.copy(child.position);
-                        m.rotation.copy(child.rotation);
-                        m.scale.copy(child.scale);
-                        // Для skinned mesh — пробуем скопировать bind matrix
-                        if (child.skeleton && child.bindMatrix) {
-                            m.bindMatrix = child.bindMatrix.clone();
-                            m.skeleton = child.skeleton;
+                cloned.name = (srcObj.name || 'model') + '_preview';
+                cloned.position.copy(srcObj.position);
+                cloned.rotation.copy(srcObj.rotation);
+                cloned.scale.copy(srcObj.scale);
+                // Рекурсивно клонируем детей сохраняя иерархию
+                function _deepCloneTree(srcParent, dstParent) {
+                    if (!srcParent.children) return;
+                    for (var ci = 0; ci < srcParent.children.length; ci++) {
+                        var child = srcParent.children[ci];
+                        var cloneChild;
+                        if (child.isBone) {
+                            cloneChild = new THREE.Bone();
+                            cloneChild.name = child.name;
+                            _boneMap[child.uuid] = cloneChild;
+                        } else if (child.isSkinnedMesh) {
+                            // SkinnedMesh — клонируем как обычный меш сначала
+                            cloneChild = new THREE.Mesh(child.geometry, child.material);
+                            cloneChild.name = child.name;
+                            cloneChild.castShadow = child.castShadow;
+                            cloneChild.receiveShadow = child.receiveShadow;
+                        } else if (child.isMesh) {
+                            cloneChild = new THREE.Mesh(child.geometry, child.material);
+                            cloneChild.name = child.name;
+                            cloneChild.castShadow = child.castShadow;
+                            cloneChild.receiveShadow = child.receiveShadow;
+                        } else {
+                            cloneChild = new THREE.Object3D();
+                            cloneChild.name = child.name;
                         }
-                        cloned.add(m);
+                        cloneChild.position.copy(child.position);
+                        cloneChild.rotation.copy(child.rotation);
+                        cloneChild.scale.copy(child.scale);
+                        if (child.matrixAutoUpdate !== undefined) cloneChild.matrixAutoUpdate = child.matrixAutoUpdate;
+                        dstParent.add(cloneChild);
+                        _deepCloneTree(child, cloneChild);
+                    }
+                }
+                _deepCloneTree(srcObj, cloned);
+                // Привязываем skinned mesh к клонированным костям
+                var _clonedBones = [];
+                var _boneIndexMap = {};
+                cloned.traverse(function(c) {
+                    if (c.isBone) _clonedBones.push(c);
+                });
+                // Маппинг: имя кости → индекс в массиве клонированных костей
+                for (var bi = 0; bi < _clonedBones.length; bi++) {
+                    _boneIndexMap[_clonedBones[bi].name] = bi;
+                }
+                // Для каждого skinned mesh в оригинале — находим соответствующий клон и привязываем
+                srcObj.traverse(function(origMesh) {
+                    if (!origMesh.isSkinnedMesh || !origMesh.skeleton) return;
+                    // Находим клон этого меша по имени
+                    var clonedMesh = null;
+                    cloned.traverse(function(c) {
+                        if (clonedMesh) return;
+                        if (c.name === origMesh.name && c.isMesh) clonedMesh = c;
+                    });
+                    if (!clonedMesh) return;
+                    // Строим массив клонированных костей в том же порядке что у оригинала
+                    var origBones = origMesh.skeleton.bones;
+                    var newBones = [];
+                    var validBind = true;
+                    for (var obi = 0; obi < origBones.length; obi++) {
+                        var bName = origBones[obi].name;
+                        if (_boneIndexMap[bName] !== undefined) {
+                            newBones.push(_clonedBones[_boneIndexMap[bName]]);
+                        } else {
+                            validBind = false;
+                            break;
+                        }
+                    }
+                    if (validBind && newBones.length === origBones.length) {
+                        try {
+                            var newSkeleton = new THREE.Skeleton(newBones);
+                            if (origMesh.bindMatrix) newSkeleton.boneMatrices = new Float32Array(origMesh.skeleton.boneMatrices);
+                            clonedMesh.skeleton = newSkeleton;
+                            if (origMesh.bindMatrix) clonedMesh.bindMatrix = origMesh.bindMatrix.clone();
+                            clonedMesh.bind(newSkeleton, clonedMesh.bindMatrix);
+                        } catch(bindErr) {
+                            console.warn('[Preview] Skeleton bind failed for mesh', origMesh.name, ':', bindErr.message);
+                        }
                     }
                 });
-                if (_cloneHasVisibleMesh(cloned)) {
-                    console.log('[Preview] Manual rebuild clone successful — has visible meshes');
+                if (_cloneIsValid(cloned)) {
+                    console.log('[Preview] Full hierarchy rebuild clone — VALID');
                 } else {
-                    console.warn('[Preview] Manual rebuild also has no visible meshes');
+                    console.warn('[Preview] Full hierarchy rebuild produced INVALID clone — trying flat mesh fallback');
+                    if (cloned) { cloned.traverse(function(c) { if(c.geometry) c.geometry = null; }); }
                     cloned = null;
                 }
             } catch(e3) {
-                console.warn('[Preview] Manual rebuild failed:', e3.message);
+                console.warn('[Preview] Full hierarchy rebuild failed:', e3.message);
+                cloned = null;
+            }
+        }
+
+        // Метод 4: Плоский фоллбэк — просто копируем меши в одну группу без иерархии
+        // Модель будет видна но без скелетной анимации в превью
+        if (!cloned) {
+            try {
+                console.log('[Preview] Attempting flat mesh fallback...');
+                cloned = new THREE.Group();
+                cloned.name = (srcObj.name || 'model') + '_preview_flat';
+                srcObj.traverse(function(child) {
+                    if (child === srcObj) return;
+                    if (child.isMesh && child.geometry) {
+                        var pos = child.geometry.attributes && child.geometry.attributes.position;
+                        if (!pos || pos.count === 0) return;
+                        // Вычисляем world transform и копируем геометрию в world space
+                        var worldPos = new THREE.Vector3();
+                        var worldQuat = new THREE.Quaternion();
+                        var worldScale = new THREE.Vector3();
+                        child.updateWorldMatrix(true, false);
+                        child.getWorldPosition(worldPos);
+                        child.getWorldQuaternion(worldQuat);
+                        child.getWorldScale(worldScale);
+                        var m = new THREE.Mesh(child.geometry, child.material);
+                        m.name = child.name;
+                        m.position.copy(worldPos);
+                        m.quaternion.copy(worldQuat);
+                        m.scale.copy(worldScale);
+                        cloned.add(m);
+                    }
+                });
+                // Центрируем клон относительно bounding box
+                var flatBox = new THREE.Box3().setFromObject(cloned);
+                var flatCenter = flatBox.getCenter(new THREE.Vector3());
+                cloned.children.forEach(function(c) { c.position.sub(flatCenter); });
+                if (_cloneIsValid(cloned)) {
+                    console.log('[Preview] Flat mesh fallback — VALID (no skeleton animation in preview)');
+                } else {
+                    console.warn('[Preview] Flat mesh fallback also INVALID');
+                    if (cloned) { cloned.traverse(function(c) { if(c.geometry) c.geometry = null; }); }
+                    cloned = null;
+                }
+            } catch(e4) {
+                console.warn('[Preview] Flat mesh fallback failed:', e4.message);
                 cloned = null;
             }
         }
@@ -14017,6 +14159,25 @@ var EngineApp = (function() {
         // Reset transform for preview
         cloned.position.set(0, 0, 0);
         cloned.rotation.set(0, 0, 0);
+
+        // КРИТИЧЕСКИ ВАЖНО: отключаем frustum culling на ВСЕХ мешах клона.
+        // При клонировании скелетных моделей bounding sphere может быть
+        // некорректной, из-за чего Three.js считает что меш вне камеры и
+        // не рендерит его. Отключение гарантирует что модель ВСЕГДА видна.
+        cloned.traverse(function(c) {
+            if (c.isMesh) {
+                c.frustumCulled = false;
+                // Также принудительно пересчитываем bounding sphere
+                if (c.geometry) {
+                    c.geometry.computeBoundingSphere();
+                }
+            }
+        });
+
+        // Логируем состояние клона для диагностики
+        var _cloneBox = new THREE.Box3().setFromObject(cloned);
+        var _cloneSize = _cloneBox.getSize(new THREE.Vector3());
+        console.log('[Preview] Clone ready — bounding box:', _cloneSize.x.toFixed(3), _cloneSize.y.toFixed(3), _cloneSize.z.toFixed(3), '| method used:', cloned.name);
 
         _inspPreviewModel = cloned;
 
@@ -15312,7 +15473,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
