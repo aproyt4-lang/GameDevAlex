@@ -13846,6 +13846,20 @@ var EngineApp = (function() {
         console.log('[Preview] SkeletonUtils available?', typeof THREE.SkeletonUtils !== 'undefined',
                     '| clone method?', !!(THREE.SkeletonUtils && THREE.SkeletonUtils.clone));
 
+        // Валидация клона — проверяет есть ли хотя бы один меш с валидной геометрией
+        function _cloneHasVisibleMesh(obj) {
+            if (!obj) return false;
+            var found = false;
+            obj.traverse(function(c) {
+                if (found) return;
+                if (c.isMesh && c.geometry) {
+                    var pos = c.geometry.attributes && c.geometry.attributes.position;
+                    if (pos && pos.count > 0) found = true;
+                }
+            });
+            return found;
+        }
+
         // CRITICAL PRE-CLONE STEP: Strip circular references from userData.
         // Three.js's Object3D.clone(true) recursively clones userData, and any
         // circular reference (mixer, animations arrays containing tracks that
@@ -13882,34 +13896,69 @@ var EngineApp = (function() {
         });
         console.log('[Preview] Stripped userData on', _savedUserData.length, 'nodes before cloning');
 
+        // Метод 1: SkeletonUtils.clone (лучший для скелетных моделей)
         if (typeof THREE.SkeletonUtils !== 'undefined' && THREE.SkeletonUtils.clone) {
             try {
-                // SkeletonUtils.clone is a static method on a class — call it explicitly
-                // via the class so `this` inside resolves correctly.
                 cloned = THREE.SkeletonUtils.clone(srcObj);
-                console.log('[Preview] Cloned via SkeletonUtils');
+                if (_cloneHasVisibleMesh(cloned)) {
+                    console.log('[Preview] Cloned via SkeletonUtils — has visible meshes');
+                } else {
+                    console.warn('[Preview] SkeletonUtils.clone returned object with NO visible meshes — trying fallback');
+                    cloned = null;
+                }
             } catch(e) {
                 console.warn('[Preview] SkeletonUtils.clone failed:', e.message);
                 cloned = null;
             }
         }
+
+        // Метод 2: Object3D.clone(true) — глубокое клонирование
         if (!cloned) {
-            // Fallback: try Object3D.clone with shallow history — pass `false` to avoid
-            // deep-cloning circular userData references which cause stack overflow.
-            // We then manually re-add mesh geometries/materials so the preview still
-            // shows something visible.
             try {
                 cloned = srcObj.clone(true);
-                console.log('[Preview] Cloned via Object3D.clone(true)');
-            } catch(e) {
-                console.warn('[Preview] Object3D.clone(true) failed:', e.message, '— trying clone(false)');
-                try {
-                    cloned = srcObj.clone(false);
-                    console.log('[Preview] Cloned via Object3D.clone(false) — geometry only, no children');
-                } catch(e2) {
-                    console.warn('[Preview] Object3D.clone(false) also failed:', e2.message);
+                if (_cloneHasVisibleMesh(cloned)) {
+                    console.log('[Preview] Cloned via Object3D.clone(true) — has visible meshes');
+                } else {
+                    console.warn('[Preview] Object3D.clone(true) returned object with NO visible meshes — trying manual rebuild');
                     cloned = null;
                 }
+            } catch(e) {
+                console.warn('[Preview] Object3D.clone(true) failed:', e.message);
+                cloned = null;
+            }
+        }
+
+        // Метод 3: Ручная пересборка — клонируем root, затем вручную копируем каждый меш
+        if (!cloned) {
+            try {
+                console.log('[Preview] Attempting manual mesh rebuild clone...');
+                cloned = new THREE.Group();
+                cloned.name = srcObj.name ? (srcObj.name + '_preview') : 'preview_clone';
+                srcObj.traverse(function(child) {
+                    if (child === srcObj) return;
+                    if (child.isMesh) {
+                        var m = new THREE.Mesh(child.geometry, child.material);
+                        m.name = child.name;
+                        m.position.copy(child.position);
+                        m.rotation.copy(child.rotation);
+                        m.scale.copy(child.scale);
+                        // Для skinned mesh — пробуем скопировать bind matrix
+                        if (child.skeleton && child.bindMatrix) {
+                            m.bindMatrix = child.bindMatrix.clone();
+                            m.skeleton = child.skeleton;
+                        }
+                        cloned.add(m);
+                    }
+                });
+                if (_cloneHasVisibleMesh(cloned)) {
+                    console.log('[Preview] Manual rebuild clone successful — has visible meshes');
+                } else {
+                    console.warn('[Preview] Manual rebuild also has no visible meshes');
+                    cloned = null;
+                }
+            } catch(e3) {
+                console.warn('[Preview] Manual rebuild failed:', e3.message);
+                cloned = null;
             }
         }
 
@@ -15192,6 +15241,7 @@ var EngineApp = (function() {
         _inspPreviewAddClipByName: _inspPreviewAddClipByName,
         _inspPreviewPlayClipByName: _inspPreviewPlayClipByName,
         _inspPreviewPlayClip: _inspPreviewPlayClip,
+        _inspPreviewStopAnim: _inspPreviewStopAnim,
         _inspPreviewShow: _inspPreviewShow,
         _inspPreviewHide: _inspPreviewHide,
         _inspPreviewUpdate: _inspPreviewUpdate,
@@ -15262,6 +15312,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
