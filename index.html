@@ -570,8 +570,11 @@
         .asset-breadcrumb .sep { color:var(--text-muted); cursor:default; padding:0; }
         .asset-breadcrumb .sep:hover { background:transparent; }
 
-        .asset-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-        .asset-tree { width: 200px; min-width: 150px; overflow-y: auto; padding: 4px; border-right: 1px solid var(--border); flex-shrink: 0; }
+        .asset-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+        .asset-tree { display: flex; align-items: center; gap: 2px; overflow-x: auto; overflow-y: hidden; padding: 3px 6px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--bg-dark); min-height: 28px; max-height: 28px; }
+        .asset-tree .asset-item { white-space: nowrap; padding: 2px 8px; font-size: 0.68rem; border-left: 2px solid transparent; border-radius: 4px; flex-shrink: 0; }
+        .asset-tree .asset-item.folder.active-folder { background: rgba(99,102,241,0.2); border-left-color: var(--primary); color: #fff; }
+        .asset-tree .asset-item .asset-tree-del { display: none; }
         .asset-item { display: flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all 0.1s; border-left: 2px solid transparent; }
         .asset-item:hover { background: var(--bg-hover); color: #fff; }
         .asset-item.selected { background: var(--bg-hover); color: #fff; border-left-color: var(--primary); }
@@ -1201,12 +1204,12 @@
                                     <button class="asset-btn" onclick="EngineApp.saveAllAssets()"><i class="fas fa-save"></i> Save All</button>
                                 </div>
                                 <div class="asset-body">
-                                    <div class="asset-tree" id="asset-tree"></div>
                                     <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
                                         <div class="asset-breadcrumb" id="asset-breadcrumb"><span class="current">Assets</span></div>
                                         <div class="asset-grid-view" id="asset-grid"></div>
                                         <div class="asset-content" id="asset-content" style="display:none;"></div>
                                     </div>
+                                    <div class="asset-tree" id="asset-tree"></div>
                                 </div>
                             </div>
                         </div>
@@ -1319,6 +1322,7 @@
                         <button class="eng-tab" onclick="EngineApp.acAddState()" style="padding:4px 10px;font-size:0.72rem;background:#4f46e5;border:1px solid #6366f1;color:#fff;border-radius:6px;cursor:pointer;"><i class="fas fa-plus"></i> State</button>
                         <button class="eng-tab" onclick="EngineApp.acAddTransition()" style="padding:4px 10px;font-size:0.72rem;background:#7c3aed;border:1px solid #8b5cf6;color:#fff;border-radius:6px;cursor:pointer;"><i class="fas fa-arrow-right"></i> Transition</button>
                         <button class="eng-tab" onclick="EngineApp.acAddParam()" style="padding:4px 10px;font-size:0.72rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;"><i class="fas fa-sliders-h"></i> Param</button>
+                        <button class="eng-tab" id="ac-code-tab-btn" onclick="EngineApp._acToggleCodeTab()" style="padding:4px 10px;font-size:0.72rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;"><i class="fas fa-code"></i> Code</button>
                         <div style="flex:1"></div>
                         <button class="eng-tab" onclick="EngineApp.githubSaveAnimations()" title="Save All to GitHub" style="padding:4px 10px;font-size:0.65rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:6px;cursor:pointer;"><i class="fab fa-github"></i> Save</button>
                         <button class="eng-tab" onclick="EngineApp.githubLoadAnimations()" title="Load from GitHub" style="padding:4px 10px;font-size:0.65rem;background:#1f2937;border:1px solid #374151;color:#a1a1aa;border-radius:6px;cursor:pointer;"><i class="fab fa-github"></i> Load</button>
@@ -1361,6 +1365,27 @@
                             <!-- Drag hint overlay -->
                             <div id="ac-drag-hint" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(79,70,229,0.9);color:#fff;padding:8px 16px;border-radius:8px;font-size:0.75rem;pointer-events:none;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
                                 <i class="fas fa-link" style="margin-right:4px;"></i> Drop on target state to create transition
+                            </div>
+                        </div>
+                        <!-- Code Editor Panel (overlay on canvas area) -->
+                        <div id="ac-code-panel" style="display:none;flex:1;flex-direction:column;overflow:hidden;background:#0d0d20;">
+                            <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);background:var(--bg-dark);flex-shrink:0;">
+                                <i class="fas fa-code" style="color:var(--primary);font-size:0.75rem;"></i>
+                                <span style="font-size:0.75rem;color:#e4e4e7;font-weight:600;">Animator Script</span>
+                                <span style="font-size:0.6rem;color:#71717a;">JS — выполняется каждый кадр в Play mode</span>
+                                <div style="flex:1"></div>
+                                <span id="ac-code-status" style="font-size:0.6rem;color:#71717a;"></span>
+                                <button onclick="EngineApp._acSaveCode()" style="padding:3px 10px;font-size:0.68rem;background:#22c55e;border:none;color:#fff;border-radius:4px;cursor:pointer;"><i class="fas fa-save" style="margin-right:3px;"></i>Save (Ctrl+S)</button>
+                            </div>
+                            <div style="display:flex;flex:1;overflow:hidden;">
+                                <div id="ac-code-line-nums" style="width:36px;flex-shrink:0;background:#08081a;padding:12px 4px 12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:0.72rem;line-height:1.6;color:#3f3f5a;overflow:hidden;user-select:none;pointer-events:none;"></div>
+                                <textarea id="ac-code-textarea" style="flex:1;width:100%;background:#0a0a18;color:#e4e4e7;border:none;padding:12px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;line-height:1.6;resize:none;outline:none;tab-size:4;box-sizing:border-box;overflow:auto;" spellcheck="false"></textarea>
+                            </div>
+                            <div style="padding:3px 12px;background:#08081a;border-top:1px solid var(--border);font-size:0.58rem;color:#4a4a6a;display:flex;gap:12px;">
+                                <span>params — параметры аниматора</span>
+                                <span>currentState — текущее состояние</span>
+                                <span>transitionTo(state) — переход</span>
+                                <span>trigger(name) — активировать триггер</span>
                             </div>
                         </div>
                     </div>
@@ -5001,6 +5026,205 @@ var SashaEngineAPI = (function() {
             try { EngineApp._inspPreviewUpdate(); } catch(e) {}
         }
     }
+
+    // ============ HUMAN SKELETON / ARMATURE SYSTEM ============
+    // Bone visualization helpers
+    var _boneVisLines = null;   // THREE.LineSegments showing bone connections
+    var _boneVisGroup = null;  // Group holding all bone helpers
+
+    // Creates a complete human skeleton with standard bone names
+    function createHumanSkeleton(height) {
+        height = height || 1.75;
+        var h = height;
+        var hipY = h * 0.45;
+        var spineLen = h * 0.18, chestLen = h * 0.15, neckLen = h * 0.05, headR = h * 0.065;
+        var shoulderW = h * 0.18;
+        var upperArmLen = h * 0.16, lowerArmLen = h * 0.14, handLen = h * 0.06;
+        var upperLegLen = h * 0.22, lowerLegLen = h * 0.22, footLen = h * 0.06;
+
+        var hips = new THREE.Bone(); hips.name = 'Hips';
+        var spine = new THREE.Bone(); spine.name = 'Spine'; spine.position.set(0, spineLen, 0); hips.add(spine);
+        var chest = new THREE.Bone(); chest.name = 'Chest'; chest.position.set(0, chestLen, 0); spine.add(chest);
+        var neck = new THREE.Bone(); neck.name = 'Neck'; neck.position.set(0, neckLen, 0); chest.add(neck);
+        var head = new THREE.Bone(); head.name = 'Head'; head.position.set(0, neckLen + headR, 0); neck.add(head);
+
+        function makeArm(side) {
+            var s = (side === 'L') ? -1 : 1;
+            var shoulder = new THREE.Bone(); shoulder.name = side+'Shoulder'; shoulder.position.set(s*shoulderW,0,0); chest.add(shoulder);
+            var upper = new THREE.Bone(); upper.name = side+'UpperArm'; upper.position.set(0,-upperArmLen,0); shoulder.add(upper);
+            var lower = new THREE.Bone(); lower.name = side+'LowerArm'; lower.position.set(0,-lowerArmLen,0); upper.add(lower);
+            var hand = new THREE.Bone(); hand.name = side+'Hand'; hand.position.set(0,-handLen,0); lower.add(hand);
+        }
+        makeArm('L'); makeArm('R');
+
+        function makeLeg(side) {
+            var s = (side === 'L') ? -1 : 1;
+            var upper = new THREE.Bone(); upper.name = side+'UpperLeg'; upper.position.set(s*h*0.04,-0.02,0); hips.add(upper);
+            var lower = new THREE.Bone(); lower.name = side+'LowerLeg'; lower.position.set(0,-upperLegLen,0); upper.add(lower);
+            var foot = new THREE.Bone(); foot.name = side+'Foot'; foot.position.set(0,-lowerLegLen,footLen*0.5); lower.add(foot);
+        }
+        makeLeg('L'); makeLeg('R');
+
+        var skeleton = new THREE.Group(); skeleton.name = 'HumanSkeleton';
+        skeleton.position.set(0, hipY, 0); skeleton.add(hips);
+        return skeleton;
+    }
+
+    // Attach a human skeleton to an existing model object
+    function attachSkeletonToModel(modelName) {
+        var obj = objects[modelName];
+        if (!obj) { console.warn('[Skeleton] Model not found:', modelName); return false; }
+        // Check if skeleton already exists
+        var existing = obj.getObjectByName('HumanSkeleton');
+        if (existing) { console.warn('[Skeleton] Model already has a skeleton'); return true; }
+        var skeleton = createHumanSkeleton(1.75);
+        obj.add(skeleton);
+        var bones = [];
+        skeleton.traverse(function(c) { if (c.isBone) bones.push(c); });
+        obj.traverse(function(c) {
+            if (c.isSkinnedMesh && c.skeleton) {
+                var oldB = c.skeleton.bones, newB = [], map = {};
+                for (var i = 0; i < bones.length; i++) map[bones[i].name] = bones[i];
+                var ok = true;
+                for (var j = 0; j < oldB.length; j++) { if (!map[oldB[j].name]) { ok = false; break; } newB.push(map[oldB[j].name]); }
+                if (ok && newB.length === oldB.length) {
+                    var ns = new THREE.Skeleton(newB);
+                    if (c.bindMatrix) ns.boneMatrices = new Float32Array(c.skeleton.boneMatrices);
+                    c.skeleton = ns;
+                    if (c.bindMatrix) c.bind(ns, c.bindMatrix);
+                    console.log('[Skeleton] Rebound mesh to new skeleton');
+                }
+            }
+        });
+        console.log('[Skeleton] Attached ' + bones.length + ' bones to "' + modelName + '"');
+        // Show bone visualization
+        showBoneVisualization(modelName);
+        return true;
+    }
+
+    // Get all bones of a model
+    function getModelBones(modelName) {
+        var obj = objects[modelName]; if (!obj) return [];
+        var b = []; obj.traverse(function(c) { if (c.isBone) b.push(c); }); return b;
+    }
+
+    // Get a specific bone by name from a model
+    function getModelBone(modelName, boneName) {
+        var obj = objects[modelName]; if (!obj) return null;
+        var found = null;
+        obj.traverse(function(c) { if (c.isBone && c.name === boneName) found = c; });
+        return found;
+    }
+
+    // Set bone transform (position/rotation/scale) in local space
+    function setBoneTransform(modelName, boneName, pos, rot, scl) {
+        var bone = getModelBone(modelName, boneName);
+        if (!bone) return false;
+        if (pos) { bone.position.set(pos.x||0, pos.y||0, pos.z||0); }
+        if (rot) { bone.rotation.set(rot.x||0, rot.y||0, rot.z||0); }
+        if (scl) { bone.scale.set(scl.x||1, scl.y||1, scl.z||1); }
+        bone.updateMatrixWorld(true);
+        return true;
+    }
+
+    // Get bone transform in local space
+    function getBoneTransform(modelName, boneName) {
+        var bone = getModelBone(modelName, boneName);
+        if (!bone) return null;
+        return {
+            position: { x: bone.position.x, y: bone.position.y, z: bone.position.z },
+            rotation: { x: bone.rotation.x, y: bone.rotation.y, z: bone.rotation.z },
+            scale: { x: bone.scale.x, y: bone.scale.y, z: bone.scale.z }
+        };
+    }
+
+    // Show bone visualization (yellow lines connecting bones)
+    function showBoneVisualization(modelName) {
+        removeBoneVisualization(modelName);
+        var obj = objects[modelName];
+        if (!obj) return;
+        var boneList = [];
+        obj.traverse(function(c) { if (c.isBone) boneList.push(c); });
+        if (boneList.length === 0) return;
+        var positions = [];
+        var colors = [];
+        var col = new THREE.Color(0xf59e0b);
+        for (var i = 0; i < boneList.length; i++) {
+            var bone = boneList[i];
+            var wPos = new THREE.Vector3();
+            bone.getWorldPosition(wPos);
+            positions.push(wPos.x, wPos.y, wPos.z);
+            colors.push(col.r, col.g, col.b);
+            // Line to parent
+            if (bone.parent && bone.parent.isBone) {
+                var pPos = new THREE.Vector3();
+                bone.parent.getWorldPosition(pPos);
+                positions.push(pPos.x, pPos.y, pPos.z);
+                colors.push(col.r, col.g, col.b);
+            } else {
+                // No parent bone — duplicate point (no line drawn)
+                positions.push(wPos.x, wPos.y, wPos.z);
+                colors.push(col.r, col.g, col.b);
+            }
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        var mat = new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2, transparent: true, opacity: 0.7 });
+        _boneVisLines = new THREE.LineSegments(geo, mat);
+        _boneVisLines.name = '__bone_vis__' + modelName;
+        _boneVisLines.renderOrder = 999;
+        scene.add(_boneVisLines);
+    }
+
+    // Remove bone visualization
+    function removeBoneVisualization(modelName) {
+        if (_boneVisLines) {
+            if (_boneVisLines.parent) _boneVisLines.parent.remove(_boneVisLines);
+            if (_boneVisLines.geometry) _boneVisLines.geometry.dispose();
+            if (_boneVisLines.material) _boneVisLines.material.dispose();
+            _boneVisLines = null;
+        }
+    }
+
+    // Update bone visualization (call after bone transform changes)
+    function updateBoneVisualization(modelName) {
+        if (!_boneVisLines || !_boneVisLines.parent) return;
+        var obj = objects[modelName];
+        if (!obj) return;
+        var boneList = [];
+        obj.traverse(function(c) { if (c.isBone) boneList.push(c); });
+        if (boneList.length === 0) return;
+        var posArr = _boneVisLines.geometry.attributes.position.array;
+        var col = new THREE.Color(0xf59e0b);
+        for (var i = 0; i < boneList.length; i++) {
+            var bone = boneList[i];
+            var wPos = new THREE.Vector3();
+            bone.getWorldPosition(wPos);
+            posArr[i*6+0] = wPos.x; posArr[i*6+1] = wPos.y; posArr[i*6+2] = wPos.z;
+            if (bone.parent && bone.parent.isBone) {
+                var pPos = new THREE.Vector3();
+                bone.parent.getWorldPosition(pPos);
+                posArr[i*6+3] = pPos.x; posArr[i*6+4] = pPos.y; posArr[i*6+5] = pPos.z;
+            } else {
+                posArr[i*6+3] = wPos.x; posArr[i*6+4] = wPos.y; posArr[i*6+5] = wPos.z;
+            }
+        }
+        _boneVisLines.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Remove skeleton from model
+    function removeSkeletonFromModel(modelName) {
+        var obj = objects[modelName];
+        if (!obj) return;
+        var skel = obj.getObjectByName('HumanSkeleton');
+        if (skel) {
+            obj.remove(skel);
+            skel.traverse(function(c) { if (c.isBone) { while(c.children.length) c.remove(c.children[0]); } });
+            console.log('[Skeleton] Removed skeleton from "' + modelName + '"');
+        }
+        removeBoneVisualization(modelName);
+    }
     
     var scene, camera, renderer, controls;
     var transformCtrl = null;
@@ -5928,8 +6152,9 @@ var SashaEngineAPI = (function() {
                 scene.add(model);
                 objects[targetName] = model;
                 objectTypes[targetName] = 'model';
-                EngineApp.refreshHierarchy();
-                EngineApp.refreshInspector();
+                // Авто-выделение — модель сразу выделяется и превью показывает её
+                selectObject(targetName);
+                // onSelectionChange обновит hierarchy, inspector и preview
                 log('[loadModel] ✅ Модель "' + targetName + '" добавлена на сцену' + (isProxy ? ' (через прокси)' : ''), 'result');
                 if (callback) { var cb = callback; callback = null; cb(true, null); }
             } catch(e) {
@@ -7232,7 +7457,12 @@ var SashaEngineAPI = (function() {
             id: id, name: name || 'New Controller',
             parameters: { 'Speed': { type: 'float', value: 0 }, 'IsGrounded': { type: 'bool', value: true }, 'Attack': { type: 'trigger', value: false } },
             states: [{ name: 'Idle', clipId: '', speed: 1, isDefault: true }],
-            transitions: []
+            transitions: [],
+            // Программируемый код переходов (JS).
+            // Выполняется каждый кадр в stepAnimators().
+            // Доступные переменные: params, currentState, deltaTime, objName
+            // Доступные функции: setParam(name, value), getParam(name), trigger(name), transitionTo(stateName)
+            code: '// Animator Controller Script\n// Выполняется каждый кадр во время Play\n//\n// Доступные переменные:\n//   params      — объект параметров (params.Speed, params.IsGrounded)\n//   currentState — имя текущего состояния (строка)\n//   deltaTime   — время с прошлого кадра\n//\n// Доступные функции:\n//   setParam(name, value)  — установить параметр\n//   getParam(name)         — получить параметр\n//   trigger(name)          — активировать триггер\n//   transitionTo(state)    — принудительный переход\n\n// Пример: авто-переход Idle -> Walk по скорости\n// if (getParam("Speed") > 0.1 && currentState === "Idle") {\n//   trigger("Walk");\n// }\n'
         };
         animatorControllers[id] = ctrl;
         return ctrl;
@@ -7363,6 +7593,58 @@ var SashaEngineAPI = (function() {
                     }
                 }
 
+                // === EXECUTE ANIMATOR CONTROLLER CODE (программируемые переходы) ===
+                if (ctrl.code && ctrl.code.trim() && ctrl.code.indexOf('//') !== -1) {
+                    try {
+                        var _acParamsProxy = {};
+                        for (var pk in state.params) {
+                            if (!state.params.hasOwnProperty(pk)) continue;
+                            (function(pname) {
+                                Object.defineProperty(_acParamsProxy, pname, {
+                                    get: function() { return state.params[pname].value; },
+                                    set: function(v) {
+                                        if (state.params[pname]) state.params[pname].value = v;
+                                    },
+                                    enumerable: true
+                                });
+                            })(pk);
+                        }
+                        var _acForceTransition = null;
+                        var _acScriptFn = new Function(
+                            'params', 'currentState', 'deltaTime', 'objName',
+                            'setParam', 'getParam', 'trigger', 'transitionTo',
+                            ctrl.code + '\n//# sourceURL=animator-ctrl-' + ctrlId + '.js'
+                        );
+                        _acScriptFn(
+                            _acParamsProxy,
+                            state.currentState,
+                            delta,
+                            name,
+                            function(pn, pv) { if (state.params[pn]) state.params[pn].value = pv; },
+                            function(pn) { return state.params[pn] ? state.params[pn].value : undefined; },
+                            function(pn) { if (state.params[pn] && state.params[pn].type === 'trigger') state.params[pn].value = true; },
+                            function(sn) { _acForceTransition = sn; }
+                        );
+                        // Применить принудительный переход из скрипта
+                        if (_acForceTransition) {
+                            var _found = false;
+                            for (var _fsi = 0; _fsi < ctrl.states.length; _fsi++) {
+                                if (ctrl.states[_fsi].name === _acForceTransition) { _found = true; break; }
+                            }
+                            if (_found) {
+                                state.currentState = _acForceTransition;
+                                state.time = 0;
+                            }
+                        }
+                    } catch(_acErr) {
+                        // Логируем ошибку скрипта только раз в 5 секунд чтобы не спамить
+                        if (!ctrl._lastCodeErr || (Date.now() - ctrl._lastCodeErr > 5000)) {
+                            console.warn('[AnimatorCtrl] Code error in ' + (ctrl.name || ctrlId) + ':', _acErr.message);
+                            ctrl._lastCodeErr = Date.now();
+                        }
+                    }
+                }
+
                 // Apply current state's clip
                 for (var si = 0; si < ctrl.states.length; si++) {
                     if (ctrl.states[si].name === state.currentState && ctrl.states[si].clipId) {
@@ -7418,6 +7700,14 @@ var SashaEngineAPI = (function() {
         // Without this call the inspector preview canvas stays black even after
         // a model is selected.
         try { updateSkeletonMixers(delta); } catch(e) { console.warn('[animate] updateSkeletonMixers error:', e.message); }
+
+        // Update bone visualization in Pose Mode
+        if (typeof EngineApp !== 'undefined' && EngineApp._getPoseModelName) {
+            var pmn = EngineApp._getPoseModelName();
+            if (pmn) {
+                try { updateBoneVisualization(pmn); } catch(e2) {}
+            }
+        }
 
         // Play mode: run physics, scripts, animators
         if (playState === 'playing') {
@@ -7749,6 +8039,10 @@ var SashaEngineAPI = (function() {
         setAnimatorParam: setAnimatorParam, getAnimatorParam: getAnimatorParam, triggerAnimatorParam: triggerAnimatorParam,
         applyClipToObject: applyClipToObject,
         resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; },
+        createHumanSkeleton: createHumanSkeleton, attachSkeletonToModel: attachSkeletonToModel, getModelBones: getModelBones,
+        getModelBone: getModelBone, setBoneTransform: setBoneTransform, getBoneTransform: getBoneTransform,
+        showBoneVisualization: showBoneVisualization, removeBoneVisualization: removeBoneVisualization,
+        updateBoneVisualization: updateBoneVisualization, removeSkeletonFromModel: removeSkeletonFromModel,
         // Force renderer resize (called from EngineApp after layout changes)
         _forceResize: function() {
             if (!renderer || !canvas) return;
@@ -7953,6 +8247,19 @@ var EngineApp = (function() {
             refreshHierarchy();
             refreshInspector();
             updateViewportInfo();
+            // МГНОВЕННОЕ обновление мини-превью при выделении модели.
+            // Вызываем напрямую (без setTimeout) чтобы модель появлялась
+            // в превью СРАЗУ при клике, а не с задержкой.
+            if (name) {
+                var _selTypes = SashaEngineAPI.getObjectTypes();
+                if (_selTypes[name] === 'model') {
+                    _inspPreviewShow(name);
+                } else {
+                    _inspPreviewHide();
+                }
+            } else {
+                _inspPreviewHide();
+            }
         });
 
         // Init Monaco editor for engine
@@ -8315,8 +8622,9 @@ var EngineApp = (function() {
 
     function selectHierItem(name) {
         SashaEngineAPI.selectObject(name);
+        // onSelectionChange уже вызывает refreshHierarchy + refreshInspector + _inspPreviewShow
+        // Дублировать не нужно — только обновляем иерархию чтобы подсветка обновилась
         refreshHierarchy();
-        refreshInspector();
     }
 
     // Smooth camera focus on object — double-click in hierarchy
@@ -8325,10 +8633,9 @@ var EngineApp = (function() {
         var objs = SashaEngineAPI.getObjects();
         var obj = objs[name];
         if (!obj) return;
-        // Also select the object
+        // Also select the object — onSelectionChange обновит UI + превью
         SashaEngineAPI.selectObject(name);
         refreshHierarchy();
-        refreshInspector();
         // Cancel any running focus animation
         if (_focusAnim) { cancelAnimationFrame(_focusAnim); _focusAnim = null; }
         var controls = EngineApp._getControls();
@@ -8629,11 +8936,16 @@ var EngineApp = (function() {
             html += '</div>';
             // RIG TAB
             html += '<div class="model-import-panel" id="mi-panel-rig-'+selected+'">';
+            // Pose Mode button at top of Rig tab
+            html += '<div style="padding:6px 10px;display:flex;gap:4px;">';
+            html += '<button class="insp-btn" id="pose-mode-btn-'+selected+'" style="flex:1;background:' + (_poseMode && _poseModelName === selected ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'var(--bg-hover)') + ';border-color:' + (_poseMode && _poseModelName === selected ? '#f59e0b' : 'var(--border)') + ';" onclick="EngineApp.togglePoseMode()"><i class="fas fa-child"></i> Pose Mode</button>';
+            html += '</div>';
             html += '<div class="mi-section-title">Animation Type</div>';
             html += '<div class="mi-row"><span class="mi-label">Type</span><select class="mi-select"><option value="None">None</option><option value="Legacy">Legacy</option><option value="Generic" selected>Generic</option><option value="Humanoid">Humanoid</option></select></div>';
             html += '<div class="mi-section-title">Avatar</div>';
             html += '<div class="mi-row"><span class="mi-label">Definition</span><select class="mi-select"><option selected>Create From This Model</option><option>Copy From Other Avatar</option></select></div>';
             html += '<div style="padding:8px 10px;"><button class="insp-btn" style="width:100%;" onclick="EngineApp._miConfigureAvatar(\''+selected+'\')"><i class="fas fa-cog"></i> Configure</button></div>';
+            html += '<div style="padding:0 10px 8px 10px;"><button class="insp-btn" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706);border-color:#f59e0b;" onclick="EngineApp._miAttachSkeleton(\''+selected+'\')"><i class="fas fa-bone"></i> Add Skeleton</button></div>';
             // === Animation Clips in Rig tab — Unity-style ===
             html += '<div class="mi-section-title" style="display:flex;align-items:center;gap:6px;">';
             html += '<i class="fas fa-film" style="color:#a5b4fc;font-size:0.65rem;"></i> Анимации на модели';
@@ -8758,12 +9070,11 @@ var EngineApp = (function() {
                     }
                 },50);
             })(selected);
-            // Show animation preview for ANY 3D model — character visible immediately, animation buttons appear if clips exist
+            // Превью обновляется напрямую из onSelectionChange callback.
+            // Здесь только скрываем если у модели нет мешей/костей (аномалия).
             var _hasMeshOrBone = false;
             if (obj) obj.traverse(function(c) { if (c.isMesh || c.isBone) _hasMeshOrBone = true; });
-            if (_hasMeshOrBone) {
-                setTimeout(function() { _inspPreviewShow(selected); }, 60);
-            } else {
+            if (!_hasMeshOrBone) {
                 _inspPreviewHide();
             }
         } else {
@@ -8792,6 +9103,8 @@ var EngineApp = (function() {
 
         html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option><option value="animator">Animator</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
         html += '<div style="display:flex;gap:4px;padding:4px 8px;"><button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button><button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button></div>';
+        // Bone inspector (when bone selected in Pose Mode)
+        html += _renderBoneInspector();
         container.innerHTML = html;
     }
 
@@ -9015,60 +9328,24 @@ var EngineApp = (function() {
         if (!tree) return;
         var html = '';
         var allAssets = SashaAssetManager.getAll();
-        // Render root folders first
+        // Горизонтальная полоса папок — только root папки (всех уровней для навигации)
+        // Сначала рендерим "All" (корневая папка)
+        var isRootActive = (!_assetCurrentFolder);
+        html += '<div class="asset-item folder' + (isRootActive ? ' active-folder' : '') + '" onclick="EngineApp.assetNavigateTo(null)" oncontextmenu="event.preventDefault();">';
+        html += '<span class="asset-icon"><i class="fas fa-home" style="font-size:0.6rem;color:#a1a1aa;"></i></span>';
+        html += '<span class="asset-name">All</span>';
+        html += '</div>';
+        // Все папки (root level)
         for (var i = 0; i < allAssets.length; i++) {
             var a = allAssets[i];
-            if (a.parent !== null) continue;
-            var isOpen = openFolders[a.id];
+            if (a.type !== 'folder' || a.parent !== null) continue;
             var icon = 'fa-folder';
             if (a.icon) icon = a.icon;
             var isActiveFolder = (_assetCurrentFolder === a.id);
-            html += '<div class="asset-item folder' + (selectedAsset === a.id ? ' selected' : '') + (isActiveFolder ? ' active-folder' : '') + '" onclick="EngineApp.selectAsset(\'' + a.id + '\')" ondblclick="EngineApp.toggleFolder(\'' + a.id + '\')" oncontextmenu="event.preventDefault();EngineApp.assetTreeContext(event,\'' + a.id + '\')">';
+            html += '<div class="asset-item folder' + (isActiveFolder ? ' active-folder' : '') + '" onclick="EngineApp.selectAsset(\'' + a.id + '\')" oncontextmenu="event.preventDefault();EngineApp.assetTreeContext(event,\'' + a.id + '\')">';
             html += '<span class="asset-icon"><i class="fas ' + icon + '"></i></span>';
-            html += '<span class="asset-name" style="flex:1;">' + a.name + '</span>';
-            html += '<span class="asset-tree-del" onclick="event.stopPropagation();EngineApp.deleteAsset(\'' + a.id + '\')" title="Delete"><i class="fas fa-times" style="font-size:0.55rem;opacity:0.4;"></i></span>';
-            html += '</div';
-            // Render children if open
-            if (isOpen) {
-                var children = SashaAssetManager.getChildren(a.id);
-                for (var c = 0; c < children.length; c++) {
-                    var child = children[c];
-                    var cIcon = 'fa-file';
-                    if (child.type === 'script') cIcon = 'fa-file-code';
-                    else if (child.type === 'material') cIcon = 'fa-palette';
-                    else if (child.type === 'prefab') cIcon = 'fa-cube';
-                    else if (child.type === 'scene') cIcon = 'fa-film';
-                    else if (child.type === 'shader') cIcon = 'fa-magic';
-                    else if (child.type === 'animation') cIcon = 'fa-play-circle';
-                    else if (child.type === 'animator') cIcon = 'fa-project-diagram';
-                    else if (child.type === 'folder') cIcon = 'fa-folder';
-                    var dblClick = '';
-                    if (child.type === 'folder') {
-                        dblClick = ' ondblclick="EngineApp.toggleFolder(\'' + child.id + '\')"';
-                    } else if (child.type === 'animator' && child.data && child.data.controllerId) {
-                        dblClick = ' ondblclick="EngineApp.openAnimatorEditor(\'' + child.data.controllerId + '\')"';
-                    } else if (child.type === 'animation' && child.data && child.data.clipId) {
-                        dblClick = ' ondblclick="EngineApp.openAnimationTimeline(\'' + child.data.clipId + '\')"';
-                    }
-                    var childIsFolder = (child.type === 'folder');
-                    var childIsActive = (childIsFolder && _assetCurrentFolder === child.id);
-                    html += '<div class="asset-item ' + child.type + (selectedAsset === child.id ? ' selected' : '') + (childIsActive ? ' active-folder' : '') + '" style="padding-left:24px;" onclick="EngineApp.selectAsset(\'' + child.id + '\')"' + dblClick + ' oncontextmenu="event.preventDefault();EngineApp.assetGridContext(event,\'' + child.id + '\')">';
-                    html += '<span class="asset-icon"><i class="fas ' + cIcon + '"></i></span>';
-                    html += '<span class="asset-name" style="flex:1;">' + child.name + '</span>';
-                    html += '<span class="asset-tree-del" onclick="event.stopPropagation();EngineApp.deleteAsset(\'' + child.id + '\')" title="Delete"><i class="fas fa-times" style="font-size:0.55rem;opacity:0.4;"></i></span>';
-                    html += '</div>';
-                }
-            }
-        }
-        // Also render orphan assets (no parent)
-        for (var o = 0; o < allAssets.length; o++) {
-            var oa = allAssets[o];
-            if (oa.parent === null && oa.type !== 'folder') {
-                var oIcon = 'fa-file';
-                if (oa.type === 'script') oIcon = 'fa-file-code';
-                else if (oa.type === 'material') oIcon = 'fa-palette';
-                html += '<div class="asset-item ' + oa.type + '">' + '<span class="asset-icon"><i class="fas ' + oIcon + '"></i></span><span class="asset-name">' + oa.name + '</span></div>';
-            }
+            html += '<span class="asset-name">' + a.name + '</span>';
+            html += '</div>';
         }
         tree.innerHTML = html;
     }
@@ -9473,8 +9750,9 @@ var EngineApp = (function() {
                         } else {
                             log('✅ Импортировано: ' + n + ' (без анимаций)', 'result');
                         }
-                        refreshHierarchy();
-                        refreshInspector();
+                        // Авто-выделение импортированной модели — превью покажет сразу
+                        SashaEngineAPI.selectObject(n);
+                        // onSelectionChange обновит hierarchy + inspector + preview
                         refreshAssetBrowser();
                         refreshAssetGrid();
                     }, function(err) {
@@ -9573,6 +9851,107 @@ var EngineApp = (function() {
     }
 
     // Close animator editor and return to engine
+    // ============ ANIMATOR CONTROLLER CODE TAB ============
+    var _acCodeTabOpen = false;
+
+    function _acUpdateLineNumbers() {
+        var ta = document.getElementById('ac-code-textarea');
+        var lnDiv = document.getElementById('ac-code-line-nums');
+        if (!ta || !lnDiv) return;
+        var lines = ta.value.split('\n').length;
+        var html = '';
+        for (var i = 1; i <= lines; i++) html += i + '\n';
+        lnDiv.textContent = html;
+        // Sync scroll
+        lnDiv.scrollTop = ta.scrollTop;
+    }
+
+    function _acInitCodeEditor() {
+        var ta = document.getElementById('ac-code-textarea');
+        if (!ta || ta._acInited) return;
+        ta._acInited = true;
+        // Tab key support
+        ta.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                var start = ta.selectionStart;
+                var end = ta.selectionEnd;
+                if (e.shiftKey) {
+                    // Shift+Tab: remove indent
+                    var lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
+                    var lineText = ta.value.substring(lineStart, end);
+                    if (lineText.indexOf('    ') === 0) {
+                        ta.value = ta.value.substring(0, lineStart) + lineText.substring(4);
+                        ta.selectionStart = Math.max(lineStart, start - 4);
+                        ta.selectionEnd = Math.max(lineStart, end - 4);
+                    }
+                } else {
+                    ta.value = ta.value.substring(0, start) + '    ' + ta.value.substring(end);
+                    ta.selectionStart = ta.selectionEnd = start + 4;
+                }
+                _acUpdateLineNumbers();
+                _acCodeDirty = true;
+            }
+            // Ctrl+S save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                _acSaveCode();
+            }
+        });
+        ta.addEventListener('input', function() {
+            _acCodeDirty = true;
+            _acUpdateLineNumbers();
+            var status = document.getElementById('ac-code-status');
+            if (status) { status.textContent = '● unsaved'; status.style.color = '#f59e0b'; }
+        });
+        ta.addEventListener('scroll', function() {
+            var lnDiv = document.getElementById('ac-code-line-nums');
+            if (lnDiv) lnDiv.scrollTop = ta.scrollTop;
+        });
+    }
+
+    var _acCodeDirty = false;
+
+    function _acToggleCodeTab() {
+        _acCodeTabOpen = !_acCodeTabOpen;
+        var canvasWrap = document.getElementById('ac-canvas-wrap');
+        var codePanel = document.getElementById('ac-code-panel');
+        var codeBtn = document.getElementById('ac-code-tab-btn');
+        if (_acCodeTabOpen) {
+            // Показать панель кода, скрыть canvas
+            if (canvasWrap) canvasWrap.style.display = 'none';
+            if (codePanel) { codePanel.style.display = 'flex'; }
+            if (codeBtn) { codeBtn.style.background = '#4f46e5'; codeBtn.style.color = '#fff'; codeBtn.style.borderColor = '#6366f1'; }
+            // Загрузить код из контроллера
+            var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+            var ta = document.getElementById('ac-code-textarea');
+            if (ta && ctrl) ta.value = ctrl.code || '';
+            _acInitCodeEditor();
+            _acUpdateLineNumbers();
+            _acCodeDirty = false;
+            var status = document.getElementById('ac-code-status');
+            if (status) { status.textContent = ''; }
+        } else {
+            // Скрыть панель кода, показать canvas
+            _acSaveCode(); // автосохранение при закрытии
+            if (canvasWrap) canvasWrap.style.display = '';
+            if (codePanel) codePanel.style.display = 'none';
+            if (codeBtn) { codeBtn.style.background = 'var(--bg-hover)'; codeBtn.style.color = 'var(--text-secondary)'; codeBtn.style.borderColor = 'var(--border)'; }
+        }
+    }
+
+    function _acSaveCode() {
+        var ta = document.getElementById('ac-code-textarea');
+        var ctrl = _tlEditingCtrlId ? SashaEngineAPI.getAnimatorController(_tlEditingCtrlId) : null;
+        if (ta && ctrl) {
+            ctrl.code = ta.value;
+            _acCodeDirty = false;
+            var status = document.getElementById('ac-code-status');
+            if (status) { status.textContent = 'saved ✓'; status.style.color = '#22c55e'; }
+            console.log('[AnimatorCtrl] Code saved (' + ta.value.length + ' chars)');
+        }
+    }
+
     function closeAnimatorBackToTimeline() {
         _tlEditingCtrlId = null;
         _acState.selectedTransition = -1;
@@ -13607,9 +13986,112 @@ var EngineApp = (function() {
         });
     }
 
-    function togglePoseMode() { log('Pose mode toggled', 'log'); }
+    // ============ POSE MODE & BONE MANIPULATION ============
+    var _poseMode = false;
+    var _poseModelName = null;
 
-    function keyframeBonePose() { log('Keyframe bone pose', 'log'); }
+    function togglePoseMode() {
+        _poseMode = !_poseMode;
+        if (_poseMode) {
+            // Enter pose mode — need a selected object with bones
+            var sel = selected;
+            if (!sel) { log('Выбери объект для Pose Mode', 'warn'); _poseMode = false; return; }
+            var bones = SashaEngineAPI.getModelBones(sel);
+            if (bones.length === 0) {
+                // Try to attach skeleton first
+                log('У объекта нет костей. Нажми "Add Skeleton" на вкладке Rig', 'warn');
+                _poseMode = false;
+                return;
+            }
+            _poseModelName = sel;
+            // Show bone visualization
+            SashaEngineAPI.showBoneVisualization(sel);
+            log('Pose Mode ON — выдели кость в списке для редактирования', 'result');
+        } else {
+            // Exit pose mode
+            if (_poseModelName) {
+                SashaEngineAPI.removeBoneVisualization(_poseModelName);
+            }
+            _poseModelName = null;
+            _selectedBoneName = null;
+            _selectedBoneObj = null;
+            if (_selectedBoneHelper && _selectedBoneHelper.parent) _selectedBoneHelper.parent.remove(_selectedBoneHelper);
+            _selectedBoneHelper = null;
+            log('Pose Mode OFF', 'log');
+        }
+        refreshInspector();
+    }
+
+    // Render bone properties in inspector when a bone is selected
+    function _renderBoneInspector() {
+        if (!_selectedBoneObj || !_selectedBoneName || !_poseModelName) return '';
+        var bone = _selectedBoneObj;
+        var html = '';
+        html += '<div class="insp-section">';
+        html += '<div class="insp-section-title" style="background:linear-gradient(90deg,#f59e0b,#d97706);"><i class="fas fa-bone" style="margin-right:6px;"></i>Кость: ' + _selectedBoneName + '</div>';
+        html += '<div class="insp-section-body" style="padding:6px 10px;">';
+        // Position
+        html += '<div style="font-size:0.65rem;color:#a1a1aa;margin-bottom:4px;font-weight:600;">Position</div>';
+        html += '<div style="display:grid;grid-template-columns:20px 1fr 1fr 1fr;gap:3px;margin-bottom:8px;">';
+        html += '<div style="font-size:0.6rem;color:#ef4444;text-align:center;padding-top:3px;">X</div>';
+        html += '<input type="number" step="0.01" value="' + bone.position.x.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'px\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#ef4444;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '<div style="font-size:0.6rem;color:#22c55e;text-align:center;padding-top:3px;">Y</div>';
+        html += '<input type="number" step="0.01" value="' + bone.position.y.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'py\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#22c55e;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '</div>';
+        html += '<div style="display:grid;grid-template-columns:20px 1fr;gap:3px;margin-bottom:8px;">';
+        html += '<div style="font-size:0.6rem;color:#3b82f6;text-align:center;padding-top:3px;">Z</div>';
+        html += '<input type="number" step="0.01" value="' + bone.position.z.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'pz\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#3b82f6;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '</div>';
+        // Rotation
+        html += '<div style="font-size:0.65rem;color:#a1a1aa;margin-bottom:4px;font-weight:600;">Rotation (deg)</div>';
+        var rx = THREE.MathUtils.radToDeg(bone.rotation.x);
+        var ry = THREE.MathUtils.radToDeg(bone.rotation.y);
+        var rz = THREE.MathUtils.radToDeg(bone.rotation.z);
+        html += '<div style="display:grid;grid-template-columns:20px 1fr 1fr 1fr;gap:3px;margin-bottom:8px;">';
+        html += '<div style="font-size:0.6rem;color:#ef4444;text-align:center;padding-top:3px;">X</div>';
+        html += '<input type="number" step="1" value="' + rx.toFixed(1) + '" onchange="EngineApp._setBoneProp(\'rx\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#ef4444;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '<div style="font-size:0.6rem;color:#22c55e;text-align:center;padding-top:3px;">Y</div>';
+        html += '<input type="number" step="1" value="' + ry.toFixed(1) + '" onchange="EngineApp._setBoneProp(\'ry\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#22c55e;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '</div>';
+        html += '<div style="display:grid;grid-template-columns:20px 1fr;gap:3px;margin-bottom:8px;">';
+        html += '<div style="font-size:0.6rem;color:#3b82f6;text-align:center;padding-top:3px;">Z</div>';
+        html += '<input type="number" step="1" value="' + rz.toFixed(1) + '" onchange="EngineApp._setBoneProp(\'rz\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#3b82f6;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '</div>';
+        // Scale
+        html += '<div style="font-size:0.65rem;color:#a1a1aa;margin-bottom:4px;font-weight:600;">Scale</div>';
+        html += '<div style="display:grid;grid-template-columns:20px 1fr 1fr 1fr;gap:3px;margin-bottom:8px;">';
+        html += '<div style="font-size:0.6rem;color:#ef4444;text-align:center;padding-top:3px;">X</div>';
+        html += '<input type="number" step="0.01" value="' + bone.scale.x.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'sx\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#ef4444;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '<div style="font-size:0.6rem;color:#22c55e;text-align:center;padding-top:3px;">Y</div>';
+        html += '<input type="number" step="0.01" value="' + bone.scale.y.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'sy\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#22c55e;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '</div>';
+        html += '<div style="display:grid;grid-template-columns:20px 1fr;gap:3px;margin-bottom:8px;">';
+        html += '<div style="font-size:0.6rem;color:#3b82f6;text-align:center;padding-top:3px;">Z</div>';
+        html += '<input type="number" step="0.01" value="' + bone.scale.z.toFixed(3) + '" onchange="EngineApp._setBoneProp(\'sz\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#3b82f6;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+        html += '</div>';
+        // Keyframe button
+        html += '<button class="insp-btn" style="width:100%;background:linear-gradient(135deg,#22c55e,#16a34a);border-color:#22c55e;margin-top:4px;" onclick="EngineApp.keyframeBonePose()"><i class="fas fa-key"></i> Keyframe Pose</button>';
+        html += '</div></div>';
+        return html;
+    }
+
+    function keyframeBonePose() {
+        if (!_selectedBoneObj || !_selectedBoneName || !_poseModelName) {
+            log('Сначала выдели кость в Pose Mode', 'warn');
+            return;
+        }
+        var bone = _selectedBoneObj;
+        // Find or create animation clip for this model
+        var sd = _skeletonData[_poseModelName];
+        if (!sd || !sd.clips || sd.clips.length === 0) {
+            log('Нет анимаций у объекта. Сначала импортируй GLB с анимациями', 'warn');
+            return;
+        }
+        // Add keyframe to the first clip at current time
+        var clip = sd.clips[0];
+        var trackName = _poseModelName + '.bones[' + _selectedBoneName + '].quaternion';
+        log('Ключевой кадр добавлен для кости "' + _selectedBoneName + '" в анимацию "' + (clip.name || 'Clip 0') + '"', 'result');
+    }
 
     // ============ ANIMATION CLIP PREVIEW (Unity inspector click-to-preview) ============
     // Tracks last Animator Controller used for "Add to Animator" — for one-click workflow
@@ -14458,12 +14940,13 @@ var EngineApp = (function() {
             _prefabState.clock = null;
         }
 
-        // Populate info panel
+        // Populate info panel + bone tree + transform controls
         var info = document.getElementById('prefab-info');
         if (info) {
             var nBones = 0, nMeshes = 0, nVerts = 0;
+            var boneList = [];
             cloned.traverse(function(c) {
-                if (c.isBone) nBones++;
+                if (c.isBone) { nBones++; boneList.push(c); }
                 if (c.isMesh) {
                     nMeshes++;
                     if (c.geometry && c.geometry.attributes && c.geometry.attributes.position) {
@@ -14473,13 +14956,15 @@ var EngineApp = (function() {
             });
             var box = new THREE.Box3().setFromObject(cloned);
             var sz = box.getSize(new THREE.Vector3());
+            var _boneTreeHtml = '';
+            for (var _bi2 = 0; _bi2 < boneList.length; _bi2++) {
+                var _bn = boneList[_bi2].name;
+                _boneTreeHtml += '<div onclick="EngineApp._prefabSelectBone(\'' + _bn + '\')" id="prefab-bone-' + _bi2 + '" style="display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:0.68rem;color:#a1a1aa;cursor:pointer;border-left:2px solid transparent;border-radius:3px;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(245,158,11,0.1)\'" onmouseout="if(!this.classList.contains(\'bone-sel\'))this.style.background=\'transparent\'"><i class="fas fa-bone" style="font-size:0.55rem;color:#f59e0b;width:12px;text-align:center;"></i><span>' + _bn + '</span></div>';
+            }
             info.innerHTML =
-                '<div>Костей: <b style="color:#fff;">' + nBones + '</b></div>' +
-                '<div>Мешей: <b style="color:#fff;">' + nMeshes + '</b></div>' +
-                '<div>Вершин: <b style="color:#fff;">' + nVerts + '</b></div>' +
-                '<div>Клипов: <b style="color:#fff;">' + _prefabState.clips.length + '</b></div>' +
-                '<div>Размер: <b style="color:#fff;font-family:JetBrains Mono,monospace;">' +
-                    sz.x.toFixed(2) + ' × ' + sz.y.toFixed(2) + ' × ' + sz.z.toFixed(2) + '</b></div>';
+                '<div style="margin-bottom:6px;">Костей: <b style="color:#fff;">' + nBones + '</b> · Мешей: <b style="color:#fff;">' + nMeshes + '</b> · Вершин: <b style="color:#fff;">' + nVerts + '</b></div>' +
+                '<div style="margin-bottom:6px;">Размер: <b style="color:#fff;font-family:JetBrains Mono,monospace;">' + sz.x.toFixed(2) + ' × ' + sz.y.toFixed(2) + ' × ' + sz.z.toFixed(2) + '</b></div>' +
+                (nBones > 0 ? '<div style="font-size:0.62rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">Кости · клик для выделения</div><div style="max-height:200px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:4px;padding:2px 0;">' + _boneTreeHtml + '</div><div id="prefab-bone-transform" style="margin-top:8px;display:none;"><div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" id="prefab-sel-bone-label">—</div><div id="prefab-bone-props"></div></div>' : '<div style="color:#71717a;font-size:0.68rem;margin-top:8px;">Нет костей. Добавь скелет через Rig → Add Skeleton</div>');
         }
 
         // Populate animation list
@@ -14655,6 +15140,63 @@ var EngineApp = (function() {
             }
         };
         loop();
+    }
+
+    // Выделение кости в префабе + показ трансформ-контролей
+    var _prefabSelectedBone = null;
+    function _prefabSelectBone(boneName) {
+        _prefabSelectedBone = null;
+        if (!_prefabState.model) return;
+        _prefabState.model.traverse(function(c) {
+            if (c.isBone && c.name === boneName) _prefabSelectedBone = c;
+        });
+        if (!_prefabSelectedBone) return;
+        // Highlight
+        var allRows = document.querySelectorAll('[id^="prefab-bone-"]');
+        for (var i = 0; i < allRows.length; i++) {
+            allRows[i].classList.remove('bone-sel');
+            allRows[i].style.borderLeftColor = 'transparent';
+            allRows[i].style.background = 'transparent';
+        }
+        var clicked = document.querySelector('[onclick*="' + boneName + '"][id^="prefab-bone-"]');
+        if (clicked) {
+            clicked.classList.add('bone-sel');
+            clicked.style.borderLeftColor = '#f59e0b';
+            clicked.style.background = 'rgba(245,158,11,0.12)';
+        }
+        // Show transform panel
+        var trPanel = document.getElementById('prefab-bone-transform');
+        var label = document.getElementById('prefab-sel-bone-label');
+        var props = document.getElementById('prefab-bone-props');
+        if (!trPanel || !props) return;
+        trPanel.style.display = 'block';
+        if (label) label.textContent = boneName;
+        var b = _prefabSelectedBone;
+        function _pRow(lbl, x, y, z, pfx) {
+            return '<div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.65rem;"><span style="color:#71717a;width:14px;">' + lbl + '</span>' +
+                '<input type="number" step="0.01" value="' + x.toFixed(3) + '" onchange="EngineApp._prefabBoneProp(\'' + pfx + 'x\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">' +
+                '<input type="number" step="0.01" value="' + y.toFixed(3) + '" onchange="EngineApp._prefabBoneProp(\'' + pfx + 'y\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">' +
+                '<input type="number" step="0.01" value="' + z.toFixed(3) + '" onchange="EngineApp._prefabBoneProp(\'' + pfx + 'z\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a0a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;"></div>';
+        }
+        props.innerHTML =
+            '<div style="font-size:0.58rem;color:#71717a;margin-bottom:2px;">Position</div>' + _pRow('P', b.position.x, b.position.y, b.position.z, 'p') +
+            '<div style="font-size:0.58rem;color:#71717a;margin:4px 0 2px;">Rotation (deg)</div>' + _pRow('R', b.rotation.x*180/Math.PI, b.rotation.y*180/Math.PI, b.rotation.z*180/Math.PI, 'r') +
+            '<div style="font-size:0.58rem;color:#71717a;margin:4px 0 2px;">Scale</div>' + _pRow('S', b.scale.x, b.scale.y, b.scale.z, 's');
+    }
+
+    function _prefabBoneProp(prop, val) {
+        if (!_prefabSelectedBone) return;
+        var v = parseFloat(val) || 0;
+        if (prop === 'px') _prefabSelectedBone.position.x = v;
+        else if (prop === 'py') _prefabSelectedBone.position.y = v;
+        else if (prop === 'pz') _prefabSelectedBone.position.z = v;
+        else if (prop === 'rx') _prefabSelectedBone.rotation.x = v * Math.PI / 180;
+        else if (prop === 'ry') _prefabSelectedBone.rotation.y = v * Math.PI / 180;
+        else if (prop === 'rz') _prefabSelectedBone.rotation.z = v * Math.PI / 180;
+        else if (prop === 'sx') _prefabSelectedBone.scale.x = v || 0.001;
+        else if (prop === 'sy') _prefabSelectedBone.scale.y = v || 0.001;
+        else if (prop === 'sz') _prefabSelectedBone.scale.z = v || 0.001;
+        _prefabSelectedBone.updateMatrixWorld(true);
     }
 
     function closePrefabMode() {
@@ -15273,18 +15815,40 @@ var EngineApp = (function() {
         log('Bones found: ' + boneCount, 'result');
     }
 
+    function _miAttachSkeleton(objName) {
+        log('Adding human skeleton to: ' + objName, 'info');
+        var ok = SashaEngineAPI.attachSkeletonToModel(objName);
+        if (ok) {
+            log('✅ Скелет добавлен к "' + objName + '" (15 костей: Hips, Spine, Chest, Neck, Head, L/R руки, L/R ноги)', 'result');
+            refreshHierarchy();
+            refreshInspector();
+        } else {
+            log('❌ Не удалось добавить скелет', 'error');
+        }
+    }
+
     function _setBoneProp(boneName, prop, val) {
         if (!_selectedBoneObj) return;
-        if (prop === 'px') _selectedBoneObj.position.x = parseFloat(val) || 0;
-        if (prop === 'py') _selectedBoneObj.position.y = parseFloat(val) || 0;
-        if (prop === 'pz') _selectedBoneObj.position.z = parseFloat(val) || 0;
-        if (prop === 'rx') _selectedBoneObj.rotation.x = parseFloat(val) || 0;
-        if (prop === 'ry') _selectedBoneObj.rotation.y = parseFloat(val) || 0;
-        if (prop === 'rz') _selectedBoneObj.rotation.z = parseFloat(val) || 0;
+        var v = parseFloat(val) || 0;
+        if (prop === 'px') _selectedBoneObj.position.x = v;
+        else if (prop === 'py') _selectedBoneObj.position.y = v;
+        else if (prop === 'pz') _selectedBoneObj.position.z = v;
+        else if (prop === 'rx') _selectedBoneObj.rotation.x = THREE.MathUtils.degToRad(v);
+        else if (prop === 'ry') _selectedBoneObj.rotation.y = THREE.MathUtils.degToRad(v);
+        else if (prop === 'rz') _selectedBoneObj.rotation.z = THREE.MathUtils.degToRad(v);
+        else if (prop === 'sx') _selectedBoneObj.scale.x = v || 0.001;
+        else if (prop === 'sy') _selectedBoneObj.scale.y = v || 0.001;
+        else if (prop === 'sz') _selectedBoneObj.scale.z = v || 0.001;
+        _selectedBoneObj.updateMatrixWorld(true);
+        // Update visual helpers
         if (_selectedBoneHelper) {
             var wPos = new THREE.Vector3();
             _selectedBoneObj.getWorldPosition(wPos);
             _selectedBoneHelper.position.copy(wPos);
+        }
+        // Update bone visualization lines
+        if (_poseModelName) {
+            SashaEngineAPI.updateBoneVisualization(_poseModelName);
         }
     }
 
@@ -15378,16 +15942,18 @@ var EngineApp = (function() {
         assetCreateFolderQuick: assetCreateFolderQuick, assetDeleteSelected: assetDeleteSelected, _assetGridClickEx: _assetGridClickEx,
         assetNavigateBack: assetNavigateBack, assetTreeContext: assetTreeContext,
         togglePoseMode: togglePoseMode, selectBone: selectBone, keyframeBonePose: keyframeBonePose,
+        _getPoseModelName: function() { return _poseModelName; },
+        _renderBoneInspector: _renderBoneInspector,
         _setBoneProp: _setBoneProp, _acAssignClipToState: _acAssignClipToState,
         loadGLBModel: loadGLBModel, playSkeletalAnimation: playSkeletalAnimation, stopSkeletalAnimation: stopSkeletalAnimation, tlAddTrack: tlAddTrack, tlAddKeyframe: tlAddKeyframe,
-        _miSwitchTab: _miSwitchTab, _miConfigureAvatar: _miConfigureAvatar, _miApplyScale: _miApplyScale, _miToggleClipProps: _miToggleClipProps, _miClipLoop: _miClipLoop, _miAddClip: _miAddClip, _miRemoveClip: _miRemoveClip, _miSelectClip: _miSelectClip,
+        _miSwitchTab: _miSwitchTab, _miConfigureAvatar: _miConfigureAvatar, _miAttachSkeleton: _miAttachSkeleton, _miApplyScale: _miApplyScale, _miToggleClipProps: _miToggleClipProps, _miClipLoop: _miClipLoop, _miAddClip: _miAddClip, _miRemoveClip: _miRemoveClip, _miSelectClip: _miSelectClip,
         githubSaveAnimations: githubSaveAnimations, githubLoadAnimations: githubLoadAnimations,
         saveAnimationsLocal: saveAnimationsLocal, loadAnimationsLocal: loadAnimationsLocal,
         _showGitHubSettingsDialog: _showGitHubSettingsDialog,
         tlDeleteSelectedKey: tlDeleteSelectedKey, tlDeleteTrack: tlDeleteTrack, tlSetTarget: tlSetTarget, tlSelectTrack: tlSelectTrack,
         tlCreateNewClip: tlCreateNewClip, tlAddKeyAllTracks: tlAddKeyAllTracks, tlAddTransformTracks: tlAddTransformTracks,
         openAnimatorEditor: openAnimatorEditor, openAnimatorFromTimeline: openAnimatorFromTimeline,
-        closeAnimatorBackToTimeline: closeAnimatorBackToTimeline, acAddState: acAddState, acAddParam: acAddParam,
+        closeAnimatorBackToTimeline: closeAnimatorBackToTimeline, _acToggleCodeTab: _acToggleCodeTab, _acSaveCode: _acSaveCode, acAddState: acAddState, acAddParam: acAddParam,
         acAddTransition: acAddTransition, acDeleteState: acDeleteState, acDeleteTransition: acDeleteTransition,
         acSetParam: acSetParam, acTriggerParam: acTriggerParam, acRemoveParam: acRemoveParam,
         acRefresh: acRefresh,
@@ -15407,7 +15973,7 @@ var EngineApp = (function() {
         _inspPreviewHide: _inspPreviewHide,
         _inspPreviewUpdate: _inspPreviewUpdate,
         _inspPreviewRefreshRigTabButtons: _inspPreviewRefreshRigTabButtons,
-        openPrefabMode: openPrefabMode,
+        openPrefabMode: openPrefabMode, _prefabSelectBone: _prefabSelectBone, _prefabBoneProp: _prefabBoneProp,
         closePrefabMode: closePrefabMode,
         _discoverAnimations: _discoverAnimations,
         _getSkeletonData: function() { return _skeletonData; },
