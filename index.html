@@ -1068,7 +1068,7 @@
                     </select>
                     <button class="eng-btn" id="eng-snap-btn" onclick="EngineApp.toggleSnap()" title="Snap to Grid (G)"><i class="fas fa-border-all"></i></button>
                     <div class="eng-separator"></div>
-                    <button class="eng-btn" onclick="EngineApp.saveProject()" title="Save"><i class="fas fa-save"></i></button>
+                    <button class="eng-btn" id="toolbar-save-btn" onclick="EngineApp._toolbarSave()" title="Сохранить всё (Ctrl+S)" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-color:#22c55e;font-weight:700;padding:4px 14px;gap:5px;display:flex;align-items:center;"><i class="fas fa-save"></i> <span style="font-size:0.75rem;">SAVE</span></button>
                     <button class="eng-btn" onclick="EngineApp.exportGame()" title="Export Game (HTML)"><i class="fas fa-file-export"></i></button>
                     <button class="eng-btn" onclick="EngineApp.exportModel()" title="Export Model (GLB)"><i class="fas fa-cube"></i></button>
                     <button class="eng-btn" onclick="EngineApp.exportScene()" title="Export Scene (GLB)"><i class="fas fa-cubes"></i></button>
@@ -1118,8 +1118,8 @@
                                     </div>
                                     <!-- Save Status Indicator -->
                                     <div id="save-status-indicator" style="position:absolute;bottom:40px;right:8px;z-index:20;pointer-events:none;opacity:0;transition:opacity 0.3s;">
-                                        <div style="background:rgba(34,197,94,0.9);color:#fff;padding:4px 12px;border-radius:6px;font-size:0.65rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-                                            <i class="fas fa-check"></i> Saved
+                                        <div style="background:rgba(34,197,94,0.95);color:#fff;padding:8px 18px;border-radius:8px;font-size:0.8rem;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.4);letter-spacing:0.5px;">
+                                            <i class="fas fa-check-circle" style="margin-right:6px;"></i>SAVED
                                         </div>
                                     </div>
                                     <div id="fps-crosshair" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10;">
@@ -3106,14 +3106,15 @@ var SashaScene3D = (function() {
     }
 
     function loadAvatar() {
-        // Try to load SashaAI.glb from the same directory as this HTML file.
-        // If it fails (file missing, CORS, SSL), fall back to placeholder.
-        // The placeholder is kept as a backup — not as the primary.
-        var loader = new THREE.GLTFLoader();
-        var glbPath = 'SashaAI.glb';
-        
-        // Try loading with proper error handling
-        loader.load(glbPath, 
+        try {
+            // Try to load SashaAI.glb from the same directory as this HTML file.
+            // If it fails (file missing, CORS, SSL), fall back to placeholder.
+            var loader = new THREE.GLTFLoader();
+            if (!loader) { createPlaceholder(); return; }
+            var glbPath = 'SashaAI.glb';
+            
+            // Try loading with proper error handling
+            loader.load(glbPath, 
             function(gltf) {
                 // SUCCESS — add the real GLB model to the scene
                 var model = gltf.scene;
@@ -3157,10 +3158,14 @@ var SashaScene3D = (function() {
             },
             function(error) {
                 // ERROR — fallback to placeholder
-                console.warn('[Avatar] SashaAI.glb not found or load failed, using placeholder');
+                console.warn('[Avatar] SashaAI.glb not found, using placeholder');
                 createPlaceholder();
             }
         );
+        } catch(e) {
+            console.warn('[Avatar] GLTFLoader not available, using placeholder');
+            createPlaceholder();
+        }
     }
 
     // Mixer for avatar animations (updated in animate loop)
@@ -5148,11 +5153,13 @@ var SashaEngineAPI = (function() {
     }
 
     // ============ HUMAN SKELETON / ARMATURE SYSTEM ============
-    // Bone visualization helpers
-    var _boneVisLines = null;   // THREE.LineSegments showing bone connections
+    // Bone visualization — 3D bone shapes (cylinder+cone) like Blender
+    var _boneVisLines = null;   // Legacy line visualization (replaced by 3D)
+    var _boneVisGroup = null;   // Group holding 3D bone visual meshes
     var _boneHitSpheres = [];   // Invisible spheres for viewport bone picking in pose mode
     var _boneGizmoAttached = false; // Whether gizmo is attached to a bone (not a top-level object)
-    var _boneVisGroup = null;  // Group holding all bone helpers
+    var _boneVisMat = null;     // Shared material for bone visuals (amber)
+    var _boneVisSelMat = null;  // Material for selected bone (cyan)
 
     // Creates a complete human skeleton with standard bone names
     function createHumanSkeleton(height) {
@@ -5277,21 +5284,14 @@ var SashaEngineAPI = (function() {
         if (!obj) { console.warn('[Skeleton] Model not found:', modelName); return false; }
         // Check if skeleton already exists
         var existing = obj.getObjectByName('HumanSkeleton');
-        if (existing) { console.warn('[Skeleton] Model already has a skeleton'); return true; }
+        if (existing) { console.warn('[Skeleton] Model already has a skeleton'); showBoneVisualization(modelName); return true; }
         var skeleton = createHumanSkeleton(1.75);
         obj.add(skeleton);
         var bones = [];
         skeleton.traverse(function(c) { if (c.isBone) bones.push(c); });
 
-        // Check if object has any existing meshes (non-skinned, non-bodypart)
-        var hasMesh = false;
-        obj.traverse(function(c) { if (c.isMesh && !c.isSkinnedMesh && c.name !== '__bodypart__') hasMesh = true; });
-
-        // If no skinned mesh exists, add simple humanoid body parts to bones
-        if (!hasMesh) {
-            var bodyCount = addHumanoidBody(skeleton, 1.75);
-            console.log('[Skeleton] Added ' + bodyCount + ' body parts to skeleton');
-        }
+        // NO addHumanoidBody() — we show 3D bone shapes instead (Blender-style)
+        // The skeleton is visible as actual bone objects, not body part meshes
 
         // Rebind existing skinned meshes to new skeleton (for GLB models)
         obj.traverse(function(c) {
@@ -5310,7 +5310,7 @@ var SashaEngineAPI = (function() {
             }
         });
         console.log('[Skeleton] Attached ' + bones.length + ' bones to "' + modelName + '"');
-        // Show bone visualization
+        // Show 3D bone visualization
         showBoneVisualization(modelName);
         return true;
     }
@@ -5351,7 +5351,8 @@ var SashaEngineAPI = (function() {
         };
     }
 
-    // Show bone visualization (yellow lines connecting bones)
+    // === 3D BONE VISUALIZATION (Blender-style bone shapes) ===
+    // Creates actual 3D bone shapes (cylinder body + cone tip + sphere joint) for each bone
     function showBoneVisualization(modelName) {
         removeBoneVisualization(modelName);
         var obj = objects[modelName];
@@ -5359,38 +5360,60 @@ var SashaEngineAPI = (function() {
         var boneList = [];
         obj.traverse(function(c) { if (c.isBone) boneList.push(c); });
         if (boneList.length === 0) return;
-        var positions = [];
-        var colors = [];
-        var col = new THREE.Color(0xf59e0b);
+
+        if (!_boneVisMat) {
+            _boneVisMat = new THREE.MeshBasicMaterial({ color: 0xf5a623, transparent: true, opacity: 0.85, depthTest: false });
+        }
+        if (!_boneVisSelMat) {
+            _boneVisSelMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.95, depthTest: false });
+        }
+
+        _boneVisGroup = new THREE.Group();
+        _boneVisGroup.name = '__bone_vis_3d__';
+        _boneVisGroup.renderOrder = 998;
+
+        // Shared geometries (reused for all bones)
+        var coneGeo = new THREE.ConeGeometry(0.025, 0.06, 6);
+        coneGeo.translate(0, 0.03, 0); // cone tip at +Y
+        var cylGeo = new THREE.CylinderGeometry(0.012, 0.012, 1, 4);
+        cylGeo.translate(0, 0.5, 0);   // cylinder extends from origin to +Y
+        var headGeo = new THREE.SphereGeometry(0.022, 6, 4);
+
         for (var i = 0; i < boneList.length; i++) {
             var bone = boneList[i];
-            var wPos = new THREE.Vector3();
-            bone.getWorldPosition(wPos);
-            positions.push(wPos.x, wPos.y, wPos.z);
-            colors.push(col.r, col.g, col.b);
-            // Line to parent
-            if (bone.parent && bone.parent.isBone) {
-                var pPos = new THREE.Vector3();
-                bone.parent.getWorldPosition(pPos);
-                positions.push(pPos.x, pPos.y, pPos.z);
-                colors.push(col.r, col.g, col.b);
-            } else {
-                // No parent bone — duplicate point (no line drawn)
-                positions.push(wPos.x, wPos.y, wPos.z);
-                colors.push(col.r, col.g, col.b);
-            }
+
+            var boneMeshGroup = new THREE.Group();
+            boneMeshGroup.name = '__bone_vis_item__';
+            boneMeshGroup.userData._boneRef = bone;
+            boneMeshGroup.userData._boneName = bone.name;
+            boneMeshGroup.userData._boneModelName = modelName;
+
+            // Cone at bone tip
+            var cone = new THREE.Mesh(coneGeo, _boneVisMat);
+            cone.name = '__bone_cone__';
+            cone.renderOrder = 999;
+            boneMeshGroup.add(cone);
+
+            // Cylinder body
+            var cyl = new THREE.Mesh(cylGeo, _boneVisMat);
+            cyl.name = '__bone_cyl__';
+            cyl.renderOrder = 999;
+            boneMeshGroup.add(cyl);
+
+            // Sphere joint at bone base
+            var head = new THREE.Mesh(headGeo, _boneVisMat);
+            head.name = '__bone_head__';
+            head.renderOrder = 999;
+            boneMeshGroup.add(head);
+
+            _boneVisGroup.add(boneMeshGroup);
         }
-        var geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-        var mat = new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2, transparent: true, opacity: 0.7 });
-        _boneVisLines = new THREE.LineSegments(geo, mat);
-        _boneVisLines.name = '__bone_vis__' + modelName;
-        _boneVisLines.renderOrder = 999;
-        scene.add(_boneVisLines);
+
+        scene.add(_boneVisGroup);
+        updateBoneVisualization(modelName);
     }
 
-    // Remove bone visualization
+    // Remove 3D bone visualization
     function removeBoneVisualization(modelName) {
         if (_boneVisLines) {
             if (_boneVisLines.parent) _boneVisLines.parent.remove(_boneVisLines);
@@ -5398,54 +5421,123 @@ var SashaEngineAPI = (function() {
             if (_boneVisLines.material) _boneVisLines.material.dispose();
             _boneVisLines = null;
         }
+        if (_boneVisGroup) {
+            _boneVisGroup.traverse(function(c) {
+                if (c.geometry) {
+                    // Only dispose if not shared
+                    if (c.name === '__bone_head__' || c.parent && c.parent.children.length > 1) {
+                        // shared geo — skip dispose
+                    } else {
+                        c.geometry.dispose();
+                    }
+                }
+            });
+            if (_boneVisGroup.parent) _boneVisGroup.parent.remove(_boneVisGroup);
+            _boneVisGroup = null;
+        }
     }
 
-    // Update bone visualization (call after bone transform changes)
+    // Update 3D bone visualization positions/orientations
     function updateBoneVisualization(modelName) {
-        if (!_boneVisLines || !_boneVisLines.parent) return;
+        if (!_boneVisGroup || !_boneVisGroup.parent) return;
         var obj = objects[modelName];
         if (!obj) return;
-        var boneList = [];
-        obj.traverse(function(c) { if (c.isBone) boneList.push(c); });
-        if (boneList.length === 0) return;
-        var posArr = _boneVisLines.geometry.attributes.position.array;
-        var col = new THREE.Color(0xf59e0b);
-        for (var i = 0; i < boneList.length; i++) {
-            var bone = boneList[i];
-            var wPos = new THREE.Vector3();
-            bone.getWorldPosition(wPos);
-            posArr[i*6+0] = wPos.x; posArr[i*6+1] = wPos.y; posArr[i*6+2] = wPos.z;
+
+        var _defaultDir = new THREE.Vector3(0, 1, 0); // Cylinder extends along +Y
+        var _tmpPos = new THREE.Vector3();
+        var _tmpParentPos = new THREE.Vector3();
+        var _tmpDir = new THREE.Vector3();
+        var _tmpQuat = new THREE.Quaternion();
+        var _tmpScale = new THREE.Vector3(1, 1, 1);
+        var _tmpMat = new THREE.Matrix4();
+
+        _boneVisGroup.traverse(function(item) {
+            if (item.name !== '__bone_vis_item__') return;
+            var bone = item.userData._boneRef;
+            if (!bone) { item.visible = false; return; }
+
+            bone.getWorldPosition(_tmpPos);
+
             if (bone.parent && bone.parent.isBone) {
-                var pPos = new THREE.Vector3();
-                bone.parent.getWorldPosition(pPos);
-                posArr[i*6+3] = pPos.x; posArr[i*6+4] = pPos.y; posArr[i*6+5] = pPos.z;
+                bone.parent.getWorldPosition(_tmpParentPos);
             } else {
-                posArr[i*6+3] = wPos.x; posArr[i*6+4] = wPos.y; posArr[i*6+5] = wPos.z;
+                // Root bone — draw from its position upward a tiny bit
+                _tmpParentPos.copy(_tmpPos);
+                _tmpParentPos.y += 0.01;
             }
-        }
-        _boneVisLines.geometry.attributes.position.needsUpdate = true;
+
+            var dist = _tmpPos.distanceTo(_tmpParentPos);
+            if (dist < 0.001) {
+                // Zero-length bone — just show the head sphere at bone position
+                item.visible = true;
+                item.position.copy(_tmpPos);
+                item.scale.set(0.001, 0.001, 0.001);
+                item.rotation.set(0, 0, 0);
+                item.matrixAutoUpdate = true;
+                // Show head only
+                for (var ci = 0; ci < item.children.length; ci++) {
+                    if (item.children[ci].name === '__bone_cyl__' || item.children[ci].name === '__bone_cone__') {
+                        item.children[ci].visible = false;
+                    } else if (item.children[ci].name === '__bone_head__') {
+                        item.children[ci].visible = true;
+                        item.children[ci].scale.set(3, 3, 3); // bigger head for root
+                    }
+                }
+                // Highlight
+                var isSel = (window.EngineApp && EngineApp._selectedBoneObj === bone);
+                var mat = isSel ? _boneVisSelMat : _boneVisMat;
+                for (var mi = 0; mi < item.children.length; mi++) {
+                    if (item.children[mi].isMesh) item.children[mi].material = mat;
+                }
+                return;
+            }
+
+            item.visible = true;
+            _tmpDir.subVectors(_tmpPos, _tmpParentPos).normalize();
+
+            // Position at parent bone world position
+            item.position.copy(_tmpParentPos);
+
+            // Rotate so local +Y aligns with _tmpDir
+            _tmpQuat.setFromUnitVectors(_defaultDir, _tmpDir);
+            item.quaternion.copy(_tmpQuat);
+            item.scale.set(1, dist, 1);
+            item.matrixAutoUpdate = true;
+
+            // Ensure children are visible
+            for (var ci = 0; ci < item.children.length; ci++) {
+                item.children[ci].visible = true;
+                if (item.children[ci].name === '__bone_head__') {
+                    item.children[ci].scale.set(1, 1, 1);
+                }
+            }
+
+            // Highlight selected bone
+            var isSel = (window.EngineApp && EngineApp._selectedBoneObj === bone);
+            var mat = isSel ? _boneVisSelMat : _boneVisMat;
+            for (var mi = 0; mi < item.children.length; mi++) {
+                if (item.children[mi].isMesh) item.children[mi].material = mat;
+            }
+        });
     }
 
     // Create invisible hit-spheres at each bone for viewport picking in pose mode
+    // Hit spheres are children of bones so they follow bone transforms automatically
     function createBoneHitSpheres(modelName) {
         clearBoneHitSpheres();
         var obj = objects[modelName];
         if (!obj) return;
-        _boneVisGroup = new THREE.Group();
-        _boneVisGroup.name = '__bone_hit_group__';
-        var boneRadius = 0.06;
         var hitMat = new THREE.MeshBasicMaterial({ visible: false });
         obj.traverse(function(c) {
             if (c.isBone) {
                 var sphere = new THREE.Mesh(
-                    new THREE.SphereGeometry(boneRadius, 8, 6),
+                    new THREE.SphereGeometry(0.06, 8, 6),
                     hitMat
                 );
                 sphere.name = '__bone_hit__';
                 sphere.userData._boneRef = c;
                 sphere.userData._boneName = c.name;
                 sphere.userData._boneModelName = modelName;
-                // Position at bone's local position (child of bone so it follows automatically)
                 sphere.position.set(0, 0, 0);
                 c.add(sphere);
                 _boneHitSpheres.push(sphere);
@@ -5453,7 +5545,7 @@ var SashaEngineAPI = (function() {
         });
     }
 
-    // Remove all bone hit spheres
+    // Remove all bone hit spheres (does NOT remove bone visualization)
     function clearBoneHitSpheres() {
         for (var i = 0; i < _boneHitSpheres.length; i++) {
             var s = _boneHitSpheres[i];
@@ -5461,10 +5553,6 @@ var SashaEngineAPI = (function() {
             if (s.geometry) s.geometry.dispose();
         }
         _boneHitSpheres = [];
-        if (_boneVisGroup) {
-            if (_boneVisGroup.parent) _boneVisGroup.parent.remove(_boneVisGroup);
-            _boneVisGroup = null;
-        }
     }
 
     // Attach the TransformControls gizmo directly to a bone object
@@ -5980,9 +6068,27 @@ var SashaEngineAPI = (function() {
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
 
-        // === POSE MODE: Check bone hit spheres first ===
+        // === POSE MODE: Check bone hit spheres first, then 3D bone meshes ===
         if (window.EngineApp && EngineApp._poseMode && EngineApp._getPoseModelName) {
             var boneHit = pickBoneHitSpheres(raycaster);
+            if (!boneHit && _boneVisGroup) {
+                // Also try raycasting against the 3D bone visualization meshes
+                var boneMeshes = [];
+                _boneVisGroup.traverse(function(c) {
+                    if (c.isMesh && c.name !== '__bone_hit__') boneMeshes.push(c);
+                });
+                if (boneMeshes.length > 0) {
+                    var hits = raycaster.intersectObjects(boneMeshes, false);
+                    if (hits.length > 0) {
+                        // Walk up to find the __bone_vis_item__ parent
+                        var hitObj = hits[0].object;
+                        while (hitObj && hitObj.name !== '__bone_vis_item__') hitObj = hitObj.parent;
+                        if (hitObj && hitObj.userData._boneRef) {
+                            boneHit = hitObj.userData._boneRef;
+                        }
+                    }
+                }
+            }
             if (boneHit) {
                 var pModelName = EngineApp._getPoseModelName();
                 if (pModelName && boneHit.name) {
@@ -6021,12 +6127,26 @@ var SashaEngineAPI = (function() {
                 }
             }
             if (objects[hitName]) {
-                selectObject(hitName);
-                if (onSelectionChange) { onSelectionChange(hitName); }
+                var _ctrlKey = e.ctrlKey || e.metaKey || false;
+                var _shiftKey = e.shiftKey || false;
+                if (_ctrlKey || _shiftKey) {
+                    if (window.EngineApp && EngineApp._handleViewportMultiSelect) {
+                        EngineApp._handleViewportMultiSelect(hitName, _ctrlKey, _shiftKey);
+                    } else {
+                        selectObject(hitName);
+                        if (onSelectionChange) { onSelectionChange(hitName); }
+                    }
+                } else {
+                    selectObject(hitName);
+                    if (onSelectionChange) { onSelectionChange(hitName); }
+                }
                 return;
             }
         }
-        // Clicked empty space — deselect
+        // Clicked empty space — clear multi-selection and deselect
+        if (window.EngineApp && EngineApp._clearMultiSelection) {
+            EngineApp._clearMultiSelection();
+        }
         selectObject(null);
         if (onSelectionChange) { onSelectionChange(null); }
     }
@@ -6883,7 +7003,8 @@ var SashaEngineAPI = (function() {
         gizmoMode = mode;
         if (transformCtrl) {
             transformCtrl.setMode(mode);
-            transformCtrl.space = 'world';  // Always world space
+            // In pose mode with bone selected, use local space for intuitive rotation
+            transformCtrl.space = _boneGizmoAttached ? 'local' : 'world';
         }
     }
 
@@ -8856,7 +8977,14 @@ var EngineApp = (function() {
                 return;
             }
             if (inEditor) return;
-            if (e.key === 'Delete') { deleteSelected(); }
+            if (e.key === 'Delete') {
+                if (_multiSelected.length > 1) { _multiDelete(); }
+                else { deleteSelected(); }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                e.preventDefault();
+                _selectAll();
+            }
             if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateSelected(); }
             // W/E/R for gizmo mode (Unity-style)
             if (e.key === 'w' || e.key === 'W') { setGizmoMode('translate'); }
@@ -8888,7 +9016,7 @@ var EngineApp = (function() {
         refreshStats();
 
         log('Engine ready. Unity-like editor loaded.', 'info');
-        log('Shortcuts: W/E/R=Gizmo  F=Focus  G=Snap  Del=Delete  Ctrl+D=Dup  Ctrl+Z/Y=Undo/Redo  Ctrl+C/V=Copy/Paste', 'info');
+        log('Shortcuts: W/E/R=Gizmo  F=Focus  G=Snap  Del=Delete  Ctrl+D=Dup  Ctrl+Z/Y=Undo/Redo  Ctrl+C/V=Copy/Paste  Ctrl+Click=Multi-sel  Shift+Click=Range  Ctrl+A=All', 'info');
         initialized = true;
 
         // Initial refresh
@@ -8920,6 +9048,8 @@ var EngineApp = (function() {
         var obj = objs[name];
         if (!obj) return;
         SashaEngineAPI.setCameraTarget(obj.position.x, obj.position.y, obj.position.z);
+        _clearMultiSelection();
+        refreshHierarchy();
     }
 
     // --- Add from dropdown ---
@@ -8930,6 +9060,7 @@ var EngineApp = (function() {
         var type = sel.value;
         addObject(type);
         sel.value = '';
+        _clearMultiSelection();
     }
 
     // --- Viewport info ---
@@ -9157,30 +9288,260 @@ var EngineApp = (function() {
             else if (type === 'camera') ico = 'fa-video';
             else if (type === 'mainCamera') ico = 'fa-video';
 
-            var selClass = (name === selected) ? ' selected' : '';
+            var selClass = (name === selected || _multiSelected.indexOf(name) !== -1) ? ' selected' : '';
             var visIcon = (obj && obj.visible !== false) ? 'fa-eye' : 'fa-eye-slash';
             // Double-click: for models → open Prefab Mode (isolated editor);
             // for everything else → focus the main camera on the object.
             var dblClickHandler = (type === 'model')
                 ? 'EngineApp.openPrefabMode(\'' + name.replace(/'/g, "'") + '\')'
                 : 'EngineApp.focusOnObject(\'' + name.replace(/'/g, "'") + '\')';
-            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "'") + '\')" ondblclick="' + dblClickHandler + '">' +
+            html += '<div class="hier-item' + selClass + '" onclick="EngineApp.selectHierItem(\'' + name.replace(/'/g, "'") + '\'), event)" ondblclick="' + dblClickHandler + '">' +
                 '<span class="hier-icon"><i class="fas ' + ico + '"></i></span>' +
                 '<span class="hier-name">' + name + '</span>' +
                 '<button class="hier-vis" onclick="event.stopPropagation(); EngineApp.toggleVis(\'' + name.replace(/'/g, "'") + '\')"><i class="fas ' + visIcon + '"></i></button>' +
                 '</div>';
+
+            // === POSE MODE: Show bone hierarchy under the model ===
+            if (_poseMode && _poseModelName === name && obj) {
+                var boneItems = [];
+                obj.traverse(function(c) {
+                    if (c.isBone) boneItems.push(c);
+                });
+                if (boneItems.length > 0) {
+                    html += '<div style="background:rgba(245,158,11,0.04);border-left:2px solid #f59e0b;">';
+                    for (var bi = 0; bi < boneItems.length; bi++) {
+                        var bn = boneItems[bi].name;
+                        var bsel = (_selectedBoneName === bn) ? 'background:rgba(34,211,238,0.15);border-left:2px solid #22d3ee;' : 'border-left:2px solid transparent;';
+                        html += '<div style="display:flex;align-items:center;gap:5px;padding:2px 8px 2px 22px;font-size:0.62rem;color:#d4d4d8;cursor:pointer;' + bsel + 'transition:background 0.1s;" onclick="event.stopPropagation();EngineApp.selectBone(\'' + name.replace(/'/g, "\\'") + '\',\'' + bn.replace(/'/g, "\\'") + '\')" onmouseover="if(!this.style.background||this.style.background===\'transparent\')this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="if(\'' + bn + '\'!==EngineApp._selectedBoneName)this.style.background=\'transparent\'">' +
+                            '<i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:10px;text-align:center;flex-shrink:0;"></i>' +
+                            '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + bn + '</span>' +
+                            '</div>';
+                    }
+                    html += '</div>';
+                }
+            }
         }
 
         container.innerHTML = html;
         updateViewportInfo();
     }
 
-    function selectHierItem(name) {
-        SashaEngineAPI.selectObject(name);
-        // onSelectionChange уже вызывает refreshHierarchy + refreshInspector + _inspPreviewShow
-        // Дублировать не нужно — только обновляем иерархию чтобы подсветка обновилась
-        refreshHierarchy();
+    function selectHierItem(name, evt) {
+        var shiftKey = evt && (evt.shiftKey || false);
+        var ctrlKey = evt && (evt.ctrlKey || evt.metaKey || false);
+        if (ctrlKey) {
+            var idx = _multiSelected.indexOf(name);
+            if (idx !== -1) {
+                _multiSelected.splice(idx, 1);
+                if (_multiSelected.length > 0) {
+                    SashaEngineAPI.selectObject(_multiSelected[_multiSelected.length - 1]);
+                } else {
+                    SashaEngineAPI.selectObject(name);
+                }
+            } else {
+                _multiSelected.push(name);
+                SashaEngineAPI.selectObject(name);
+            }
+            _updateMultiSelHelpers();
+            refreshHierarchy();
+            refreshInspector();
+        } else if (shiftKey && _multiSelected.length > 0) {
+            var allNames = SashaEngineAPI.getAllObjectNames();
+            var lastSel = SashaEngineAPI.getSelectedObject() || (_multiSelected.length > 0 ? _multiSelected[_multiSelected.length - 1] : null);
+            var startIdx = lastSel ? allNames.indexOf(lastSel) : -1;
+            var endIdx = allNames.indexOf(name);
+            if (startIdx === -1) startIdx = 0;
+            if (endIdx === -1) endIdx = 0;
+            if (startIdx > endIdx) { var tmp = startIdx; startIdx = endIdx; endIdx = tmp; }
+            _multiSelected = [];
+            for (var ri = startIdx; ri <= endIdx; ri++) {
+                var rn = allNames[ri];
+                if (rn && rn.indexOf('__builtin') !== 0) {
+                    _multiSelected.push(rn);
+                }
+            }
+            SashaEngineAPI.selectObject(name);
+            _updateMultiSelHelpers();
+            refreshHierarchy();
+            refreshInspector();
+        } else {
+            _clearMultiSelection();
+            SashaEngineAPI.selectObject(name);
+            refreshHierarchy();
+        }
     }
+
+    // === MULTI-SELECTION HELPER FUNCTIONS ===
+    function _updateMultiSelHelpers() {
+        _clearMultiSelHelpers();
+        if (_multiSelected.length <= 1) return;
+        var objs = SashaEngineAPI.getObjects();
+        var sc = SashaEngineAPI.getScene();
+        if (!sc) return;
+        if (!_multiSelMat) {
+            _multiSelMat = new THREE.MeshBasicMaterial({ color: 0x6366f1, wireframe: true, transparent: true, opacity: 0.5, depthTest: false });
+        }
+        if (!_multiSelGeo) {
+            _multiSelGeo = new THREE.BoxGeometry(1, 1, 1);
+        }
+        for (var i = 0; i < _multiSelected.length; i++) {
+            var mn = _multiSelected[i];
+            if (mn === SashaEngineAPI.getSelectedObject()) continue;
+            var obj = objs[mn];
+            if (!obj) continue;
+            var box = new THREE.Box3().setFromObject(obj);
+            var size = box.getSize(new THREE.Vector3());
+            var center = box.getCenter(new THREE.Vector3());
+            if (size.x < 0.001 && size.y < 0.001 && size.z < 0.001) continue;
+            var helper = new THREE.Mesh(_multiSelGeo, _multiSelMat);
+            helper.name = '__multi_sel_helper__';
+            helper.position.copy(center);
+            helper.rotation.set(0, 0, 0);
+            helper.scale.set(size.x + 0.05, size.y + 0.05, size.z + 0.05);
+            helper.renderOrder = 997;
+            sc.add(helper);
+            _multiSelHelpers.push(helper);
+        }
+    }
+
+    function _clearMultiSelHelpers() {
+        for (var i = 0; i < _multiSelHelpers.length; i++) {
+            var h = _multiSelHelpers[i];
+            if (h.parent) h.parent.remove(h);
+        }
+        _multiSelHelpers = [];
+    }
+
+    function _clearMultiSelection() {
+        _multiSelected = [];
+        _clearMultiSelHelpers();
+    }
+
+    function getMultiSelected() { return _multiSelected.slice(); }
+    function isMultiSelectActive() { return _multiSelected.length > 1; }
+
+    // Handle Ctrl+Click / Shift+Click from viewport
+    function _handleViewportMultiSelect(name, ctrl, shift) {
+        if (ctrl) {
+            var idx = _multiSelected.indexOf(name);
+            if (idx !== -1) {
+                _multiSelected.splice(idx, 1);
+                if (_multiSelected.length > 0) {
+                    SashaEngineAPI.selectObject(_multiSelected[_multiSelected.length - 1]);
+                } else {
+                    SashaEngineAPI.selectObject(name);
+                }
+            } else {
+                _multiSelected.push(name);
+                SashaEngineAPI.selectObject(name);
+            }
+        } else if (shift) {
+            var allNames = SashaEngineAPI.getAllObjectNames();
+            var lastSel = SashaEngineAPI.getSelectedObject() || (_multiSelected.length > 0 ? _multiSelected[_multiSelected.length - 1] : null);
+            var startIdx = lastSel ? allNames.indexOf(lastSel) : -1;
+            var endIdx = allNames.indexOf(name);
+            if (startIdx === -1) startIdx = 0;
+            if (endIdx === -1) endIdx = 0;
+            if (startIdx > endIdx) { var t = startIdx; startIdx = endIdx; endIdx = t; }
+            _multiSelected = [];
+            for (var ri = startIdx; ri <= endIdx; ri++) {
+                var rn = allNames[ri];
+                if (rn && rn.indexOf('__builtin') !== 0) {
+                    _multiSelected.push(rn);
+                }
+            }
+            SashaEngineAPI.selectObject(name);
+        }
+        _updateMultiSelHelpers();
+        refreshHierarchy();
+        refreshInspector();
+    }
+
+    // === MULTI-SELECTION ACTIONS ===
+    function _multiDelete() {
+        if (_multiSelected.length === 0) return;
+        var count = _multiSelected.length;
+        for (var i = 0; i < _multiSelected.length; i++) {
+            var n = _multiSelected[i];
+            if (n) SashaEngineAPI.removeObject(n);
+        }
+        _clearMultiSelection();
+        refreshHierarchy();
+        refreshInspector();
+        log('Deleted ' + count + ' objects', 'log');
+    }
+
+    function _multiDuplicate() {
+        if (_multiSelected.length === 0) return;
+        var objs = SashaEngineAPI.getObjects();
+        var types = SashaEngineAPI.getObjectTypes();
+        var newNames = [];
+        for (var i = 0; i < _multiSelected.length; i++) {
+            var n = _multiSelected[i];
+            var obj = objs[n];
+            if (!obj) continue;
+            var type = types[n] || 'cube';
+            var newName = SashaEngineAPI.addObject(type);
+            if (newName) {
+                var newObj = SashaEngineAPI.getObjects()[newName];
+                if (newObj) {
+                    newObj.position.set(obj.position.x + 1, obj.position.y, obj.position.z);
+                    newObj.rotation.set(obj.rotation.x, obj.rotation.y, obj.rotation.z);
+                    newObj.scale.set(obj.scale.x, obj.scale.y, obj.scale.z);
+                    if (obj.material && obj.material.color && newObj.material && newObj.material.color) {
+                        newObj.material.color.copy(obj.material.color);
+                    }
+                    newNames.push(newName);
+                }
+            }
+        }
+        _clearMultiSelection();
+        for (var j = 0; j < newNames.length; j++) { _multiSelected.push(newNames[j]); }
+        if (newNames.length > 0) { SashaEngineAPI.selectObject(newNames[newNames.length - 1]); }
+        _updateMultiSelHelpers();
+        refreshHierarchy();
+        refreshInspector();
+        log('Duplicated ' + newNames.length + ' objects', 'log');
+    }
+
+    function _multiSetTransform(prop, val) {
+        var v = parseFloat(val) || 0;
+        var objs = SashaEngineAPI.getObjects();
+        var primary = SashaEngineAPI.getSelectedObject();
+        if (!primary || !objs[primary]) return;
+        var pobj = objs[primary];
+        var dx = 0, dy = 0, dz = 0;
+        if (prop === 'px') { dx = v - pobj.position.x; }
+        else if (prop === 'py') { dy = v - pobj.position.y; }
+        else if (prop === 'pz') { dz = v - pobj.position.z; }
+        for (var i = 0; i < _multiSelected.length; i++) {
+            var o = objs[_multiSelected[i]];
+            if (!o) continue;
+            o.position.x += dx;
+            o.position.y += dy;
+            o.position.z += dz;
+        }
+        _updateMultiSelHelpers();
+    }
+
+    function _selectAll() {
+        var allNames = SashaEngineAPI.getAllObjectNames();
+        _multiSelected = [];
+        for (var i = 0; i < allNames.length; i++) {
+            var n = allNames[i];
+            if (n && n.indexOf('__builtin') !== 0) {
+                _multiSelected.push(n);
+            }
+        }
+        if (_multiSelected.length > 0) {
+            SashaEngineAPI.selectObject(_multiSelected[_multiSelected.length - 1]);
+            _updateMultiSelHelpers();
+            refreshHierarchy();
+            refreshInspector();
+            log('Selected all ' + _multiSelected.length + ' objects', 'log');
+        }
+    }
+
 
     // Smooth camera focus on object — double-click in hierarchy
     var _focusAnim = null;
@@ -9431,6 +9792,42 @@ var EngineApp = (function() {
         var container = document.getElementById('eng-inspector');
         if (!container) return;
         var selected = SashaEngineAPI.getSelectedObject();
+        // === MULTI-SELECTION PANEL ===
+        if (_multiSelected.length > 1) {
+            var objs = SashaEngineAPI.getObjects();
+            var types = SashaEngineAPI.getObjectTypes();
+            var mhtml = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;"><i class="fas fa-object-group" style="color:#6366f1;"></i> Multi-Select <span style="font-size:0.65rem;color:#a1a1aa;font-weight:400;">(' + _multiSelected.length + ' obj)</span></div>';
+            mhtml += '<div style="padding:8px 10px;border-bottom:1px solid var(--border);max-height:220px;overflow-y:auto;">';
+            for (var mi = 0; mi < _multiSelected.length; mi++) {
+                var mn = _multiSelected[mi];
+                var mtype = types[mn] || 'cube';
+                var isPrimary = (mn === selected);
+                mhtml += '<div style="display:flex;align-items:center;gap:6px;padding:3px 6px;font-size:0.68rem;color:#d4d4d8;border-radius:3px;' + (isPrimary ? 'background:rgba(99,102,241,0.15);' : '') + '"><i class="fas fa-cube" style="font-size:0.55rem;color:' + (isPrimary ? '#6366f1' : '#71717a') + ';width:12px;text-align:center;"></i><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + mn + '</span><span style="font-size:0.55rem;color:#71717a;">' + mtype + '</span></div>';
+            }
+            mhtml += '</div>';
+            if (selected && objs[selected]) {
+                var mobj = objs[selected];
+                mhtml += '<div style="padding:8px 10px;border-bottom:1px solid var(--border);">';
+                mhtml += '<div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Move All (delta from primary)</div>';
+                mhtml += '<div style="display:grid;grid-template-columns:20px 1fr 1fr 1fr;gap:3px;margin-bottom:4px;">';
+                mhtml += '<div style="font-size:0.6rem;color:#ef4444;text-align:center;padding-top:3px;">X</div>';
+                mhtml += '<input type="number" step="0.1" value="' + mobj.position.x.toFixed(2) + '" onchange="EngineApp._multiSetTransform('px',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#ef4444;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+                mhtml += '<div style="font-size:0.6rem;color:#22c55e;text-align:center;padding-top:3px;">Y</div>';
+                mhtml += '<input type="number" step="0.1" value="' + mobj.position.y.toFixed(2) + '" onchange="EngineApp._multiSetTransform('py',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#22c55e;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+                mhtml += '</div>';
+                mhtml += '<div style="display:grid;grid-template-columns:20px 1fr;gap:3px;">';
+                mhtml += '<div style="font-size:0.6rem;color:#3b82f6;text-align:center;padding-top:3px;">Z</div>';
+                mhtml += '<input type="number" step="0.1" value="' + mobj.position.z.toFixed(2) + '" onchange="EngineApp._multiSetTransform('pz',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#3b82f6;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+                mhtml += '</div></div>';
+            }
+            mhtml += '<div style="padding:6px 10px;display:flex;gap:4px;">';
+            mhtml += '<button class="insp-btn" style="flex:1;background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#ef4444;" onclick="EngineApp._multiDelete()"><i class="fas fa-trash"></i> Delete All</button>';
+            mhtml += '<button class="insp-btn" style="flex:1;" onclick="EngineApp._multiDuplicate()"><i class="fas fa-copy"></i> Dup All</button>';
+            mhtml += '</div>';
+            mhtml += '<div style="padding:6px 10px;font-size:0.58rem;color:#52525b;line-height:1.6;">Ctrl+Click = toggle · Shift+Click = range · Ctrl+A = all · Esc = clear</div>';
+            container.innerHTML = mhtml;
+            return;
+        }
         if (!selected) {
             _inspPreviewHide();
             var sc = SashaEngineAPI.getScene();
@@ -14051,6 +14448,30 @@ var EngineApp = (function() {
         log('Project saved: ' + name, 'result');
     }
 
+    // === TOOLBAR SAVE — big convenient save button ===
+    // Smart save: if editing a script → save script; otherwise → save all assets
+    function _toolbarSave() {
+        if (editor && _editingScriptAssetId) {
+            saveCurrentScriptAsset();
+        } else {
+            saveAllAssets();
+        }
+        // Visual feedback on the button itself
+        var btn = document.getElementById('toolbar-save-btn');
+        if (btn) {
+            var origBg = btn.style.background;
+            btn.style.background = 'linear-gradient(135deg,#4ade80,#22c55e)';
+            btn.style.boxShadow = '0 0 12px rgba(34,197,94,0.5)';
+            clearTimeout(btn._saveFlashTimer);
+            btn._saveFlashTimer = setTimeout(function() {
+                btn.style.background = origBg;
+                btn.style.boxShadow = '';
+            }, 800);
+        }
+        // Also flash the viewport indicator
+        _flashSaveIndicator();
+    }
+
     // ============ Full Project Export (all assets + scene as JSON) ============
     function exportFullProject() {
         var allAssets = SashaAssetManager.getAll();
@@ -15022,27 +15443,18 @@ var EngineApp = (function() {
                 _selectedBoneObj = c;
                 // Attach gizmo to the bone for direct manipulation
                 SashaEngineAPI.attachGizmoToBone(c);
-                // Visual helper — amber box at bone (added as child so it follows)
+                // Visual helper — cyan wireframe box at bone (added as child so it follows)
                 _selectedBoneHelper = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.08, 0.08, 0.08),
-                    new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.9, depthTest: false })
+                    new THREE.BoxGeometry(0.1, 0.1, 0.1),
+                    new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.7, depthTest: false, wireframe: true })
                 );
                 _selectedBoneHelper.renderOrder = 1000;
                 _selectedBoneHelper.name = '__bone_sel_helper__';
-                // Add as child of bone so it automatically follows bone transforms
                 c.add(_selectedBoneHelper);
-                // Highlight bone row in UI
-                var rows = document.querySelectorAll('#mi-bone-tree-' + modelName + ' > div');
-                for (var i = 0; i < rows.length; i++) {
-                    var span = rows[i].querySelector('span');
-                    if (span && span.textContent === boneName) {
-                        rows[i].style.background = 'rgba(245,158,11,0.15)';
-                        rows[i].style.borderLeftColor = '#f59e0b';
-                    } else {
-                        rows[i].style.background = 'transparent';
-                        rows[i].style.borderLeftColor = 'transparent';
-                    }
-                }
+                // Update 3D bone vis to highlight selected bone
+                if (_poseModelName) SashaEngineAPI.updateBoneVisualization(_poseModelName);
+                // Refresh hierarchy to highlight selected bone
+                refreshHierarchy();
                 refreshInspector();
                 log('Bone selected: ' + boneName + ' (W/E/R = Move/Rotate/Scale)', 'result');
             }
@@ -15052,6 +15464,12 @@ var EngineApp = (function() {
     // ============ POSE MODE & BONE MANIPULATION ============
     var _poseMode = false;
     var _poseModelName = null;
+
+    // ============ MULTI-SELECTION SYSTEM ============
+    var _multiSelected = [];
+    var _multiSelHelpers = [];
+    var _multiSelMat = null;
+    var _multiSelGeo = null;
 
     function togglePoseMode() {
         _poseMode = !_poseMode;
@@ -15066,14 +15484,16 @@ var EngineApp = (function() {
                 return;
             }
             _poseModelName = sel;
-            // Show bone visualization (yellow lines)
+            // Show 3D bone visualization
             SashaEngineAPI.showBoneVisualization(sel);
             // Create invisible hit-spheres for viewport bone picking
             SashaEngineAPI.createBoneHitSpheres(sel);
             // Show pose mode indicator
             var pmInd = document.getElementById('pose-mode-indicator');
             if (pmInd) pmInd.style.display = 'block';
-            log('Pose Mode ON — click bones in viewport or list. W=Move E=Rotate R=Scale', 'result');
+            // Refresh hierarchy to show bones
+            refreshHierarchy();
+            log('Pose Mode ON — click bones in viewport or hierarchy. W=Move E=Rotate R=Scale', 'result');
         } else {
             // Exit pose mode
             // Detach gizmo from bone if attached
@@ -15101,6 +15521,8 @@ var EngineApp = (function() {
                     SashaEngineAPI.selectObject(curSel);
                 }
             }
+            // Refresh hierarchy to hide bones
+            refreshHierarchy();
             log('Pose Mode OFF', 'log');
         }
         refreshInspector();
@@ -15957,6 +16379,114 @@ var EngineApp = (function() {
         rafId: null
     };
 
+    // === Prefab 3D Bone Visualization (same style as main viewport) ===
+    var _prefabBoneVisGroup = null;
+    var _prefabBoneVisMat = null;
+    var _prefabBoneSelMat = null;
+
+    function _prefabBuildBoneVis(model) {
+        // Remove old
+        if (_prefabBoneVisGroup) {
+            _prefabBoneVisGroup.traverse(function(c) { if (c.geometry) c.geometry.dispose(); });
+            if (_prefabBoneVisGroup.parent) _prefabBoneVisGroup.parent.remove(_prefabBoneVisGroup);
+            _prefabBoneVisGroup = null;
+        }
+        var boneList = [];
+        model.traverse(function(c) { if (c.isBone) boneList.push(c); });
+        if (boneList.length === 0) return;
+
+        if (!_prefabBoneVisMat) {
+            _prefabBoneVisMat = new THREE.MeshBasicMaterial({ color: 0xf5a623, transparent: true, opacity: 0.85, depthTest: false });
+        }
+        if (!_prefabBoneSelMat) {
+            _prefabBoneSelMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.95, depthTest: false });
+        }
+
+        _prefabBoneVisGroup = new THREE.Group();
+        _prefabBoneVisGroup.name = '__prefab_bone_vis__';
+        _prefabBoneVisGroup.renderOrder = 998;
+
+        var coneGeo = new THREE.ConeGeometry(0.025, 0.06, 6);
+        coneGeo.translate(0, 0.03, 0);
+        var cylGeo = new THREE.CylinderGeometry(0.012, 0.012, 1, 4);
+        cylGeo.translate(0, 0.5, 0);
+        var headGeo = new THREE.SphereGeometry(0.022, 6, 4);
+
+        for (var i = 0; i < boneList.length; i++) {
+            var bone = boneList[i];
+            var bg = new THREE.Group();
+            bg.name = '__bone_vis_item__';
+            bg.userData._boneRef = bone;
+            bg.userData._boneName = bone.name;
+            bg.add(new THREE.Mesh(coneGeo, _prefabBoneVisMat));
+            bg.children[0].name = '__bone_cone__'; bg.children[0].renderOrder = 999;
+            bg.add(new THREE.Mesh(cylGeo, _prefabBoneVisMat));
+            bg.children[1].name = '__bone_cyl__'; bg.children[1].renderOrder = 999;
+            bg.add(new THREE.Mesh(headGeo, _prefabBoneVisMat));
+            bg.children[2].name = '__bone_head__'; bg.children[2].renderOrder = 999;
+            _prefabBoneVisGroup.add(bg);
+        }
+        _prefabState.scene.add(_prefabBoneVisGroup);
+        _prefabUpdateBoneVis();
+    }
+
+    function _prefabUpdateBoneVis() {
+        if (!_prefabBoneVisGroup || !_prefabState.model) return;
+        var _defaultDir = new THREE.Vector3(0, 1, 0);
+        var _tmpPos = new THREE.Vector3();
+        var _tmpParentPos = new THREE.Vector3();
+        var _tmpDir = new THREE.Vector3();
+        var _tmpQuat = new THREE.Quaternion();
+
+        _prefabBoneVisGroup.traverse(function(item) {
+            if (item.name !== '__bone_vis_item__') return;
+            var bone = item.userData._boneRef;
+            if (!bone) { item.visible = false; return; }
+            bone.getWorldPosition(_tmpPos);
+            if (bone.parent && bone.parent.isBone) {
+                bone.parent.getWorldPosition(_tmpParentPos);
+            } else {
+                _tmpParentPos.copy(_tmpPos); _tmpParentPos.y += 0.01;
+            }
+            var dist = _tmpPos.distanceTo(_tmpParentPos);
+            if (dist < 0.001) {
+                item.visible = true; item.position.copy(_tmpPos);
+                item.scale.set(0.001, 0.001, 0.001); item.rotation.set(0,0,0);
+                item.matrixAutoUpdate = true;
+                for (var ci = 0; ci < item.children.length; ci++) {
+                    if (item.children[ci].name === '__bone_head__') { item.children[ci].visible = true; item.children[ci].scale.set(3,3,3); }
+                    else item.children[ci].visible = false;
+                }
+                return;
+            }
+            item.visible = true;
+            _tmpDir.subVectors(_tmpPos, _tmpParentPos).normalize();
+            item.position.copy(_tmpParentPos);
+            _tmpQuat.setFromUnitVectors(_defaultDir, _tmpDir);
+            item.quaternion.copy(_tmpQuat);
+            item.scale.set(1, dist, 1);
+            item.matrixAutoUpdate = true;
+            for (var ci = 0; ci < item.children.length; ci++) {
+                item.children[ci].visible = true;
+                if (item.children[ci].name === '__bone_head__') item.children[ci].scale.set(1,1,1);
+            }
+            // Highlight selected
+            var isSel = (_prefabSelectedBone === bone);
+            var mat = isSel ? _prefabBoneSelMat : _prefabBoneVisMat;
+            for (var mi = 0; mi < item.children.length; mi++) {
+                if (item.children[mi].isMesh) item.children[mi].material = mat;
+            }
+        });
+    }
+
+    function _prefabRemoveBoneVis() {
+        if (_prefabBoneVisGroup) {
+            _prefabBoneVisGroup.traverse(function(c) { if (c.geometry) c.geometry.dispose(); });
+            if (_prefabBoneVisGroup.parent) _prefabBoneVisGroup.parent.remove(_prefabBoneVisGroup);
+            _prefabBoneVisGroup = null;
+        }
+    }
+
     function openPrefabMode(objName) {
         if (!objName) return;
         var srcObj = SashaEngineAPI.getObject(objName);
@@ -15982,7 +16512,9 @@ var EngineApp = (function() {
                   '<span style="font-size:0.85rem;font-weight:600;">Prefab Mode</span>' +
                   '<span id="prefab-title-name" style="font-size:0.75rem;color:#a1a1aa;font-family:JetBrains Mono,monospace;"></span>' +
                   '<div style="flex:1"></div>' +
-                  '<button id="prefab-autocam-btn" title="Авто-вращение" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-sync-alt"></i> Авто-вращение</button>' +
+                  '<button id="prefab-autocam-btn" title="Авто-вращение" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-sync-alt"></i> Авто</button>' +
+                  '<button id="prefab-add-skel-btn" title="Добавить гуманоидный скелет" style="background:none;border:1px solid #22c55e;color:#22c55e;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> +Скелет</button>
+                  <button id="prefab-bones-btn" title="Показать/скрыть кости" style="background:none;border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> Кости</button>' +
                   '<button id="prefab-frame-btn" title="Центрировать" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand"></i> Центр</button>' +
                   '<button id="prefab-close-btn" title="Закрыть (Esc)" style="background:#ef4444;border:none;color:#fff;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-times"></i> Закрыть</button>' +
                 '</div>' +
@@ -16020,6 +16552,17 @@ var EngineApp = (function() {
                 this.style.borderColor = _prefabState.autocam ? '#22c55e' : '#2a2a3e';
             };
             document.getElementById('prefab-frame-btn').onclick = function() { _prefabResetCamera(); };
+            document.getElementById('prefab-bones-btn').onclick = function() {
+                if (_prefabBoneVisGroup) {
+                    var vis = !_prefabBoneVisGroup.visible;
+                    _prefabBoneVisGroup.visible = vis;
+                    this.style.color = vis ? '#f59e0b' : '#71717a';
+                    this.style.borderColor = vis ? '#f59e0b' : '#2a2a3e';
+                }
+            };
+            document.getElementById('prefab-add-skel-btn').onclick = function() {
+                _prefabAddSkeleton();
+            };
             document.getElementById('prefab-play-btn').onclick = function() {
                 if (_prefabState.currentClip) _prefabPlayClip(_prefabState.currentClip);
                 else if (_prefabState.clips && _prefabState.clips.length > 0) _prefabPlayClip(_prefabState.clips[0].name);
@@ -16121,6 +16664,9 @@ var EngineApp = (function() {
         _prefabState.model = cloned;
         _prefabState.scene.add(cloned);
 
+        // === 3D Bone Visualization in Prefab ===
+        _prefabBuildBoneVis(cloned);
+
         // Setup animation mixer + clips from _skeletonData
         _prefabState.actions = [];
         _prefabState.currentClip = null;
@@ -16158,7 +16704,7 @@ var EngineApp = (function() {
             info.innerHTML =
                 '<div style="margin-bottom:6px;">Костей: <b style="color:#fff;">' + nBones + '</b> · Мешей: <b style="color:#fff;">' + nMeshes + '</b> · Вершин: <b style="color:#fff;">' + nVerts + '</b></div>' +
                 '<div style="margin-bottom:6px;">Размер: <b style="color:#fff;font-family:JetBrains Mono,monospace;">' + sz.x.toFixed(2) + ' × ' + sz.y.toFixed(2) + ' × ' + sz.z.toFixed(2) + '</b></div>' +
-                (nBones > 0 ? '<div style="font-size:0.62rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">Кости · клик для выделения</div><div style="max-height:200px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:4px;padding:2px 0;">' + _boneTreeHtml + '</div><div id="prefab-bone-transform" style="margin-top:8px;display:none;"><div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" id="prefab-sel-bone-label">—</div><div id="prefab-bone-props"></div></div>' : '<div style="color:#71717a;font-size:0.68rem;margin-top:8px;">Нет костей. Добавь скелет через Rig → Add Skeleton</div>');
+                (nBones > 0 ? '<div style="font-size:0.62rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">Кости · клик для выделения</div><div style="max-height:200px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:4px;padding:2px 0;">' + _boneTreeHtml + '</div><div id="prefab-bone-transform" style="margin-top:8px;display:none;"><div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" id="prefab-sel-bone-label">—</div><div id="prefab-bone-props"></div></div>' : '<div style="color:#71717a;font-size:0.68rem;margin-top:8px;">Нет костей у этой модели.</div><button onclick="EngineApp._prefabAddSkeleton()" style="width:100%;padding:8px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;border-radius:5px;cursor:pointer;font-size:0.72rem;font-weight:600;margin-top:6px;"><i class="fas fa-bone" style="margin-right:6px;"></i>Добавить скелет</button></div>'  );</div>');
         }
 
         // Populate animation list
@@ -16177,7 +16723,68 @@ var EngineApp = (function() {
         log('[Prefab] Открыт Prefab Mode для "' + objName + '"', 'info');
     }
 
-    function _prefabRefreshAnimList() {
+    function _prefabAddSkeleton() {
+        if (!_prefabState.open || !_prefabState.model) return;
+        var model = _prefabState.model;
+        var existing = null;
+        model.traverse(function(c) { if (c.name === 'HumanSkeleton') existing = c; });
+        if (existing) { log('[Prefab] Скелет уже существует', 'warn'); return; }
+        var h = 1.75;
+        var hipY = h * 0.45;
+        var spineLen = h * 0.18, chestLen = h * 0.15, neckLen = h * 0.05, headR = h * 0.065;
+        var shoulderW = h * 0.18;
+        var upperArmLen = h * 0.16, lowerArmLen = h * 0.14, handLen = h * 0.06;
+        var upperLegLen = h * 0.22, lowerLegLen = h * 0.22, footLen = h * 0.06;
+        var hips = new THREE.Bone(); hips.name = 'Hips';
+        var spine = new THREE.Bone(); spine.name = 'Spine'; spine.position.set(0, spineLen, 0); hips.add(spine);
+        var chest = new THREE.Bone(); chest.name = 'Chest'; chest.position.set(0, chestLen, 0); spine.add(chest);
+        var neck = new THREE.Bone(); neck.name = 'Neck'; neck.position.set(0, neckLen, 0); chest.add(neck);
+        var head = new THREE.Bone(); head.name = 'Head'; head.position.set(0, neckLen + headR, 0); neck.add(head);
+        function makeArm(side) {
+            var s = (side === 'L') ? -1 : 1;
+            var shoulder = new THREE.Bone(); shoulder.name = side+'Shoulder'; shoulder.position.set(s*shoulderW,0,0); chest.add(shoulder);
+            var upper = new THREE.Bone(); upper.name = side+'UpperArm'; upper.position.set(0,-upperArmLen,0); shoulder.add(upper);
+            var lower = new THREE.Bone(); lower.name = side+'LowerArm'; lower.position.set(0,-lowerArmLen,0); upper.add(lower);
+            var hand = new THREE.Bone(); hand.name = side+'Hand'; hand.position.set(0,-handLen,0); lower.add(hand);
+        }
+        makeArm('L'); makeArm('R');
+        function makeLeg(side) {
+            var s = (side === 'L') ? -1 : 1;
+            var upper = new THREE.Bone(); upper.name = side+'UpperLeg'; upper.position.set(s*h*0.04,-0.02,0); hips.add(upper);
+            var lower = new THREE.Bone(); lower.name = side+'LowerLeg'; lower.position.set(0,-upperLegLen,0); upper.add(lower);
+            var foot = new THREE.Bone(); foot.name = side+'Foot'; foot.position.set(0,-lowerLegLen,footLen*0.5); lower.add(foot);
+        }
+        makeLeg('L'); makeLeg('R');
+        var skeleton = new THREE.Group(); skeleton.name = 'HumanSkeleton';
+        skeleton.position.set(0, hipY, 0); skeleton.add(hips);
+        model.add(skeleton);
+        skeleton.updateMatrixWorld(true);
+        _prefabBuildBoneVis(model);
+        var info = document.getElementById('prefab-info');
+        if (info) {
+            var boneList = [];
+            model.traverse(function(c) { if (c.isBone) boneList.push(c); });
+            var boneTreeHtml = '';
+            for (var bi = 0; bi < boneList.length; bi++) {
+                var bn = boneList[bi].name;
+                boneTreeHtml += '<div onclick="EngineApp._prefabSelectBone(\'' + bn + '\')" style="display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:0.68rem;color:#a1a1aa;cursor:pointer;border-left:2px solid transparent;border-radius:3px;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(245,158,11,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-bone" style="font-size:0.55rem;color:#f59e0b;width:12px;text-align:center;"></i><span>' + bn + '</span></div>';
+            }
+            info.innerHTML =
+                '<div style="margin-bottom:6px;">Костей: <b style="color:#fff;">' + boneList.length + '</b></div>' +
+                '<div style="font-size:0.62rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">Кости · клик для выделения</div><div style="max-height:200px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:4px;padding:2px 0;">' + boneTreeHtml + '</div><div id="prefab-bone-transform" style="margin-top:8px;display:none;"><div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" id="prefab-sel-bone-label">—</div><div id="prefab-bone-props"></div></div>';
+        }
+        var srcObj = SashaEngineAPI.getObject(_prefabState.objName);
+        if (srcObj) {
+            var srcExisting = srcObj.getObjectByName('HumanSkeleton');
+            if (!srcExisting) {
+                SashaEngineAPI.attachSkeletonToModel(_prefabState.objName);
+                log('[Prefab] Скелет также добавлен к оригинальной модели "' + _prefabState.objName + '"', 'result');
+            }
+        }
+        log('[Prefab] Гуманоидный скелет добавлен (17 костей)', 'result');
+    }
+
+        function _prefabRefreshAnimList() {
         var list = document.getElementById('prefab-anim-list');
         if (!list) return;
         list.innerHTML = '';
@@ -16315,6 +16922,8 @@ var EngineApp = (function() {
                 var dt = _prefabState.clock.getDelta();
                 if (dt > 0.1) dt = 0.016;
                 _prefabState.mixer.update(dt);
+                // Update bone vis during animation
+                if (_prefabBoneVisGroup && _prefabBoneVisGroup.visible) _prefabUpdateBoneVis();
             }
             // Autocam
             if (_prefabState.autocam && _prefabState.model) {
@@ -16366,6 +16975,8 @@ var EngineApp = (function() {
         trPanel.style.display = 'block';
         if (label) label.textContent = boneName;
         var b = _prefabSelectedBone;
+        // Update 3D bone vis highlight
+        _prefabUpdateBoneVis();
         function _pRow(lbl, x, y, z, pfx) {
             return '<div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.65rem;"><span style="color:#71717a;width:14px;">' + lbl + '</span>' +
                 '<input type="number" step="0.01" value="' + x.toFixed(3) + '" onchange="EngineApp._prefabBoneProp(\'' + pfx + 'x\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">' +
@@ -16391,11 +17002,15 @@ var EngineApp = (function() {
         else if (prop === 'sy') _prefabSelectedBone.scale.y = v || 0.001;
         else if (prop === 'sz') _prefabSelectedBone.scale.z = v || 0.001;
         _prefabSelectedBone.updateMatrixWorld(true);
+        _prefabUpdateBoneVis();
     }
 
     function closePrefabMode() {
         if (!_prefabState.open) return;
         _prefabState.open = false;
+        _prefabSelectedBone = null;
+        // Remove 3D bone vis
+        _prefabRemoveBoneVis();
         if (_prefabState.rafId) { cancelAnimationFrame(_prefabState.rafId); _prefabState.rafId = null; }
         // Stop animations
         if (_prefabState.actions && _prefabState.actions.length) {
@@ -17097,7 +17712,7 @@ var EngineApp = (function() {
         init: init, runCode: runCode, toggleLive: toggleLive,
         clearScene: clearScene, loadModelFromURL: loadModelFromURL,
         showModelPicker: showModelPicker, sendAI: sendAI, setAIMode: setAIMode,
-        log: log, saveProject: saveProject, exportGame: exportGame, exportModel: exportModel, exportScene: exportScene,
+        log: log, saveProject: saveProject, _toolbarSave: _toolbarSave, exportGame: exportGame, exportModel: exportModel, exportScene: exportScene,
         play: play, pause: pause, stop: stop,
         addObject: addObject, deleteSelected: deleteSelected, duplicateSelected: duplicateSelected,
         refreshHierarchy: refreshHierarchy, refreshInspector: refreshInspector,
@@ -17173,11 +17788,20 @@ var EngineApp = (function() {
         _inspPreviewHide: _inspPreviewHide,
         _inspPreviewUpdate: _inspPreviewUpdate,
         _inspPreviewRefreshRigTabButtons: _inspPreviewRefreshRigTabButtons,
-        openPrefabMode: openPrefabMode, _prefabSelectBone: _prefabSelectBone, _prefabBoneProp: _prefabBoneProp,
+        openPrefabMode: openPrefabMode, _prefabSelectBone: _prefabSelectBone, _prefabBoneProp: _prefabBoneProp, _prefabAddSkeleton: _prefabAddSkeleton,
         closePrefabMode: closePrefabMode,
         _discoverAnimations: _discoverAnimations,
         _getSkeletonData: function() { return _skeletonData; },
         _registerModelAnimations: _registerModelAnimations,
+        _handleViewportMultiSelect: _handleViewportMultiSelect,
+        _clearMultiSelection: _clearMultiSelection,
+        _updateMultiSelHelpers: _updateMultiSelHelpers,
+        getMultiSelected: getMultiSelected,
+        isMultiSelectActive: isMultiSelectActive,
+        _multiDelete: _multiDelete,
+        _multiDuplicate: _multiDuplicate,
+        _multiSetTransform: _multiSetTransform,
+        _selectAll: _selectAll,
         isInitialized: function() { return initialized; }
     };
 })();
