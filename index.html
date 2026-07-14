@@ -9811,13 +9811,13 @@ var EngineApp = (function() {
                 mhtml += '<div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Move All (delta from primary)</div>';
                 mhtml += '<div style="display:grid;grid-template-columns:20px 1fr 1fr 1fr;gap:3px;margin-bottom:4px;">';
                 mhtml += '<div style="font-size:0.6rem;color:#ef4444;text-align:center;padding-top:3px;">X</div>';
-                mhtml += '<input type="number" step="0.1" value="' + mobj.position.x.toFixed(2) + '" onchange="EngineApp._multiSetTransform('px',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#ef4444;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+                mhtml += '<input type="number" step="0.1" value="' + mobj.position.x.toFixed(2) + '" onchange="EngineApp._multiSetTransform(\'px\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#ef4444;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
                 mhtml += '<div style="font-size:0.6rem;color:#22c55e;text-align:center;padding-top:3px;">Y</div>';
-                mhtml += '<input type="number" step="0.1" value="' + mobj.position.y.toFixed(2) + '" onchange="EngineApp._multiSetTransform('py',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#22c55e;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+                mhtml += '<input type="number" step="0.1" value="' + mobj.position.y.toFixed(2) + '" onchange="EngineApp._multiSetTransform(\'py\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#22c55e;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
                 mhtml += '</div>';
                 mhtml += '<div style="display:grid;grid-template-columns:20px 1fr;gap:3px;">';
                 mhtml += '<div style="font-size:0.6rem;color:#3b82f6;text-align:center;padding-top:3px;">Z</div>';
-                mhtml += '<input type="number" step="0.1" value="' + mobj.position.z.toFixed(2) + '" onchange="EngineApp._multiSetTransform('pz',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#3b82f6;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
+                mhtml += '<input type="number" step="0.1" value="' + mobj.position.z.toFixed(2) + '" onchange="EngineApp._multiSetTransform(\'pz\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#3b82f6;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">';
                 mhtml += '</div></div>';
             }
             mhtml += '<div style="padding:6px 10px;display:flex;gap:4px;">';
@@ -16513,8 +16513,8 @@ var EngineApp = (function() {
                   '<span id="prefab-title-name" style="font-size:0.75rem;color:#a1a1aa;font-family:JetBrains Mono,monospace;"></span>' +
                   '<div style="flex:1"></div>' +
                   '<button id="prefab-autocam-btn" title="Авто-вращение" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-sync-alt"></i> Авто</button>' +
-                  '<button id="prefab-add-skel-btn" title="Добавить гуманоидный скелет" style="background:none;border:1px solid #22c55e;color:#22c55e;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> +Скелет</button>
-                  <button id="prefab-bones-btn" title="Показать/скрыть кости" style="background:none;border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> Кости</button>' +
+                  '<button id="prefab-add-skel-btn" title="Добавить гуманоидный скелет" style="background:none;border:1px solid #22c55e;color:#22c55e;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> +\u0421\u043a\u0435\u043b\u0435\u0442</button>' +
+                  '<button id="prefab-bones-btn" title="Показать/скрыть кости" style="background:none;border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> Кости</button>' +
                   '<button id="prefab-frame-btn" title="Центрировать" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand"></i> Центр</button>' +
                   '<button id="prefab-close-btn" title="Закрыть (Esc)" style="background:#ef4444;border:none;color:#fff;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-times"></i> Закрыть</button>' +
                 '</div>' +
@@ -16704,7 +16704,7 @@ var EngineApp = (function() {
             info.innerHTML =
                 '<div style="margin-bottom:6px;">Костей: <b style="color:#fff;">' + nBones + '</b> · Мешей: <b style="color:#fff;">' + nMeshes + '</b> · Вершин: <b style="color:#fff;">' + nVerts + '</b></div>' +
                 '<div style="margin-bottom:6px;">Размер: <b style="color:#fff;font-family:JetBrains Mono,monospace;">' + sz.x.toFixed(2) + ' × ' + sz.y.toFixed(2) + ' × ' + sz.z.toFixed(2) + '</b></div>' +
-                (nBones > 0 ? '<div style="font-size:0.62rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">Кости · клик для выделения</div><div style="max-height:200px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:4px;padding:2px 0;">' + _boneTreeHtml + '</div><div id="prefab-bone-transform" style="margin-top:8px;display:none;"><div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" id="prefab-sel-bone-label">—</div><div id="prefab-bone-props"></div></div>' : '<div style="color:#71717a;font-size:0.68rem;margin-top:8px;">Нет костей у этой модели.</div><button onclick="EngineApp._prefabAddSkeleton()" style="width:100%;padding:8px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;border-radius:5px;cursor:pointer;font-size:0.72rem;font-weight:600;margin-top:6px;"><i class="fas fa-bone" style="margin-right:6px;"></i>Добавить скелет</button></div>'  );</div>');
+                (nBones > 0 ? '<div style="font-size:0.62rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">Кости · клик для выделения</div><div style="max-height:200px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:4px;padding:2px 0;">' + _boneTreeHtml + '</div><div id="prefab-bone-transform" style="margin-top:8px;display:none;"><div style="font-size:0.62rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" id="prefab-sel-bone-label">—</div><div id="prefab-bone-props"></div></div>' : '<div style="color:#71717a;font-size:0.68rem;margin-top:8px;">Нет костей у этой модели.</div><button onclick="EngineApp._prefabAddSkeleton()" style="width:100%;padding:8px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;border-radius:5px;cursor:pointer;font-size:0.72rem;font-weight:600;margin-top:6px;"><i class="fas fa-bone" style="margin-right:6px;"></i>Добавить скелет</button></div>');
         }
 
         // Populate animation list
@@ -17863,7 +17863,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
