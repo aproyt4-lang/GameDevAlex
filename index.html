@@ -7715,11 +7715,30 @@ var SashaEngineAPI = (function() {
 
     // --- Script execution ---
 
+    // Safe script compilation helper — catches SyntaxError at construction time
+    // and routes to console panel instead of throwing uncaught browser errors.
+    // Returns null on failure, compiled Function on success.
+    function _safeCompileScript(paramNames, body, sourceLabel) {
+        try {
+            var src = body + '\n//# sourceURL=' + (sourceLabel || 'script') + '.js';
+            return new Function(paramNames.join(','), src);
+        } catch(compileErr) {
+            console.error('[Script Compile] ' + (sourceLabel || '?') + ': ' + (compileErr.message || compileErr));
+            if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) {
+                EngineApp._consoleLog('error', '[Compile Error] ' + (sourceLabel || 'script') + ': ' + (compileErr.message || compileErr));
+            }
+            return null;
+        }
+    }
+
     function callScriptFunction(scriptCode, fnName, args) {
         try {
-            var fn = new Function(fnName + 'Fn', 'return ' + fnName + ';')(function() {
+            var fn = _safeCompileScript([fnName + 'Fn'], 'return ' + fnName + ';', 'callScript-' + fnName);
+            if (!fn) return;
+            fn = fn(function() {
                 return function() {
-                    var wrapper = new Function(args._argNames.join(','), scriptCode + '\nreturn ' + fnName + '(' + args._argNames.join(',') + ');');
+                    var wrapper = _safeCompileScript(args._argNames, scriptCode + '\nreturn ' + fnName + '(' + args._argNames.join(',') + ');', 'callScript-' + fnName + '-inner');
+                    if (!wrapper) return undefined;
                     return wrapper.apply(null, args._argVals);
                 };
             });
@@ -7728,6 +7747,10 @@ var SashaEngineAPI = (function() {
             // Silently skip
         }
     }
+
+    // Cache compiled update functions to avoid recompiling every frame
+    var _scriptUpdateCache = {};
+    var _scriptUpdateCacheVer = {};
 
     function stepScripts(delta, collisionPairs) {
         collisionPairs = collisionPairs || [];
@@ -7744,19 +7767,24 @@ var SashaEngineAPI = (function() {
                     if (!scriptStarted[scriptId]) {
                         scriptStarted[scriptId] = true;
                         try {
-                            var startFn = new Function('obj', 'Engine', code + '\nif(typeof onStart==="function") onStart(obj, Engine);');
-                            startFn(obj, SashaEngineAPI);
+                            var startFn = _safeCompileScript(['obj', 'Engine'], code + '\nif(typeof onStart==="function") onStart(obj, Engine);', 'onStart-' + name);
+                            if (startFn) startFn(obj, SashaEngineAPI);
                         } catch(startErr) {
                             console.error('[Script onStart] ' + name + ':', startErr);
                             if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) EngineApp._consoleLog('error', '[Script onStart] ' + name + ': ' + (startErr.message || startErr));
                         }
                     }
-                    // Call onUpdate every frame
+                    // Call onUpdate every frame (cached compilation)
                     try {
                         var hasUpdate = code.indexOf('function onUpdate') !== -1;
                         if (hasUpdate) {
-                            var updateFn = new Function('delta', 'obj', 'Engine', code + '\nif(typeof onUpdate==="function") onUpdate(delta, obj, Engine);');
-                            updateFn(delta, obj, SashaEngineAPI);
+                            // Cache key includes code hash to detect edits
+                            var cacheKey = scriptId;
+                            if (_scriptUpdateCacheVer[cacheKey] !== code) {
+                                _scriptUpdateCache[cacheKey] = _safeCompileScript(['delta', 'obj', 'Engine'], code + '\nif(typeof onUpdate==="function") onUpdate(delta, obj, Engine);', 'onUpdate-' + name);
+                                _scriptUpdateCacheVer[cacheKey] = code;
+                            }
+                            if (_scriptUpdateCache[cacheKey]) _scriptUpdateCache[cacheKey](delta, obj, SashaEngineAPI);
                         }
                     } catch(updateErr) {
                         console.error('[Script onUpdate] ' + name + ':', updateErr);
@@ -7784,8 +7812,8 @@ var SashaEngineAPI = (function() {
                 var obj = objects[name];
                 if (!obj) continue;
                 try {
-                    var collFn = new Function('other', 'Engine', code + '\nif(typeof onCollision==="function") onCollision(other, Engine);');
-                    collFn(otherObj, SashaEngineAPI);
+                    var collFn = _safeCompileScript(['other', 'Engine'], code + '\nif(typeof onCollision==="function") onCollision(other, Engine);', 'onCollision-' + name);
+                    if (collFn) collFn(otherObj, SashaEngineAPI);
                 } catch(collErr) {
                     console.error('[Script onCollision] ' + name + ':', collErr);
                     if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) EngineApp._consoleLog('error', '[Script onCollision] ' + name + ': ' + (collErr.message || collErr));
@@ -7804,8 +7832,8 @@ var SashaEngineAPI = (function() {
                     var obj = objects[name];
                     if (!obj) continue;
                     try {
-                        var destroyFn = new Function('obj', 'Engine', code + '\nif(typeof onDestroy==="function") onDestroy(obj, Engine);');
-                        destroyFn(obj, SashaEngineAPI);
+                        var destroyFn = _safeCompileScript(['obj', 'Engine'], code + '\nif(typeof onDestroy==="function") onDestroy(obj, Engine);', 'onDestroy-' + name);
+                        if (destroyFn) destroyFn(obj, SashaEngineAPI);
                     } catch(destroyErr) {
                         console.error('[Script onDestroy] ' + name + ':', destroyErr);
                         if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) EngineApp._consoleLog('error', '[Script onDestroy] ' + name + ': ' + (destroyErr.message || destroyErr));
@@ -7814,6 +7842,8 @@ var SashaEngineAPI = (function() {
             }
         }
         scriptStarted = {};
+        _scriptUpdateCache = {};
+        _scriptUpdateCacheVer = {};
         savedConstraintPositions = {};
     }
 
@@ -8194,12 +8224,12 @@ var SashaEngineAPI = (function() {
                             // === Utility ===
                             log: function(msg) { console.log('[Animator:' + (ctrl.name || ctrlId) + ':' + name + '] ' + msg); }
                         };
-                        var _acScriptFn = new Function(
-                            'params', 'currentState', 'deltaTime', 'objName',
-                            'setParam', 'getParam', 'trigger', 'transitionTo', 'api',
-                            ctrl.code + '\n//# sourceURL=animator-ctrl-' + ctrlId + '.js'
+                        var _acScriptFn = _safeCompileScript(
+                            ['params', 'currentState', 'deltaTime', 'objName', 'setParam', 'getParam', 'trigger', 'transitionTo', 'api'],
+                            ctrl.code,
+                            'animator-ctrl-' + ctrlId
                         );
-                        _acScriptFn(
+                        if (_acScriptFn) _acScriptFn(
                             _acParamsProxy,
                             state.currentState,
                             delta,
@@ -8424,6 +8454,11 @@ var SashaEngineAPI = (function() {
                 if (selectionHelper) selectionHelper.visible = false;
                 if (transformCtrl) transformCtrl.visible = false;
                 if (mainCameraHelper) mainCameraHelper.visible = false;
+                // Hide bone visualization in game mode — skeleton is editor-only
+                if (_boneVisGroup) _boneVisGroup.visible = false;
+                for (var _bhIdx = 0; _bhIdx < _boneHitSpheres.length; _bhIdx++) {
+                    if (_boneHitSpheres[_bhIdx]) _boneHitSpheres[_bhIdx].visible = false;
+                }
 
                 // Sync gameCamera from Main Camera helper
                 if (gameCamera) {
@@ -8480,6 +8515,11 @@ var SashaEngineAPI = (function() {
             if (selectionHelper) selectionHelper.visible = !!selectedObject;
             if (transformCtrl) transformCtrl.visible = true;
             if (mainCameraHelper) mainCameraHelper.visible = true;
+            // Show bone visualization back in editor mode
+            if (_boneVisGroup && _boneVisGroup.parent) _boneVisGroup.visible = true;
+            for (var _bhIdx2 = 0; _bhIdx2 < _boneHitSpheres.length; _bhIdx2++) {
+                if (_boneHitSpheres[_bhIdx2]) _boneHitSpheres[_bhIdx2].visible = true;
+            }
 
             // Scene view on main canvas
             if (svVisible) {
@@ -8492,11 +8532,13 @@ var SashaEngineAPI = (function() {
                 if (selectionHelper) selectionHelper.visible = false;
                 if (transformCtrl) transformCtrl.visible = false;
                 if (mainCameraHelper) mainCameraHelper.visible = false;
+                if (_boneVisGroup) _boneVisGroup.visible = false;
                 _renderGameView();
                 if (_eg) _eg.visible = true;
                 if (selectionHelper) selectionHelper.visible = !!selectedObject;
                 if (transformCtrl) transformCtrl.visible = true;
                 if (mainCameraHelper) mainCameraHelper.visible = true;
+                if (_boneVisGroup && _boneVisGroup.parent) _boneVisGroup.visible = true;
             }
 
             // Camera Preview only when Scene visible and not playing
@@ -16673,7 +16715,11 @@ var EngineApp = (function() {
             // Canvas mouse handlers
             var canvas = document.getElementById('prefab-canvas');
             canvas.style.cursor = 'grab';
-            canvas.addEventListener('mousedown', function(e) {
+            canvas.addEventListener('pointerdown', function(e) {
+                // Don't start orbit if gizmo is being interacted with
+                if (_prefabGizmoDragging) return;
+                // TransformControls sets .axis when hovering over a gizmo handle
+                if (_prefabTransformCtrl && _prefabTransformCtrl.axis) return;
                 _prefabState.dragging = true;
                 _prefabState.lastX = e.clientX;
                 _prefabState.lastY = e.clientY;
@@ -16727,13 +16773,18 @@ var EngineApp = (function() {
         }
         _prefabTransformCtrl = new THREE.TransformControls(_prefabState.camera, canvasEl);
         _prefabTransformCtrl.setMode('translate');
-        _prefabTransformCtrl.setSize(0.7);
+        _prefabTransformCtrl.setSize(0.8);
         _prefabTransformCtrl.space = 'local';
         _prefabTransformCtrl.addEventListener('dragging-changed', function(ev) {
             _prefabGizmoDragging = ev.value;
             if (ev.value) {
                 _prefabState.dragging = false;
                 _prefabState.autocam = false;
+                var pc = document.getElementById('prefab-canvas');
+                if (pc) pc.style.cursor = ''; // Let gizmo control cursor
+            } else {
+                var pc2 = document.getElementById('prefab-canvas');
+                if (pc2) pc2.style.cursor = 'grab';
             }
         });
         _prefabTransformCtrl.addEventListener('objectChange', function() {
@@ -16744,6 +16795,45 @@ var EngineApp = (function() {
             }
         });
         _prefabState.scene.add(_prefabTransformCtrl);
+        _prefabSetGizmoMode('translate');
+
+        // Bone click picking on prefab canvas (click 3D bone to select + attach gizmo)
+        var _prefabBoneRaycaster = new THREE.Raycaster();
+        var _prefabPointer = new THREE.Vector2();
+        canvasEl.addEventListener('click', function(e) {
+            // Don't pick bones if we were orbiting or dragging the gizmo
+            if (_prefabGizmoDragging || _prefabState.dragging) return;
+            // Don't pick if TransformControls axis is active (user clicked a gizmo handle)
+            if (_prefabTransformCtrl && _prefabTransformCtrl.axis) return;
+            var rect = canvasEl.getBoundingClientRect();
+            _prefabPointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            _prefabPointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            _prefabBoneRaycaster.setFromCamera(_prefabPointer, _prefabState.camera);
+            // Collect bone world positions and find closest
+            var boneList = [];
+            if (_prefabState.model) {
+                _prefabState.model.traverse(function(c) { if (c.isBone) boneList.push(c); });
+            }
+            var closestBone = null;
+            var closestDist = Infinity;
+            for (var bi = 0; bi < boneList.length; bi++) {
+                var bPos = new THREE.Vector3();
+                boneList[bi].getWorldPosition(bPos);
+                var ray = _prefabBoneRaycaster.ray;
+                var v = bPos.clone().sub(ray.origin);
+                var t = v.dot(ray.direction);
+                if (t < 0) continue;
+                var closest = ray.origin.clone().add(ray.direction.clone().multiplyScalar(t));
+                var dist = closest.distanceTo(bPos);
+                if (dist < 0.15 && dist < closestDist) {
+                    closestDist = dist;
+                    closestBone = boneList[bi];
+                }
+            }
+            if (closestBone) {
+                _prefabSelectBone(closestBone.name);
+            }
+        });
 
         // Clone the model — same safe approach as preview (strip userData first)
         var savedUd = [];
@@ -18316,15 +18406,21 @@ var EngineApp = (function() {
             EngineApp._consoleLog('warn', msg);
         }
     };
-    // Catch unhandled errors
+    // Catch unhandled errors — prevent browser from logging "Uncaught" to its own console
     window.addEventListener('error', function(e) {
+        // If error comes from dynamic script (lineno <= 1 or no filename), suppress browser default
+        if (e.lineno !== undefined && e.lineno <= 5 && (!e.filename || e.filename.indexOf('index.html') === -1)) {
+            e.preventDefault();
+        }
         if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) {
-            EngineApp._consoleLog('error', 'Uncaught: ' + (e.message || e) + ' (line ' + (e.lineno || '?') + ')');
+            var src = e.filename ? e.filename.split('/').pop() + ':' + (e.lineno || '?') : ':unknown';
+            EngineApp._consoleLog('error', src + ' ' + (e.message || e));
         }
     });
     window.addEventListener('unhandledrejection', function(e) {
+        e.preventDefault();
         if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) {
-            EngineApp._consoleLog('error', 'Unhandled Promise: ' + String(e.reason));
+            EngineApp._consoleLog('error', 'Unhandled Promise: ' + String(e.reason && e.reason.message ? e.reason.message : e.reason));
         }
     });
 })();
