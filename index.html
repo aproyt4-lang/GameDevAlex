@@ -1112,6 +1112,16 @@
                                         Selected: <span id="gizmo-info-sel">None</span> |
                                         Objects: <span id="gizmo-info-count">0</span>
                                     </div>
+                                    <!-- Pose Mode Indicator -->
+                                    <div id="pose-mode-indicator" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;padding:4px 16px;border-radius:20px;font-size:0.7rem;font-weight:700;z-index:20;pointer-events:none;box-shadow:0 2px 8px rgba(245,158,11,0.4);">
+                                        POSE MODE — Click bones to select | W=Move E=Rotate R=Scale
+                                    </div>
+                                    <!-- Save Status Indicator -->
+                                    <div id="save-status-indicator" style="position:absolute;bottom:40px;right:8px;z-index:20;pointer-events:none;opacity:0;transition:opacity 0.3s;">
+                                        <div style="background:rgba(34,197,94,0.9);color:#fff;padding:4px 12px;border-radius:6px;font-size:0.65rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+                                            <i class="fas fa-check"></i> Saved
+                                        </div>
+                                    </div>
                                     <div id="fps-crosshair" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10;">
                                         <div style="width:20px;height:2px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
                                         <div style="width:2px;height:20px;background:rgba(255,255,255,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
@@ -1200,8 +1210,12 @@
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('animation')"><i class="fas fa-play-circle"></i> Animation Clip</div>
                                         <div class="ctx-item" onclick="EngineApp.createAssetItem('animator')"><i class="fas fa-project-diagram"></i> Animator Controller</div>
                                     </div>
+                                    <button class="asset-btn" onclick="EngineApp.assetCreateFolderQuick()" title="New Folder"><i class="fas fa-folder-plus"></i></button>
                                     <button class="asset-btn" onclick="EngineApp.importAsset()"><i class="fas fa-file-import"></i> Import</button>
                                     <button class="asset-btn" onclick="EngineApp.saveAllAssets()"><i class="fas fa-save"></i> Save All</button>
+                                    <button class="asset-btn" onclick="EngineApp.exportFullProject()" title="Export all assets + scene as JSON"><i class="fas fa-file-export"></i> Export</button>
+                                    <button class="asset-btn" onclick="EngineApp.importFullProject()" title="Import project from JSON"><i class="fas fa-file-import"></i> Import Project</button>
+                                    <button class="asset-btn" onclick="EngineApp.saveSceneAsAsset()"><i class="fas fa-film"></i> Save Scene</button>
                                 </div>
                                 <div class="asset-body">
                                     <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
@@ -1217,7 +1231,14 @@
                             <div class="engine-console" id="eng-console"></div>
                         </div>
                         <div class="eng-tab-content" id="eng-tab-code" style="display:none;">
-                            <div id="engine-monaco" style="width:100%;height:100%;"></div>
+                            <div style="display:flex;align-items:center;gap:6px;padding:3px 8px;background:var(--bg-dark);border-bottom:1px solid var(--border);min-height:28px;flex-shrink:0;">
+                                <button onclick="EngineApp.saveCurrentScriptAsset()" style="padding:2px 10px;font-size:0.65rem;background:#22c55e;border:none;color:#fff;border-radius:4px;cursor:pointer;" title="Ctrl+S"><i class="fas fa-save" style="margin-right:3px;"></i>Save</button>
+                                <button onclick="EngineApp.saveScriptAs()" style="padding:2px 10px;font-size:0.65rem;background:#6366f1;border:none;color:#fff;border-radius:4px;cursor:pointer;" title="Ctrl+Shift+S"><i class="fas fa-file-export" style="margin-right:3px;"></i>Save As</button>
+                                <span id="code-asset-status" style="font-size:0.62rem;color:#71717a;"></span>
+                                <div style="flex:1"></div>
+                                <label style="display:flex;align-items:center;gap:4px;font-size:0.65rem;color:#a1a1aa;cursor:pointer;"><input type="checkbox" id="code-auto-save-cb" checked style="accent-color:#22c55e;"> Auto-save</label>
+                            </div>
+                            <div id="engine-monaco" style="width:100%;height:calc(100% - 28px);"></div>
                         </div>
                         <div class="eng-tab-content" id="eng-tab-ai" style="display:none;">
                             <div class="engine-ai-panel">
@@ -1381,11 +1402,14 @@
                                 <div id="ac-code-line-nums" style="width:36px;flex-shrink:0;background:#08081a;padding:12px 4px 12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:0.72rem;line-height:1.6;color:#3f3f5a;overflow:hidden;user-select:none;pointer-events:none;"></div>
                                 <textarea id="ac-code-textarea" style="flex:1;width:100%;background:#0a0a18;color:#e4e4e7;border:none;padding:12px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;line-height:1.6;resize:none;outline:none;tab-size:4;box-sizing:border-box;overflow:auto;" spellcheck="false"></textarea>
                             </div>
-                            <div style="padding:3px 12px;background:#08081a;border-top:1px solid var(--border);font-size:0.58rem;color:#4a4a6a;display:flex;gap:12px;">
-                                <span>params — параметры аниматора</span>
-                                <span>currentState — текущее состояние</span>
-                                <span>transitionTo(state) — переход</span>
-                                <span>trigger(name) — активировать триггер</span>
+                            <div style="padding:3px 12px;background:#08081a;border-top:1px solid var(--border);font-size:0.58rem;color:#4a4a6a;display:flex;gap:12px;flex-wrap:wrap;">
+                                <span>params — параметры</span>
+                                <span>currentState — состояние</span>
+                                <span>transitionTo(s) — переход</span>
+                                <span>api.playClip(n) — клип</span>
+                                <span>api.crossfadeTo(n,d) — плавно</span>
+                                <span>api.getTime() — время</span>
+                                <span>api.setBoneRotation(n,x,y,z) — кость</span>
                             </div>
                         </div>
                     </div>
@@ -3564,6 +3588,102 @@ var SashaCodeRunner = (function() {
     return { init: init, execute: execute, clear: clear, show: show };
 })();
 
+// ============ AssetBinaryStorage — IndexedDB for large binary files (GLB models, textures) ============
+var AssetBinaryStorage = (function() {
+    var db = null;
+    var DB_NAME = 'SashaEngine_Binaries';
+    var DB_VERSION = 1;
+    var STORE_NAME = 'files';
+
+    function init() {
+        return new Promise(function(resolve, reject) {
+            if (!window.indexedDB) {
+                console.warn('[AssetBinaryStorage] IndexedDB not available — binary storage disabled');
+                resolve(false);
+                return;
+            }
+            var request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = function(e) {
+                var d = e.target.result;
+                if (!d.objectStoreNames.contains(STORE_NAME)) {
+                    d.createObjectStore(STORE_NAME);
+                }
+            };
+            request.onsuccess = function(e) {
+                db = e.target.result;
+                console.log('[AssetBinaryStorage] IndexedDB ready');
+                resolve(true);
+            };
+            request.onerror = function(e) {
+                console.warn('[AssetBinaryStorage] IndexedDB error:', e);
+                resolve(false);
+            };
+        });
+    }
+
+    // Save binary data (ArrayBuffer) by key (asset ID)
+    function save(key, arrayBuffer) {
+        return new Promise(function(resolve, reject) {
+            if (!db) { reject(new Error('DB not initialized')); return; }
+            try {
+                var tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(arrayBuffer, key);
+                tx.oncomplete = function() { resolve(true); };
+                tx.onerror = function(e) { reject(e.target.error); };
+            } catch(e) { reject(e); }
+        });
+    }
+
+    // Load binary data by key
+    function load(key) {
+        return new Promise(function(resolve, reject) {
+            if (!db) { reject(new Error('DB not initialized')); return; }
+            try {
+                var tx = db.transaction(STORE_NAME, 'readonly');
+                var req = tx.objectStore(STORE_NAME).get(key);
+                req.onsuccess = function() { resolve(req.result || null); };
+                req.onerror = function(e) { reject(e.target.error); };
+            } catch(e) { reject(e); }
+        });
+    }
+
+    // Remove binary data by key
+    function remove(key) {
+        return new Promise(function(resolve, reject) {
+            if (!db) { resolve(); return; }
+            try {
+                var tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).delete(key);
+                tx.oncomplete = function() { resolve(); };
+                tx.onerror = function(e) { reject(e.target.error); };
+            } catch(e) { resolve(); }
+        });
+    }
+
+    // Check if key exists
+    function has(key) {
+        return new Promise(function(resolve, reject) {
+            if (!db) { resolve(false); return; }
+            try {
+                var tx = db.transaction(STORE_NAME, 'readonly');
+                var req = tx.objectStore(STORE_NAME).getKey(key);
+                req.onsuccess = function() { resolve(req.result !== undefined); };
+                req.onerror = function() { resolve(false); };
+            } catch(e) { resolve(false); }
+        });
+    }
+
+    // Get approximate storage size in bytes
+    function getStorageSize() {
+        return new Promise(function(resolve) {
+            if (!db || !navigator.storage || !navigator.storage.estimate) { resolve(0); return; }
+            navigator.storage.estimate().then(function(est) { resolve(est.usage || 0); }).catch(function() { resolve(0); });
+        });
+    }
+
+    return { init: init, save: save, load: load, remove: remove, has: has, getStorageSize: getStorageSize };
+})();
+
 // ============ SashaTerminal ============
 // FIXED: history bug corrected (was historyistoryIndex])
 var SashaTerminal = (function() {
@@ -5030,6 +5150,8 @@ var SashaEngineAPI = (function() {
     // ============ HUMAN SKELETON / ARMATURE SYSTEM ============
     // Bone visualization helpers
     var _boneVisLines = null;   // THREE.LineSegments showing bone connections
+    var _boneHitSpheres = [];   // Invisible spheres for viewport bone picking in pose mode
+    var _boneGizmoAttached = false; // Whether gizmo is attached to a bone (not a top-level object)
     var _boneVisGroup = null;  // Group holding all bone helpers
 
     // Creates a complete human skeleton with standard bone names
@@ -5070,6 +5192,85 @@ var SashaEngineAPI = (function() {
         return skeleton;
     }
 
+    // Add simple humanoid body mesh to skeleton bones (for standalone use without GLB)
+    // Each body part is a mesh child of its bone — follows bone transforms automatically
+    function addHumanoidBody(skeletonGroup, height) {
+        height = height || 1.75;
+        var h = height;
+        var bodyMat = new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.6, metalness: 0.15 });
+        var skinMat = new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.75, metalness: 0.0 });
+        var shoeMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.8, metalness: 0.0 });
+        var _bodyParts = 0;
+        skeletonGroup.traverse(function(bone) {
+            if (!bone.isBone) return;
+            var geo = null;
+            var mat = bodyMat;
+            switch(bone.name) {
+                case 'Hips':
+                    geo = new THREE.BoxGeometry(0.24, 0.16, 0.13);
+                    geo.translate(0, 0.08, 0);
+                    break;
+                case 'Spine':
+                    geo = new THREE.BoxGeometry(0.28, 0.17, 0.15);
+                    geo.translate(0, 0.085, 0);
+                    break;
+                case 'Chest':
+                    geo = new THREE.BoxGeometry(0.34, 0.19, 0.19);
+                    geo.translate(0, 0.095, 0);
+                    break;
+                case 'Neck':
+                    geo = new THREE.CylinderGeometry(0.04, 0.045, 0.07, 8);
+                    geo.translate(0, 0.035, 0);
+                    mat = skinMat;
+                    break;
+                case 'Head':
+                    geo = new THREE.SphereGeometry(h * 0.068, 12, 10);
+                    geo.translate(0, h * 0.068, 0);
+                    mat = skinMat;
+                    break;
+                case 'LShoulder': case 'RShoulder':
+                    geo = new THREE.SphereGeometry(0.042, 8, 6);
+                    break;
+                case 'LUpperArm': case 'RUpperArm':
+                    geo = new THREE.CapsuleGeometry(0.036, 0.13, 4, 8);
+                    geo.translate(0, -0.065, 0);
+                    break;
+                case 'LLowerArm': case 'RLowerArm':
+                    geo = new THREE.CapsuleGeometry(0.028, 0.12, 4, 8);
+                    geo.translate(0, -0.06, 0);
+                    mat = skinMat;
+                    break;
+                case 'LHand': case 'RHand':
+                    geo = new THREE.BoxGeometry(0.04, 0.055, 0.02);
+                    geo.translate(0, -0.028, 0);
+                    mat = skinMat;
+                    break;
+                case 'LUpperLeg': case 'RUpperLeg':
+                    geo = new THREE.CapsuleGeometry(0.058, 0.18, 4, 8);
+                    geo.translate(0, -0.09, 0);
+                    break;
+                case 'LLowerLeg': case 'RLowerLeg':
+                    geo = new THREE.CapsuleGeometry(0.042, 0.18, 4, 8);
+                    geo.translate(0, -0.09, 0);
+                    break;
+                case 'LFoot': case 'RFoot':
+                    geo = new THREE.BoxGeometry(0.065, 0.05, 0.13);
+                    geo.translate(0, -0.025, 0.03);
+                    mat = shoeMat;
+                    break;
+            }
+            if (geo) {
+                var mesh = new THREE.Mesh(geo, mat);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.name = '__bodypart__';
+                bone.add(mesh);
+                _bodyParts++;
+            }
+        });
+        return _bodyParts;
+    }
+
     // Attach a human skeleton to an existing model object
     function attachSkeletonToModel(modelName) {
         var obj = objects[modelName];
@@ -5081,6 +5282,18 @@ var SashaEngineAPI = (function() {
         obj.add(skeleton);
         var bones = [];
         skeleton.traverse(function(c) { if (c.isBone) bones.push(c); });
+
+        // Check if object has any existing meshes (non-skinned, non-bodypart)
+        var hasMesh = false;
+        obj.traverse(function(c) { if (c.isMesh && !c.isSkinnedMesh && c.name !== '__bodypart__') hasMesh = true; });
+
+        // If no skinned mesh exists, add simple humanoid body parts to bones
+        if (!hasMesh) {
+            var bodyCount = addHumanoidBody(skeleton, 1.75);
+            console.log('[Skeleton] Added ' + bodyCount + ' body parts to skeleton');
+        }
+
+        // Rebind existing skinned meshes to new skeleton (for GLB models)
         obj.traverse(function(c) {
             if (c.isSkinnedMesh && c.skeleton) {
                 var oldB = c.skeleton.bones, newB = [], map = {};
@@ -5211,6 +5424,95 @@ var SashaEngineAPI = (function() {
             }
         }
         _boneVisLines.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Create invisible hit-spheres at each bone for viewport picking in pose mode
+    function createBoneHitSpheres(modelName) {
+        clearBoneHitSpheres();
+        var obj = objects[modelName];
+        if (!obj) return;
+        _boneVisGroup = new THREE.Group();
+        _boneVisGroup.name = '__bone_hit_group__';
+        var boneRadius = 0.06;
+        var hitMat = new THREE.MeshBasicMaterial({ visible: false });
+        obj.traverse(function(c) {
+            if (c.isBone) {
+                var sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(boneRadius, 8, 6),
+                    hitMat
+                );
+                sphere.name = '__bone_hit__';
+                sphere.userData._boneRef = c;
+                sphere.userData._boneName = c.name;
+                sphere.userData._boneModelName = modelName;
+                // Position at bone's local position (child of bone so it follows automatically)
+                sphere.position.set(0, 0, 0);
+                c.add(sphere);
+                _boneHitSpheres.push(sphere);
+            }
+        });
+    }
+
+    // Remove all bone hit spheres
+    function clearBoneHitSpheres() {
+        for (var i = 0; i < _boneHitSpheres.length; i++) {
+            var s = _boneHitSpheres[i];
+            if (s.parent) s.parent.remove(s);
+            if (s.geometry) s.geometry.dispose();
+        }
+        _boneHitSpheres = [];
+        if (_boneVisGroup) {
+            if (_boneVisGroup.parent) _boneVisGroup.parent.remove(_boneVisGroup);
+            _boneVisGroup = null;
+        }
+    }
+
+    // Attach the TransformControls gizmo directly to a bone object
+    function attachGizmoToBone(boneObj) {
+        if (!boneObj || !transformCtrl) return;
+        transformCtrl.attach(boneObj);
+        transformCtrl.space = 'local';  // Local space for intuitive bone rotation
+        transformCtrl.showX = true;
+        transformCtrl.showY = true;
+        transformCtrl.showZ = true;
+        _boneGizmoAttached = true;
+        // Hide the wireframe selection box when in bone gizmo mode
+        selectionHelper.visible = false;
+    }
+
+    // Detach gizmo from bone, restore normal behavior
+    function detachGizmoFromBone() {
+        if (!transformCtrl) return;
+        transformCtrl.detach();
+        _boneGizmoAttached = false;
+    }
+
+    // Check if a point (from raycaster) hits any bone hit sphere — returns bone object or null
+    function pickBoneHitSpheres(raycasterInst) {
+        if (_boneHitSpheres.length === 0) return null;
+        // Get all hit sphere world positions and test distance to ray
+        var ray = raycasterInst.ray;
+        var closestBone = null;
+        var closestDist = Infinity;
+        var testRadius = 0.12; // Slightly larger than visual for easier picking
+        for (var i = 0; i < _boneHitSpheres.length; i++) {
+            var sphere = _boneHitSpheres[i];
+            var bone = sphere.userData._boneRef;
+            if (!bone) continue;
+            var wPos = new THREE.Vector3();
+            bone.getWorldPosition(wPos);
+            // Point-to-line-segment distance (ray origin + direction)
+            var v = wPos.clone().sub(ray.origin);
+            var t = v.dot(ray.direction);
+            if (t < 0) continue; // Behind camera
+            var closest = ray.origin.clone().add(ray.direction.clone().multiplyScalar(t));
+            var dist = closest.distanceTo(wPos);
+            if (dist < testRadius && dist < closestDist) {
+                closestDist = dist;
+                closestBone = bone;
+            }
+        }
+        return closestBone;
     }
 
     // Remove skeleton from model
@@ -5574,6 +5876,17 @@ var SashaEngineAPI = (function() {
             if (!event.value) { _lastTransformEnd = Date.now(); }
         });
         transformCtrl.addEventListener('objectChange', function() {
+            if (_boneGizmoAttached && window.EngineApp && EngineApp._getPoseModelName) {
+                // Gizmo is on a bone — update bone visualization lines
+                var pm = EngineApp._getPoseModelName();
+                if (pm) updateBoneVisualization(pm);
+                // Update bone inspector values
+                var inspectorAutoRefreshBak = inspectorAutoRefresh;
+                inspectorAutoRefresh = false;
+                try { EngineApp.refreshInspector(); } catch(e) {}
+                inspectorAutoRefresh = inspectorAutoRefreshBak;
+                return;
+            }
             if (inspectorAutoRefresh && selectedObject) {
                 var sel = selectedObject;
                 inspectorAutoRefresh = false;
@@ -5666,6 +5979,20 @@ var SashaEngineAPI = (function() {
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
+
+        // === POSE MODE: Check bone hit spheres first ===
+        if (window.EngineApp && EngineApp._poseMode && EngineApp._getPoseModelName) {
+            var boneHit = pickBoneHitSpheres(raycaster);
+            if (boneHit) {
+                var pModelName = EngineApp._getPoseModelName();
+                if (pModelName && boneHit.name) {
+                    EngineApp.selectBone(pModelName, boneHit.name);
+                    return;
+                }
+            }
+            // In pose mode, don't deselect the model if clicking empty space
+            return;
+        }
 
         var meshes = [];
         for (var name in objects) {
@@ -6513,6 +6840,9 @@ var SashaEngineAPI = (function() {
     }
 
     function selectObject(name) {
+        // Don't override bone gizmo when in pose mode
+        if (_boneGizmoAttached && window.EngineApp && EngineApp._poseMode) return;
+
         selectedObject = name;
         // Detach gizmo from old object
         transformCtrl.detach();
@@ -7460,9 +7790,9 @@ var SashaEngineAPI = (function() {
             transitions: [],
             // Программируемый код переходов (JS).
             // Выполняется каждый кадр в stepAnimators().
-            // Доступные переменные: params, currentState, deltaTime, objName
+            // Доступные переменные: params, currentState, deltaTime, objName, api
             // Доступные функции: setParam(name, value), getParam(name), trigger(name), transitionTo(stateName)
-            code: '// Animator Controller Script\n// Выполняется каждый кадр во время Play\n//\n// Доступные переменные:\n//   params      — объект параметров (params.Speed, params.IsGrounded)\n//   currentState — имя текущего состояния (строка)\n//   deltaTime   — время с прошлого кадра\n//\n// Доступные функции:\n//   setParam(name, value)  — установить параметр\n//   getParam(name)         — получить параметр\n//   trigger(name)          — активировать триггер\n//   transitionTo(state)    — принудительный переход\n\n// Пример: авто-переход Idle -> Walk по скорости\n// if (getParam("Speed") > 0.1 && currentState === "Idle") {\n//   trigger("Walk");\n// }\n'
+            code: '// Animator Controller Script\n// ============================================\n// Выполняется КАЖДЫЙ КАДР во время Play mode.\n// ============================================\n//\n// === ПЕРЕМЕННЫЕ ===\n//   params        — объект параметров (params.Speed, params.IsGrounded)\n//   currentState  — имя текущего состояния (строка)\n//   deltaTime     — время с прошлого кадра (секунды)\n//   objName       — имя объекта на сцене\n//   api           — расширенный API (см. ниже)\n//\n// === БАЗОВЫЕ ФУНКЦИИ ===\n//   setParam(name, value)   — установить параметр\n//   getParam(name)          — получить значение параметра\n//   trigger(name)           — активировать триггер\n//   transitionTo(state)     — принудительный переход в состояние\n//\n// === API: ПРОИГРЫВАНИЕ АНИМАЦИЙ (для GLB скелетных) ===\n//   api.playClip("Walk")              — проиграть клип по имени\n//   api.crossfadeTo("Run", 0.3)        — плавный переход за 0.3с\n//   api.stopAllClips()                 — остановить все клипы\n//\n// === API: ВРЕМЯ ===\n//   api.getTime()                      — текущее время состояния\n//   api.getDuration()                  — длительность текущего клипа\n//   api.getNormalizedTime()            — прогресс 0..1\n//   api.setSpeed(2.0)                  — скорость воспроизведения\n//\n// === API: КОСТИ (процедурная анимация) ===\n//   api.getBonePosition("Head")        — {x, y, z}\n//   api.setBonePosition("Head", x,y,z)\n//   api.getBoneRotation("Head")        — {x, y, z} радианы\n//   api.setBoneRotation("Head", x,y,z)\n//\n// === API: УТИЛИТЫ ===\n//   api.log("message")                 — лог в консоль\n//   api.getObjectName()                — имя объекта\n//\n// === ПРИМЕРЫ ===\n//\n// Пример 1: Авто-переход по скорости\n// if (params.Speed > 0.1 && currentState === "Idle") {\n//   transitionTo("Walk");\n// }\n//\n// Пример 2: Прямое управление клипами через API\n// if (params.Speed > 5) {\n//   api.crossfadeTo("Run", 0.3);\n// } else if (params.Speed > 0.1) {\n//   api.crossfadeTo("Walk", 0.2);\n// } else {\n//   api.crossfadeTo("Idle", 0.3);\n// }\n//\n// Пример 3: Процедурная анимация головы\n// var t = api.getTime();\n// api.setBoneRotation("Head", 0, Math.sin(t * 2) * 0.2, 0);\n//\n'
         };
         animatorControllers[id] = ctrl;
         return ctrl;
@@ -7594,6 +7924,7 @@ var SashaEngineAPI = (function() {
                 }
 
                 // === EXECUTE ANIMATOR CONTROLLER CODE (программируемые переходы) ===
+                var _codeHandledPlayback = false;
                 if (ctrl.code && ctrl.code.trim() && ctrl.code.indexOf('//') !== -1) {
                     try {
                         var _acParamsProxy = {};
@@ -7610,9 +7941,128 @@ var SashaEngineAPI = (function() {
                             })(pk);
                         }
                         var _acForceTransition = null;
+                        // Build API object for advanced animator script control
+                        var _skelD = _skeletonData[name];
+                        var _acApi = {
+                            // === Clip Playback (for GLB skeletal animations) ===
+                            playClip: function(clipName) {
+                                _codeHandledPlayback = true;
+                                if (_skelD && _skelD.mixer) {
+                                    for (var _pi = 0; _pi < _skelD.clips.length; _pi++) {
+                                        if (_skelD.clips[_pi].name === clipName) {
+                                            for (var _pj = 0; _pj < _skelD.actions.length; _pj++) {
+                                                try { _skelD.actions[_pj].stop(); } catch(_pe) {}
+                                            }
+                                            _skelD.actions = [];
+                                            var _pa = _skelD.mixer.clipAction(_skelD.clips[_pi]);
+                                            _pa.reset().setLoop(THREE.LoopRepeat, 1).play();
+                                            _skelD.actions.push(_pa);
+                                            break;
+                                        }
+                                    }
+                                }
+                            },
+                            crossfadeTo: function(clipName, dur) {
+                                _codeHandledPlayback = true;
+                                dur = (dur !== undefined && dur !== null) ? dur : 0.3;
+                                if (_skelD && _skelD.mixer) {
+                                    for (var _ci = 0; _ci < _skelD.clips.length; _ci++) {
+                                        if (_skelD.clips[_ci].name === clipName) {
+                                            for (var _cj = 0; _cj < _skelD.actions.length; _cj++) {
+                                                try { _skelD.actions[_cj].fadeOut(dur); } catch(_ce) {}
+                                            }
+                                            var _ca = _skelD.mixer.clipAction(_skelD.clips[_ci]);
+                                            _ca.reset().fadeIn(dur).setLoop(THREE.LoopRepeat, 1).play();
+                                            _skelD.actions.push(_ca);
+                                            break;
+                                        }
+                                    }
+                                }
+                            },
+                            stopAllClips: function() {
+                                _codeHandledPlayback = true;
+                                if (_skelD) {
+                                    for (var _sj = 0; _sj < _skelD.actions.length; _sj++) {
+                                        try { _skelD.actions[_sj].stop(); } catch(_se) {}
+                                    }
+                                    _skelD.actions = [];
+                                }
+                            },
+                            // === Time & State Info ===
+                            getTime: function() { return state.time; },
+                            getDuration: function() {
+                                for (var _di = 0; _di < ctrl.states.length; _di++) {
+                                    if (ctrl.states[_di].name === state.currentState && ctrl.states[_di].clipId) {
+                                        var _cd = animationClips[ctrl.states[_di].clipId];
+                                        if (_cd) return _cd.duration;
+                                    }
+                                }
+                                // Also check skeletal clips
+                                if (_skelD && _skelD.clips.length > 0) {
+                                    for (var _dj = 0; _dj < ctrl.states.length; _dj++) {
+                                        if (ctrl.states[_dj].name === state.currentState && ctrl.states[_dj].clipId) {
+                                            var _cd2 = animationClips[ctrl.states[_dj].clipId];
+                                            if (_cd2) {
+                                                for (var _dk = 0; _dk < _skelD.clips.length; _dk++) {
+                                                    if (_skelD.clips[_dk].name === _cd2.name) return _skelD.clips[_dk].duration;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                return 0;
+                            },
+                            getNormalizedTime: function() {
+                                var dur = _acApi.getDuration();
+                                return dur > 0 ? (state.time % dur) / dur : 0;
+                            },
+                            setSpeed: function(spd) {
+                                if (_skelD && _skelD.mixer) _skelD.mixer.timeScale = (spd !== undefined && spd !== null) ? spd : 1;
+                            },
+                            getObjectName: function() { return name; },
+                            // === Bone Manipulation (procedural animation) ===
+                            getBonePosition: function(boneName) {
+                                var _bone = null;
+                                var _obj = objects[name];
+                                if (_obj) _obj.traverse(function(c) { if (c.isBone && c.name === boneName) _bone = c; });
+                                if (!_bone) return null;
+                                return { x: _bone.position.x, y: _bone.position.y, z: _bone.position.z };
+                            },
+                            setBonePosition: function(boneName, x, y, z) {
+                                var _bone = null;
+                                var _obj = objects[name];
+                                if (_obj) _obj.traverse(function(c) { if (c.isBone && c.name === boneName) _bone = c; });
+                                if (!_bone) return;
+                                _bone.position.set((x||0), (y||0), (z||0));
+                                _bone.updateMatrixWorld(true);
+                                if (typeof updateBoneVisualization === 'function') {
+                                    try { updateBoneVisualization(name); } catch(_bve) {}
+                                }
+                            },
+                            getBoneRotation: function(boneName) {
+                                var _bone = null;
+                                var _obj = objects[name];
+                                if (_obj) _obj.traverse(function(c) { if (c.isBone && c.name === boneName) _bone = c; });
+                                if (!_bone) return null;
+                                return { x: _bone.rotation.x, y: _bone.rotation.y, z: _bone.rotation.z };
+                            },
+                            setBoneRotation: function(boneName, x, y, z) {
+                                var _bone = null;
+                                var _obj = objects[name];
+                                if (_obj) _obj.traverse(function(c) { if (c.isBone && c.name === boneName) _bone = c; });
+                                if (!_bone) return;
+                                _bone.rotation.set((x||0), (y||0), (z||0));
+                                _bone.updateMatrixWorld(true);
+                                if (typeof updateBoneVisualization === 'function') {
+                                    try { updateBoneVisualization(name); } catch(_bre) {}
+                                }
+                            },
+                            // === Utility ===
+                            log: function(msg) { console.log('[Animator:' + (ctrl.name || ctrlId) + ':' + name + '] ' + msg); }
+                        };
                         var _acScriptFn = new Function(
                             'params', 'currentState', 'deltaTime', 'objName',
-                            'setParam', 'getParam', 'trigger', 'transitionTo',
+                            'setParam', 'getParam', 'trigger', 'transitionTo', 'api',
                             ctrl.code + '\n//# sourceURL=animator-ctrl-' + ctrlId + '.js'
                         );
                         _acScriptFn(
@@ -7623,7 +8073,8 @@ var SashaEngineAPI = (function() {
                             function(pn, pv) { if (state.params[pn]) state.params[pn].value = pv; },
                             function(pn) { return state.params[pn] ? state.params[pn].value : undefined; },
                             function(pn) { if (state.params[pn] && state.params[pn].type === 'trigger') state.params[pn].value = true; },
-                            function(sn) { _acForceTransition = sn; }
+                            function(sn) { _acForceTransition = sn; },
+                            _acApi
                         );
                         // Применить принудительный переход из скрипта
                         if (_acForceTransition) {
@@ -7645,10 +8096,51 @@ var SashaEngineAPI = (function() {
                     }
                 }
 
-                // Apply current state's clip
-                for (var si = 0; si < ctrl.states.length; si++) {
-                    if (ctrl.states[si].name === state.currentState && ctrl.states[si].clipId) {
-                        applyClipToObject(ctrl.states[si].clipId, name, state.time);
+                // Apply current state's clip — support both skeletal (GLB) and keyframe animations
+                // Skip if code already handled playback via api.playClip/api.crossfadeTo
+                if (!_codeHandledPlayback) {
+                    var _clipApplied = false;
+                    for (var si = 0; si < ctrl.states.length; si++) {
+                        if (ctrl.states[si].name !== state.currentState || !ctrl.states[si].clipId) continue;
+                        var _clipData = animationClips[ctrl.states[si].clipId];
+                        if (!_clipData) break;
+                        // Try skeletal animation (from GLB import) first
+                        var _skelData = _skeletonData[name];
+                        if (_skelData && _skelData.mixer && _skelData.clips && _skelData.clips.length > 0) {
+                            // Find the THREE.AnimationClip matching this clip name
+                            var _targetClip = null;
+                            for (var _sci = 0; _sci < _skelData.clips.length; _sci++) {
+                                if (_skelData.clips[_sci].name === _clipData.name) {
+                                    _targetClip = _skelData.clips[_sci];
+                                    break;
+                                }
+                            }
+                            if (_targetClip) {
+                                // Check if this clip is already playing
+                                var _alreadyPlaying = false;
+                                for (var _ai = 0; _ai < _skelData.actions.length; _ai++) {
+                                    if (_skelData.actions[_ai].getClip() === _targetClip && _skelData.actions[_ai].isRunning()) {
+                                        _alreadyPlaying = true;
+                                        break;
+                                    }
+                                }
+                                if (!_alreadyPlaying) {
+                                    // Transition: stop all current actions, start new clip
+                                    for (var _ai2 = 0; _ai2 < _skelData.actions.length; _ai2++) {
+                                        try { _skelData.actions[_ai2].stop(); } catch(_astpE) {}
+                                    }
+                                    _skelData.actions = [];
+                                    var _newAction = _skelData.mixer.clipAction(_targetClip);
+                                    _newAction.reset().setLoop(THREE.LoopRepeat, 1).play();
+                                    _skelData.actions.push(_newAction);
+                                }
+                                _clipApplied = true;
+                            }
+                        }
+                        // Fall back to custom keyframe system for non-skeletal objects
+                        if (!_clipApplied) {
+                            applyClipToObject(ctrl.states[si].clipId, name, state.time);
+                        }
                         break;
                     }
                 }
@@ -7658,6 +8150,18 @@ var SashaEngineAPI = (function() {
 
     // Reset animator states on stop
     function resetAnimators() {
+        // Stop all skeletal animation actions when stopping play mode
+        for (var key in _skeletonData) {
+            if (_skeletonData.hasOwnProperty(key) && _skeletonData[key]) {
+                var sd = _skeletonData[key];
+                if (sd.actions) {
+                    for (var i = 0; i < sd.actions.length; i++) {
+                        try { sd.actions[i].stop(); } catch(e) {}
+                    }
+                    sd.actions = [];
+                }
+            }
+        }
         animatorStates = {};
     }
 
@@ -8039,10 +8543,14 @@ var SashaEngineAPI = (function() {
         setAnimatorParam: setAnimatorParam, getAnimatorParam: getAnimatorParam, triggerAnimatorParam: triggerAnimatorParam,
         applyClipToObject: applyClipToObject,
         resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; },
-        createHumanSkeleton: createHumanSkeleton, attachSkeletonToModel: attachSkeletonToModel, getModelBones: getModelBones,
+        createHumanSkeleton: createHumanSkeleton, addHumanoidBody: addHumanoidBody, attachSkeletonToModel: attachSkeletonToModel, getModelBones: getModelBones,
         getModelBone: getModelBone, setBoneTransform: setBoneTransform, getBoneTransform: getBoneTransform,
         showBoneVisualization: showBoneVisualization, removeBoneVisualization: removeBoneVisualization,
-        updateBoneVisualization: updateBoneVisualization, removeSkeletonFromModel: removeSkeletonFromModel,
+        updateBoneVisualization: updateBoneVisualization,
+        createBoneHitSpheres: createBoneHitSpheres, clearBoneHitSpheres: clearBoneHitSpheres,
+        attachGizmoToBone: attachGizmoToBone, detachGizmoFromBone: detachGizmoFromBone,
+        pickBoneHitSpheres: pickBoneHitSpheres,
+        removeSkeletonFromModel: removeSkeletonFromModel,
         // Force renderer resize (called from EngineApp after layout changes)
         _forceResize: function() {
             if (!renderer || !canvas) return;
@@ -8063,13 +8571,14 @@ var SashaEngineAPI = (function() {
 // ============ SashaAssetManager — Asset Browser, Folders, Materials, Prefabs, Scenes ============
 var SashaAssetManager = (function() {
     var assets = [
-        { id: 'folder_scripts', type: 'folder', name: 'Scripts', parent: null },
-        { id: 'folder_materials', type: 'folder', name: 'Materials', parent: null },
-        { id: 'folder_prefabs', type: 'folder', name: 'Prefabs', parent: null },
-        { id: 'folder_scenes', type: 'folder', name: 'Scenes', parent: null },
-        { id: 'folder_shaders', type: 'folder', name: 'Shaders', parent: null },
-        { id: 'folder_animations', type: 'folder', name: 'Animations', parent: null },
-        { id: 'folder_animators', type: 'folder', name: 'Animator Controllers', parent: null }
+        { id: 'folder_scripts', type: 'folder', name: 'Scripts', parent: null, icon: 'fa-file-code' },
+        { id: 'folder_materials', type: 'folder', name: 'Materials', parent: null, icon: 'fa-palette' },
+        { id: 'folder_prefabs', type: 'folder', name: 'Prefabs', parent: null, icon: 'fa-cube' },
+        { id: 'folder_scenes', type: 'folder', name: 'Scenes', parent: null, icon: 'fa-film' },
+        { id: 'folder_shaders', type: 'folder', name: 'Shaders', parent: null, icon: 'fa-magic' },
+        { id: 'folder_animations', type: 'folder', name: 'Animations', parent: null, icon: 'fa-play-circle' },
+        { id: 'folder_animators', type: 'folder', name: 'Animator Controllers', parent: null, icon: 'fa-project-diagram' },
+        { id: 'folder_models', type: 'folder', name: 'Models', parent: null, icon: 'fa-cube' }
     ];
 
     var scriptTemplates = {
@@ -8152,8 +8661,8 @@ var SashaAssetManager = (function() {
             if (saved) { assets = JSON.parse(saved); }
         } catch(e) {}
         // Ensure root folders exist
-        var folders = ['Scripts', 'Materials', 'Prefabs', 'Scenes', 'Shaders'];
-        var icons = { 'Scripts': 'fa-file-code', 'Materials': 'fa-palette', 'Prefabs': 'fa-cube', 'Scenes': 'fa-film', 'Shaders': 'fa-magic' };
+        var folders = ['Scripts', 'Materials', 'Prefabs', 'Scenes', 'Shaders', 'Models', 'Animations', 'Animator Controllers'];
+        var icons = { 'Scripts': 'fa-file-code', 'Materials': 'fa-palette', 'Prefabs': 'fa-cube', 'Scenes': 'fa-film', 'Shaders': 'fa-magic', 'Models': 'fa-cube', 'Animations': 'fa-play-circle', 'Animator Controllers': 'fa-project-diagram' };
         for (var i = 0; i < folders.length; i++) {
             var exists = false;
             for (var j = 0; j < assets.length; j++) {
@@ -8226,6 +8735,7 @@ var EngineApp = (function() {
     var editor = null;
     var liveMode = false;
     var liveTimer = null;
+    var _editingScriptAssetId = null; // track which asset is being edited in Monaco
     var initialized = false;
     var currentTab = 'assets';
     var defaultCode = '// SashaAI Engine — Unity-like game engine\n' +
@@ -8242,6 +8752,17 @@ var EngineApp = (function() {
         SashaEngineAPI.init();
         // Load assets from localStorage
         SashaAssetManager.load();
+        // Init IndexedDB for binary storage and restore saved models
+        if (typeof AssetBinaryStorage !== 'undefined') {
+            AssetBinaryStorage.init().then(function(ok) {
+                if (ok) {
+                    // Delay model restore to let engine fully initialize
+                    setTimeout(function() {
+                        if (typeof restoreSavedModels === 'function') restoreSavedModels();
+                    }, 1500);
+                }
+            });
+        }
         // Set selection change callback to refresh UI
         SashaEngineAPI.setOnSelectionChange(function(name) {
             refreshHierarchy();
@@ -8286,6 +8807,22 @@ var EngineApp = (function() {
                     clearTimeout(liveTimer);
                     liveTimer = setTimeout(function() { runCode(); }, 800);
                 }
+                // Auto-save script asset if editing one (respects auto-save checkbox)
+                if (_editingScriptAssetId) {
+                    var _autoSaveCb = document.getElementById('code-auto-save-cb');
+                    if (!_autoSaveCb || _autoSaveCb.checked) {
+                        clearTimeout(liveTimer);
+                        liveTimer = setTimeout(function() {
+                            var asset = SashaAssetManager.getAsset(_editingScriptAssetId);
+                            if (asset && asset.data) {
+                                asset.data.code = editor.getValue();
+                                SashaAssetManager.save();
+                                var st = document.getElementById('code-asset-status');
+                                if (st) { st.textContent = 'Saved: ' + asset.name; st.style.color = '#22c55e'; }
+                            }
+                        }, 1000);
+                    }
+                }
             });
         });
 
@@ -8304,6 +8841,20 @@ var EngineApp = (function() {
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             var inEditor = e.target.closest('#engine-monaco') || e.target.closest('input') || e.target.closest('textarea');
+            // Ctrl+S / Ctrl+Shift+S — save script (works even inside editor)
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    saveScriptAs();
+                } else {
+                    if (_editingScriptAssetId) {
+                        saveCurrentScriptAsset();
+                    } else {
+                        saveAllAssets();
+                    }
+                }
+                return;
+            }
             if (inEditor) return;
             if (e.key === 'Delete') { deleteSelected(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateSelected(); }
@@ -8353,6 +8904,10 @@ var EngineApp = (function() {
         var id = 'gizmo-' + mode;
         var el = document.getElementById(id);
         if (el) el.classList.add('active');
+        // When in pose mode with a bone selected, keep local space
+        if (_poseMode && _selectedBoneObj) {
+            // Gizmo is already attached to bone in local space — mode change is enough
+        }
         updateViewportInfo();
     }
 
@@ -9525,7 +10080,7 @@ var EngineApp = (function() {
         // If inside a folder — use current folder. Otherwise auto-assign to default.
         var parentFolder = _assetCurrentFolder;
         if (!parentFolder && type !== 'folder') {
-            var folderMap = { script: 'folder_scripts', material: 'folder_materials', prefab: 'folder_prefabs', scene: 'folder_scenes', shader: 'folder_shaders', animation: 'folder_animations', animator: 'folder_animators' };
+            var folderMap = { script: 'folder_scripts', material: 'folder_materials', prefab: 'folder_prefabs', scene: 'folder_scenes', shader: 'folder_shaders', animation: 'folder_animations', animator: 'folder_animators', model: 'folder_models' };
             parentFolder = folderMap[type] || null;
         }
         if (type === 'script') {
@@ -9627,11 +10182,127 @@ var EngineApp = (function() {
 
     function editScriptAsset(id) {
         var asset = SashaAssetManager.getAsset(id);
-        if (!asset || !asset.data.code) return;
+        if (!asset || !asset.data) return;
+        _editingScriptAssetId = id;
         switchTab('code');
         if (editor) {
-            editor.setValue(asset.data.code);
+            editor.setValue(asset.data.code || '');
+            // Save indicator
+            var codeStatusEl = document.getElementById('code-asset-status');
+            if (codeStatusEl) codeStatusEl.textContent = 'Editing: ' + asset.name;
         }
+    }
+
+    // Save current Monaco content back to the script asset being edited
+    function saveCurrentScriptAsset() {
+        if (!_editingScriptAssetId || !editor) return false;
+        var asset = SashaAssetManager.getAsset(_editingScriptAssetId);
+        if (!asset) return false;
+        asset.data.code = editor.getValue();
+        SashaAssetManager.save();
+        log('Script "' + asset.name + '" saved to assets', 'result');
+        _flashSaveIndicator();
+        return true;
+    }
+
+    function _flashSaveIndicator() {
+        var st = document.getElementById('code-asset-status');
+        if (st) {
+            st.textContent = 'Saved';
+            st.style.color = '#22c55e';
+            clearTimeout(st._flashTimer);
+            st._flashTimer = setTimeout(function() {
+                if (_editingScriptAssetId) {
+                    var a = SashaAssetManager.getAsset(_editingScriptAssetId);
+                    if (a) { st.textContent = 'Editing: ' + a.name; st.style.color = '#71717a'; }
+                } else {
+                    st.textContent = '';
+                }
+            }, 2000);
+        }
+        // Also flash the viewport save indicator
+        var vsi = document.getElementById('save-status-indicator');
+        if (vsi) {
+            vsi.style.opacity = '1';
+            clearTimeout(vsi._flashTimer);
+            vsi._flashTimer = setTimeout(function() { vsi.style.opacity = '0'; }, 1500);
+        }
+    }
+
+    // Save current script as a new asset (Save As)
+    function saveScriptAs() {
+        if (!editor) { log('No code to save', 'warn'); return; }
+        var newName = prompt('Save script as:', 'NewScript_' + Date.now().toString(36));
+        if (!newName || !newName.trim()) return;
+        var code = editor.getValue();
+        var parentFolder = _assetCurrentFolder || 'folder_scripts';
+        var asset = SashaAssetManager.addAsset('script', newName.trim(), parentFolder, { code: code });
+        _editingScriptAssetId = asset.id;
+        var st = document.getElementById('code-asset-status');
+        if (st) { st.textContent = 'Editing: ' + asset.name; st.style.color = '#22c55e'; }
+        refreshAssetBrowser();
+        refreshAssetGrid();
+        log('Script saved as: ' + newName.trim(), 'result');
+    }
+
+    // Duplicate any asset
+    function duplicateAsset(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) return;
+        var copyData = JSON.parse(JSON.stringify(asset.data));
+        var newName = asset.name + '_copy';
+        var newAsset = SashaAssetManager.addAsset(asset.type, newName, asset.parent, copyData);
+        // For models, also copy binary from IndexedDB
+        if (asset.type === 'model' && typeof AssetBinaryStorage !== 'undefined') {
+            AssetBinaryStorage.has(id).then(function(exists) {
+                if (exists) {
+                    AssetBinaryStorage.load(id).then(function(buf) {
+                        if (buf) AssetBinaryStorage.save(newAsset.id, buf);
+                    });
+                }
+            });
+        }
+        refreshAssetBrowser();
+        refreshAssetGrid();
+        log('Duplicated: ' + asset.name + ' → ' + newName, 'result');
+    }
+
+    // Move asset to a different folder
+    function moveAssetToFolder(assetId) {
+        var asset = SashaAssetManager.getAsset(assetId);
+        if (!asset) return;
+        var allAssets = SashaAssetManager.getAll();
+        var folders = allAssets.filter(function(a) { return a.type === 'folder'; });
+        var folderLines = '0 — Root (Assets)\n';
+        for (var i = 0; i < folders.length; i++) {
+            // Build path for folder
+            var path = folders[i].name;
+            var pid = folders[i].parent;
+            while (pid) {
+                var pa = SashaAssetManager.getAsset(pid);
+                if (!pa) break;
+                path = pa.name + ' / ' + path;
+                pid = pa.parent;
+            }
+            folderLines += (i + 1) + ' — ' + path + '\n';
+        }
+        var choice = prompt('Move "' + asset.name + '" to folder (number or leave empty to cancel):\n' + folderLines);
+        if (!choice || !choice.trim()) return;
+        var idx = parseInt(choice.trim(), 10);
+        if (isNaN(idx)) return;
+        if (idx === 0) {
+            asset.parent = null;
+        } else if (idx >= 1 && idx <= folders.length) {
+            var targetFolder = folders[idx - 1];
+            if (targetFolder.id === assetId) { log('Cannot move folder into itself', 'warn'); return; }
+            asset.parent = targetFolder.id;
+        } else {
+            return;
+        }
+        SashaAssetManager.save();
+        refreshAssetBrowser();
+        refreshAssetGrid();
+        log('Moved "' + asset.name + '" to ' + (idx === 0 ? 'Root' : folders[idx - 1].name), 'result');
     }
 
     function applyScriptToSelected(id) {
@@ -9699,26 +10370,70 @@ var EngineApp = (function() {
     }
 
     function importAsset() {
-        // Local file import for GLB/GLTF models
-        var old = document.getElementById('local-glb-import');
+        // Local file import — supports GLB/GLTF models and .js scripts
+        var old = document.getElementById('local-asset-import');
         if (old) old.remove();
         var input = document.createElement('input');
-        input.id = 'local-glb-import';
+        input.id = 'local-asset-import';
         input.type = 'file';
-        input.accept = '.glb,.gltf';
+        input.accept = '.glb,.gltf,.js,.json';
         input.style.display = 'none';
         document.body.appendChild(input);
         input.onchange = function(e) {
             var file = e.target.files[0];
             if (!file) return;
-            log('Импорт локального файла: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)', 'info');
-            // Read file as ArrayBuffer
+            var ext = file.name.split('.').pop().toLowerCase();
+            log('Import: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)', 'info');
+
+            // === Import .js as script asset ===
+            if (ext === 'js') {
+                var jsReader = new FileReader();
+                jsReader.onload = function(ev) {
+                    var code = ev.target.result;
+                    var assetName = file.name.replace(/\.js$/i, '');
+                    // Save to current folder or Scripts folder
+                    var parentFolder = _assetCurrentFolder || 'folder_scripts';
+                    var asset = SashaAssetManager.addAsset('script', assetName, parentFolder, { code: code });
+                    refreshAssetBrowser();
+                    refreshAssetGrid();
+                    log('Script "' + assetName + '" imported to assets', 'result');
+                };
+                jsReader.readAsText(file);
+                input.remove();
+                return;
+            }
+
+            // === Import .json as material/prefab/scene ===
+            if (ext === 'json') {
+                var jsonReader = new FileReader();
+                jsonReader.onload = function(ev) {
+                    try {
+                        var data = JSON.parse(ev.target.result);
+                        var assetName = file.name.replace(/\.json$/i, '');
+                        // Detect type by content
+                        var assetType = 'prefab';
+                        if (data.objects && Array.isArray(data.objects)) assetType = 'scene';
+                        else if (data.color || data.metalness !== undefined) assetType = 'material';
+                        var parentFolder = _assetCurrentFolder;
+                        SashaAssetManager.addAsset(assetType, assetName, parentFolder, data);
+                        refreshAssetBrowser();
+                        refreshAssetGrid();
+                        log(assetType.charAt(0).toUpperCase() + assetType.slice(1) + ' "' + assetName + '" imported', 'result');
+                    } catch(err) {
+                        log('Invalid JSON: ' + err.message, 'error');
+                    }
+                };
+                jsonReader.readAsText(file);
+                input.remove();
+                return;
+            }
+
+            // === Import GLB/GLTF as 3D model ===
             var reader = new FileReader();
             reader.onload = function(ev) {
                 try {
                     var arrayBuffer = ev.target.result;
                     var loader = new THREE.GLTFLoader();
-                    // Parse directly from ArrayBuffer (no URL needed)
                     loader.parse(arrayBuffer, '', function(gltf) {
                         var model = gltf.scene;
                         var n = 'model_' + Date.now().toString(36);
@@ -9729,41 +10444,66 @@ var EngineApp = (function() {
                         var _sc = SashaEngineAPI.getScene();
                         _sc.add(model);
                         SashaEngineAPI.addObjectDirect(n, model, 'model');
-                        // Register animations via _registerModelAnimations only.
-                        // Do NOT store mixer/animations on userData — that creates a
-                        // cyclic ref (model → userData.mixer → AnimationMixer → model)
-                        // which crashes THREE.SkeletonUtils.clone with
-                        // "Maximum call stack size exceeded" when inspector preview
-                        // clones the model. _skeletonData is the single source of truth.
+
+                        // Count model stats for asset metadata
+                        var _vertCount = 0, _meshCount = 0, _boneCount = 0;
+                        model.traverse(function(c) {
+                            if (c.isMesh && c.geometry && c.geometry.attributes && c.geometry.attributes.position) _vertCount += c.geometry.attributes.position.count;
+                            if (c.isMesh) _meshCount++;
+                            if (c.isBone) _boneCount++;
+                        });
+
+                        // Register animations
                         if (gltf.animations && gltf.animations.length > 0) {
                             var mix = new THREE.AnimationMixer(model);
-                            // НЕ автозапускаем — анимация только по нажатию Play в инспекторе
                             if (EngineApp._registerModelAnimations) {
                                 EngineApp._registerModelAnimations(n, mix, gltf.animations.slice());
                             }
-                            // Также регистрируем в SashaEngineAPI._skeletonData чтобы
-                            // updateSkeletonMixers() обновлял миксер на основной сцене
                             if (SashaEngineAPI._registerSkeletonDataDirect) {
                                 SashaEngineAPI._registerSkeletonDataDirect(n, mix, gltf.animations.slice());
                             }
-                            log('✅ Импортировано: ' + n + ' с ' + gltf.animations.length + ' анимациями', 'result');
+                            log('Imported: ' + n + ' (' + _vertCount + ' verts, ' + gltf.animations.length + ' anims, ' + _boneCount + ' bones)', 'result');
                         } else {
-                            log('✅ Импортировано: ' + n + ' (без анимаций)', 'result');
+                            log('Imported: ' + n + ' (' + _vertCount + ' verts, ' + _meshCount + ' meshes)', 'result');
                         }
-                        // Авто-выделение импортированной модели — превью покажет сразу
+
+                        // === Create model asset in asset browser ===
+                        var modelAssetName = file.name.replace(/\.(glb|gltf)$/i, '');
+                        var parentFolder = _assetCurrentFolder || 'folder_models';
+                        var modelAsset = SashaAssetManager.addAsset('model', modelAssetName, parentFolder, {
+                            objectName: n,
+                            fileName: file.name,
+                            fileSize: file.size,
+                            vertexCount: _vertCount,
+                            meshCount: _meshCount,
+                            boneCount: _boneCount,
+                            animationCount: (gltf.animations ? gltf.animations.length : 0),
+                            animationNames: (gltf.animations ? gltf.animations.map(function(a) { return a.name; }) : [])
+                        });
+
+                        // === Store GLB binary in IndexedDB for reload ===
+                        if (typeof AssetBinaryStorage !== 'undefined') {
+                            AssetBinaryStorage.save(modelAsset.id, arrayBuffer).then(function() {
+                                console.log('[AssetStorage] Model binary saved: ' + modelAsset.id + ' (' + (file.size / 1024).toFixed(1) + ' KB)');
+                            }).catch(function(err) {
+                                console.warn('[AssetStorage] Failed to save binary:', err);
+                                log('Model binary not saved to storage (storage may be full)', 'warn');
+                            });
+                        }
+
+                        // Auto-select imported model
                         SashaEngineAPI.selectObject(n);
-                        // onSelectionChange обновит hierarchy + inspector + preview
                         refreshAssetBrowser();
                         refreshAssetGrid();
                     }, function(err) {
-                        log('❌ Ошибка парсинга GLB: ' + (err.message || err), 'error');
+                        log('GLB parse error: ' + (err.message || err), 'error');
                     });
                 } catch(e) {
-                    log('❌ Ошибка импорта: ' + e.message, 'error');
+                    log('Import error: ' + e.message, 'error');
                 }
             };
             reader.onerror = function() {
-                log('❌ Не удалось прочитать файл', 'error');
+                log('Failed to read file', 'error');
             };
             reader.readAsArrayBuffer(file);
             input.remove();
@@ -12154,11 +12894,204 @@ var EngineApp = (function() {
         document.addEventListener('touchend', onUp);
     })();
 
+    // ============ Per-Asset Download ============
+    function downloadAsset(id) {
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) return;
+        var content = null, mimeType = 'text/plain', ext = 'txt';
+        switch (asset.type) {
+            case 'script':
+                content = asset.data.code || '';
+                mimeType = 'text/javascript';
+                ext = 'js';
+                break;
+            case 'material':
+            case 'prefab':
+            case 'scene':
+                content = JSON.stringify(asset.data, null, 2);
+                mimeType = 'application/json';
+                ext = 'json';
+                break;
+            case 'shader':
+                content = '// Vertex:\n' + (asset.data.vertex || '') + '\n\n// Fragment:\n' + (asset.data.fragment || '');
+                mimeType = 'text/plain';
+                ext = 'shader';
+                break;
+            case 'animator':
+                // Export controller data as JSON
+                var ctrlId = asset.data.controllerId;
+                var ctrl = ctrlId ? SashaEngineAPI.getAnimatorController(ctrlId) : null;
+                if (ctrl) {
+                    content = JSON.stringify(ctrl, null, 2);
+                } else {
+                    content = JSON.stringify(asset.data, null, 2);
+                }
+                mimeType = 'application/json';
+                ext = 'json';
+                break;
+            case 'animation':
+                content = JSON.stringify(asset.data, null, 2);
+                mimeType = 'application/json';
+                ext = 'json';
+                break;
+            case 'model':
+                // For models, try to download from IndexedDB binary
+                if (typeof AssetBinaryStorage !== 'undefined') {
+                    AssetBinaryStorage.load(id).then(function(buffer) {
+                        if (buffer) {
+                            var blob = new Blob([buffer], { type: 'model/gltf-binary' });
+                            var url = URL.createObjectURL(blob);
+                            var a = document.createElement('a');
+                            a.href = url;
+                            a.download = (asset.data.fileName || asset.name) + '.glb';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            log('Model downloaded: ' + a.download, 'result');
+                        } else {
+                            log('Model binary not found in storage. Re-import the GLB file.', 'warn');
+                        }
+                    }).catch(function() {
+                        log('Failed to load model binary', 'error');
+                    });
+                    return;
+                }
+                log('Binary storage not available', 'warn');
+                return;
+            default:
+                content = JSON.stringify(asset.data, null, 2);
+                ext = 'json';
+                break;
+        }
+        if (content !== null) {
+            var blob = new Blob([content], { type: mimeType });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = asset.name + '.' + ext;
+            a.click();
+            URL.revokeObjectURL(url);
+            log('Downloaded: ' + a.download, 'result');
+        }
+    }
+
+    // ============ Save Scene As Asset ============
+    function saveSceneAsAsset() {
+        var sceneData = saveSceneData();
+        if (!sceneData || !sceneData.objects || sceneData.objects.length === 0) {
+            log('Scene is empty — nothing to save', 'warn');
+            return;
+        }
+        var name = prompt('Scene name:', 'Scene_' + new Date().toLocaleTimeString().replace(/:/g, '-'));
+        if (!name) return;
+        // Find or use Scenes folder
+        var parentFolder = _assetCurrentFolder || 'folder_scenes';
+        // Check if an asset with this name already exists in this folder
+        var allAssets = SashaAssetManager.getAll();
+        var existingId = null;
+        for (var i = 0; i < allAssets.length; i++) {
+            if (allAssets[i].type === 'scene' && allAssets[i].name === name && allAssets[i].parent === parentFolder) {
+                existingId = allAssets[i].id;
+                break;
+            }
+        }
+        if (existingId) {
+            // Update existing
+            var asset = SashaAssetManager.getAsset(existingId);
+            if (asset) {
+                asset.data = sceneData;
+                SashaAssetManager.save();
+                log('Scene "' + name + '" updated (' + sceneData.objects.length + ' objects)', 'result');
+            }
+        } else {
+            SashaAssetManager.addAsset('scene', name, parentFolder, sceneData);
+            log('Scene "' + name + '" saved (' + sceneData.objects.length + ' objects)', 'result');
+        }
+        refreshAssetBrowser();
+        refreshAssetGrid();
+    }
+
+    // ============ Restore Saved Models from IndexedDB on Load ============
+    function restoreSavedModels() {
+        if (typeof AssetBinaryStorage === 'undefined') return;
+        var allAssets = SashaAssetManager.getAll();
+        var modelAssets = allAssets.filter(function(a) { return a.type === 'model'; });
+        if (modelAssets.length === 0) return;
+        log('Restoring ' + modelAssets.length + ' saved model(s)...', 'info');
+        var restored = 0;
+        var pending = modelAssets.length;
+        modelAssets.forEach(function(asset) {
+            AssetBinaryStorage.has(asset.id).then(function(exists) {
+                if (!exists) { pending--; if (pending === 0) _finishRestore(); return; }
+                AssetBinaryStorage.load(asset.id).then(function(buffer) {
+                    if (!buffer) { pending--; if (pending === 0) _finishRestore(); return; }
+                    var loader = new THREE.GLTFLoader();
+                    loader.parse(buffer, '', function(gltf) {
+                        var model = gltf.scene;
+                        var n = asset.data.objectName || ('model_' + Date.now().toString(36));
+                        model.name = n;
+                        model.traverse(function(child) {
+                            if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+                        });
+                        var _sc = SashaEngineAPI.getScene();
+                        _sc.add(model);
+                        SashaEngineAPI.addObjectDirect(n, model, 'model');
+                        if (gltf.animations && gltf.animations.length > 0) {
+                            var mix = new THREE.AnimationMixer(model);
+                            if (EngineApp._registerModelAnimations) {
+                                EngineApp._registerModelAnimations(n, mix, gltf.animations.slice());
+                            }
+                            if (SashaEngineAPI._registerSkeletonDataDirect) {
+                                SashaEngineAPI._registerSkeletonDataDirect(n, mix, gltf.animations.slice());
+                            }
+                        }
+                        restored++;
+                        pending--;
+                        if (pending === 0) _finishRestore();
+                    }, function() {
+                        pending--;
+                        if (pending === 0) _finishRestore();
+                    });
+                }).catch(function() {
+                    pending--;
+                    if (pending === 0) _finishRestore();
+                });
+            }).catch(function() {
+                pending--;
+                if (pending === 0) _finishRestore();
+            });
+        });
+        function _finishRestore() {
+            if (restored > 0) {
+                log(restored + ' model(s) restored from storage', 'result');
+                refreshHierarchy();
+                refreshInspector();
+            }
+        }
+    }
+
     function saveAllAssets() {
         SashaAssetManager.save();
-        // Also save current scene
-        saveSceneData();
-        log('All assets saved', 'result');
+        // Also auto-save scene data as "AutoSave" scene asset
+        try {
+            var sceneData = saveSceneData();
+            if (sceneData && sceneData.objects && sceneData.objects.length > 0) {
+                var allAssets = SashaAssetManager.getAll();
+                var autoId = null;
+                for (var i = 0; i < allAssets.length; i++) {
+                    if (allAssets[i].type === 'scene' && allAssets[i].name === '_AutoSave' && allAssets[i].parent === 'folder_scenes') {
+                        autoId = allAssets[i].id;
+                        break;
+                    }
+                }
+                if (autoId) {
+                    var asset = SashaAssetManager.getAsset(autoId);
+                    if (asset) { asset.data = sceneData; }
+                } else {
+                    SashaAssetManager.addAsset('scene', '_AutoSave', 'folder_scenes', sceneData);
+                }
+            }
+        } catch(e) {}
+        log('All assets + scene auto-saved to browser storage', 'result');
     }
 
     // ============ Scene Save/Load ============
@@ -13118,6 +14051,105 @@ var EngineApp = (function() {
         log('Project saved: ' + name, 'result');
     }
 
+    // ============ Full Project Export (all assets + scene as JSON) ============
+    function exportFullProject() {
+        var allAssets = SashaAssetManager.getAll();
+        // Strip out model type assets (binaries handled separately) and default root folders
+        var exportAssets = allAssets.filter(function(a) {
+            return a.type !== 'model'; // models require binary data
+        });
+        var sceneData = null;
+        try { sceneData = saveSceneData(); } catch(e) {}
+
+        var project = {
+            version: '1.0',
+            engine: 'SashaAI',
+            exportedAt: new Date().toISOString(),
+            scene: sceneData,
+            assets: exportAssets,
+            editorCode: editor ? editor.getValue() : ''
+        };
+
+        var blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'sasha_project_' + Date.now() + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        log('Project exported (' + exportAssets.length + ' assets)', 'result');
+    }
+
+    // ============ Full Project Import (from JSON) ============
+    function importFullProject() {
+        var old = document.getElementById('project-import-input');
+        if (old) old.remove();
+        var input = document.createElement('input');
+        input.id = 'project-import-input';
+        input.type = 'file';
+        input.accept = '.json';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.onchange = function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    var project = JSON.parse(ev.target.result);
+                    if (!project.assets || !Array.isArray(project.assets)) {
+                        log('Invalid project file: missing assets array', 'error');
+                        return;
+                    }
+                    var count = 0;
+                    for (var i = 0; i < project.assets.length; i++) {
+                        var a = project.assets[i];
+                        // Skip default root folders (they already exist)
+                        if (a.type === 'folder' && !a.parent) {
+                            var isDefault = ['Scripts','Materials','Prefabs','Scenes','Shaders','Models','Animations','Animator Controllers'].indexOf(a.name) !== -1;
+                            if (isDefault) continue;
+                        }
+                        // Check if asset with same name and parent already exists
+                        var all = SashaAssetManager.getAll();
+                        var dup = false;
+                        for (var j = 0; j < all.length; j++) {
+                            if (all[j].name === a.name && all[j].type === a.type && all[j].parent === a.parent) {
+                                // Update existing asset data
+                                if (a.data) all[j].data = a.data;
+                                dup = true;
+                                break;
+                            }
+                        }
+                        if (!dup) {
+                            SashaAssetManager.addAsset(a.type, a.name, a.parent, a.data || {});
+                        }
+                        count++;
+                    }
+                    // Restore editor code if present
+                    if (project.editorCode && editor) {
+                        editor.setValue(project.editorCode);
+                    }
+                    // Optionally load scene
+                    if (project.scene && project.scene.objects && project.scene.objects.length > 0) {
+                        if (confirm('Load saved scene (' + project.scene.objects.length + ' objects)? Current scene objects will be cleared.')) {
+                            loadScene(project.scene);
+                        }
+                    }
+                    SashaAssetManager.save();
+                    refreshAssetBrowser();
+                    refreshAssetGrid();
+                    refreshHierarchy();
+                    log('Project imported: ' + count + ' assets loaded', 'result');
+                } catch(err) {
+                    log('Import error: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            input.remove();
+        };
+        input.click();
+    }
+
     function exportGame() {
         var code = editor ? editor.getValue() : '';
         var html = '<!DOCTYPE html>\n<html lang="ru">\n<head>\n<meta charset="UTF-8">\n' +
@@ -13354,13 +14386,42 @@ var EngineApp = (function() {
     function assetGridContext(e, id) {
         var existing = document.getElementById('asset-ctx-menu');
         if (existing) existing.remove();
+        var asset = SashaAssetManager.getAsset(id);
+        if (!asset) return;
         var div = document.createElement('div');
         div.id = 'asset-ctx-menu';
-        div.style.cssText = 'position:fixed;left:' + e.clientX + 'px;top:' + e.clientY + 'px;background:#1e1e3a;border:1px solid #374151;border-radius:8px;padding:4px;z-index:99999;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+        div.style.cssText = 'position:fixed;left:' + e.clientX + 'px;top:' + e.clientY + 'px;background:#1e1e3a;border:1px solid #374151;border-radius:8px;padding:4px;z-index:99999;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-height:80vh;overflow-y:auto;';
         var mhtml = '';
-        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetGridDblClick(\'' + id + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-folder-open" style="width:14px;text-align:center;"></i>Open</div>';
-        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetRename(\'' + id + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-pen" style="width:14px;text-align:center;"></i>Rename</div>';
-        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\'' + id + '\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#ef4444;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete</div>';
+        var itemStyle = 'display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;';
+        var hoverOn = 'this.style.background=\'rgba(99,102,241,0.1)\'';
+        var hoverOff = 'this.style.background=\'transparent\'';
+
+        // Open
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetGridDblClick(\'' + id + '\')" style="' + itemStyle + '" onmouseover="' + hoverOn + '" onmouseout="' + hoverOff + '"><i class="fas fa-folder-open" style="width:14px;text-align:center;"></i>Open</div>';
+
+        if (asset.type === 'script') {
+            // Save (for scripts)
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.saveCurrentScriptAsset()" style="' + itemStyle + '" onmouseover="' + hoverOn + '" onmouseout="' + hoverOff + '"><i class="fas fa-save" style="width:14px;text-align:center;color:#22c55e;"></i>Save</div>';
+        }
+
+        // Rename
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetRename(\'' + id + '\')" style="' + itemStyle + '" onmouseover="' + hoverOn + '" onmouseout="' + hoverOff + '"><i class="fas fa-pen" style="width:14px;text-align:center;"></i>Rename</div>';
+
+        // Duplicate
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.duplicateAsset(\'' + id + '\')" style="' + itemStyle + '" onmouseover="' + hoverOn + '" onmouseout="' + hoverOff + '"><i class="fas fa-copy" style="width:14px;text-align:center;"></i>Duplicate</div>';
+
+        // Move to Folder
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.moveAssetToFolder(\'' + id + '\')" style="' + itemStyle + '" onmouseover="' + hoverOn + '" onmouseout="' + hoverOff + '"><i class="fas fa-arrows-alt" style="width:14px;text-align:center;"></i>Move to Folder</div>';
+
+        // Export / Download
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.downloadAsset(\'' + id + '\')" style="' + itemStyle + '" onmouseover="' + hoverOn + '" onmouseout="' + hoverOff + '"><i class="fas fa-download" style="width:14px;text-align:center;"></i>Export File</div>';
+
+        // Separator
+        mhtml += '<div style="height:1px;background:var(--border);margin:2px 6px;"></div>';
+
+        // Delete
+        mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\'' + id + '\')" style="' + itemStyle + 'color:#ef4444;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="' + hoverOff + '"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete</div>';
+
         div.innerHTML = mhtml;
         document.body.appendChild(div);
         setTimeout(function() {
@@ -13959,16 +15020,17 @@ var EngineApp = (function() {
         _mdl.traverse(function(c) {
             if (c.isBone && c.name === boneName) {
                 _selectedBoneObj = c;
-                // Visual helper — small box at bone position in world space
-                var wPos = new THREE.Vector3();
-                c.getWorldPosition(wPos);
+                // Attach gizmo to the bone for direct manipulation
+                SashaEngineAPI.attachGizmoToBone(c);
+                // Visual helper — amber box at bone (added as child so it follows)
                 _selectedBoneHelper = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.05, 8, 8),
-                    new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.8 })
+                    new THREE.BoxGeometry(0.08, 0.08, 0.08),
+                    new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.9, depthTest: false })
                 );
-                _selectedBoneHelper.position.copy(wPos);
-                var _boneScene = (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.getScene) ? SashaEngineAPI.getScene() : null;
-                if (_boneScene) _boneScene.add(_selectedBoneHelper);
+                _selectedBoneHelper.renderOrder = 1000;
+                _selectedBoneHelper.name = '__bone_sel_helper__';
+                // Add as child of bone so it automatically follows bone transforms
+                c.add(_selectedBoneHelper);
                 // Highlight bone row in UI
                 var rows = document.querySelectorAll('#mi-bone-tree-' + modelName + ' > div');
                 for (var i = 0; i < rows.length; i++) {
@@ -13981,7 +15043,8 @@ var EngineApp = (function() {
                         rows[i].style.borderLeftColor = 'transparent';
                     }
                 }
-                log('Bone selected: ' + boneName, 'log');
+                refreshInspector();
+                log('Bone selected: ' + boneName + ' (W/E/R = Move/Rotate/Scale)', 'result');
             }
         });
     }
@@ -13994,29 +15057,50 @@ var EngineApp = (function() {
         _poseMode = !_poseMode;
         if (_poseMode) {
             // Enter pose mode — need a selected object with bones
-            var sel = selected;
-            if (!sel) { log('Выбери объект для Pose Mode', 'warn'); _poseMode = false; return; }
+            var sel = SashaEngineAPI.getSelectedObject();
+            if (!sel) { log('Select a model with bones for Pose Mode', 'warn'); _poseMode = false; return; }
             var bones = SashaEngineAPI.getModelBones(sel);
             if (bones.length === 0) {
-                // Try to attach skeleton first
-                log('У объекта нет костей. Нажми "Add Skeleton" на вкладке Rig', 'warn');
+                log('No bones found. Click "Add Skeleton" on the Rig tab first.', 'warn');
                 _poseMode = false;
                 return;
             }
             _poseModelName = sel;
-            // Show bone visualization
+            // Show bone visualization (yellow lines)
             SashaEngineAPI.showBoneVisualization(sel);
-            log('Pose Mode ON — выдели кость в списке для редактирования', 'result');
+            // Create invisible hit-spheres for viewport bone picking
+            SashaEngineAPI.createBoneHitSpheres(sel);
+            // Show pose mode indicator
+            var pmInd = document.getElementById('pose-mode-indicator');
+            if (pmInd) pmInd.style.display = 'block';
+            log('Pose Mode ON — click bones in viewport or list. W=Move E=Rotate R=Scale', 'result');
         } else {
             // Exit pose mode
+            // Detach gizmo from bone if attached
+            SashaEngineAPI.detachGizmoFromBone();
+            // Remove bone hit spheres
+            SashaEngineAPI.clearBoneHitSpheres();
+            // Remove bone visualization
             if (_poseModelName) {
                 SashaEngineAPI.removeBoneVisualization(_poseModelName);
             }
             _poseModelName = null;
             _selectedBoneName = null;
             _selectedBoneObj = null;
+            // Remove selection helper
             if (_selectedBoneHelper && _selectedBoneHelper.parent) _selectedBoneHelper.parent.remove(_selectedBoneHelper);
             _selectedBoneHelper = null;
+            // Hide pose mode indicator
+            var pmInd = document.getElementById('pose-mode-indicator');
+            if (pmInd) pmInd.style.display = 'none';
+            // Re-attach gizmo to the model object (normal mode)
+            var curSel = SashaEngineAPI.getSelectedObject();
+            if (curSel) {
+                var selObj = SashaEngineAPI.getObject(curSel);
+                if (selObj && selObj.parent) {
+                    SashaEngineAPI.selectObject(curSel);
+                }
+            }
             log('Pose Mode OFF', 'log');
         }
         refreshInspector();
@@ -14084,13 +15168,123 @@ var EngineApp = (function() {
         // Find or create animation clip for this model
         var sd = _skeletonData[_poseModelName];
         if (!sd || !sd.clips || sd.clips.length === 0) {
-            log('Нет анимаций у объекта. Сначала импортируй GLB с анимациями', 'warn');
+            // No skeletal clips — create a new THREE.AnimationClip for in-engine animation
+            var obj = SashaEngineAPI.getObject(_poseModelName);
+            if (!obj) { log('Объект не найден', 'error'); return; }
+            // Gather all bones
+            var allBones = [];
+            obj.traverse(function(c) { if (c.isBone) allBones.push(c); });
+            if (allBones.length === 0) { log('У объекта нет костей', 'warn'); return; }
+            // Create a new THREE.AnimationClip
+            var _newClip = new THREE.AnimationClip('PoseAnim_' + Date.now(), 2.0, []);
+            // Create position + quaternion tracks for each bone
+            for (var _bi = 0; _bi < allBones.length; _bi++) {
+                var _b = allBones[_bi];
+                // Find path (bone names from root)
+                var _path = '';
+                var _cur = _b;
+                while (_cur && _cur.isBone) {
+                    _path = (_path ? _cur.name + '/' : '') + _path;
+                    _cur = _cur.parent;
+                }
+                // Simpler: use bone name as path (Three.js resolves by bone.name)
+                var _bName = _b.name;
+                // Position track
+                _newClip.tracks.push(new THREE.NumberKeyframeTrack(
+                    _bName + '.position',
+                    [0],
+                    [_b.position.x, _b.position.y, _b.position.z]
+                ));
+                // Quaternion track
+                var _q = _b.quaternion;
+                _newClip.tracks.push(new THREE.QuaternionKeyframeTrack(
+                    _bName + '.quaternion',
+                    [0],
+                    [_q.x, _q.y, _q.z, _q.w]
+                ));
+            }
+            // If no mixer exists, create one
+            if (!sd) {
+                var _mixer = new THREE.AnimationMixer(obj);
+                sd = { mixer: _mixer, clips: [_newClip], actions: [] };
+                _skeletonData[_poseModelName] = sd;
+                // Also register in SashaEngineAPI
+                if (SashaEngineAPI._registerSkeletonDataDirect) {
+                    SashaEngineAPI._registerSkeletonDataDirect(_poseModelName, _mixer, [_newClip]);
+                }
+            } else {
+                sd.clips.push(_newClip);
+            }
+            log('Создан новый клип "' + _newClip.name + '" с позой всех костей (' + allBones.length + ' костей)', 'result');
+            refreshInspector();
             return;
         }
-        // Add keyframe to the first clip at current time
+        // === Add keyframe to existing clip ===
+        // Find the bone's current pose and add keyframes at a given time
         var clip = sd.clips[0];
-        var trackName = _poseModelName + '.bones[' + _selectedBoneName + '].quaternion';
-        log('Ключевой кадр добавлен для кости "' + _selectedBoneName + '" в анимацию "' + (clip.name || 'Clip 0') + '"', 'result');
+        var boneName = _selectedBoneName;
+        // Find existing tracks for this bone
+        var posTrack = null, quatTrack = null;
+        for (var _ti = 0; _ti < clip.tracks.length; _ti++) {
+            var _tn = clip.tracks[_ti].name;
+            if (_tn.indexOf(boneName + '.position') === 0 || _tn === boneName + '.position') posTrack = clip.tracks[_ti];
+            if (_tn.indexOf(boneName + '.quaternion') === 0 || _tn === boneName + '.quaternion') quatTrack = clip.tracks[_ti];
+        }
+        // Determine time for keyframe — use timeline time or current clip time
+        var _kfTime = 0;
+        // Try to get current time from timeline
+        var _tlTimeEl = document.getElementById('tl-time-display');
+        if (_tlTimeEl) {
+            var _parsed = parseFloat(_tlTimeEl.textContent);
+            if (!isNaN(_parsed)) _kfTime = _parsed;
+        }
+        // Add position keyframe
+        if (posTrack) {
+            var _newTimes = Array.prototype.slice.call(posTrack.times);
+            var _newValues = Array.prototype.slice.call(posTrack.values);
+            _newTimes.push(_kfTime);
+            _newValues.push(bone.position.x, bone.position.y, bone.position.z);
+            // Sort by time
+            var _indices = _newTimes.map(function(t, i) { return i; });
+            _indices.sort(function(a, b) { return _newTimes[a] - _newTimes[b]; });
+            var _sortedTimes = [], _sortedValues = [];
+            for (var _si = 0; _si < _indices.length; _si++) {
+                _sortedTimes.push(_newTimes[_indices[_si]]);
+                _sortedValues.push(_newValues[_indices[_si]*3], _newValues[_indices[_si]*3+1], _newValues[_indices[_si]*3+2]);
+            }
+            posTrack.times = new Float32Array(_sortedTimes);
+            posTrack.values = new Float32Array(_sortedValues);
+        } else {
+            // Create new position track
+            clip.tracks.push(new THREE.NumberKeyframeTrack(
+                boneName + '.position',
+                [_kfTime],
+                [bone.position.x, bone.position.y, bone.position.z]
+            ));
+        }
+        // Add quaternion keyframe
+        if (quatTrack) {
+            var _qNewTimes = Array.prototype.slice.call(quatTrack.times);
+            var _qNewValues = Array.prototype.slice.call(quatTrack.values);
+            _qNewTimes.push(_kfTime);
+            _qNewValues.push(bone.quaternion.x, bone.quaternion.y, bone.quaternion.z, bone.quaternion.w);
+            var _qIndices = _qNewTimes.map(function(t, i) { return i; });
+            _qIndices.sort(function(a, b) { return _qNewTimes[a] - _qNewTimes[b]; });
+            var _qSortedTimes = [], _qSortedValues = [];
+            for (var _qi = 0; _qi < _qIndices.length; _qi++) {
+                _qSortedTimes.push(_qNewTimes[_qIndices[_qi]]);
+                _qSortedValues.push(_qNewValues[_qIndices[_qi]*4], _qNewValues[_qIndices[_qi]*4+1], _qNewValues[_qIndices[_qi]*4+2], _qNewValues[_qIndices[_qi]*4+3]);
+            }
+            quatTrack.times = new Float32Array(_qSortedTimes);
+            quatTrack.values = new Float32Array(_qSortedValues);
+        } else {
+            clip.tracks.push(new THREE.QuaternionKeyframeTrack(
+                boneName + '.quaternion',
+                [_kfTime],
+                [bone.quaternion.x, bone.quaternion.y, bone.quaternion.z, bone.quaternion.w]
+            ));
+        }
+        log('Ключевой кадр добавлен для кости "' + boneName + '" в "' + (clip.name || 'Clip 0') + '" на t=' + _kfTime.toFixed(2) + 's', 'result');
     }
 
     // ============ ANIMATION CLIP PREVIEW (Unity inspector click-to-preview) ============
@@ -15776,14 +16970,16 @@ var EngineApp = (function() {
     function assetCreateFolderQuick() {
         var name = prompt('Folder name:', 'New Folder');
         if (!name || !name.trim()) return;
-        SashaAssetManager.createFolder(name.trim(), _assetCurrentFolder);
+        SashaAssetManager.addAsset('folder', name.trim(), _assetCurrentFolder || null, {});
+        openFolders[_assetCurrentFolder || ''] = true;
         refreshAssetBrowser();
         refreshAssetGrid();
+        log('Folder created: ' + name.trim(), 'result');
     }
 
     function assetDeleteSelected() {
-        var sel = _selectedAssetId;
-        if (!sel) return;
+        var sel = _assetGridSelected;
+        if (!sel) { log('No asset selected', 'warn'); return; }
         var asset = SashaAssetManager.getAsset(sel);
         if (!asset) return;
         if (asset.type === 'folder') {
@@ -15791,8 +16987,9 @@ var EngineApp = (function() {
         } else {
             if (!confirm('Delete "' + asset.name + '"?')) return;
         }
-        SashaAssetManager.deleteAsset(sel);
-        _selectedAssetId = null;
+        deleteAsset(sel);
+        _assetGridSelected = null;
+        selectedAsset = null;
         refreshAssetBrowser();
         refreshAssetGrid();
         refreshInspector();
@@ -15827,7 +17024,7 @@ var EngineApp = (function() {
         }
     }
 
-    function _setBoneProp(boneName, prop, val) {
+    function _setBoneProp(prop, val) {
         if (!_selectedBoneObj) return;
         var v = parseFloat(val) || 0;
         if (prop === 'px') _selectedBoneObj.position.x = v;
@@ -15840,12 +17037,7 @@ var EngineApp = (function() {
         else if (prop === 'sy') _selectedBoneObj.scale.y = v || 0.001;
         else if (prop === 'sz') _selectedBoneObj.scale.z = v || 0.001;
         _selectedBoneObj.updateMatrixWorld(true);
-        // Update visual helpers
-        if (_selectedBoneHelper) {
-            var wPos = new THREE.Vector3();
-            _selectedBoneObj.getWorldPosition(wPos);
-            _selectedBoneHelper.position.copy(wPos);
-        }
+        // Helper auto-follows (it's a child of the bone now)
         // Update bone visualization lines
         if (_poseModelName) {
             SashaEngineAPI.updateBoneVisualization(_poseModelName);
@@ -15870,12 +17062,14 @@ var EngineApp = (function() {
         var mhtml = '';
         if (asset.type === 'folder') {
             mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp._assetCurrentFolder=\''+id+'\';EngineApp.refreshAssetGrid()" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-folder-open" style="width:14px;text-align:center;"></i>Open</div>';
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp._assetCurrentFolder=\''+id+'\';EngineApp.assetCreateFolderQuick()" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-folder-plus" style="width:14px;text-align:center;"></i>New Subfolder</div>';
             mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetRename(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-pen" style="width:14px;text-align:center;"></i>Rename</div>';
             mhtml += '<div style="height:1px;background:var(--border);margin:2px 6px;"></div>';
             mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#ef4444;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete Folder</div>';
         } else {
             mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.selectAsset(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-eye" style="width:14px;text-align:center;"></i>Select</div>';
             mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.assetRename(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-pen" style="width:14px;text-align:center;"></i>Rename</div>';
+            mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.downloadAsset(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#a1a1aa;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(99,102,241,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-download" style="width:14px;text-align:center;"></i>Download</div>';
             mhtml += '<div style="height:1px;background:var(--border);margin:2px 6px;"></div>';
             mhtml += '<div class="ctx-item" onclick="this.parentElement.remove();EngineApp.deleteAsset(\''+id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:0.72rem;color:#ef4444;cursor:pointer;border-radius:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'transparent\'"><i class="fas fa-trash" style="width:14px;text-align:center;"></i>Delete</div>';
         }
@@ -15924,9 +17118,12 @@ var EngineApp = (function() {
         createAsset: createAsset, createAssetItem: createAssetItem, deleteAsset: deleteAsset,
         editScriptAsset: editScriptAsset, applyScriptToSelected: applyScriptToSelected,
         applyMaterialToSelected: applyMaterialToSelected, instantiatePrefab: instantiatePrefab,
-        importAsset: importAsset, saveAllAssets: saveAllAssets,
+        importAsset: importAsset, saveAllAssets: saveAllAssets, saveSceneAsAsset: saveSceneAsAsset,
+        downloadAsset: downloadAsset, restoreSavedModels: restoreSavedModels, saveCurrentScriptAsset: saveCurrentScriptAsset,
         addTrackToClip: addTrackToClip, addKeyframeToTrack: addKeyframeToTrack, openAnimationTimeline: openAnimationTimeline,
         saveSceneData: saveSceneData, loadScene: loadScene,
+        saveScriptAs: saveScriptAs, duplicateAsset: duplicateAsset, moveAssetToFolder: moveAssetToFolder,
+        exportFullProject: exportFullProject, importFullProject: importFullProject,
         addUIElement: addUIElement, renderUICanvas: renderUICanvas, selectUIElement: selectUIElement,
         updateUIProp: updateUIProp, removeUIElement: removeUIElement,
         startUIDrag: startUIDrag, startUIResize: startUIResize,
@@ -15941,6 +17138,9 @@ var EngineApp = (function() {
         refreshAssetGrid: refreshAssetGrid, assetGridClick: assetGridClick, assetGridDblClick: assetGridDblClick, assetNavigateTo: assetNavigateTo, assetGridContext: assetGridContext, assetRename: assetRename,
         assetCreateFolderQuick: assetCreateFolderQuick, assetDeleteSelected: assetDeleteSelected, _assetGridClickEx: _assetGridClickEx,
         assetNavigateBack: assetNavigateBack, assetTreeContext: assetTreeContext,
+        get _assetCurrentFolder() { return _assetCurrentFolder; },
+        set _assetCurrentFolder(v) { _assetCurrentFolder = v; },
+        get _poseMode() { return _poseMode; },
         togglePoseMode: togglePoseMode, selectBone: selectBone, keyframeBonePose: keyframeBonePose,
         _getPoseModelName: function() { return _poseModelName; },
         _renderBoneInspector: _renderBoneInspector,
