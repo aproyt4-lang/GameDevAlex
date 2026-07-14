@@ -1009,6 +1009,7 @@
                     <button class="eng-btn stop-btn" onclick="EngineApp.stop()" title="Stop"><i class="fas fa-stop"></i></button>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" id="fps-mode-btn" onclick="EngineApp.toggleFPS()" title="FPS Mode (WASD + Mouse)"><i class="fas fa-crosshairs"></i> FPS</button>
+                    <button class="eng-btn" onclick="EngineApp.toggleConsolePanel()" title="Console (F12)"><i class="fas fa-terminal"></i></button>
                     <div class="eng-separator"></div>
                     <div class="gizmo-group">
                         <button class="gizmo-mode-btn active" id="gizmo-translate" onclick="EngineApp.setGizmoMode('translate')" title="Move (W)">W</button>
@@ -7745,7 +7746,10 @@ var SashaEngineAPI = (function() {
                         try {
                             var startFn = new Function('obj', 'Engine', code + '\nif(typeof onStart==="function") onStart(obj, Engine);');
                             startFn(obj, SashaEngineAPI);
-                        } catch(e) {}
+                        } catch(startErr) {
+                            console.error('[Script onStart] ' + name + ':', startErr);
+                            if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) EngineApp._consoleLog('error', '[Script onStart] ' + name + ': ' + (startErr.message || startErr));
+                        }
                     }
                     // Call onUpdate every frame
                     try {
@@ -7754,7 +7758,10 @@ var SashaEngineAPI = (function() {
                             var updateFn = new Function('delta', 'obj', 'Engine', code + '\nif(typeof onUpdate==="function") onUpdate(delta, obj, Engine);');
                             updateFn(delta, obj, SashaEngineAPI);
                         }
-                    } catch(e) {}
+                    } catch(updateErr) {
+                        console.error('[Script onUpdate] ' + name + ':', updateErr);
+                        if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) EngineApp._consoleLog('error', '[Script onUpdate] ' + name + ': ' + (updateErr.message || updateErr));
+                    }
                 }
             }
         }
@@ -7779,7 +7786,10 @@ var SashaEngineAPI = (function() {
                 try {
                     var collFn = new Function('other', 'Engine', code + '\nif(typeof onCollision==="function") onCollision(other, Engine);');
                     collFn(otherObj, SashaEngineAPI);
-                } catch(e) {}
+                } catch(collErr) {
+                    console.error('[Script onCollision] ' + name + ':', collErr);
+                    if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) EngineApp._consoleLog('error', '[Script onCollision] ' + name + ': ' + (collErr.message || collErr));
+                }
             }
         }
     }
@@ -7796,7 +7806,10 @@ var SashaEngineAPI = (function() {
                     try {
                         var destroyFn = new Function('obj', 'Engine', code + '\nif(typeof onDestroy==="function") onDestroy(obj, Engine);');
                         destroyFn(obj, SashaEngineAPI);
-                    } catch(e) {}
+                    } catch(destroyErr) {
+                        console.error('[Script onDestroy] ' + name + ':', destroyErr);
+                        if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) EngineApp._consoleLog('error', '[Script onDestroy] ' + name + ': ' + (destroyErr.message || destroyErr));
+                    }
                 }
             }
         }
@@ -8996,6 +9009,7 @@ var EngineApp = (function() {
             if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') { e.preventDefault(); copySelected(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'v') { e.preventDefault(); pasteSelected(); }
+            if (e.key === 'F12') { e.preventDefault(); toggleConsolePanel(); }
         });
 
         // Right-click context menu on viewport and hierarchy
@@ -16384,6 +16398,30 @@ var EngineApp = (function() {
     var _prefabBoneVisMat = null;
     var _prefabBoneSelMat = null;
 
+    // === PREFAB BONE TRANSFORM GIZMO ===
+    var _prefabTransformCtrl = null;
+    var _prefabGizmoMode = 'translate'; // translate, rotate, scale
+    var _prefabGizmoDragging = false;
+
+    // === PREFAB ANIMATION TIMELINE ===
+    var _prefabTimeline = {
+        active: false,
+        time: 0.0,
+        duration: 2.0,
+        fps: 30,
+        playing: false,
+        keyframes: {},  // boneName -> [{time, px,py,pz, rx,ry,rz, sx,sy,sz}]
+        tracks: [],     // ordered list of bone names that have keyframes
+        selectedTrack: null,
+        clock: null,
+        rafId: null
+    };
+
+    // === CONSOLE/TERMINAL PANEL ===
+    var _consoleMessages = [];
+    var _consoleMaxMessages = 500;
+    var _consolePanelVisible = false;
+
     function _prefabBuildBoneVis(model) {
         // Remove old
         if (_prefabBoneVisGroup) {
@@ -16514,6 +16552,10 @@ var EngineApp = (function() {
                   '<div style="flex:1"></div>' +
                   '<button id="prefab-autocam-btn" title="Авто-вращение" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-sync-alt"></i> Авто</button>' +
                   '<button id="prefab-add-skel-btn" title="Добавить гуманоидный скелет" style="background:none;border:1px solid #22c55e;color:#22c55e;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> +\u0421\u043a\u0435\u043b\u0435\u0442</button>' +
+                  '<span style="width:1px;height:18px;background:#2a2a3e;margin:0 2px;"></span>' +
+                  '<button id="prefab-gizmo-t" title="Перемещение (W)" style="background:none;border:1px solid #ef4444;color:#ef4444;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-arrows-alt"></i> W</button>' +
+                  '<button id="prefab-gizmo-e" title="Вращение (E)" style="background:none;border:1px solid #22c55e;color:#22c55e;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-sync-alt"></i> E</button>' +
+                  '<button id="prefab-gizmo-r" title="Масштаб (R)" style="background:none;border:1px solid #3b82f6;color:#3b82f6;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand-arrows-alt"></i> R</button>' +
                   '<button id="prefab-bones-btn" title="Показать/скрыть кости" style="background:none;border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> Кости</button>' +
                   '<button id="prefab-frame-btn" title="Центрировать" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand"></i> Центр</button>' +
                   '<button id="prefab-close-btn" title="Закрыть (Esc)" style="background:#ef4444;border:none;color:#fff;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-times"></i> Закрыть</button>' +
@@ -16524,21 +16566,51 @@ var EngineApp = (function() {
                     '<div id="prefab-hint" style="position:absolute;top:10px;left:10px;font-size:0.65rem;color:rgba(255,255,255,0.4);font-family:JetBrains Mono,monospace;pointer-events:none;">ЛКМ — вращать · колесо — зум · Esc — выйти</div>' +
                     '<div id="prefab-clip-label" style="position:absolute;bottom:10px;left:10px;font-size:0.7rem;color:rgba(255,255,255,0.7);font-family:JetBrains Mono,monospace;pointer-events:none;">None</div>' +
                   '</div>' +
-                  '<div id="prefab-sidebar" style="width:260px;background:#12121f;border-left:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
+                  '<div id="prefab-sidebar" style="width:280px;background:#12121f;border-left:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
                     '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
-                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Анимации</div>' +
-                      '<div id="prefab-anim-list" style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;"></div>' +
+                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Анимации модели</div>' +
+                      '<div id="prefab-anim-list" style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;"></div>' +
                     '</div>' +
                     '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
-                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Управление</div>' +
-                      '<div style="display:flex;gap:4px;">' +
-                        '<button id="prefab-play-btn" style="flex:1;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:6px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-play"></i> Play</button>' +
-                        '<button id="prefab-stop-btn" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:6px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-stop"></i> Stop</button>' +
+                      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+                        '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;">Управление</div>' +
+                        '<div style="display:flex;gap:3px;">' +
+                          '<button id="prefab-play-btn" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.65rem;"><i class="fas fa-play"></i></button>' +
+                          '<button id="prefab-stop-btn" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.65rem;"><i class="fas fa-stop"></i></button>' +
+                        '</div>' +
                       '</div>' +
                     '</div>' +
-                    '<div style="padding:8px 10px;flex:1;overflow-y:auto;">' +
+                    '<div style="padding:8px 10px;flex:1;overflow-y:auto;min-height:0;">' +
                       '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Информация</div>' +
                       '<div id="prefab-info" style="font-size:0.7rem;color:#a1a1aa;line-height:1.5;"></div>' +
+                    '</div>' +
+                    '<div style="border-top:1px solid #2a2a3e;">' +
+                      '<div style="padding:6px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2a2a3e;">' +
+                        '<div style="font-size:0.65rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-film" style="margin-right:4px;"></i>Timeline</div>' +
+                        '<div style="display:flex;gap:3px;">' +
+                          '<button id="prefab-tl-toggle" title="Открыть/закрыть таймлайн" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:3px 6px;border-radius:3px;font-size:0.6rem;"><i class="fas fa-chevron-up"></i></button>' +
+                        '</div>' +
+                      '</div>' +
+                      '<div id="prefab-tl-panel" style="display:none;padding:6px 10px;">' +
+                        '<div style="display:flex;gap:3px;margin-bottom:6px;">' +
+                          '<button id="prefab-tl-addkey" title="Добавить ключевой кадр" style="flex:1;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-diamond"></i> Key</button>' +
+                          '<button id="prefab-tl-play" title="Воспроизвести таймлайн" style="flex:1;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-play"></i></button>' +
+                          '<button id="prefab-tl-stop" title="Стоп" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-stop"></i></button>' +
+                          '<button id="prefab-tl-save" title="Сохранить анимацию в риг" style="flex:1;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#6366f1;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-save"></i> Save</button>' +
+                        '</div>' +
+                        '<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">' +
+                          '<span style="font-size:0.58rem;color:#71717a;width:30px;">Time</span>' +
+                          '<input id="prefab-tl-time" type="range" min="0" max="2" step="0.01" value="0" style="flex:1;accent-color:#f59e0b;height:4px;">' +
+                          '<span id="prefab-tl-time-label" style="font-size:0.58rem;color:#a1a1aa;width:36px;text-align:right;font-family:JetBrains Mono,monospace;">0.00s</span>' +
+                        '</div>' +
+                        '<div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">' +
+                          '<span style="font-size:0.58rem;color:#71717a;width:30px;">Dur</span>' +
+                          '<input id="prefab-tl-dur" type="number" step="0.1" min="0.1" max="60" value="2.0" style="flex:1;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.6rem;font-family:JetBrains Mono,monospace;">' +
+                          '<span style="font-size:0.58rem;color:#71717a;">s</span>' +
+                        '</div>' +
+                        '<div id="prefab-tl-tracks" style="max-height:140px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:3px;padding:2px;"></div>' +
+                        '<div id="prefab-tl-keylist" style="max-height:80px;overflow-y:auto;margin-top:4px;font-size:0.58rem;color:#71717a;"></div>' +
+                      '</div>' +
                     '</div>' +
                   '</div>' +
                 '</div>';
@@ -16562,6 +16634,35 @@ var EngineApp = (function() {
             };
             document.getElementById('prefab-add-skel-btn').onclick = function() {
                 _prefabAddSkeleton();
+            };
+            // Gizmo mode buttons
+            document.getElementById('prefab-gizmo-t').onclick = function() { _prefabSetGizmoMode('translate'); };
+            document.getElementById('prefab-gizmo-e').onclick = function() { _prefabSetGizmoMode('rotate'); };
+            document.getElementById('prefab-gizmo-r').onclick = function() { _prefabSetGizmoMode('scale'); };
+            // Timeline buttons
+            document.getElementById('prefab-tl-toggle').onclick = function() {
+                var p = document.getElementById('prefab-tl-panel');
+                if (!p) return;
+                var vis = p.style.display === 'none';
+                p.style.display = vis ? 'block' : 'none';
+                this.innerHTML = vis ? '<i class="fas fa-chevron-down"></i>' : '<i class="fas fa-chevron-up"></i>';
+                _prefabTimeline.active = vis;
+                if (vis) _prefabTlRefreshTracks();
+            };
+            document.getElementById('prefab-tl-addkey').onclick = function() { _prefabTlAddKeyframe(); };
+            document.getElementById('prefab-tl-play').onclick = function() { _prefabTlPlay(); };
+            document.getElementById('prefab-tl-stop').onclick = function() { _prefabTlStop(); };
+            document.getElementById('prefab-tl-save').onclick = function() { _prefabTlSaveToRig(); };
+            document.getElementById('prefab-tl-time').oninput = function() {
+                _prefabTimeline.time = parseFloat(this.value) || 0;
+                document.getElementById('prefab-tl-time-label').textContent = _prefabTimeline.time.toFixed(2) + 's';
+                _prefabTlApplyPose(_prefabTimeline.time);
+            };
+            document.getElementById('prefab-tl-dur').onchange = function() {
+                var v = parseFloat(this.value) || 2;
+                if (v < 0.1) v = 0.1;
+                _prefabTimeline.duration = v;
+                document.getElementById('prefab-tl-time').max = v;
             };
             document.getElementById('prefab-play-btn').onclick = function() {
                 if (_prefabState.currentClip) _prefabPlayClip(_prefabState.currentClip);
@@ -16618,6 +16719,31 @@ var EngineApp = (function() {
         var canvasEl = document.getElementById('prefab-canvas');
         _prefabState.renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: false });
         _prefabState.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // TransformControls for bone manipulation in prefab
+        if (_prefabTransformCtrl) {
+            try { _prefabTransformCtrl.detach(); } catch(e) {}
+            try { if (_prefabTransformCtrl.parent) _prefabTransformCtrl.parent.remove(_prefabTransformCtrl); } catch(e) {}
+        }
+        _prefabTransformCtrl = new THREE.TransformControls(_prefabState.camera, canvasEl);
+        _prefabTransformCtrl.setMode('translate');
+        _prefabTransformCtrl.setSize(0.7);
+        _prefabTransformCtrl.space = 'local';
+        _prefabTransformCtrl.addEventListener('dragging-changed', function(ev) {
+            _prefabGizmoDragging = ev.value;
+            if (ev.value) {
+                _prefabState.dragging = false;
+                _prefabState.autocam = false;
+            }
+        });
+        _prefabTransformCtrl.addEventListener('objectChange', function() {
+            if (_prefabSelectedBone) {
+                _prefabSelectedBone.updateMatrixWorld(true);
+                _prefabUpdateBoneVis();
+                _prefabBoneProp_refreshUI();
+            }
+        });
+        _prefabState.scene.add(_prefabTransformCtrl);
 
         // Clone the model — same safe approach as preview (strip userData first)
         var savedUd = [];
@@ -16895,7 +17021,15 @@ var EngineApp = (function() {
     }
 
     function _prefabOnKey(e) {
-        if (e.key === 'Escape' && _prefabState.open) closePrefabMode();
+        if (!_prefabState.open) return;
+        if (e.key === 'Escape') { closePrefabMode(); return; }
+        // W/E/R gizmo mode switching (only when not in input)
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'w' || e.key === 'W') { _prefabSetGizmoMode('translate'); e.preventDefault(); }
+        else if (e.key === 'e' || e.key === 'E') { _prefabSetGizmoMode('rotate'); e.preventDefault(); }
+        else if (e.key === 'r' || e.key === 'R') { _prefabSetGizmoMode('scale'); e.preventDefault(); }
+        else if (e.key === 'k' || e.key === 'K') { _prefabTlAddKeyframe(); e.preventDefault(); }
+        else if (e.key === ' ') { e.preventDefault(); if (_prefabTimeline.playing) _prefabTlStop(); else _prefabTlPlay(); }
     }
 
     function _prefabResize() {
@@ -16925,10 +17059,28 @@ var EngineApp = (function() {
                 // Update bone vis during animation
                 if (_prefabBoneVisGroup && _prefabBoneVisGroup.visible) _prefabUpdateBoneVis();
             }
-            // Autocam
-            if (_prefabState.autocam && _prefabState.model) {
+            // Autocam (disabled during gizmo drag)
+            if (_prefabState.autocam && _prefabState.model && !_prefabGizmoDragging) {
                 _prefabState.yaw += 0.008;
                 _prefabApplyCamOrbit();
+            }
+            // Update bone vis when gizmo is being dragged (no animation playing)
+            if (_prefabGizmoDragging && _prefabBoneVisGroup && _prefabBoneVisGroup.visible && !_prefabState.mixer) {
+                _prefabUpdateBoneVis();
+            }
+            // Update prefab timeline playback
+            if (_prefabTimeline.playing && _prefabTimeline.clock) {
+                var tdt = _prefabTimeline.clock.getDelta();
+                if (tdt > 0.1) tdt = 0.016;
+                _prefabTimeline.time += tdt;
+                if (_prefabTimeline.time >= _prefabTimeline.duration) {
+                    _prefabTimeline.time = 0;
+                }
+                var tlSlider = document.getElementById('prefab-tl-time');
+                var tlLabel = document.getElementById('prefab-tl-time-label');
+                if (tlSlider) tlSlider.value = _prefabTimeline.time;
+                if (tlLabel) tlLabel.textContent = _prefabTimeline.time.toFixed(2) + 's';
+                _prefabTlApplyPose(_prefabTimeline.time);
             }
             // Resize check
             var canvas = document.getElementById('prefab-canvas');
@@ -16977,6 +17129,12 @@ var EngineApp = (function() {
         var b = _prefabSelectedBone;
         // Update 3D bone vis highlight
         _prefabUpdateBoneVis();
+        // Attach TransformGizmo to the selected bone
+        if (_prefabTransformCtrl && b) {
+            _prefabTransformCtrl.attach(b);
+            _prefabTransformCtrl.setMode(_prefabGizmoMode);
+            _prefabTransformCtrl.space = 'local';
+        }
         function _pRow(lbl, x, y, z, pfx) {
             return '<div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.65rem;"><span style="color:#71717a;width:14px;">' + lbl + '</span>' +
                 '<input type="number" step="0.01" value="' + x.toFixed(3) + '" onchange="EngineApp._prefabBoneProp(\'' + pfx + 'x\',this.value)" style="width:100%;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.65rem;font-family:JetBrains Mono,monospace;">' +
@@ -17005,10 +17163,340 @@ var EngineApp = (function() {
         _prefabUpdateBoneVis();
     }
 
+    // === PREFAB BONE GIZMO MODE ===
+    function _prefabSetGizmoMode(mode) {
+        _prefabGizmoMode = mode;
+        if (_prefabTransformCtrl) {
+            _prefabTransformCtrl.setMode(mode);
+        }
+        // Update button styles
+        var btnT = document.getElementById('prefab-gizmo-t');
+        var btnE = document.getElementById('prefab-gizmo-e');
+        var btnR = document.getElementById('prefab-gizmo-r');
+        if (btnT) { btnT.style.background = mode === 'translate' ? 'rgba(239,68,68,0.2)' : 'none'; btnT.style.fontWeight = mode === 'translate' ? '700' : '400'; }
+        if (btnE) { btnE.style.background = mode === 'rotate' ? 'rgba(34,197,94,0.2)' : 'none'; btnE.style.fontWeight = mode === 'rotate' ? '700' : '400'; }
+        if (btnR) { btnR.style.background = mode === 'scale' ? 'rgba(59,130,246,0.2)' : 'none'; btnR.style.fontWeight = mode === 'scale' ? '700' : '400'; }
+    }
+
+    // Refresh the bone property UI inputs (called during gizmo drag)
+    function _prefabBoneProp_refreshUI() {
+        if (!_prefabSelectedBone) return;
+        var b = _prefabSelectedBone;
+        var props = document.getElementById('prefab-bone-props');
+        if (!props) return;
+        var inputs = props.querySelectorAll('input[type="number"]');
+        if (inputs.length >= 9) {
+            inputs[0].value = b.position.x.toFixed(3);
+            inputs[1].value = b.position.y.toFixed(3);
+            inputs[2].value = b.position.z.toFixed(3);
+            inputs[3].value = (b.rotation.x * 180 / Math.PI).toFixed(3);
+            inputs[4].value = (b.rotation.y * 180 / Math.PI).toFixed(3);
+            inputs[5].value = (b.rotation.z * 180 / Math.PI).toFixed(3);
+            inputs[6].value = b.scale.x.toFixed(3);
+            inputs[7].value = b.scale.y.toFixed(3);
+            inputs[8].value = b.scale.z.toFixed(3);
+        }
+    }
+
+    // === PREFAB ANIMATION TIMELINE FUNCTIONS ===
+    function _prefabTlAddKeyframe() {
+        if (!_prefabState.model || !_prefabSelectedBone) {
+            _consoleLog('warn', 'Timeline: Выберите кость для добавления ключевого кадра');
+            return;
+        }
+        var bName = _prefabSelectedBone.name;
+        var b = _prefabSelectedBone;
+        var t = _prefabTimeline.time;
+        if (!_prefabTimeline.keyframes[bName]) {
+            _prefabTimeline.keyframes[bName] = [];
+            if (_prefabTimeline.tracks.indexOf(bName) === -1) {
+                _prefabTimeline.tracks.push(bName);
+            }
+        }
+        // Check if keyframe at this time already exists
+        var kfs = _prefabTimeline.keyframes[bName];
+        for (var ki = 0; ki < kfs.length; ki++) {
+            if (Math.abs(kfs[ki].time - t) < 0.001) {
+                // Update existing
+                kfs[ki].px = b.position.x; kfs[ki].py = b.position.y; kfs[ki].pz = b.position.z;
+                kfs[ki].rx = b.rotation.x; kfs[ki].ry = b.rotation.y; kfs[ki].rz = b.rotation.z;
+                kfs[ki].sx = b.scale.x; kfs[ki].sy = b.scale.y; kfs[ki].sz = b.scale.z;
+                _prefabTlRefreshTracks();
+                _consoleLog('info', 'Timeline: Ключевой кадр обновлён [' + bName + '] @ ' + t.toFixed(2) + 's');
+                return;
+            }
+        }
+        // Add new
+        kfs.push({
+            time: t,
+            px: b.position.x, py: b.position.y, pz: b.position.z,
+            rx: b.rotation.x, ry: b.rotation.y, rz: b.rotation.z,
+            sx: b.scale.x, sy: b.scale.y, sz: b.scale.z
+        });
+        kfs.sort(function(a, b) { return a.time - b.time; });
+        _prefabTlRefreshTracks();
+        _consoleLog('result', 'Timeline: Ключевой кадр добавлен [' + bName + '] @ ' + t.toFixed(2) + 's');
+    }
+
+    function _prefabTlApplyPose(time) {
+        if (!_prefabState.model) return;
+        // Lerp all bone tracks to the given time
+        for (var ti = 0; ti < _prefabTimeline.tracks.length; ti++) {
+            var bName = _prefabTimeline.tracks[ti];
+            var kfs = _prefabTimeline.keyframes[bName];
+            if (!kfs || kfs.length === 0) continue;
+            // Find the bone in the prefab model
+            var bone = null;
+            _prefabState.model.traverse(function(c) {
+                if (c.isBone && c.name === bName) bone = c;
+            });
+            if (!bone) continue;
+
+            // Find surrounding keyframes
+            var prev = null, next = null;
+            for (var ki = 0; ki < kfs.length; ki++) {
+                if (kfs[ki].time <= time) prev = kfs[ki];
+                if (kfs[ki].time >= time && !next) next = kfs[ki];
+            }
+            if (!prev && !next) continue;
+            if (!prev) prev = next;
+            if (!next) next = prev;
+            if (prev === next) {
+                bone.position.set(prev.px, prev.py, prev.pz);
+                bone.rotation.set(prev.rx, prev.ry, prev.rz);
+                bone.scale.set(prev.sx, prev.sy, prev.sz);
+            } else {
+                var range = next.time - prev.time;
+                var alpha = range > 0.0001 ? (time - prev.time) / range : 0;
+                // Smooth step
+                alpha = alpha * alpha * (3 - 2 * alpha);
+                bone.position.set(
+                    prev.px + (next.px - prev.px) * alpha,
+                    prev.py + (next.py - prev.py) * alpha,
+                    prev.pz + (next.pz - prev.pz) * alpha
+                );
+                bone.rotation.set(
+                    prev.rx + (next.rx - prev.rx) * alpha,
+                    prev.ry + (next.ry - prev.ry) * alpha,
+                    prev.rz + (next.rz - prev.rz) * alpha
+                );
+                bone.scale.set(
+                    prev.sx + (next.sx - prev.sx) * alpha,
+                    prev.sy + (next.sy - prev.sy) * alpha,
+                    prev.sz + (next.sz - prev.sz) * alpha
+                );
+            }
+            bone.updateMatrixWorld(true);
+        }
+        _prefabUpdateBoneVis();
+        _prefabBoneProp_refreshUI();
+    }
+
+    function _prefabTlPlay() {
+        if (_prefabTimeline.playing) return;
+        _prefabTimeline.playing = true;
+        _prefabTimeline.clock = new THREE.Clock();
+        // Stop model animation if playing
+        _prefabStopAnim();
+        _consoleLog('info', 'Timeline: Воспроизведение');
+    }
+
+    function _prefabTlStop() {
+        _prefabTimeline.playing = false;
+        _prefabTimeline.clock = null;
+        _prefabTimeline.time = 0;
+        var tlSlider = document.getElementById('prefab-tl-time');
+        var tlLabel = document.getElementById('prefab-tl-time-label');
+        if (tlSlider) tlSlider.value = 0;
+        if (tlLabel) tlLabel.textContent = '0.00s';
+        // Reset bones to first keyframe pose
+        _prefabTlApplyPose(0);
+    }
+
+    function _prefabTlRefreshTracks() {
+        var container = document.getElementById('prefab-tl-tracks');
+        if (!container) return;
+        if (_prefabTimeline.tracks.length === 0) {
+            container.innerHTML = '<div style="font-size:0.6rem;color:#52525b;padding:6px;text-align:center;">Нет треков. Выберите кость и нажмите <b>Key</b></div>';
+            return;
+        }
+        var thtml = '';
+        for (var ti = 0; ti < _prefabTimeline.tracks.length; ti++) {
+            var bName = _prefabTimeline.tracks[ti];
+            var kfs = _prefabTimeline.keyframes[bName] || [];
+            var isSel = (_prefabSelectedBone && _prefabSelectedBone.name === bName);
+            thtml += '<div style="display:flex;align-items:center;gap:4px;padding:3px 6px;font-size:0.6rem;color:' + (isSel ? '#f59e0b' : '#a1a1aa') + ';cursor:pointer;border-radius:3px;' + (isSel ? 'background:rgba(245,158,11,0.1);' : '') + '" onclick="EngineApp._prefabSelectBone(\'' + bName + '\')">';
+            thtml += '<i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:10px;"></i>';
+            thtml += '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + bName + '</span>';
+            thtml += '<span style="font-size:0.5rem;color:#52525b;">' + kfs.length + 'kf</span>';
+            // Mini keyframe dots
+            thtml += '<div style="display:flex;gap:1px;">';
+            for (var ki = 0; ki < kfs.length; ki++) {
+                var pct = (_prefabTimeline.duration > 0) ? (kfs[ki].time / _prefabTimeline.duration * 40) : 0;
+                thtml += '<div style="width:4px;height:8px;background:#f59e0b;border-radius:1px;margin-left:' + (pct > 0 ? pct + 'px' : '0') + ';"></div>';
+            }
+            thtml += '</div></div>';
+        }
+        container.innerHTML = thtml;
+    }
+
+    function _prefabTlSaveToRig() {
+        if (_prefabTimeline.tracks.length === 0) {
+            _consoleLog('warn', 'Timeline: Нет ключевых кадров для сохранения');
+            return;
+        }
+        var objName = _prefabState.objName;
+        if (!objName) return;
+        // Build THREE.AnimationClip from keyframes
+        var tracks = [];
+        for (var ti = 0; ti < _prefabTimeline.tracks.length; ti++) {
+            var bName = _prefabTimeline.tracks[ti];
+            var kfs = _prefabTimeline.keyframes[bName];
+            if (!kfs || kfs.length === 0) continue;
+            // Find bone path (relative to root)
+            var bonePath = '';
+            _prefabState.model.traverse(function(c) {
+                if (c.isBone && c.name === bName) {
+                    // Build path from skeleton root to this bone
+                    var parts = [];
+                    var p = c;
+                    while (p) {
+                        if (p.name && p.name !== '') parts.unshift(p.name);
+                        p = p.parent;
+                    }
+                    bonePath = parts.join('.');
+                }
+            });
+            if (!bonePath) bonePath = bName;
+
+            // Position track
+            var posTimes = [], posValues = [];
+            var rotTimes = [], rotValues = [];
+            for (var ki = 0; ki < kfs.length; ki++) {
+                var kf = kfs[ki];
+                posTimes.push(kf.time);
+                posValues.push(kf.px, kf.py, kf.pz);
+                rotTimes.push(kf.time);
+                rotValues.push(kf.rx, kf.ry, kf.rz);
+            }
+            if (posTimes.length > 0) {
+                tracks.push(new THREE.NumberKeyframeTrack(
+                    bonePath + '.position', posTimes, posValues
+                ));
+            }
+            if (rotTimes.length > 0) {
+                tracks.push(new THREE.NumberKeyframeTrack(
+                    bonePath + '.rotation', rotTimes, rotValues
+                ));
+            }
+        }
+        if (tracks.length === 0) {
+            _consoleLog('warn', 'Timeline: Не удалось создать треки');
+            return;
+        }
+        var clipName = objName + '_Anim_' + Date.now();
+        var clip = new THREE.AnimationClip(clipName, _prefabTimeline.duration, tracks);
+
+        // Store in _skeletonData (the rig)
+        if (!_skeletonData[objName]) {
+            _skeletonData[objName] = { clips: [], mixer: null, actions: [] };
+        }
+        _skeletonData[objName].clips.push(clip);
+
+        // Also register in animationClips for timeline system
+        var clipId = 'clip_' + Date.now();
+        SashaEngineAPI.createAnimationClip(clipId, clipName);
+
+        _prefabRefreshAnimList();
+        _consoleLog('result', 'Timeline: Анимация "' + clipName + '" сохранена в риг (' + tracks.length + ' треков, ' + _prefabTimeline.tracks.length + ' костей)');
+        log('[Prefab Timeline] Анимация "' + clipName + '" сохранена в риг модели "' + objName + '"', 'result');
+    }
+
+    // === CONSOLE / TERMINAL PANEL ===
+    function _consoleLog(type, msg) {
+        var colors = { info: '#a1a1aa', result: '#34d399', warn: '#f59e0b', error: '#ef4444', log: '#71717a' };
+        var icons = { info: 'fa-info-circle', result: 'fa-check-circle', warn: 'fa-exclamation-triangle', error: 'fa-times-circle', log: 'fa-terminal' };
+        _consoleMessages.push({ type: type || 'log', msg: msg, time: new Date() });
+        if (_consoleMessages.length > _consoleMaxMessages) _consoleMessages.shift();
+        // Update console panel if visible
+        _updateConsolePanel();
+        // Also log to main log
+        if (typeof log === 'function') log(msg, type);
+    }
+
+    function _updateConsolePanel() {
+        var panel = document.getElementById('console-panel-messages');
+        if (!panel || !_consolePanelVisible) return;
+        var html = '';
+        var start = Math.max(0, _consoleMessages.length - 100);
+        for (var i = start; i < _consoleMessages.length; i++) {
+            var m = _consoleMessages[i];
+            var colors = { info: '#a1a1aa', result: '#34d399', warn: '#f59e0b', error: '#ef4444', log: '#71717a' };
+            var icons = { info: 'fa-info-circle', result: 'fa-check-circle', warn: 'fa-exclamation-triangle', error: 'fa-times-circle', log: 'fa-terminal' };
+            var col = colors[m.type] || colors.log;
+            var ico = icons[m.type] || icons.log;
+            var ts = m.time ? (m.time.getHours() + ':' + String(m.time.getMinutes()).padStart(2, '0') + ':' + String(m.time.getSeconds()).padStart(2, '0')) : '';
+            html += '<div style="display:flex;align-items:flex-start;gap:6px;padding:2px 0;font-size:0.65rem;line-height:1.4;border-bottom:1px solid rgba(42,42,62,0.3);">';
+            html += '<i class="fas ' + ico + '" style="color:' + col + ';font-size:0.55rem;margin-top:2px;width:10px;text-align:center;flex-shrink:0;"></i>';
+            html += '<span style="color:' + col + ';flex:1;word-break:break-all;">' + m.msg.replace(/</g, '&lt;') + '</span>';
+            html += '<span style="color:#52525b;font-size:0.5rem;font-family:JetBrains Mono,monospace;flex-shrink:0;">' + ts + '</span>';
+            html += '</div>';
+        }
+        panel.innerHTML = html;
+        panel.scrollTop = panel.scrollHeight;
+    }
+
+    function toggleConsolePanel() {
+        var panel = document.getElementById('engine-console-panel');
+        if (!panel) {
+            // Create console panel if not exists
+            panel = document.createElement('div');
+            panel.id = 'engine-console-panel';
+            panel.style.cssText = 'position:absolute;bottom:0;left:0;right:0;height:180px;background:#0d0d1a;border-top:1px solid #2a2a3e;display:flex;flex-direction:column;z-index:50;';
+            panel.innerHTML =
+                '<div style="display:flex;align-items:center;padding:4px 10px;background:#12121f;border-bottom:1px solid #2a2a3e;gap:8px;">' +
+                  '<i class="fas fa-terminal" style="color:#6366f1;font-size:0.7rem;"></i>' +
+                  '<span style="font-size:0.7rem;font-weight:600;color:#e4e4e7;">Console</span>' +
+                  '<span id="console-msg-count" style="font-size:0.55rem;color:#52525b;">0</span>' +
+                  '<div style="flex:1;"></div>' +
+                  '<button onclick="EngineApp.clearConsole()" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:2px 6px;border-radius:3px;font-size:0.6rem;">Clear</button>' +
+                  '<button onclick="EngineApp.toggleConsolePanel()" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:2px 6px;border-radius:3px;font-size:0.6rem;"><i class="fas fa-times"></i></button>' +
+                '</div>' +
+                '<div id="console-panel-messages" style="flex:1;overflow-y:auto;padding:6px 10px;font-family:JetBrains Mono,monospace;"></div>';
+            var engSec = document.getElementById('engine');
+            if (engSec) engSec.style.position = 'relative';
+            var vp = document.getElementById('engine-viewport');
+            if (vp) vp.appendChild(panel);
+        }
+        _consolePanelVisible = !_consolePanelVisible;
+        panel.style.display = _consolePanelVisible ? 'flex' : 'none';
+        if (_consolePanelVisible) _updateConsolePanel();
+        // Resize engine viewport
+        setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 50);
+    }
+
+    function clearConsole() {
+        _consoleMessages = [];
+        _updateConsolePanel();
+    }
+
     function closePrefabMode() {
         if (!_prefabState.open) return;
         _prefabState.open = false;
         _prefabSelectedBone = null;
+        // Detach and remove prefab TransformControls
+        if (_prefabTransformCtrl) {
+            try { _prefabTransformCtrl.detach(); } catch(e) {}
+            try { if (_prefabTransformCtrl.parent) _prefabTransformCtrl.parent.remove(_prefabTransformCtrl); } catch(e) {}
+            _prefabTransformCtrl = null;
+        }
+        _prefabGizmoDragging = false;
+        // Stop timeline
+        _prefabTlStop();
+        _prefabTimeline.active = false;
+        _prefabTimeline.keyframes = {};
+        _prefabTimeline.tracks = [];
+        _prefabTimeline.time = 0;
         // Remove 3D bone vis
         _prefabRemoveBoneVis();
         if (_prefabState.rafId) { cancelAnimationFrame(_prefabState.rafId); _prefabState.rafId = null; }
@@ -17789,6 +18277,8 @@ var EngineApp = (function() {
         _inspPreviewUpdate: _inspPreviewUpdate,
         _inspPreviewRefreshRigTabButtons: _inspPreviewRefreshRigTabButtons,
         openPrefabMode: openPrefabMode, _prefabSelectBone: _prefabSelectBone, _prefabBoneProp: _prefabBoneProp, _prefabAddSkeleton: _prefabAddSkeleton,
+        _prefabSetGizmoMode: _prefabSetGizmoMode, _prefabTlAddKeyframe: _prefabTlAddKeyframe, _prefabTlSaveToRig: _prefabTlSaveToRig,
+        _consoleLog: _consoleLog, toggleConsolePanel: toggleConsolePanel, clearConsole: clearConsole,
         closePrefabMode: closePrefabMode,
         _discoverAnimations: _discoverAnimations,
         _getSkeletonData: function() { return _skeletonData; },
@@ -17805,6 +18295,40 @@ var EngineApp = (function() {
         isInitialized: function() { return initialized; }
     };
 })();
+// ============ CONSOLE INTERCEPT — feed browser errors into our console panel ============
+(function() {
+    var origError = console.error;
+    var origWarn = console.warn;
+    console.error = function() {
+        origError.apply(console, arguments);
+        if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) {
+            var msg = Array.prototype.slice.call(arguments).map(function(a) {
+                if (a instanceof Error) return a.message + (a.stack ? '\n' + a.stack.split('\n').slice(0,3).join('\n') : '');
+                return String(a);
+            }).join(' ');
+            EngineApp._consoleLog('error', msg);
+        }
+    };
+    console.warn = function() {
+        origWarn.apply(console, arguments);
+        if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) {
+            var msg = Array.prototype.slice.call(arguments).map(function(a) { return String(a); }).join(' ');
+            EngineApp._consoleLog('warn', msg);
+        }
+    };
+    // Catch unhandled errors
+    window.addEventListener('error', function(e) {
+        if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) {
+            EngineApp._consoleLog('error', 'Uncaught: ' + (e.message || e) + ' (line ' + (e.lineno || '?') + ')');
+        }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        if (typeof EngineApp !== 'undefined' && EngineApp._consoleLog) {
+            EngineApp._consoleLog('error', 'Unhandled Promise: ' + String(e.reason));
+        }
+    });
+})();
+
 // ============ AC SAFETY NET — ensures button works after IIFE ============
 (function() {
     function attachACButton() {
