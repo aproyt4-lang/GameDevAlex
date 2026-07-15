@@ -16720,13 +16720,15 @@ var EngineApp = (function() {
                 if (_prefabGizmoDragging) return;
                 // TransformControls sets .axis when hovering over a gizmo handle
                 if (_prefabTransformCtrl && _prefabTransformCtrl.axis) return;
-                _prefabState.dragging = true;
+                // Record start position — orbit starts only after drag threshold
+                _prefabState._pendingDrag = true;
+                _prefabState._dragStartX = e.clientX;
+                _prefabState._dragStartY = e.clientY;
                 _prefabState.lastX = e.clientX;
                 _prefabState.lastY = e.clientY;
                 _prefabState.autocam = false;
                 document.getElementById('prefab-autocam-btn').style.color = '#71717a';
                 document.getElementById('prefab-autocam-btn').style.borderColor = '#2a2a3e';
-                canvas.style.cursor = 'grabbing';
                 e.preventDefault();
             });
             window.addEventListener('mousemove', _prefabOnMouseMove);
@@ -16777,11 +16779,16 @@ var EngineApp = (function() {
         _prefabTransformCtrl.space = 'local';
         _prefabTransformCtrl.addEventListener('dragging-changed', function(ev) {
             _prefabGizmoDragging = ev.value;
+            _prefabState._pendingDrag = false;
             if (ev.value) {
                 _prefabState.dragging = false;
                 _prefabState.autocam = false;
                 var pc = document.getElementById('prefab-canvas');
-                if (pc) pc.style.cursor = ''; // Let gizmo control cursor
+                // Set cursor based on gizmo mode
+                if (pc) {
+                    var m = _prefabGizmoMode || 'translate';
+                    pc.style.cursor = m === 'rotate' ? 'grab' : m === 'scale' ? 'ew-resize' : 'move';
+                }
             } else {
                 var pc2 = document.getElementById('prefab-canvas');
                 if (pc2) pc2.style.cursor = 'grab';
@@ -17081,6 +17088,67 @@ var EngineApp = (function() {
     }
 
     function _prefabOnMouseMove(e) {
+        // --- Hover detection for cursor feedback ---
+        if (_prefabState.open && !_prefabState.dragging && !_prefabGizmoDragging) {
+            var _pc = document.getElementById('prefab-canvas');
+            if (_pc) {
+                // Priority 1: gizmo axis hover — TransformControls sets .axis on hover
+                if (_prefabTransformCtrl && _prefabTransformCtrl.axis) {
+                    // Let TransformControls manage cursor
+                    _pc.style.cursor = '';
+                } else {
+                    // Priority 2: bone hover detection
+                    var _rect = _pc.getBoundingClientRect();
+                    var _px = ((e.clientX - _rect.left) / _rect.width) * 2 - 1;
+                    var _py = -((e.clientY - _rect.top) / _rect.height) * 2 + 1;
+                    // Only check if pointer is inside canvas
+                    if (e.clientX >= _rect.left && e.clientX <= _rect.right && e.clientY >= _rect.top && e.clientY <= _rect.bottom) {
+                        var _hoverRay = new THREE.Raycaster();
+                        _hoverRay.setFromCamera(new THREE.Vector2(_px, _py), _prefabState.camera);
+                        var _boneList = [];
+                        if (_prefabState.model) {
+                            _prefabState.model.traverse(function(c) { if (c.isBone) _boneList.push(c); });
+                        }
+                        var _hoverBone = null;
+                        var _hoverDist = Infinity;
+                        for (var _hi = 0; _hi < _boneList.length; _hi++) {
+                            var _bp = new THREE.Vector3();
+                            _boneList[_hi].getWorldPosition(_bp);
+                            var _hr = _hoverRay.ray;
+                            var _hv = _bp.clone().sub(_hr.origin);
+                            var _ht = _hv.dot(_hr.direction);
+                            if (_ht < 0) continue;
+                            var _hc = _hr.origin.clone().add(_hr.direction.clone().multiplyScalar(_ht));
+                            var _hd = _hc.distanceTo(_bp);
+                            if (_hd < 0.15 && _hd < _hoverDist) {
+                                _hoverDist = _hd;
+                                _hoverBone = _boneList[_hi];
+                            }
+                        }
+                        _pc.style.cursor = _hoverBone ? 'pointer' : 'grab';
+                    }
+                }
+            }
+        }
+        // --- Pending drag → orbit (with threshold to avoid conflict with gizmo) ---
+        if (_prefabState._pendingDrag && !_prefabState.dragging) {
+            var _ddx = e.clientX - _prefabState._dragStartX;
+            var _ddy = e.clientY - _prefabState._dragStartY;
+            // Need 3px movement before starting orbit — gives gizmo time to capture
+            if (Math.abs(_ddx) > 3 || Math.abs(_ddy) > 3) {
+                // Double-check gizmo didn't activate during the threshold
+                if (_prefabGizmoDragging || (_prefabTransformCtrl && _prefabTransformCtrl.axis)) {
+                    _prefabState._pendingDrag = false;
+                    return;
+                }
+                _prefabState.dragging = true;
+                _prefabState._pendingDrag = false;
+                var _dc = document.getElementById('prefab-canvas');
+                if (_dc) _dc.style.cursor = 'grabbing';
+            }
+            return;
+        }
+        // --- Orbit rotation ---
         if (!_prefabState.dragging) return;
         var dx = e.clientX - _prefabState.lastX;
         var dy = e.clientY - _prefabState.lastY;
@@ -17094,6 +17162,7 @@ var EngineApp = (function() {
     }
 
     function _prefabOnMouseUp() {
+        _prefabState._pendingDrag = false;
         if (_prefabState.dragging) {
             _prefabState.dragging = false;
             var c = document.getElementById('prefab-canvas');
