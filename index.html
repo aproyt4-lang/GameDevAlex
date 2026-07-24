@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
+<head><!DOCTYPE html>
+<html lang="ru">
 <head>
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -16444,6 +16446,7 @@ var EngineApp = (function() {
     var _prefabTransformCtrl = null;
     var _prefabGizmoMode = 'translate'; // translate, rotate, scale
     var _prefabGizmoDragging = false;
+    var _prefabEditMode = 'skeleton'; // 'skeleton' (ЛКМ=гизмо) | 'scene' (ЛКМ=орбита)
 
     // === PREFAB ANIMATION TIMELINE ===
     var _prefabTimeline = {
@@ -16600,58 +16603,63 @@ var EngineApp = (function() {
                   '<button id="prefab-gizmo-r" title="Масштаб (R)" style="background:none;border:1px solid #3b82f6;color:#3b82f6;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand-arrows-alt"></i> R</button>' +
                   '<button id="prefab-bones-btn" title="Показать/скрыть кости" style="background:none;border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> Кости</button>' +
                   '<button id="prefab-frame-btn" title="Центрировать" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand"></i> Центр</button>' +
+                  '<span style="width:1px;height:18px;background:#2a2a3e;margin:0 4px;"></span>' +
+                  '<button id="prefab-mode-btn" title="Переключить режим (Tab)" style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 10px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-bone" id="prefab-mode-icon"></i> <span id="prefab-mode-label">Скелет</span></button>' +
                   '<button id="prefab-close-btn" title="Закрыть (Esc)" style="background:#ef4444;border:none;color:#fff;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-times"></i> Закрыть</button>' +
                 '</div>' +
-                '<div style="flex:1;display:flex;overflow:hidden;">' +
-                  '<div style="flex:1;position:relative;background:#0a0a1a;">' +
-                    '<canvas id="prefab-canvas" style="display:block;width:100%;height:100%;"></canvas>' +
-                    '<div id="prefab-hint" style="position:absolute;top:10px;left:10px;font-size:0.65rem;color:rgba(255,255,255,0.4);font-family:JetBrains Mono,monospace;pointer-events:none;">ЛКМ — кости/гизмо · ПКМ — вращать камеру · колёсико — зум · Esc — выйти</div>' +
-                    '<div id="prefab-clip-label" style="position:absolute;bottom:10px;left:10px;font-size:0.7rem;color:rgba(255,255,255,0.7);font-family:JetBrains Mono,monospace;pointer-events:none;">None</div>' +
+                '<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">' +
+                  '<div style="flex:1;display:flex;overflow:hidden;">' +
+                    '<div style="flex:1;position:relative;background:#0a0a1a;">' +
+                      '<canvas id="prefab-canvas" style="display:block;width:100%;height:100%;"></canvas>' +
+                      '<div id="prefab-hint" style="position:absolute;top:10px;left:10px;font-size:0.65rem;color:rgba(255,255,255,0.4);font-family:JetBrains Mono,monospace;pointer-events:none;">ЛКМ — кости/гизмо · ПКМ — камера · колёсико — зум · Esc — выйти</div>' +
+                      '<div id="prefab-clip-label" style="position:absolute;bottom:10px;left:10px;font-size:0.7rem;color:rgba(255,255,255,0.7);font-family:JetBrains Mono,monospace;pointer-events:none;">None</div>' +
+                    '</div>' +
+                    '<div id="prefab-sidebar" style="width:280px;background:#12121f;border-left:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
+                      '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
+                        '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Анимации модели</div>' +
+                        '<div id="prefab-anim-list" style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;"></div>' +
+                      '</div>' +
+                      '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
+                        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+                          '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;">Управление</div>' +
+                          '<div style="display:flex;gap:3px;">' +
+                            '<button id="prefab-play-btn" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.65rem;"><i class="fas fa-play"></i></button>' +
+                            '<button id="prefab-stop-btn" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.65rem;"><i class="fas fa-stop"></i></button>' +
+                          '</div>' +
+                        '</div>' +
+                      '</div>' +
+                      '<div style="padding:8px 10px;flex:1;overflow-y:auto;min-height:0;">' +
+                        '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Информация</div>' +
+                        '<div id="prefab-info" style="font-size:0.7rem;color:#a1a1aa;line-height:1.5;"></div>' +
+                      '</div>' +
+                    '</div>' +
                   '</div>' +
-                  '<div id="prefab-sidebar" style="width:280px;background:#12121f;border-left:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
-                    '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
-                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Анимации модели</div>' +
-                      '<div id="prefab-anim-list" style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;"></div>' +
+                  // === TIMELINE BOTTOM BAR ===
+                  '<div id="prefab-tl-bar" style="height:180px;min-height:180px;background:#0e0e1c;border-top:1px solid #2a2a3e;display:flex;flex-direction:column;">' +
+                    '<div style="padding:5px 10px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e1e30;flex-shrink:0;">' +
+                      '<i class="fas fa-film" style="font-size:0.65rem;color:#f59e0b;"></i>' +
+                      '<span style="font-size:0.65rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Timeline</span>' +
+                      '<span style="width:1px;height:14px;background:#2a2a3e;"></span>' +
+                      '<button id="prefab-tl-addkey" title="Добавить ключевой кадр (K)" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-diamond"></i> Key</button>' +
+                      '<button id="prefab-tl-play" title="Воспроизвести (Space)" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-play"></i></button>' +
+                      '<button id="prefab-tl-stop" title="Стоп" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-stop"></i></button>' +
+                      '<span style="width:1px;height:14px;background:#2a2a3e;"></span>' +
+                      '<button id="prefab-tl-deletekey" title="Удалить ключевой кадр" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-trash-alt"></i> Del</button>' +
+                      '<div style="flex:1"></div>' +
+                      '<button id="prefab-tl-save" title="Сохранить анимацию в риг" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#6366f1;cursor:pointer;padding:3px 10px;border-radius:3px;font-size:0.62rem;font-weight:600;"><i class="fas fa-save"></i> Сохранить в риг</button>' +
                     '</div>' +
-                    '<div style="padding:8px 10px;border-bottom:1px solid #2a2a3e;">' +
-                      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-                        '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;">Управление</div>' +
-                        '<div style="display:flex;gap:3px;">' +
-                          '<button id="prefab-play-btn" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.65rem;"><i class="fas fa-play"></i></button>' +
-                          '<button id="prefab-stop-btn" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.65rem;"><i class="fas fa-stop"></i></button>' +
-                        '</div>' +
-                      '</div>' +
+                    '<div style="padding:4px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
+                      '<span style="font-size:0.58rem;color:#71717a;width:24px;">Time</span>' +
+                      '<input id="prefab-tl-time" type="range" min="0" max="2" step="0.01" value="0" style="flex:1;accent-color:#f59e0b;height:4px;">' +
+                      '<span id="prefab-tl-time-label" style="font-size:0.58rem;color:#a1a1aa;width:36px;text-align:right;font-family:JetBrains Mono,monospace;">0.00s</span>' +
+                      '<span style="font-size:0.58rem;color:#52525b;margin-left:8px;">Dur</span>' +
+                      '<input id="prefab-tl-dur" type="number" step="0.1" min="0.1" max="60" value="2.0" style="width:50px;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.6rem;font-family:JetBrains Mono,monospace;">' +
+                      '<span style="font-size:0.58rem;color:#52525b;">s</span>' +
                     '</div>' +
-                    '<div style="padding:8px 10px;flex:1;overflow-y:auto;min-height:0;">' +
-                      '<div style="font-size:0.65rem;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Информация</div>' +
-                      '<div id="prefab-info" style="font-size:0.7rem;color:#a1a1aa;line-height:1.5;"></div>' +
-                    '</div>' +
-                    '<div style="border-top:1px solid #2a2a3e;">' +
-                      '<div style="padding:6px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2a2a3e;">' +
-                        '<div style="font-size:0.65rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-film" style="margin-right:4px;"></i>Timeline</div>' +
-                        '<div style="display:flex;gap:3px;">' +
-                          '<button id="prefab-tl-toggle" title="Открыть/закрыть таймлайн" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:3px 6px;border-radius:3px;font-size:0.6rem;"><i class="fas fa-chevron-up"></i></button>' +
-                        '</div>' +
-                      '</div>' +
-                      '<div id="prefab-tl-panel" style="display:none;padding:6px 10px;">' +
-                        '<div style="display:flex;gap:3px;margin-bottom:6px;">' +
-                          '<button id="prefab-tl-addkey" title="Добавить ключевой кадр" style="flex:1;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-diamond"></i> Key</button>' +
-                          '<button id="prefab-tl-play" title="Воспроизвести таймлайн" style="flex:1;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-play"></i></button>' +
-                          '<button id="prefab-tl-stop" title="Стоп" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-stop"></i></button>' +
-                          '<button id="prefab-tl-save" title="Сохранить анимацию в риг" style="flex:1;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#6366f1;cursor:pointer;padding:4px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-save"></i> Save</button>' +
-                        '</div>' +
-                        '<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">' +
-                          '<span style="font-size:0.58rem;color:#71717a;width:30px;">Time</span>' +
-                          '<input id="prefab-tl-time" type="range" min="0" max="2" step="0.01" value="0" style="flex:1;accent-color:#f59e0b;height:4px;">' +
-                          '<span id="prefab-tl-time-label" style="font-size:0.58rem;color:#a1a1aa;width:36px;text-align:right;font-family:JetBrains Mono,monospace;">0.00s</span>' +
-                        '</div>' +
-                        '<div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">' +
-                          '<span style="font-size:0.58rem;color:#71717a;width:30px;">Dur</span>' +
-                          '<input id="prefab-tl-dur" type="number" step="0.1" min="0.1" max="60" value="2.0" style="flex:1;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.6rem;font-family:JetBrains Mono,monospace;">' +
-                          '<span style="font-size:0.58rem;color:#71717a;">s</span>' +
-                        '</div>' +
-                        '<div id="prefab-tl-tracks" style="max-height:140px;overflow-y:auto;border:1px solid #2a2a3e;border-radius:3px;padding:2px;"></div>' +
-                        '<div id="prefab-tl-keylist" style="max-height:80px;overflow-y:auto;margin-top:4px;font-size:0.58rem;color:#71717a;"></div>' +
+                    '<div style="flex:1;display:flex;overflow:hidden;">' +
+                      '<div style="width:140px;overflow-y:auto;border-right:1px solid #1e1e30;padding:2px;" id="prefab-tl-tracks"></div>' +
+                      '<div style="flex:1;position:relative;overflow:hidden;" id="prefab-tl-dopesheet">' +
+                        '<canvas id="prefab-tl-canvas" style="display:block;width:100%;height:100%;cursor:pointer;"></canvas>' +
                       '</div>' +
                     '</div>' +
                   '</div>' +
@@ -16660,6 +16668,8 @@ var EngineApp = (function() {
 
             // Wire up buttons once
             document.getElementById('prefab-close-btn').onclick = function() { closePrefabMode(); };
+            // === MODE TOGGLE ===
+            document.getElementById('prefab-mode-btn').onclick = function() { _prefabToggleEditMode(); };
             document.getElementById('prefab-autocam-btn').onclick = function() {
                 _prefabState.autocam = !_prefabState.autocam;
                 this.style.color = _prefabState.autocam ? '#22c55e' : '#71717a';
@@ -16682,30 +16692,30 @@ var EngineApp = (function() {
             document.getElementById('prefab-gizmo-e').onclick = function() { _prefabSetGizmoMode('rotate'); };
             document.getElementById('prefab-gizmo-r').onclick = function() { _prefabSetGizmoMode('scale'); };
             // Timeline buttons
-            document.getElementById('prefab-tl-toggle').onclick = function() {
-                var p = document.getElementById('prefab-tl-panel');
-                if (!p) return;
-                var vis = p.style.display === 'none';
-                p.style.display = vis ? 'block' : 'none';
-                this.innerHTML = vis ? '<i class="fas fa-chevron-down"></i>' : '<i class="fas fa-chevron-up"></i>';
-                _prefabTimeline.active = vis;
-                if (vis) _prefabTlRefreshTracks();
-            };
             document.getElementById('prefab-tl-addkey').onclick = function() { _prefabTlAddKeyframe(); };
             document.getElementById('prefab-tl-play').onclick = function() { _prefabTlPlay(); };
             document.getElementById('prefab-tl-stop').onclick = function() { _prefabTlStop(); };
+            document.getElementById('prefab-tl-deletekey').onclick = function() { _prefabTlDeleteKeyframe(); };
             document.getElementById('prefab-tl-save').onclick = function() { _prefabTlSaveToRig(); };
+            _prefabTimeline.active = true; // Always open now
             document.getElementById('prefab-tl-time').oninput = function() {
                 _prefabTimeline.time = parseFloat(this.value) || 0;
                 document.getElementById('prefab-tl-time-label').textContent = _prefabTimeline.time.toFixed(2) + 's';
                 _prefabTlApplyPose(_prefabTimeline.time);
+                _prefabTlDrawDopesheet();
             };
             document.getElementById('prefab-tl-dur').onchange = function() {
                 var v = parseFloat(this.value) || 2;
                 if (v < 0.1) v = 0.1;
                 _prefabTimeline.duration = v;
                 document.getElementById('prefab-tl-time').max = v;
+                _prefabTlDrawDopesheet();
             };
+            // Dopesheet canvas click
+            var tlCvs = document.getElementById('prefab-tl-canvas');
+            if (tlCvs) tlCvs.addEventListener('click', _prefabTlCanvasClick);
+            // Initial dopesheet draw
+            setTimeout(function() { _prefabTlRefreshTracks(); _prefabTlDrawDopesheet(); }, 100);
             document.getElementById('prefab-play-btn').onclick = function() {
                 if (_prefabState.currentClip) _prefabPlayClip(_prefabState.currentClip);
                 else if (_prefabState.clips && _prefabState.clips.length > 0) _prefabPlayClip(_prefabState.clips[0].name);
@@ -16713,23 +16723,40 @@ var EngineApp = (function() {
             document.getElementById('prefab-stop-btn').onclick = function() { _prefabStopAnim(); };
 
             // Canvas mouse handlers
-            // LEFT click = bone picking + gizmo (no orbit)
-            // RIGHT/ MIDDLE click = orbit camera (no bone picking, no gizmo)
+            // LEFT click behaviour depends on _prefabEditMode:
+            //   'skeleton' → bone picking + gizmo (no orbit)
+            //   'scene'    → orbit camera
+            // RIGHT/ MIDDLE click → always orbit camera
             var canvas = document.getElementById('prefab-canvas');
             canvas.style.cursor = 'grab';
             canvas.addEventListener('pointerdown', function(e) {
-                // Only right-click or middle-click start orbit — left is for gizmo/bones
-                if (e.button !== 2 && e.button !== 1) return;
-                // Don't start orbit if gizmo is being dragged
-                if (_prefabGizmoDragging) return;
-                _prefabState._orbitBtn = e.button;
-                _prefabState.dragging = true;
-                _prefabState.lastX = e.clientX;
-                _prefabState.lastY = e.clientY;
-                _prefabState.autocam = false;
-                document.getElementById('prefab-autocam-btn').style.color = '#71717a';
-                document.getElementById('prefab-autocam-btn').style.borderColor = '#2a2a3e';
-                canvas.style.cursor = 'grabbing';
+                // Right or middle click → always orbit
+                if (e.button === 2 || e.button === 1) {
+                    if (_prefabGizmoDragging) return;
+                    _prefabState.dragging = true;
+                    _prefabState.lastX = e.clientX;
+                    _prefabState.lastY = e.clientY;
+                    _prefabState.autocam = false;
+                    document.getElementById('prefab-autocam-btn').style.color = '#71717a';
+                    document.getElementById('prefab-autocam-btn').style.borderColor = '#2a2a3e';
+                    canvas.style.cursor = 'grabbing';
+                    e.preventDefault();
+                    return;
+                }
+                // Left click in scene mode → orbit
+                if (e.button === 0 && _prefabEditMode === 'scene') {
+                    if (_prefabGizmoDragging) return;
+                    _prefabState.dragging = true;
+                    _prefabState.lastX = e.clientX;
+                    _prefabState.lastY = e.clientY;
+                    _prefabState.autocam = false;
+                    document.getElementById('prefab-autocam-btn').style.color = '#71717a';
+                    document.getElementById('prefab-autocam-btn').style.borderColor = '#2a2a3e';
+                    canvas.style.cursor = 'grabbing';
+                    e.preventDefault();
+                    return;
+                }
+                // Left click in skeleton mode → do nothing (gizmo/bones handle it)
                 e.preventDefault();
             });
             // Prevent context menu on right-click inside prefab canvas
@@ -16811,6 +16838,8 @@ var EngineApp = (function() {
         var _prefabBoneRaycaster = new THREE.Raycaster();
         var _prefabPointer = new THREE.Vector2();
         canvasEl.addEventListener('click', function(e) {
+            // Don't pick bones in scene mode
+            if (_prefabEditMode !== 'skeleton') return;
             // Don't pick bones if we were orbiting or dragging the gizmo
             if (_prefabGizmoDragging || _prefabState.dragging) return;
             // Don't pick if TransformControls axis is active (user clicked a gizmo handle)
@@ -17129,13 +17158,17 @@ var EngineApp = (function() {
     function _prefabOnKey(e) {
         if (!_prefabState.open) return;
         if (e.key === 'Escape') { closePrefabMode(); return; }
-        // W/E/R gizmo mode switching (only when not in input)
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (e.key === 'w' || e.key === 'W') { _prefabSetGizmoMode('translate'); e.preventDefault(); }
-        else if (e.key === 'e' || e.key === 'E') { _prefabSetGizmoMode('rotate'); e.preventDefault(); }
-        else if (e.key === 'r' || e.key === 'R') { _prefabSetGizmoMode('scale'); e.preventDefault(); }
-        else if (e.key === 'k' || e.key === 'K') { _prefabTlAddKeyframe(); e.preventDefault(); }
+        if (e.key === 'Tab') { _prefabToggleEditMode(); e.preventDefault(); return; }
+        // W/E/R only in skeleton mode
+        if (_prefabEditMode === 'skeleton') {
+            if (e.key === 'w' || e.key === 'W') { _prefabSetGizmoMode('translate'); e.preventDefault(); }
+            else if (e.key === 'e' || e.key === 'E') { _prefabSetGizmoMode('rotate'); e.preventDefault(); }
+            else if (e.key === 'r' || e.key === 'R') { _prefabSetGizmoMode('scale'); e.preventDefault(); }
+        }
+        if (e.key === 'k' || e.key === 'K') { _prefabTlAddKeyframe(); e.preventDefault(); }
         else if (e.key === ' ') { e.preventDefault(); if (_prefabTimeline.playing) _prefabTlStop(); else _prefabTlPlay(); }
+        else if (e.key === 'Delete' || e.key === 'Backspace') { _prefabTlDeleteKeyframe(); e.preventDefault(); }
     }
 
     function _prefabResize() {
@@ -17187,6 +17220,7 @@ var EngineApp = (function() {
                 if (tlSlider) tlSlider.value = _prefabTimeline.time;
                 if (tlLabel) tlLabel.textContent = _prefabTimeline.time.toFixed(2) + 's';
                 _prefabTlApplyPose(_prefabTimeline.time);
+                _prefabTlDrawDopesheet();
             }
             // Resize check
             var canvas = document.getElementById('prefab-canvas');
@@ -17301,6 +17335,46 @@ var EngineApp = (function() {
             inputs[6].value = b.scale.x.toFixed(3);
             inputs[7].value = b.scale.y.toFixed(3);
             inputs[8].value = b.scale.z.toFixed(3);
+        }
+    }
+
+    // === PREFAB EDIT MODE TOGGLE ===
+    function _prefabToggleEditMode() {
+        if (_prefabEditMode === 'skeleton') {
+            _prefabEditMode = 'scene';
+            // Hide gizmo in scene mode
+            if (_prefabTransformCtrl) try { _prefabTransformCtrl.detach(); } catch(e) {}
+            // Disable bone click picking
+            var hint = document.getElementById('prefab-hint');
+            if (hint) hint.textContent = 'ЛКМ — вращать камеру · ПКМ — вращать камеру · колёсико — зум · Esc — выйти';
+        } else {
+            _prefabEditMode = 'skeleton';
+            // Re-attach gizmo to selected bone
+            if (_prefabSelectedBone && _prefabTransformCtrl) {
+                try { _prefabTransformCtrl.attach(_prefabSelectedBone); } catch(e) {}
+            }
+            var hint2 = document.getElementById('prefab-hint');
+            if (hint2) hint2.textContent = 'ЛКМ — кости/гизмо · ПКМ — камера · колёсико — зум · Esc — выйти';
+        }
+        // Update button visuals
+        var btn = document.getElementById('prefab-mode-btn');
+        var icon = document.getElementById('prefab-mode-icon');
+        var label = document.getElementById('prefab-mode-label');
+        if (_prefabEditMode === 'skeleton') {
+            if (btn) { btn.style.background = 'rgba(245,158,11,0.15)'; btn.style.borderColor = '#f59e0b'; btn.style.color = '#f59e0b'; }
+            if (icon) icon.className = 'fas fa-bone';
+            if (label) label.textContent = 'Скелет';
+        } else {
+            if (btn) { btn.style.background = 'rgba(59,130,246,0.15)'; btn.style.borderColor = '#3b82f6'; btn.style.color = '#3b82f6'; }
+            if (icon) icon.className = 'fas fa-video';
+            if (label) label.textContent = 'Сцена';
+        }
+        // Update gizmo button visibility
+        var gizmoBtns = ['prefab-gizmo-t','prefab-gizmo-e','prefab-gizmo-r','prefab-bones-btn'];
+        var gizmoVis = _prefabEditMode === 'skeleton';
+        for (var gi = 0; gi < gizmoBtns.length; gi++) {
+            var gb = document.getElementById(gizmoBtns[gi]);
+            if (gb) gb.style.display = gizmoVis ? '' : 'none';
         }
     }
 
@@ -17419,11 +17493,35 @@ var EngineApp = (function() {
         _prefabTlApplyPose(0);
     }
 
+    function _prefabTlDeleteKeyframe() {
+        if (!_prefabSelectedBone) { _consoleLog('warn', 'Timeline: Выберите кость'); return; }
+        var bName = _prefabSelectedBone.name;
+        var t = _prefabTimeline.time;
+        var kfs = _prefabTimeline.keyframes[bName];
+        if (!kfs) return;
+        for (var ki = 0; ki < kfs.length; ki++) {
+            if (Math.abs(kfs[ki].time - t) < 0.02) {
+                kfs.splice(ki, 1);
+                if (kfs.length === 0) {
+                    delete _prefabTimeline.keyframes[bName];
+                    var idx = _prefabTimeline.tracks.indexOf(bName);
+                    if (idx !== -1) _prefabTimeline.tracks.splice(idx, 1);
+                }
+                _prefabTlRefreshTracks();
+                _prefabTlDrawDopesheet();
+                _consoleLog('info', 'Timeline: Ключевой кадр удалён [' + bName + '] @ ' + t.toFixed(2) + 's');
+                return;
+            }
+        }
+        _consoleLog('warn', 'Timeline: Нет ключевого кадра на ' + t.toFixed(2) + 's для ' + bName);
+    }
+
     function _prefabTlRefreshTracks() {
         var container = document.getElementById('prefab-tl-tracks');
         if (!container) return;
         if (_prefabTimeline.tracks.length === 0) {
-            container.innerHTML = '<div style="font-size:0.6rem;color:#52525b;padding:6px;text-align:center;">Нет треков. Выберите кость и нажмите <b>Key</b></div>';
+            container.innerHTML = '<div style="font-size:0.6rem;color:#52525b;padding:6px;text-align:center;">Нет треков.<br>Кость + <b>K</b> = ключ.кадр</div>';
+            _prefabTlDrawDopesheet();
             return;
         }
         var thtml = '';
@@ -17431,19 +17529,113 @@ var EngineApp = (function() {
             var bName = _prefabTimeline.tracks[ti];
             var kfs = _prefabTimeline.keyframes[bName] || [];
             var isSel = (_prefabSelectedBone && _prefabSelectedBone.name === bName);
-            thtml += '<div style="display:flex;align-items:center;gap:4px;padding:3px 6px;font-size:0.6rem;color:' + (isSel ? '#f59e0b' : '#a1a1aa') + ';cursor:pointer;border-radius:3px;' + (isSel ? 'background:rgba(245,158,11,0.1);' : '') + '" onclick="EngineApp._prefabSelectBone(\'' + bName + '\')">';
+            thtml += '<div style="display:flex;align-items:center;gap:4px;padding:3px 6px;font-size:0.6rem;color:' + (isSel ? '#f59e0b' : '#a1a1aa') + ';cursor:pointer;border-radius:3px;' + (isSel ? 'background:rgba(245,158,11,0.1);border-left:2px solid #f59e0b;' : 'border-left:2px solid transparent;') + '" onclick="EngineApp._prefabSelectBone(\'' + bName + '\')">';
             thtml += '<i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:10px;"></i>';
             thtml += '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + bName + '</span>';
-            thtml += '<span style="font-size:0.5rem;color:#52525b;">' + kfs.length + 'kf</span>';
-            // Mini keyframe dots
-            thtml += '<div style="display:flex;gap:1px;">';
-            for (var ki = 0; ki < kfs.length; ki++) {
-                var pct = (_prefabTimeline.duration > 0) ? (kfs[ki].time / _prefabTimeline.duration * 40) : 0;
-                thtml += '<div style="width:4px;height:8px;background:#f59e0b;border-radius:1px;margin-left:' + (pct > 0 ? pct + 'px' : '0') + ';"></div>';
-            }
-            thtml += '</div></div>';
+            thtml += '<span style="font-size:0.5rem;color:#52525b;">' + kfs.length + '</span>';
+            thtml += '</div>';
         }
         container.innerHTML = thtml;
+        _prefabTlDrawDopesheet();
+    }
+
+    // === DOPESHEET CANVAS ===
+    function _prefabTlDrawDopesheet() {
+        var cvs = document.getElementById('prefab-tl-canvas');
+        if (!cvs) return;
+        var rect = cvs.parentElement.getBoundingClientRect();
+        var dpr = window.devicePixelRatio || 1;
+        cvs.width = rect.width * dpr;
+        cvs.height = rect.height * dpr;
+        var ctx = cvs.getContext('2d');
+        ctx.scale(dpr, dpr);
+        var w = rect.width, h = rect.height;
+        var dur = _prefabTimeline.duration || 2;
+        var tracks = _prefabTimeline.tracks;
+        var rowH = Math.min(24, h / Math.max(tracks.length, 1));
+        // Background
+        ctx.fillStyle = '#0a0a16';
+        ctx.fillRect(0, 0, w, h);
+        // Grid lines
+        ctx.strokeStyle = '#1a1a2e';
+        ctx.lineWidth = 1;
+        // Time grid (every 0.5s)
+        for (var g = 0; g <= dur; g += 0.5) {
+            var gx = (g / dur) * w;
+            ctx.beginPath();
+            ctx.moveTo(gx, 0);
+            ctx.lineTo(gx, h);
+            ctx.stroke();
+            if (g === Math.floor(g)) {
+                ctx.fillStyle = '#3f3f5a';
+                ctx.font = '9px JetBrains Mono, monospace';
+                ctx.fillText(g + 's', gx + 3, h - 3);
+            }
+        }
+        // Row dividers
+        for (var ri = 1; ri < tracks.length; ri++) {
+            ctx.strokeStyle = '#1e1e30';
+            ctx.beginPath();
+            ctx.moveTo(0, ri * rowH);
+            ctx.lineTo(w, ri * rowH);
+            ctx.stroke();
+        }
+        // Keyframe diamonds
+        for (var ti = 0; ti < tracks.length; ti++) {
+            var bName = tracks[ti];
+            var kfs = _prefabTimeline.keyframes[bName] || [];
+            var cy = ti * rowH + rowH / 2;
+            var isSel = (_prefabSelectedBone && _prefabSelectedBone.name === bName);
+            for (var ki = 0; ki < kfs.length; ki++) {
+                var kx = (kfs[ki].time / dur) * w;
+                ctx.fillStyle = isSel ? '#f59e0b' : '#6b6b8a';
+                ctx.beginPath();
+                ctx.moveTo(kx, cy - 5);
+                ctx.lineTo(kx + 4, cy);
+                ctx.lineTo(kx, cy + 5);
+                ctx.lineTo(kx - 4, cy);
+                ctx.closePath();
+                ctx.fill();
+                if (isSel) {
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+        }
+        // Playhead
+        var phX = (_prefabTimeline.time / dur) * w;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(phX, 0);
+        ctx.lineTo(phX, h);
+        ctx.stroke();
+        // Playhead triangle
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(phX - 5, 0);
+        ctx.lineTo(phX + 5, 0);
+        ctx.lineTo(phX, 7);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Dopesheet click → set time
+    function _prefabTlCanvasClick(e) {
+        var cvs = document.getElementById('prefab-tl-canvas');
+        if (!cvs) return;
+        var rect = cvs.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var dur = _prefabTimeline.duration || 2;
+        var t = Math.max(0, Math.min(dur, (x / rect.width) * dur));
+        _prefabTimeline.time = t;
+        var tlSlider = document.getElementById('prefab-tl-time');
+        var tlLabel = document.getElementById('prefab-tl-time-label');
+        if (tlSlider) tlSlider.value = t;
+        if (tlLabel) tlLabel.textContent = t.toFixed(2) + 's';
+        _prefabTlApplyPose(t);
+        _prefabTlDrawDopesheet();
     }
 
     function _prefabTlSaveToRig() {
@@ -17597,6 +17789,7 @@ var EngineApp = (function() {
             _prefabTransformCtrl = null;
         }
         _prefabGizmoDragging = false;
+        _prefabEditMode = 'skeleton';
         // Stop timeline
         _prefabTlStop();
         _prefabTimeline.active = false;
@@ -18499,6 +18692,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
