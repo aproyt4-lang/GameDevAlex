@@ -1,7 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><!DOCTYPE html>
-<html lang="ru">
 <head>
    <meta charset="UTF-8">
    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15885,7 +15883,7 @@ var EngineApp = (function() {
             _inspPreviewDragLastX = e.clientX;
             _inspPreviewDragLastY = e.clientY;
             _inspPreviewCamYaw   -= dx * 0.01;
-            _inspPreviewCamPitch += dy * 0.01;
+            _inspPreviewCamPitch -= dy * 0.01;
             // Clamp pitch
             if (_inspPreviewCamPitch > 1.5) _inspPreviewCamPitch = 1.5;
             if (_inspPreviewCamPitch < -1.5) _inspPreviewCamPitch = -1.5;
@@ -16462,6 +16460,27 @@ var EngineApp = (function() {
         rafId: null
     };
 
+    // Prefab timeline UI state (mirrors _tlState from main timeline)
+    var _ptlState = {
+        time: 0,
+        playing: false,
+        duration: 2.0,
+        fps: 60,
+        totalFrames: 120,
+        pixelsPerSecond: 100,
+        headerHeight: 22,
+        trackHeight: 22,
+        selectedTrack: -1,
+        selectedKey: -1,
+        draggingKey: false,
+        dragTrack: -1,
+        dragKey: -1,
+        multiKeys: [],
+        looping: true,
+        autoKey: false,
+        lastFrameTime: 0
+    };
+
     // === CONSOLE/TERMINAL PANEL ===
     var _consoleMessages = [];
     var _consoleMaxMessages = 500;
@@ -16634,33 +16653,41 @@ var EngineApp = (function() {
                       '</div>' +
                     '</div>' +
                   '</div>' +
-                  // === TIMELINE BOTTOM BAR ===
-                  '<div id="prefab-tl-bar" style="height:180px;min-height:180px;background:#0e0e1c;border-top:1px solid #2a2a3e;display:flex;flex-direction:column;">' +
-                    '<div style="padding:5px 10px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e1e30;flex-shrink:0;">' +
+                  // === TIMELINE BOTTOM BAR (same layout as main scene timeline) ===
+                  '<div id="prefab-tl-bar" style="height:240px;min-height:200px;background:#0e0e1c;border-top:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
+                    // Header toolbar
+                    '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid #2a2a3e;flex-wrap:wrap;min-height:28px;background:#12121f;">' +
                       '<i class="fas fa-film" style="font-size:0.65rem;color:#f59e0b;"></i>' +
-                      '<span style="font-size:0.65rem;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Timeline</span>' +
+                      '<span style="font-size:0.65rem;color:#f59e0b;font-weight:600;">Timeline</span>' +
                       '<span style="width:1px;height:14px;background:#2a2a3e;"></span>' +
-                      '<button id="prefab-tl-addkey" title="Добавить ключевой кадр (K)" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-diamond"></i> Key</button>' +
-                      '<button id="prefab-tl-play" title="Воспроизвести (Space)" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-play"></i></button>' +
-                      '<button id="prefab-tl-stop" title="Стоп" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-stop"></i></button>' +
-                      '<span style="width:1px;height:14px;background:#2a2a3e;"></span>' +
-                      '<button id="prefab-tl-deletekey" title="Удалить ключевой кадр" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;cursor:pointer;padding:3px 8px;border-radius:3px;font-size:0.62rem;"><i class="fas fa-trash-alt"></i> Del</button>' +
-                      '<div style="flex:1"></div>' +
-                      '<button id="prefab-tl-save" title="Сохранить анимацию в риг" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#6366f1;cursor:pointer;padding:3px 10px;border-radius:3px;font-size:0.62rem;font-weight:600;"><i class="fas fa-save"></i> Сохранить в риг</button>' +
-                    '</div>' +
-                    '<div style="padding:4px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
-                      '<span style="font-size:0.58rem;color:#71717a;width:24px;">Time</span>' +
-                      '<input id="prefab-tl-time" type="range" min="0" max="2" step="0.01" value="0" style="flex:1;accent-color:#f59e0b;height:4px;">' +
-                      '<span id="prefab-tl-time-label" style="font-size:0.58rem;color:#a1a1aa;width:36px;text-align:right;font-family:JetBrains Mono,monospace;">0.00s</span>' +
-                      '<span style="font-size:0.58rem;color:#52525b;margin-left:8px;">Dur</span>' +
-                      '<input id="prefab-tl-dur" type="number" step="0.1" min="0.1" max="60" value="2.0" style="width:50px;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;border-radius:3px;padding:2px 4px;font-size:0.6rem;font-family:JetBrains Mono,monospace;">' +
-                      '<span style="font-size:0.58rem;color:#52525b;">s</span>' +
-                    '</div>' +
-                    '<div style="flex:1;display:flex;overflow:hidden;">' +
-                      '<div style="width:140px;overflow-y:auto;border-right:1px solid #1e1e30;padding:2px;" id="prefab-tl-tracks"></div>' +
-                      '<div style="flex:1;position:relative;overflow:hidden;" id="prefab-tl-dopesheet">' +
-                        '<canvas id="prefab-tl-canvas" style="display:block;width:100%;height:100%;cursor:pointer;"></canvas>' +
+                      '<button id="prefab-tl-autokey-btn" title="Auto Key OFF" style="padding:2px 8px;font-size:0.6rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:3px;cursor:pointer;"><i class="fas fa-key"></i> Auto</button>' +
+                      '<button id="prefab-tl-addkey" title="Key (K)" style="padding:2px 8px;font-size:0.6rem;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:3px;cursor:pointer;"><i class="fas fa-diamond"></i> Key</button>' +
+                      '<button id="prefab-tl-delkey" title="Del Key" style="padding:2px 8px;font-size:0.6rem;color:#ef4444;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);border-radius:3px;cursor:pointer;"><i class="fas fa-trash-alt"></i> Del</button>' +
+                      '<div style="display:flex;gap:3px;align-items:center;">' +
+                        '<button id="prefab-tl-play" title="Play/Pause (Space)" style="padding:2px 8px;font-size:0.65rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:3px;cursor:pointer;"><i class="fas fa-play"></i></button>' +
+                        '<button id="prefab-tl-stop" title="Stop" style="padding:2px 8px;font-size:0.65rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:3px;cursor:pointer;"><i class="fas fa-stop"></i></button>' +
+                        '<button id="prefab-tl-loop" title="Loop" style="padding:2px 8px;font-size:0.65rem;background:transparent;color:#22c55e;border:1px solid #22c55e;border-radius:3px;cursor:pointer;opacity:1;"><i class="fas fa-redo"></i></button>' +
                       '</div>' +
+                      '<span id="prefab-tl-time-display" style="font-size:0.62rem;color:#a1a1aa;font-family:JetBrains Mono,monospace;">F0 / 120  (0.000s)</span>' +
+                      '<div style="flex:1"></div>' +
+                      '<span style="font-size:0.58rem;color:#71717a;">F:</span>' +
+                      '<input type="number" id="prefab-tl-frames" step="1" min="1" max="1000" value="120" style="width:46px;font-size:0.6rem;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;padding:1px 3px;border-radius:3px;outline:none;">' +
+                      '<span style="font-size:0.58rem;color:#71717a;">FPS:</span>' +
+                      '<input type="number" id="prefab-tl-fps" step="1" min="1" max="250" value="60" style="width:38px;font-size:0.6rem;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;padding:1px 3px;border-radius:3px;outline:none;">' +
+                      '<button id="prefab-tl-save" title="Save to Rig" style="padding:2px 10px;font-size:0.6rem;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#6366f1;border-radius:3px;cursor:pointer;font-weight:600;"><i class="fas fa-save"></i> Save</button>' +
+                    '</div>' +
+                    // Tracks + Canvas area
+                    '<div style="display:flex;flex:1;min-height:0;">' +
+                      '<div id="prefab-tl-track-labels" style="width:130px;min-width:130px;overflow-y:auto;background:#12121f;border-right:1px solid #2a2a3e;padding:2px 0;"></div>' +
+                      '<div id="prefab-tl-canvas-wrap" style="flex:1;position:relative;overflow:auto;cursor:default;">' +
+                        '<canvas id="prefab-tl-canvas" style="display:block;"></canvas>' +
+                      '</div>' +
+                    '</div>' +
+                    // Bottom bar
+                    '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;border-top:1px solid #2a2a3e;min-height:22px;background:#12121f;">' +
+                      '<span style="font-size:0.55rem;color:#52525b;">Dbl-click = add key | Scroll = zoom</span>' +
+                      '<div style="flex:1"></div>' +
+                      '<span id="prefab-tl-cursor-info" style="font-size:0.6rem;color:#71717a;font-family:JetBrains Mono,monospace;"></span>' +
                     '</div>' +
                   '</div>' +
                 '</div>';
@@ -16692,30 +16719,50 @@ var EngineApp = (function() {
             document.getElementById('prefab-gizmo-e').onclick = function() { _prefabSetGizmoMode('rotate'); };
             document.getElementById('prefab-gizmo-r').onclick = function() { _prefabSetGizmoMode('scale'); };
             // Timeline buttons
-            document.getElementById('prefab-tl-addkey').onclick = function() { _prefabTlAddKeyframe(); };
+            document.getElementById('prefab-tl-addkey').onclick = function() { _prefabTlAddKeyframe(); _ptlRefresh(); };
             document.getElementById('prefab-tl-play').onclick = function() { _prefabTlPlay(); };
             document.getElementById('prefab-tl-stop').onclick = function() { _prefabTlStop(); };
-            document.getElementById('prefab-tl-deletekey').onclick = function() { _prefabTlDeleteKeyframe(); };
+            document.getElementById('prefab-tl-delkey').onclick = function() { _prefabTlDeleteKeyframe(); _ptlRefresh(); };
             document.getElementById('prefab-tl-save').onclick = function() { _prefabTlSaveToRig(); };
-            _prefabTimeline.active = true; // Always open now
-            document.getElementById('prefab-tl-time').oninput = function() {
-                _prefabTimeline.time = parseFloat(this.value) || 0;
-                document.getElementById('prefab-tl-time-label').textContent = _prefabTimeline.time.toFixed(2) + 's';
-                _prefabTlApplyPose(_prefabTimeline.time);
-                _prefabTlDrawDopesheet();
+            document.getElementById('prefab-tl-loop').onclick = function() {
+                _ptlState.looping = !_ptlState.looping;
+                this.style.opacity = _ptlState.looping ? '1' : '0.4';
+                this.style.color = _ptlState.looping ? '#22c55e' : '#71717a';
+                this.style.borderColor = _ptlState.looping ? '#22c55e' : '#374151';
             };
-            document.getElementById('prefab-tl-dur').onchange = function() {
-                var v = parseFloat(this.value) || 2;
-                if (v < 0.1) v = 0.1;
-                _prefabTimeline.duration = v;
-                document.getElementById('prefab-tl-time').max = v;
-                _prefabTlDrawDopesheet();
+            document.getElementById('prefab-tl-autokey-btn').onclick = function() {
+                _ptlState.autoKey = !_ptlState.autoKey;
+                this.style.background = _ptlState.autoKey ? '#ef4444' : 'transparent';
+                this.style.color = _ptlState.autoKey ? '#fff' : '#a1a1aa';
+                this.style.borderColor = _ptlState.autoKey ? '#ef4444' : '#374151';
             };
-            // Dopesheet canvas click
-            var tlCvs = document.getElementById('prefab-tl-canvas');
-            if (tlCvs) tlCvs.addEventListener('click', _prefabTlCanvasClick);
-            // Initial dopesheet draw
-            setTimeout(function() { _prefabTlRefreshTracks(); _prefabTlDrawDopesheet(); }, 100);
+            // FPS / Frames inputs
+            document.getElementById('prefab-tl-fps').onchange = function() {
+                _ptlState.fps = Math.max(1, parseInt(this.value) || 60);
+                _ptlState.totalFrames = Math.max(1, Math.min(1000, parseInt(document.getElementById('prefab-tl-frames').value) || 120));
+                _ptlState.duration = _ptlState.totalFrames / _ptlState.fps;
+                _prefabTimeline.duration = _ptlState.duration;
+                _ptlRefresh();
+            };
+            document.getElementById('prefab-tl-frames').onchange = function() {
+                _ptlState.fps = Math.max(1, parseInt(document.getElementById('prefab-tl-fps').value) || 60);
+                _ptlState.totalFrames = Math.max(1, Math.min(1000, parseInt(this.value) || 120));
+                _ptlState.duration = _ptlState.totalFrames / _ptlState.fps;
+                _prefabTimeline.duration = _ptlState.duration;
+                _ptlRefresh();
+            };
+            // Canvas events
+            var ptlCvs = document.getElementById('prefab-tl-canvas');
+            if (ptlCvs) {
+                ptlCvs.addEventListener('mousedown', _ptlCanvasMouseDown);
+                ptlCvs.addEventListener('mousemove', _ptlCanvasMouseMove);
+                ptlCvs.addEventListener('mouseup', _ptlCanvasMouseUp);
+                ptlCvs.addEventListener('dblclick', _ptlCanvasDblClick);
+                ptlCvs.addEventListener('wheel', _ptlCanvasWheel, { passive: false });
+            }
+            _prefabTimeline.active = true;
+            // Initial refresh
+            setTimeout(function() { _ptlRefresh(); }, 100);
             document.getElementById('prefab-play-btn').onclick = function() {
                 if (_prefabState.currentClip) _prefabPlayClip(_prefabState.currentClip);
                 else if (_prefabState.clips && _prefabState.clips.length > 0) _prefabPlayClip(_prefabState.clips[0].name);
@@ -17131,7 +17178,7 @@ var EngineApp = (function() {
         _prefabState.lastX = e.clientX;
         _prefabState.lastY = e.clientY;
         _prefabState.yaw -= dx * 0.01;
-        _prefabState.pitch += dy * 0.01;
+        _prefabState.pitch -= dy * 0.01;
         if (_prefabState.pitch > 1.5) _prefabState.pitch = 1.5;
         if (_prefabState.pitch < -1.5) _prefabState.pitch = -1.5;
         _prefabApplyCamOrbit();
@@ -17212,15 +17259,22 @@ var EngineApp = (function() {
                 var tdt = _prefabTimeline.clock.getDelta();
                 if (tdt > 0.1) tdt = 0.016;
                 _prefabTimeline.time += tdt;
+                _ptlState.time = _prefabTimeline.time;
                 if (_prefabTimeline.time >= _prefabTimeline.duration) {
-                    _prefabTimeline.time = 0;
+                    if (_ptlState.looping) {
+                        _prefabTimeline.time = _prefabTimeline.time % _prefabTimeline.duration;
+                        _ptlState.time = _prefabTimeline.time;
+                    } else {
+                        _prefabTimeline.time = _prefabTimeline.duration;
+                        _ptlState.time = _prefabTimeline.time;
+                        _prefabTimeline.playing = false;
+                        _ptlState.playing = false;
+                        _ptlUpdatePlayButton();
+                    }
                 }
-                var tlSlider = document.getElementById('prefab-tl-time');
-                var tlLabel = document.getElementById('prefab-tl-time-label');
-                if (tlSlider) tlSlider.value = _prefabTimeline.time;
-                if (tlLabel) tlLabel.textContent = _prefabTimeline.time.toFixed(2) + 's';
                 _prefabTlApplyPose(_prefabTimeline.time);
-                _prefabTlDrawDopesheet();
+                _ptlRenderCanvas();
+                _ptlUpdateTimeDisplay();
             }
             // Resize check
             var canvas = document.getElementById('prefab-canvas');
@@ -17378,44 +17432,450 @@ var EngineApp = (function() {
         }
     }
 
-    // === PREFAB ANIMATION TIMELINE FUNCTIONS ===
+    // ===== PREFAB TIMELINE FUNCTIONS (same look/feel as main scene timeline) =====
+
+    function _ptlTimeToFrame(t) { return Math.round(t * _ptlState.fps); }
+    function _ptlFrameToTime(f) { return f / _ptlState.fps; }
+    function _ptlSnapToFrame(t) { return Math.round(t * _ptlState.fps) / _ptlState.fps; }
+
+    function _ptlUpdateTimeDisplay() {
+        var el = document.getElementById('prefab-tl-time-display');
+        if (el) {
+            var curFrame = _ptlTimeToFrame(_ptlState.time);
+            el.textContent = 'F' + curFrame + ' / ' + _ptlState.totalFrames + '  (' + _ptlState.time.toFixed(3) + 's)';
+        }
+    }
+
+    function _ptlUpdatePlayButton() {
+        var btn = document.getElementById('prefab-tl-play');
+        if (!btn) return;
+        if (_ptlState.playing) {
+            btn.innerHTML = '<i class="fas fa-pause"></i>';
+            btn.style.color = '#22c55e';
+            btn.style.borderColor = '#22c55e';
+        } else {
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+            btn.style.color = '#a1a1aa';
+            btn.style.borderColor = '#374151';
+        }
+    }
+
+    function _ptlRefresh() {
+        // Sync state from inputs
+        var fpsEl = document.getElementById('prefab-tl-fps');
+        if (fpsEl) _ptlState.fps = Math.max(1, parseInt(fpsEl.value) || 60);
+        var framesEl = document.getElementById('prefab-tl-frames');
+        if (framesEl) _ptlState.totalFrames = Math.max(1, Math.min(1000, parseInt(framesEl.value) || 120));
+        _ptlState.duration = _ptlState.totalFrames / _ptlState.fps;
+        _prefabTimeline.duration = _ptlState.duration;
+        _ptlState.time = _prefabTimeline.time;
+        _ptlRenderTrackLabels();
+        _ptlRenderCanvas();
+        _ptlUpdateTimeDisplay();
+    }
+
+    function _ptlRenderTrackLabels() {
+        var container = document.getElementById('prefab-tl-track-labels');
+        if (!container) return;
+        var tracks = _prefabTimeline.tracks;
+        var html = '';
+        if (tracks.length === 0) {
+            html = '<div style="font-size:0.58rem;color:#52525b;padding:8px 6px;text-align:center;line-height:1.5;">No tracks<br><span style="color:#3f3f5a;">Bone + K = key</span></div>';
+            container.innerHTML = html;
+            _ptlRenderCanvas();
+            return;
+        }
+        for (var i = 0; i < tracks.length; i++) {
+            var bName = tracks[i];
+            var kfs = _prefabTimeline.keyframes[bName] || [];
+            var isSel = (_ptlState.selectedTrack === i);
+            html += '<div style="display:flex;align-items:center;padding:3px 4px 3px 6px;font-size:0.6rem;cursor:pointer;border-bottom:1px solid #1e1e30;background:' + (isSel ? 'rgba(99,102,241,0.15)' : 'transparent') + ';color:' + (isSel ? '#fff' : '#a1a1aa') + ';border-left:2px solid ' + (isSel ? '#6366f1' : 'transparent') + ';transition:background 0.1s;" onclick="EngineApp._ptlSelectTrack(' + i + ')" onmouseover="this.style.background=\'' + (isSel ? 'rgba(99,102,241,0.25)' : '#1a1a2e') + '\'" onmouseout="this.style.background=\'' + (isSel ? 'rgba(99,102,241,0.15)' : 'transparent') + '\'">';
+            html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-bone" style="color:#f59e0b;margin-right:3px;font-size:0.5rem;"></i>' + bName + '</span>';
+            html += ' <span style="color:#52525b;font-size:0.5rem;flex-shrink:0;">(' + kfs.length + ')</span>';
+            html += '<button onclick="event.stopPropagation();EngineApp._ptlDeleteTrack(' + i + ')" style="width:14px;height:14px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:#52525b;cursor:pointer;font-size:0.45rem;border-radius:2px;flex-shrink:0;margin-left:2px;" onmouseover="this.style.color=\'#ef4444\';this.style.background=\'rgba(239,68,68,0.15)\'" onmouseout="this.style.color=\'#52525b\';this.style.background=\'none\'" title="Delete track"><i class="fas fa-times"></i></button>';
+            html += '</div>';
+        }
+        container.innerHTML = html;
+    }
+
+    function _ptlSelectTrack(idx) {
+        _ptlState.selectedTrack = idx;
+        _ptlState.selectedKey = -1;
+        _ptlState.multiKeys = [];
+        // Select the bone in 3D view too
+        if (idx >= 0 && idx < _prefabTimeline.tracks.length) {
+            var bName = _prefabTimeline.tracks[idx];
+            _prefabSelectBone(bName);
+        }
+        _ptlRefresh();
+    }
+
+    function _ptlDeleteTrack(idx) {
+        if (idx < 0 || idx >= _prefabTimeline.tracks.length) return;
+        var bName = _prefabTimeline.tracks[idx];
+        delete _prefabTimeline.keyframes[bName];
+        _prefabTimeline.tracks.splice(idx, 1);
+        if (_ptlState.selectedTrack >= _prefabTimeline.tracks.length) _ptlState.selectedTrack = _prefabTimeline.tracks.length - 1;
+        _ptlState.selectedKey = -1;
+        _ptlRefresh();
+    }
+
+    function _ptlRenderCanvas() {
+        var canvas = document.getElementById('prefab-tl-canvas');
+        var wrap = document.getElementById('prefab-tl-canvas-wrap');
+        if (!canvas || !wrap) return;
+        var tracks = _prefabTimeline.tracks;
+        var trackCount = tracks.length;
+        var totalWidth = Math.max(wrap.clientWidth, _ptlState.duration * _ptlState.pixelsPerSecond + 40);
+        var totalHeight = _ptlState.headerHeight + trackCount * _ptlState.trackHeight + 10;
+        if (totalHeight < 50) totalHeight = 50;
+
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = totalWidth * dpr;
+        canvas.height = totalHeight * dpr;
+        canvas.style.width = totalWidth + 'px';
+        canvas.style.height = totalHeight + 'px';
+
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, totalWidth, totalHeight);
+
+        // Header: time ruler (frame numbers, same as main timeline)
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(0, 0, totalWidth, _ptlState.headerHeight);
+        ctx.strokeStyle = '#2e2e4a';
+        ctx.lineWidth = 1;
+
+        var frameStep = 1;
+        var pxPerFrame = _ptlState.pixelsPerSecond / _ptlState.fps;
+        if (pxPerFrame < 4) frameStep = Math.ceil(5 / pxPerFrame);
+        else if (pxPerFrame < 8) frameStep = 5;
+        else if (pxPerFrame < 3) frameStep = 10;
+        for (var f = 0; f <= _ptlState.totalFrames; f += frameStep) {
+            var x = _ptlFrameToTime(f) * _ptlState.pixelsPerSecond;
+            if (x > totalWidth + 20) break;
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, _ptlState.headerHeight); ctx.stroke();
+            ctx.fillStyle = '#a1a1aa';
+            ctx.font = '10px JetBrains Mono, monospace';
+            ctx.fillText(f + '', x + 2, _ptlState.headerHeight - 4);
+        }
+        // Sub-frame marks
+        ctx.strokeStyle = '#1e1e3a';
+        var subStep = frameStep > 1 ? frameStep : 5;
+        for (var f2 = subStep / 2; f2 <= _ptlState.totalFrames; f2 += subStep) {
+            var x2 = _ptlFrameToTime(f2) * _ptlState.pixelsPerSecond;
+            if (x2 > totalWidth + 20) break;
+            ctx.beginPath(); ctx.moveTo(x2, _ptlState.headerHeight - 6); ctx.lineTo(x2, _ptlState.headerHeight); ctx.stroke();
+        }
+
+        // Playhead (red line + triangle, same as main)
+        var phX = _ptlState.time * _ptlState.pixelsPerSecond;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(phX, 0); ctx.lineTo(phX, totalHeight); ctx.stroke();
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.moveTo(phX - 5, 0); ctx.lineTo(phX + 5, 0); ctx.lineTo(phX, 7); ctx.closePath(); ctx.fill();
+
+        // Track rows with keyframes (same style as main timeline)
+        var trackColors = ['#f59e0b', '#6366f1', '#a855f7', '#06b6d4', '#22c55e', '#ec4899', '#f97316', '#14b8a6', '#8b5cf6', '#ef4444'];
+        for (var ti = 0; ti < trackCount; ti++) {
+            var bName = tracks[ti];
+            var kfs = _prefabTimeline.keyframes[bName] || [];
+            var y = _ptlState.headerHeight + ti * _ptlState.trackHeight;
+            var isSelected = (_ptlState.selectedTrack === ti);
+
+            // Track background
+            ctx.fillStyle = isSelected ? 'rgba(99,102,241,0.08)' : '#0f0f23';
+            ctx.fillRect(0, y, totalWidth, _ptlState.trackHeight);
+            ctx.strokeStyle = isSelected ? '#6366f1' : '#1a1a2e';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, y, totalWidth, _ptlState.trackHeight);
+
+            var col = trackColors[ti % trackColors.length];
+
+            // Draw keyframe diamonds
+            for (var ki = 0; ki < kfs.length; ki++) {
+                var kf = kfs[ki];
+                var kx = kf.time * _ptlState.pixelsPerSecond;
+                var ky = y + _ptlState.trackHeight / 2;
+                var isKeySel = (isSelected && _ptlState.selectedKey === ki);
+                // Check multi-selection
+                var isMultiSel = false;
+                for (var ms = 0; ms < _ptlState.multiKeys.length; ms++) {
+                    if (_ptlState.multiKeys[ms].trackIdx === ti && _ptlState.multiKeys[ms].keyIdx === ki) {
+                        isMultiSel = true; break;
+                    }
+                }
+                // Diamond shape (same as main timeline)
+                ctx.fillStyle = (isKeySel || isMultiSel) ? '#fff' : col;
+                ctx.strokeStyle = (isKeySel || isMultiSel) ? '#f59e0b' : '#fff';
+                ctx.lineWidth = (isKeySel || isMultiSel) ? 2.5 : 1;
+                ctx.beginPath();
+                ctx.moveTo(kx, ky - 6);
+                ctx.lineTo(kx + 6, ky);
+                ctx.lineTo(kx, ky + 6);
+                ctx.lineTo(kx - 6, ky);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Value label (show px as representative value)
+                ctx.fillStyle = isKeySel ? '#fff' : '#71717a';
+                ctx.font = '9px JetBrains Mono, monospace';
+                ctx.fillText(kf.px.toFixed(2), kx + 8, ky + 3);
+            }
+
+            // Interpolation lines (using px for visual, same style as main)
+            if (kfs.length > 1) {
+                ctx.strokeStyle = col;
+                ctx.lineWidth = 1.5;
+                ctx.globalAlpha = 0.4;
+                ctx.beginPath();
+                var minV = Infinity, maxV = -Infinity;
+                for (var vi = 0; vi < kfs.length; vi++) {
+                    if (kfs[vi].px < minV) minV = kfs[vi].px;
+                    if (kfs[vi].px > maxV) maxV = kfs[vi].px;
+                }
+                var range = maxV - minV;
+                if (range < 0.001) range = 1;
+                for (var li = 0; li < kfs.length; li++) {
+                    var lkf = kfs[li];
+                    var lx = lkf.time * _ptlState.pixelsPerSecond;
+                    var ly = y + _ptlState.trackHeight - 4 - ((lkf.px - minV) / range) * (_ptlState.trackHeight - 8);
+                    if (li === 0) ctx.moveTo(lx, ly);
+                    else ctx.lineTo(lx, ly);
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+    }
+
+    // Canvas mouse events (same interactions as main timeline)
+    function _ptlCanvasMouseDown(e) {
+        var canvas = document.getElementById('prefab-tl-canvas');
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left + canvas.parentElement.scrollLeft;
+        var my = e.clientY - rect.top + canvas.parentElement.scrollTop;
+        var tracks = _prefabTimeline.tracks;
+
+        // Stop playing when clicking
+        if (_prefabTimeline.playing) {
+            _prefabTimeline.playing = false;
+            _ptlState.playing = false;
+            _ptlUpdatePlayButton();
+        }
+
+        // Click in header (seek / scrub)
+        if (my < _ptlState.headerHeight) {
+            var rawTime = Math.max(0, Math.min(mx / _ptlState.pixelsPerSecond, _ptlState.duration));
+            _ptlState.time = _ptlSnapToFrame(rawTime);
+            _prefabTimeline.time = _ptlState.time;
+            _ptlState.multiKeys = [];
+            _prefabTlApplyPose(_ptlState.time);
+            _ptlRenderCanvas();
+            _ptlUpdateTimeDisplay();
+            return;
+        }
+
+        // Check keyframe hit (diamond detection)
+        for (var ti = 0; ti < tracks.length; ti++) {
+            var bName = tracks[ti];
+            var kfs = _prefabTimeline.keyframes[bName] || [];
+            var y = _ptlState.headerHeight + ti * _ptlState.trackHeight;
+            for (var ki = 0; ki < kfs.length; ki++) {
+                var kf = kfs[ki];
+                var kx = kf.time * _ptlState.pixelsPerSecond;
+                var ky = y + _ptlState.trackHeight / 2;
+                if (Math.abs(mx - kx) < 8 && Math.abs(my - ky) < 8) {
+                    _ptlState.selectedTrack = ti;
+                    _ptlState.selectedKey = ki;
+                    _ptlState.draggingKey = true;
+                    _ptlState.dragTrack = ti;
+                    _ptlState.dragKey = ki;
+                    _ptlState.time = kf.time;
+                    _prefabTimeline.time = kf.time;
+                    // Multi-select: all keys at same time across all tracks
+                    _ptlState.multiKeys = [];
+                    var hitTime = kf.time;
+                    for (var mt = 0; mt < tracks.length; mt++) {
+                        var mkfs = _prefabTimeline.keyframes[tracks[mt]] || [];
+                        for (var mk = 0; mk < mkfs.length; mk++) {
+                            if (Math.abs(mkfs[mk].time - hitTime) < 0.001) {
+                                _ptlState.multiKeys.push({trackIdx: mt, keyIdx: mk});
+                            }
+                        }
+                    }
+                    // Select bone in 3D
+                    _prefabSelectBone(bName);
+                    _prefabTlApplyPose(_ptlState.time);
+                    _ptlRenderTrackLabels();
+                    _ptlRenderCanvas();
+                    _ptlUpdateTimeDisplay();
+                    return;
+                }
+            }
+            // Click on track row
+            if (my >= y && my < y + _ptlState.trackHeight) {
+                _ptlState.selectedTrack = ti;
+                _ptlState.selectedKey = -1;
+                _ptlState.multiKeys = [];
+                var clickTime = _ptlSnapToFrame(Math.max(0, Math.min(mx / _ptlState.pixelsPerSecond, _ptlState.duration)));
+                _ptlState.time = clickTime;
+                _prefabTimeline.time = clickTime;
+                _prefabSelectBone(bName);
+                _prefabTlApplyPose(_ptlState.time);
+                _ptlRenderTrackLabels();
+                _ptlRenderCanvas();
+                _ptlUpdateTimeDisplay();
+                return;
+            }
+        }
+    }
+
+    function _ptlCanvasMouseMove(e) {
+        if (!_ptlState.draggingKey) return;
+        var canvas = document.getElementById('prefab-tl-canvas');
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left + canvas.parentElement.scrollLeft;
+        var tracks = _prefabTimeline.tracks;
+        var bName = tracks[_ptlState.dragTrack];
+        if (!bName) return;
+        var kfs = _prefabTimeline.keyframes[bName];
+        if (!kfs || !kfs[_ptlState.dragKey]) return;
+
+        var newTime = _ptlSnapToFrame(Math.max(0, Math.min(mx / _ptlState.pixelsPerSecond, _ptlState.duration)));
+        var oldTime = kfs[_ptlState.dragKey].time;
+        var dt = newTime - oldTime;
+        if (Math.abs(dt) < 0.0001) return;
+
+        // Move ALL multi-selected keys
+        if (_ptlState.multiKeys.length > 1) {
+            for (var mi = 0; mi < _ptlState.multiKeys.length; mi++) {
+                var mk = _ptlState.multiKeys[mi];
+                var mBName = tracks[mk.trackIdx];
+                var mKfs = _prefabTimeline.keyframes[mBName];
+                if (mKfs && mKfs[mk.keyIdx]) {
+                    mKfs[mk.keyIdx].time += dt;
+                    mKfs.sort(function(a, b) { return a.time - b.time; });
+                }
+            }
+        } else {
+            kfs[_ptlState.dragKey].time = newTime;
+            kfs.sort(function(a, b) { return a.time - b.time; });
+        }
+
+        _ptlState.time = newTime;
+        _prefabTimeline.time = newTime;
+        _ptlRenderCanvas();
+        _ptlUpdateTimeDisplay();
+        var info = document.getElementById('prefab-tl-cursor-info');
+        if (info) info.textContent = 'F' + _ptlTimeToFrame(newTime);
+    }
+
+    function _ptlCanvasMouseUp(e) {
+        _ptlState.draggingKey = false;
+        var info = document.getElementById('prefab-tl-cursor-info');
+        if (info) info.textContent = '';
+    }
+
+    function _ptlCanvasDblClick(e) {
+        var canvas = document.getElementById('prefab-tl-canvas');
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left + canvas.parentElement.scrollLeft;
+        var my = e.clientY - rect.top + canvas.parentElement.scrollTop;
+        var tracks = _prefabTimeline.tracks;
+        if (my < _ptlState.headerHeight) return;
+        // Find track row
+        for (var ti = 0; ti < tracks.length; ti++) {
+            var y = _ptlState.headerHeight + ti * _ptlState.trackHeight;
+            if (my >= y && my < y + _ptlState.trackHeight) {
+                var time = _ptlSnapToFrame(Math.max(0, Math.min(mx / _ptlState.pixelsPerSecond, _ptlState.duration)));
+                var bName = tracks[ti];
+                // Find bone
+                var bone = null;
+                if (_prefabState.model) {
+                    _prefabState.model.traverse(function(c) { if (c.isBone && c.name === bName) bone = c; });
+                }
+                if (!bone) return;
+                // Add keyframe at this time
+                if (!_prefabTimeline.keyframes[bName]) {
+                    _prefabTimeline.keyframes[bName] = [];
+                    if (_prefabTimeline.tracks.indexOf(bName) === -1) _prefabTimeline.tracks.push(bName);
+                }
+                var kfs = _prefabTimeline.keyframes[bName];
+                // Update existing or add new
+                var found = false;
+                for (var ki = 0; ki < kfs.length; ki++) {
+                    if (Math.abs(kfs[ki].time - time) < 0.001) {
+                        kfs[ki].px = bone.position.x; kfs[ki].py = bone.position.y; kfs[ki].pz = bone.position.z;
+                        kfs[ki].rx = bone.rotation.x; kfs[ki].ry = bone.rotation.y; kfs[ki].rz = bone.rotation.z;
+                        kfs[ki].sx = bone.scale.x; kfs[ki].sy = bone.scale.y; kfs[ki].sz = bone.scale.z;
+                        found = true; break;
+                    }
+                }
+                if (!found) {
+                    kfs.push({ time: time, px: bone.position.x, py: bone.position.y, pz: bone.position.z, rx: bone.rotation.x, ry: bone.rotation.y, rz: bone.rotation.z, sx: bone.scale.x, sy: bone.scale.y, sz: bone.scale.z });
+                    kfs.sort(function(a, b) { return a.time - b.time; });
+                }
+                _ptlState.selectedTrack = ti;
+                _ptlState.selectedKey = kfs.length - 1;
+                _ptlState.time = time;
+                _prefabTimeline.time = time;
+                _prefabSelectBone(bName);
+                _prefabTlApplyPose(time);
+                _ptlRefresh();
+                return;
+            }
+        }
+    }
+
+    function _ptlCanvasWheel(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var delta = e.deltaY > 0 ? -10 : 10;
+        _ptlState.pixelsPerSecond = Math.max(20, Math.min(600, _ptlState.pixelsPerSecond + delta));
+        _ptlRenderCanvas();
+    }
+
+    // ===== PREFAB TIMELINE CORE FUNCTIONS (bone-based data) =====
+
     function _prefabTlAddKeyframe() {
         if (!_prefabState.model || !_prefabSelectedBone) {
-            _consoleLog('warn', 'Timeline: Выберите кость для добавления ключевого кадра');
+            _consoleLog('warn', 'Timeline: Select a bone first (K)');
             return;
         }
         var bName = _prefabSelectedBone.name;
         var b = _prefabSelectedBone;
-        var t = _prefabTimeline.time;
+        var t = _ptlSnapToFrame(_prefabTimeline.time);
+        _prefabTimeline.time = t;
+        _ptlState.time = t;
         if (!_prefabTimeline.keyframes[bName]) {
             _prefabTimeline.keyframes[bName] = [];
             if (_prefabTimeline.tracks.indexOf(bName) === -1) {
                 _prefabTimeline.tracks.push(bName);
             }
         }
-        // Check if keyframe at this time already exists
         var kfs = _prefabTimeline.keyframes[bName];
         for (var ki = 0; ki < kfs.length; ki++) {
             if (Math.abs(kfs[ki].time - t) < 0.001) {
-                // Update existing
                 kfs[ki].px = b.position.x; kfs[ki].py = b.position.y; kfs[ki].pz = b.position.z;
                 kfs[ki].rx = b.rotation.x; kfs[ki].ry = b.rotation.y; kfs[ki].rz = b.rotation.z;
                 kfs[ki].sx = b.scale.x; kfs[ki].sy = b.scale.y; kfs[ki].sz = b.scale.z;
-                _prefabTlRefreshTracks();
-                _consoleLog('info', 'Timeline: Ключевой кадр обновлён [' + bName + '] @ ' + t.toFixed(2) + 's');
+                _ptlRefresh();
+                _consoleLog('info', 'Key updated [' + bName + '] @ F' + _ptlTimeToFrame(t));
                 return;
             }
         }
-        // Add new
-        kfs.push({
-            time: t,
-            px: b.position.x, py: b.position.y, pz: b.position.z,
-            rx: b.rotation.x, ry: b.rotation.y, rz: b.rotation.z,
-            sx: b.scale.x, sy: b.scale.y, sz: b.scale.z
-        });
+        kfs.push({ time: t, px: b.position.x, py: b.position.y, pz: b.position.z, rx: b.rotation.x, ry: b.rotation.y, rz: b.rotation.z, sx: b.scale.x, sy: b.scale.y, sz: b.scale.z });
         kfs.sort(function(a, b) { return a.time - b.time; });
-        _prefabTlRefreshTracks();
-        _consoleLog('result', 'Timeline: Ключевой кадр добавлен [' + bName + '] @ ' + t.toFixed(2) + 's');
+        _ptlState.selectedTrack = _prefabTimeline.tracks.indexOf(bName);
+        _ptlState.selectedKey = kfs.length - 1;
+        _ptlRefresh();
+        _consoleLog('result', 'Key added [' + bName + '] @ F' + _ptlTimeToFrame(t));
     }
 
     function _prefabTlApplyPose(time) {
@@ -17473,28 +17933,60 @@ var EngineApp = (function() {
     }
 
     function _prefabTlPlay() {
-        if (_prefabTimeline.playing) return;
+        if (_ptlState.playing) {
+            // Pause
+            _prefabTimeline.playing = false;
+            _ptlState.playing = false;
+            _ptlUpdatePlayButton();
+            return;
+        }
+        // Start from beginning if at end
+        if (_prefabTimeline.time >= _prefabTimeline.duration) {
+            _prefabTimeline.time = 0;
+            _ptlState.time = 0;
+        }
         _prefabTimeline.playing = true;
+        _ptlState.playing = true;
         _prefabTimeline.clock = new THREE.Clock();
-        // Stop model animation if playing
-        _prefabStopAnim();
-        _consoleLog('info', 'Timeline: Воспроизведение');
+        _prefabStopAnim(); // Stop model animation
+        _ptlUpdatePlayButton();
+        _consoleLog('info', 'Timeline: Playing');
     }
 
     function _prefabTlStop() {
         _prefabTimeline.playing = false;
+        _ptlState.playing = false;
         _prefabTimeline.clock = null;
         _prefabTimeline.time = 0;
-        var tlSlider = document.getElementById('prefab-tl-time');
-        var tlLabel = document.getElementById('prefab-tl-time-label');
-        if (tlSlider) tlSlider.value = 0;
-        if (tlLabel) tlLabel.textContent = '0.00s';
-        // Reset bones to first keyframe pose
+        _ptlState.time = 0;
+        _ptlUpdatePlayButton();
         _prefabTlApplyPose(0);
+        _ptlRenderCanvas();
+        _ptlUpdateTimeDisplay();
     }
 
     function _prefabTlDeleteKeyframe() {
-        if (!_prefabSelectedBone) { _consoleLog('warn', 'Timeline: Выберите кость'); return; }
+        // If a specific key is selected, delete it
+        if (_ptlState.selectedTrack >= 0 && _ptlState.selectedKey >= 0) {
+            var bName = _prefabTimeline.tracks[_ptlState.selectedTrack];
+            if (bName) {
+                var kfs = _prefabTimeline.keyframes[bName];
+                if (kfs && _ptlState.selectedKey < kfs.length) {
+                    kfs.splice(_ptlState.selectedKey, 1);
+                    if (kfs.length === 0) {
+                        delete _prefabTimeline.keyframes[bName];
+                        _prefabTimeline.tracks.splice(_ptlState.selectedTrack, 1);
+                        _ptlState.selectedTrack = Math.min(_ptlState.selectedTrack, _prefabTimeline.tracks.length - 1);
+                    }
+                    _ptlState.selectedKey = -1;
+                    _ptlRefresh();
+                    _consoleLog('info', 'Key deleted [' + bName + ']');
+                    return;
+                }
+            }
+        }
+        // Fallback: delete key at current time for selected bone
+        if (!_prefabSelectedBone) { _consoleLog('warn', 'Timeline: Select a bone or key first'); return; }
         var bName = _prefabSelectedBone.name;
         var t = _prefabTimeline.time;
         var kfs = _prefabTimeline.keyframes[bName];
@@ -17507,135 +17999,12 @@ var EngineApp = (function() {
                     var idx = _prefabTimeline.tracks.indexOf(bName);
                     if (idx !== -1) _prefabTimeline.tracks.splice(idx, 1);
                 }
-                _prefabTlRefreshTracks();
-                _prefabTlDrawDopesheet();
-                _consoleLog('info', 'Timeline: Ключевой кадр удалён [' + bName + '] @ ' + t.toFixed(2) + 's');
+                _ptlRefresh();
+                _consoleLog('info', 'Key deleted [' + bName + '] @ F' + _ptlTimeToFrame(t));
                 return;
             }
         }
-        _consoleLog('warn', 'Timeline: Нет ключевого кадра на ' + t.toFixed(2) + 's для ' + bName);
-    }
-
-    function _prefabTlRefreshTracks() {
-        var container = document.getElementById('prefab-tl-tracks');
-        if (!container) return;
-        if (_prefabTimeline.tracks.length === 0) {
-            container.innerHTML = '<div style="font-size:0.6rem;color:#52525b;padding:6px;text-align:center;">Нет треков.<br>Кость + <b>K</b> = ключ.кадр</div>';
-            _prefabTlDrawDopesheet();
-            return;
-        }
-        var thtml = '';
-        for (var ti = 0; ti < _prefabTimeline.tracks.length; ti++) {
-            var bName = _prefabTimeline.tracks[ti];
-            var kfs = _prefabTimeline.keyframes[bName] || [];
-            var isSel = (_prefabSelectedBone && _prefabSelectedBone.name === bName);
-            thtml += '<div style="display:flex;align-items:center;gap:4px;padding:3px 6px;font-size:0.6rem;color:' + (isSel ? '#f59e0b' : '#a1a1aa') + ';cursor:pointer;border-radius:3px;' + (isSel ? 'background:rgba(245,158,11,0.1);border-left:2px solid #f59e0b;' : 'border-left:2px solid transparent;') + '" onclick="EngineApp._prefabSelectBone(\'' + bName + '\')">';
-            thtml += '<i class="fas fa-bone" style="font-size:0.5rem;color:#f59e0b;width:10px;"></i>';
-            thtml += '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + bName + '</span>';
-            thtml += '<span style="font-size:0.5rem;color:#52525b;">' + kfs.length + '</span>';
-            thtml += '</div>';
-        }
-        container.innerHTML = thtml;
-        _prefabTlDrawDopesheet();
-    }
-
-    // === DOPESHEET CANVAS ===
-    function _prefabTlDrawDopesheet() {
-        var cvs = document.getElementById('prefab-tl-canvas');
-        if (!cvs) return;
-        var rect = cvs.parentElement.getBoundingClientRect();
-        var dpr = window.devicePixelRatio || 1;
-        cvs.width = rect.width * dpr;
-        cvs.height = rect.height * dpr;
-        var ctx = cvs.getContext('2d');
-        ctx.scale(dpr, dpr);
-        var w = rect.width, h = rect.height;
-        var dur = _prefabTimeline.duration || 2;
-        var tracks = _prefabTimeline.tracks;
-        var rowH = Math.min(24, h / Math.max(tracks.length, 1));
-        // Background
-        ctx.fillStyle = '#0a0a16';
-        ctx.fillRect(0, 0, w, h);
-        // Grid lines
-        ctx.strokeStyle = '#1a1a2e';
-        ctx.lineWidth = 1;
-        // Time grid (every 0.5s)
-        for (var g = 0; g <= dur; g += 0.5) {
-            var gx = (g / dur) * w;
-            ctx.beginPath();
-            ctx.moveTo(gx, 0);
-            ctx.lineTo(gx, h);
-            ctx.stroke();
-            if (g === Math.floor(g)) {
-                ctx.fillStyle = '#3f3f5a';
-                ctx.font = '9px JetBrains Mono, monospace';
-                ctx.fillText(g + 's', gx + 3, h - 3);
-            }
-        }
-        // Row dividers
-        for (var ri = 1; ri < tracks.length; ri++) {
-            ctx.strokeStyle = '#1e1e30';
-            ctx.beginPath();
-            ctx.moveTo(0, ri * rowH);
-            ctx.lineTo(w, ri * rowH);
-            ctx.stroke();
-        }
-        // Keyframe diamonds
-        for (var ti = 0; ti < tracks.length; ti++) {
-            var bName = tracks[ti];
-            var kfs = _prefabTimeline.keyframes[bName] || [];
-            var cy = ti * rowH + rowH / 2;
-            var isSel = (_prefabSelectedBone && _prefabSelectedBone.name === bName);
-            for (var ki = 0; ki < kfs.length; ki++) {
-                var kx = (kfs[ki].time / dur) * w;
-                ctx.fillStyle = isSel ? '#f59e0b' : '#6b6b8a';
-                ctx.beginPath();
-                ctx.moveTo(kx, cy - 5);
-                ctx.lineTo(kx + 4, cy);
-                ctx.lineTo(kx, cy + 5);
-                ctx.lineTo(kx - 4, cy);
-                ctx.closePath();
-                ctx.fill();
-                if (isSel) {
-                    ctx.strokeStyle = '#fbbf24';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-            }
-        }
-        // Playhead
-        var phX = (_prefabTimeline.time / dur) * w;
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(phX, 0);
-        ctx.lineTo(phX, h);
-        ctx.stroke();
-        // Playhead triangle
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.moveTo(phX - 5, 0);
-        ctx.lineTo(phX + 5, 0);
-        ctx.lineTo(phX, 7);
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    // Dopesheet click → set time
-    function _prefabTlCanvasClick(e) {
-        var cvs = document.getElementById('prefab-tl-canvas');
-        if (!cvs) return;
-        var rect = cvs.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var dur = _prefabTimeline.duration || 2;
-        var t = Math.max(0, Math.min(dur, (x / rect.width) * dur));
-        _prefabTimeline.time = t;
-        var tlSlider = document.getElementById('prefab-tl-time');
-        var tlLabel = document.getElementById('prefab-tl-time-label');
-        if (tlSlider) tlSlider.value = t;
-        if (tlLabel) tlLabel.textContent = t.toFixed(2) + 's';
-        _prefabTlApplyPose(t);
-        _prefabTlDrawDopesheet();
+        _consoleLog('warn', 'Timeline: No key at F' + _ptlTimeToFrame(t) + ' for ' + bName);
     }
 
     function _prefabTlSaveToRig() {
@@ -17796,6 +18165,11 @@ var EngineApp = (function() {
         _prefabTimeline.keyframes = {};
         _prefabTimeline.tracks = [];
         _prefabTimeline.time = 0;
+        _ptlState.time = 0;
+        _ptlState.selectedTrack = -1;
+        _ptlState.selectedKey = -1;
+        _ptlState.multiKeys = [];
+        _ptlState.draggingKey = false;
         // Remove 3D bone vis
         _prefabRemoveBoneVis();
         if (_prefabState.rafId) { cancelAnimationFrame(_prefabState.rafId); _prefabState.rafId = null; }
@@ -18577,6 +18951,7 @@ var EngineApp = (function() {
         _inspPreviewRefreshRigTabButtons: _inspPreviewRefreshRigTabButtons,
         openPrefabMode: openPrefabMode, _prefabSelectBone: _prefabSelectBone, _prefabBoneProp: _prefabBoneProp, _prefabAddSkeleton: _prefabAddSkeleton,
         _prefabSetGizmoMode: _prefabSetGizmoMode, _prefabTlAddKeyframe: _prefabTlAddKeyframe, _prefabTlSaveToRig: _prefabTlSaveToRig,
+        _ptlSelectTrack: _ptlSelectTrack, _ptlDeleteTrack: _ptlDeleteTrack, _ptlRefresh: _ptlRefresh,
         _consoleLog: _consoleLog, toggleConsolePanel: toggleConsolePanel, clearConsole: clearConsole,
         closePrefabMode: closePrefabMode,
         _discoverAnimations: _discoverAnimations,
