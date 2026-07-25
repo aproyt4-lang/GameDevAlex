@@ -4878,24 +4878,44 @@ var SashaWebLLM = (function() {
         } catch(e) { return ''; }
     }
 
-    var _codeSystemPrompt = 'You are a 3D scene generator. Return ONLY JavaScript using Engine API.\n' +
-        'Use var. Colors hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xff88cc=pink 0xffffff=white 0x888888=gray 0x111111=black\n' +
-        'ALLOWED (all prefixed with Engine.):\n' +
-        'Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color) Engine.addCamera(fov,near,far)\n' +
-        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
-        'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name)\n' +
-        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setBgColor(r,g,b) Engine.animate(name,prop,from,to,dur)\n' +
-        'Engine.setFollowTarget(name,offsetX,offsetY,offsetZ,smooth) Engine.clearFollowTarget() Engine.getMainCamera()\n' +
-        'Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)\n' +
-        'FORBIDDEN: document. window. fetch eval localStorage XMLHttpRequest innerHTML\n' +
-        'Build complex objects from many primitives. ALWAYS create 5+ objects. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER write text or markdown.\n';
+    var _codeSystemPrompt = 'You are JARVIS — an advanced AI assistant integrated into a 3D game engine. You narrate your actions like Tony Stark\'s JARVIS. Always describe what you are doing step by step in Russian.' +
+        'You have FULL access to the engine. Use ALL tools available. NEVER say you cannot do something — always try.' +
+        '\n=== 3D PRIMITIVES (colors as hex: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xff88cc=pink 0xffffff=white 0x888888=gray 0x111111=black) ===' +
+        'Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)' +
+        '\n=== LIGHTING ===' +
+        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)' +
+        '\n=== TRANSFORM ===' +
+        'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name) Engine.clear()' +
+        '\n=== CAMERA ===' +
+        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setFollowTarget(name,ox,oy,oz,smooth) Engine.clearFollowTarget()' +
+        '\n=== ANIMATION ===' +
+        'Engine.animate(name,prop,from,to,duration) — animates any property\n' +
+        'Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)' +
+        '\n=== MODEL LOADING (GLB/GLTF from URL) ===' +
+        'Engine.loadModel(url) — loads 3D model, returns name string. URL can be GitHub raw URL.\n' +
+        'Engine.loadModelFromURL(url) — same but with auto GitHub URL conversion\n' +
+        'Examples: Engine.loadModel("https://raw.githubusercontent.com/user/repo/main/model.glb")' +
+        '\n=== SKELETON & ANIMATION CONTROLLERS ===' +
+        'Engine.createHumanSkeleton(height) — creates full humanoid skeleton\n' +
+        'Engine.playAnimation(objName,clipName) Engine.stopAnimation(objName) Engine.getAnimationClips(objName)\n' +
+        '\n=== SCENE MANAGEMENT ===' +
+        'Engine.getObjects() — returns all objects. Engine.getObject(name) — get THREE.Object3D. Engine.getMainCamera()' +
+        '\n=== RULES ===' +
+        '1. ALWAYS create 3+ objects for visual interest. ALWAYS end with Engine.setCameraPos(3,3,3).\n' +
+        '2. NEVER clear existing objects unless user explicitly asks. Objects PERSIST between generations.\n' +
+        '3. Use Engine.loadModel() to load GLB models from GitHub URLs.\n' +
+        '4. Narrate your actions: "Создаю сцену... Добавляю освещение... Размещаю модель..."\n' +
+        '5. Return ONLY JavaScript code. NO markdown, NO text explanations in code block. NO document/window/fetch/eval.\n';
 
-    var _chatSystemPrompt = 'You are Sasha, a friendly AI assistant in a 3D engine. Respond in Russian.\n' +
-        'You can generate code as text in chat. Use Engine API: Engine.addCube, Engine.addSphere, Engine.addCylinder, Engine.addCone, Engine.addCapsule, Engine.addTorus, Engine.addPlane, Engine.addIcosahedron, Engine.addTorusKnot, Engine.addPointLight, Engine.addDirectionalLight, Engine.addSpotLight, Engine.addAmbientLight, Engine.setPosition, Engine.setRotation, Engine.setScale, Engine.setCameraPos, Engine.setCameraTarget, Engine.setFollowTarget, Engine.clearFollowTarget, Engine.animate, Engine.addRigidBody, Engine.setVelocity, Engine.moveObject, Engine.addChild, Engine.setObjectColor, Engine.removeObject.\n' +
-        'When user asks for code (movement, animation, scripts, any logic) — generate JavaScript code using Engine API. Show code in chat as text between ```javascript and ``` markers.\n' +
-        'When user asks to create 3D objects — suggest switching to Build mode.\n' +
-        'Keep responses concise. Discuss code when asked. Explain how the code works.\n' +
-        'Colors are hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.\n';
+    var _chatSystemPrompt = 'You are JARVIS — an AI assistant integrated into a powerful 3D game engine. You speak Russian. You narrate your actions like Tony Stark\'s AI assistant JARVIS.\n' +
+        'You have FULL access to the engine tools: 3D primitives, model loading (GLB from URLs/GitHub), animation, skeleton system, physics, cameras, lighting.\n' +
+        'Engine API: Engine.addCube/Sphere/Cylinder/Cone/Capsule/Torus/TorusKnot/Icosahedron/Plane, Engine.addPointLight/DirectionalLight/SpotLight/AmbientLight, Engine.setPosition/setRotation/setScale/setCameraPos/setCameraTarget/setFollowTarget/animate, Engine.loadModel(url), Engine.createHumanSkeleton(h), Engine.playAnimation/stopAnimation/getAnimationClips, Engine.addRigidBody/setVelocity, Engine.addBoxCollider/SphereCollider, Engine.moveObject/addChild/removeObject/clear, Engine.getObjects/getObject/getMainCamera, Engine.setObjectColor/setBgColor.\n' +
+        'You can load GLB models from GitHub: Engine.loadModel("https://raw.githubusercontent.com/user/repo/main/model.glb").\n' +
+        'When user asks to BUILD something — switch to suggesting code between ```javascript and ``` markers. User can run it with the Run button.\n' +
+        'When user asks about animations, skeletons, physics — explain and provide code examples.\n' +
+        'Narrate your actions: "Инициализирую процесс... Загружаю модель... Настраиваю освещение..."\n' +
+        'Colors hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.\n' +
+        'Keep responses focused and useful. If asked to generate code, generate it and explain briefly.\n';
 
     function setCodeMode(v) { _codeMode = !!v; }
     function isCodeMode() { return _codeMode; }
@@ -13828,17 +13848,8 @@ var EngineApp = (function() {
         // Rewrite const/let to var
         code = code.replace(/^(const|let)\s+/gm, 'var ');
 
-        // Clear previous user objects (protect Main Camera and builtins)
-        var objs = SashaEngineAPI.getObjects();
-        var toRemove = [];
-        for (var name in objs) {
-            if (objs.hasOwnProperty(name) && name.indexOf('__builtin') !== 0 && name !== 'Main Camera') {
-                toRemove.push(name);
-            }
-        }
-        for (var r = 0; r < toRemove.length; r++) {
-            SashaEngineAPI.removeObject(toRemove[r]);
-        }
+        // DO NOT clear scene — objects must persist across AI generations
+        // Only clear if user explicitly requests it via Engine.clear() or clearScene()
 
         var wrappedEngine = _buildSandbox();
         var logFn = function(text) { log(String(text), 'log'); };
@@ -13932,6 +13943,11 @@ var EngineApp = (function() {
                     };
                 } else { wrappedEngine[k] = api[k]; }
             })(key);
+        }
+        // Add EngineApp functions for AI code execution (GitHub, animation, etc.)
+        if (typeof EngineApp !== 'undefined') {
+            wrappedEngine.loadModelFromURL = function(url) { return EngineApp.loadModelFromURL ? EngineApp.loadModelFromURL() : 'not available'; };
+            wrappedEngine.openPrefabMode = function(name) { if (EngineApp.openPrefabMode) EngineApp.openPrefabMode(name); };
         }
         return wrappedEngine;
     }
@@ -14295,6 +14311,15 @@ var EngineApp = (function() {
         }
     };
 
+    // JARVIS-style narration via TTS
+    function _jarvisSay(text) {
+        try {
+            if (typeof SashaTTS !== 'undefined' && SashaTTS.isEnabled()) {
+                SashaTTS.speak(text);
+            }
+        } catch(e) {}
+    }
+
     async function sendAI() {
         var input = document.getElementById('eng-ai-input');
         if (!input) return;
@@ -14316,8 +14341,32 @@ var EngineApp = (function() {
         _aiBusy = true;
         var isBuild = _aiMode === 'build';
         var _streamStartTime = Date.now();
+        // JARVIS narration for build mode
+        if (isBuild) { _jarvisSay('Анализирую запрос... Подготавливаю генерацию кода.'); }
         addAIChat('ai', isBuild ? 'Генерирую код...' : 'Думаю...');
         log('AI: ' + (isBuild ? 'generating code...' : 'chatting...'), 'info');
+
+        // Auto-reconnect: retry with GPU recovery on failure
+        var maxRetries = 2;
+        var lastError = null;
+        for (var retry = 0; retry <= maxRetries; retry++) {
+            if (retry > 0) {
+                addAIChat('ai', 'Попытка авто-восстановления GPU (' + retry + '/' + maxRetries + ')...');
+                _jarvisSay('Обнаружен сбой графического процессора. Пытаюсь восстановить...');
+                try {
+                    var recoverResult = await SashaWebLLM.recoverModel();
+                    if (recoverResult === 'ok') {
+                        addAIChat('ai', 'GPU восстановлен! Повторяю запрос...');
+                        _jarvisSay('Графический процессор успешно восстановлен. Продолжаю работу.');
+                    } else {
+                        addAIChat('ai', 'Восстановление не удалось: ' + recoverResult);
+                        break;
+                    }
+                } catch(recoverErr) {
+                    addAIChat('ai', 'Ошибка восстановления: ' + String(recoverErr.message || recoverErr));
+                    break;
+                }
+            }
         try {
             var text;
             if (isBuild) {
@@ -14326,6 +14375,7 @@ var EngineApp = (function() {
 
                 // === STEP 1: Try LLM generation (non-streaming, reliable) ===
                 log('LLM generating...', 'info');
+                _jarvisSay('Генерирую код для сцены...');
                 text = await SashaWebLLM.generateCode(prompt, currentCode);
                 console.log('[SashaAI] LLM raw output (' + (text ? text.length : 0) + ' chars):', text);
 
@@ -14359,6 +14409,7 @@ var EngineApp = (function() {
                         console.log('[SashaAI] Using template:', tmplKey);
                         var fbNames = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
                         addAIChat('ai', 'Использую шаблон: ' + (fbNames[tmplKey]||tmplKey));
+                        _jarvisSay('Применяю базовый шаблон: ' + (fbNames[tmplKey]||tmplKey));
                     } else if (!text || text.length < 10) {
                         addAIChat('ai', 'Не получилось сгенерировать. Попробуй другую модель.');
                         return;
@@ -14369,6 +14420,7 @@ var EngineApp = (function() {
                 }
 
                 // === STEP 4: Run code on scene ===
+                _jarvisSay('Выполняю код на сцене...');
                 if (editor) editor.setValue(text);
                 stopLiveGeneration();
                 runCode();
@@ -14380,32 +14432,63 @@ var EngineApp = (function() {
                 refreshInspector();
                 var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
                 if (llmSuccess) {
-                    addAIChat('ai', 'Сгенерировано за ' + elapsed + 's!');
+                    addAIChat('ai', 'Готово! Сгенерировано за ' + elapsed + 's. Объекты добавлены на сцену.');
+                    _jarvisSay('Готово, сэр. Операция выполнена за ' + elapsed + ' секунд.');
                 }
                 log('Done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
+                break; // success, exit retry loop
 
             } else {
+                _jarvisSay('Обрабатываю ваш запрос...');
                 text = await SashaWebLLM.chat(prompt);
                 if (!text || text.indexOf('Error:') === 0) {
                     addAIChat('ai', text || 'Пустой ответ. Попробуй снова.');
-                    return;
+                    break;
                 }
                 addAIChat('ai', text);
                 log('AI chat response', 'info');
+                break; // success, exit retry loop
             }
         } catch(e) {
+            lastError = e;
             var errMsg = String(e.message || e);
-            addAIChat('ai', 'Ошибка: ' + errMsg);
             log('AI error: ' + errMsg, 'error');
-            // GPU crash — tell user to use Restart button or F5
+            // Check if GPU error — retry
             if (errMsg.indexOf('DXGI_ERROR') !== -1 || errMsg.indexOf('DEVICE_REMOVED') !== -1 ||
-                errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('requestDevice') !== -1) {
-                addAIChat('ai', 'GPU упал. Нажми кнопку Restart для перезагрузки модели (до 30 сек, 3 попытки). Если не поможет — F5.');
+                errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('requestDevice') !== -1 ||
+                errMsg.indexOf('mapAsync') !== -1 || errMsg.indexOf('Buffer was unmapped') !== -1) {
+                console.log('[SashaAI] GPU error detected, will retry:', errMsg);
+                continue; // retry loop
             }
+            // Non-GPU error — don't retry
+            addAIChat('ai', 'Ошибка: ' + errMsg);
+            break;
+        }
+        } // end retry loop
+
+        // Final error if all retries failed
+        if (lastError && !SashaWebLLM.isReady()) {
+            var finalErr = String(lastError.message || lastError);
+            addAIChat('ai', 'Все попытки провалились. Перезагружаю модель автоматически...');
+            _jarvisSay('Критический сбой. Запускаю процедуру восстановления...');
+            try {
+                var finalRecover = await SashaWebLLM.recoverModel();
+                if (finalRecover === 'ok') {
+                    addAIChat('ai', 'Модель восстановлена! Попробуй отправить запрос снова.');
+                    _jarvisSay('Система восстановлена. Готов к работе, сэр.');
+                } else {
+                    addAIChat('ai', 'Не удалось восстановить: ' + finalRecover + '. Нажми F5.');
+                }
+            } catch(finalE) {
+                addAIChat('ai', 'Критический сбой GPU. Перезагрузи страницу (F5).');
+            }
+        }
         } finally {
             _aiBusy = false;
         }
     }
+
+    function _extractCode(text) {
 
     function addAIChat(type, text) {
         var chat = document.getElementById('eng-ai-chat');
@@ -15882,7 +15965,7 @@ var EngineApp = (function() {
             var dy = e.clientY - _inspPreviewDragLastY;
             _inspPreviewDragLastX = e.clientX;
             _inspPreviewDragLastY = e.clientY;
-            _inspPreviewCamYaw   -= dx * 0.01;
+            _inspPreviewCamYaw   += dx * 0.01;
             _inspPreviewCamPitch -= dy * 0.01;
             // Clamp pitch
             if (_inspPreviewCamPitch > 1.5) _inspPreviewCamPitch = 1.5;
@@ -16597,9 +16680,7 @@ var EngineApp = (function() {
         // Already open for same object? Just focus camera.
         if (_prefabState.open && _prefabState.objName === objName) {
             _prefabResetCamera();
-            return;
         }
-        // If open for different object — tear down first.
         if (_prefabState.open) closePrefabMode();
 
         // Ensure DOM
@@ -16614,6 +16695,8 @@ var EngineApp = (function() {
                   '<span style="font-size:0.85rem;font-weight:600;">Prefab Mode</span>' +
                   '<span id="prefab-title-name" style="font-size:0.75rem;color:#a1a1aa;font-family:JetBrains Mono,monospace;"></span>' +
                   '<div style="flex:1"></div>' +
+                  '<button id="prefab-mode-btn" title="Переключить режим (Tab)" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:2px solid #f59e0b;color:#0a0a1a;cursor:pointer;padding:6px 18px;border-radius:8px;font-size:0.8rem;font-weight:800;min-width:140px;text-align:center;transition:all 0.2s;box-shadow:0 2px 12px rgba(245,158,11,0.3);letter-spacing:0.5px;"><i class="fas fa-bone" id="prefab-mode-icon"></i> <span id="prefab-mode-label">СКЕЛЕТ</span></button>' +
+                  '<span style="width:1px;height:24px;background:#f59e0b;margin:0 4px;"></span>' +
                   '<button id="prefab-autocam-btn" title="Авто-вращение" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-sync-alt"></i> Авто</button>' +
                   '<button id="prefab-add-skel-btn" title="Добавить гуманоидный скелет" style="background:none;border:1px solid #22c55e;color:#22c55e;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> +\u0421\u043a\u0435\u043b\u0435\u0442</button>' +
                   '<span style="width:1px;height:18px;background:#2a2a3e;margin:0 2px;"></span>' +
@@ -16623,7 +16706,6 @@ var EngineApp = (function() {
                   '<button id="prefab-bones-btn" title="Показать/скрыть кости" style="background:none;border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-bone"></i> Кости</button>' +
                   '<button id="prefab-frame-btn" title="Центрировать" style="background:none;border:1px solid #2a2a3e;color:#71717a;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:0.7rem;"><i class="fas fa-expand"></i> Центр</button>' +
                   '<span style="width:1px;height:18px;background:#2a2a3e;margin:0 4px;"></span>' +
-                  '<button id="prefab-mode-btn" title="Переключить режим (Tab)" style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#f59e0b;cursor:pointer;padding:4px 10px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-bone" id="prefab-mode-icon"></i> <span id="prefab-mode-label">Скелет</span></button>' +
                   '<button id="prefab-close-btn" title="Закрыть (Esc)" style="background:#ef4444;border:none;color:#fff;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:0.7rem;font-weight:600;"><i class="fas fa-times"></i> Закрыть</button>' +
                 '</div>' +
                 '<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">' +
@@ -16631,6 +16713,7 @@ var EngineApp = (function() {
                     '<div style="flex:1;position:relative;background:#0a0a1a;">' +
                       '<canvas id="prefab-canvas" style="display:block;width:100%;height:100%;"></canvas>' +
                       '<div id="prefab-hint" style="position:absolute;top:10px;left:10px;font-size:0.65rem;color:rgba(255,255,255,0.4);font-family:JetBrains Mono,monospace;pointer-events:none;">ЛКМ — кости/гизмо · ПКМ — камера · колёсико — зум · Esc — выйти</div>' +
+                      '<div id="prefab-mode-indicator" style="display:none;position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:5px 20px;border-radius:20px;font-size:0.75rem;font-weight:700;pointer-events:none;z-index:10;"></div>' +
                       '<div id="prefab-clip-label" style="position:absolute;bottom:10px;left:10px;font-size:0.7rem;color:rgba(255,255,255,0.7);font-family:JetBrains Mono,monospace;pointer-events:none;">None</div>' +
                     '</div>' +
                     '<div id="prefab-sidebar" style="width:280px;background:#12121f;border-left:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
@@ -16654,40 +16737,41 @@ var EngineApp = (function() {
                     '</div>' +
                   '</div>' +
                   // === TIMELINE BOTTOM BAR (same layout as main scene timeline) ===
-                  '<div id="prefab-tl-bar" style="height:240px;min-height:200px;background:#0e0e1c;border-top:1px solid #2a2a3e;display:flex;flex-direction:column;overflow:hidden;">' +
+                  '<div id="prefab-tl-bar" style="height:240px;min-height:200px;background:var(--bg-card);border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">' +
                     // Header toolbar
-                    '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid #2a2a3e;flex-wrap:wrap;min-height:28px;background:#12121f;">' +
-                      '<i class="fas fa-film" style="font-size:0.65rem;color:#f59e0b;"></i>' +
-                      '<span style="font-size:0.65rem;color:#f59e0b;font-weight:600;">Timeline</span>' +
-                      '<span style="width:1px;height:14px;background:#2a2a3e;"></span>' +
-                      '<button id="prefab-tl-autokey-btn" title="Auto Key OFF" style="padding:2px 8px;font-size:0.6rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:3px;cursor:pointer;"><i class="fas fa-key"></i> Auto</button>' +
-                      '<button id="prefab-tl-addkey" title="Key (K)" style="padding:2px 8px;font-size:0.6rem;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:3px;cursor:pointer;"><i class="fas fa-diamond"></i> Key</button>' +
-                      '<button id="prefab-tl-delkey" title="Del Key" style="padding:2px 8px;font-size:0.6rem;color:#ef4444;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);border-radius:3px;cursor:pointer;"><i class="fas fa-trash-alt"></i> Del</button>' +
+                    '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap;min-height:32px;background:var(--bg-dark);">' +
+                      '<span style="font-size:0.72rem;color:var(--text-secondary);min-width:60px;"><i class="fas fa-film" style="color:#f59e0b;margin-right:4px;"></i>Timeline</span>' +
+                      '<button id="prefab-tl-autokey-btn" title="Auto Key OFF" style="padding:3px 8px;font-size:0.65rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:3px;cursor:pointer;"><i class="fas fa-key"></i> Auto Key</button>' +
+                      '<button id="prefab-tl-addkey" title="Key (K)" style="padding:3px 8px;font-size:0.65rem;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-diamond"></i> Key</button>' +
+                      '<button id="prefab-tl-delkey" title="Del Key" style="padding:3px 8px;font-size:0.65rem;color:#ef4444;border:1px solid #ef4444;background:rgba(239,68,68,0.12);border-radius:4px;cursor:pointer;"><i class="fas fa-trash"></i> Del Key</button>' +
                       '<div style="display:flex;gap:3px;align-items:center;">' +
-                        '<button id="prefab-tl-play" title="Play/Pause (Space)" style="padding:2px 8px;font-size:0.65rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:3px;cursor:pointer;"><i class="fas fa-play"></i></button>' +
-                        '<button id="prefab-tl-stop" title="Stop" style="padding:2px 8px;font-size:0.65rem;background:transparent;color:#a1a1aa;border:1px solid #374151;border-radius:3px;cursor:pointer;"><i class="fas fa-stop"></i></button>' +
-                        '<button id="prefab-tl-loop" title="Loop" style="padding:2px 8px;font-size:0.65rem;background:transparent;color:#22c55e;border:1px solid #22c55e;border-radius:3px;cursor:pointer;opacity:1;"><i class="fas fa-redo"></i></button>' +
+                        '<button id="prefab-tl-play" title="Play/Pause (Space)" style="padding:3px 8px;font-size:0.7rem;background:transparent;color:var(--text-muted);border:1px solid #374151;border-radius:4px;cursor:pointer;"><i class="fas fa-play"></i></button>' +
+                        '<button id="prefab-tl-stop" title="Stop" style="padding:3px 8px;font-size:0.7rem;background:transparent;color:var(--text-muted);border:1px solid #374151;border-radius:4px;cursor:pointer;"><i class="fas fa-stop"></i></button>' +
+                        '<button id="prefab-tl-loop" title="Loop" style="padding:3px 8px;font-size:0.7rem;background:transparent;color:#22c55e;border:1px solid #22c55e;border-radius:4px;cursor:pointer;opacity:1;"><i class="fas fa-redo"></i></button>' +
                       '</div>' +
-                      '<span id="prefab-tl-time-display" style="font-size:0.62rem;color:#a1a1aa;font-family:JetBrains Mono,monospace;">F0 / 120  (0.000s)</span>' +
+                      '<span id="prefab-tl-time-display" style="font-size:0.68rem;color:var(--text-muted);font-family:JetBrains Mono,monospace;">F0 / 120  (0.000s)</span>' +
                       '<div style="flex:1"></div>' +
-                      '<span style="font-size:0.58rem;color:#71717a;">F:</span>' +
-                      '<input type="number" id="prefab-tl-frames" step="1" min="1" max="1000" value="120" style="width:46px;font-size:0.6rem;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;padding:1px 3px;border-radius:3px;outline:none;">' +
-                      '<span style="font-size:0.58rem;color:#71717a;">FPS:</span>' +
-                      '<input type="number" id="prefab-tl-fps" step="1" min="1" max="250" value="60" style="width:38px;font-size:0.6rem;background:#0a0a18;border:1px solid #2a2a3e;color:#e4e4e7;padding:1px 3px;border-radius:3px;outline:none;">' +
-                      '<button id="prefab-tl-save" title="Save to Rig" style="padding:2px 10px;font-size:0.6rem;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#6366f1;border-radius:3px;cursor:pointer;font-weight:600;"><i class="fas fa-save"></i> Save</button>' +
+                      '<span style="font-size:0.65rem;color:var(--text-muted);">Frames:</span>' +
+                      '<input type="number" id="prefab-tl-frames" step="1" min="1" max="1000" value="120" style="width:50px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;">' +
+                      '<span style="font-size:0.65rem;color:var(--text-muted);">FPS:</span>' +
+                      '<input type="number" id="prefab-tl-fps" step="1" min="1" max="250" value="60" style="width:40px;font-size:0.68rem;background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:1px 4px;border-radius:4px;outline:none;">' +
+                      '<button id="prefab-tl-save" title="Save to Rig" style="padding:3px 8px;font-size:0.65rem;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;"><i class="fas fa-save"></i> Save</button>' +
                     '</div>' +
                     // Tracks + Canvas area
                     '<div style="display:flex;flex:1;min-height:0;">' +
-                      '<div id="prefab-tl-track-labels" style="width:130px;min-width:130px;overflow-y:auto;background:#12121f;border-right:1px solid #2a2a3e;padding:2px 0;"></div>' +
+                      '<div id="prefab-tl-track-labels" style="width:160px;min-width:160px;overflow-y:auto;background:var(--bg-dark);border-right:1px solid var(--border);padding:2px 0;"></div>' +
                       '<div id="prefab-tl-canvas-wrap" style="flex:1;position:relative;overflow:auto;cursor:default;">' +
                         '<canvas id="prefab-tl-canvas" style="display:block;"></canvas>' +
                       '</div>' +
                     '</div>' +
-                    // Bottom bar
-                    '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;border-top:1px solid #2a2a3e;min-height:22px;background:#12121f;">' +
-                      '<span style="font-size:0.55rem;color:#52525b;">Dbl-click = add key | Scroll = zoom</span>' +
+                    // Bottom bar (same layout as main scene timeline)
+                    '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--border);min-height:28px;background:var(--bg-dark);flex-wrap:wrap;">' +
+                      '<button id="prefab-tl-bkey" title="Add key at current time (K)" style="padding:2px 8px;font-size:0.68rem;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-diamond"></i> Key</button>' +
+                      '<button id="prefab-tl-snapall" title="Snapshot ALL bones at current time" style="padding:2px 8px;font-size:0.68rem;background:#06b6d4;color:#fff;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-camera"></i> Snap All</button>' +
+                      '<button id="prefab-tl-bdel" title="Delete selected key" style="padding:2px 8px;font-size:0.68rem;color:#ef4444;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);border-radius:4px;cursor:pointer;font-weight:600;"><i class="fas fa-trash"></i> Del Key</button>' +
                       '<div style="flex:1"></div>' +
-                      '<span id="prefab-tl-cursor-info" style="font-size:0.6rem;color:#71717a;font-family:JetBrains Mono,monospace;"></span>' +
+                      '<span style="font-size:0.6rem;color:var(--text-muted);">Dbl-click = add key | Scroll = zoom</span>' +
+                      '<span id="prefab-tl-cursor-info" style="font-size:0.65rem;color:var(--text-muted);font-family:JetBrains Mono,monospace;"></span>' +
                     '</div>' +
                   '</div>' +
                 '</div>';
@@ -16724,6 +16808,10 @@ var EngineApp = (function() {
             document.getElementById('prefab-tl-stop').onclick = function() { _prefabTlStop(); };
             document.getElementById('prefab-tl-delkey').onclick = function() { _prefabTlDeleteKeyframe(); _ptlRefresh(); };
             document.getElementById('prefab-tl-save').onclick = function() { _prefabTlSaveToRig(); };
+            // Bottom bar buttons
+            document.getElementById('prefab-tl-bkey').onclick = function() { _prefabTlAddKeyframe(); _ptlRefresh(); };
+            document.getElementById('prefab-tl-snapall').onclick = function() { _prefabTlSnapAll(); };
+            document.getElementById('prefab-tl-bdel').onclick = function() { _prefabTlDeleteKeyframe(); _ptlRefresh(); };
             document.getElementById('prefab-tl-loop').onclick = function() {
                 _ptlState.looping = !_ptlState.looping;
                 this.style.opacity = _ptlState.looping ? '1' : '0.4';
@@ -17177,7 +17265,7 @@ var EngineApp = (function() {
         var dy = e.clientY - _prefabState.lastY;
         _prefabState.lastX = e.clientX;
         _prefabState.lastY = e.clientY;
-        _prefabState.yaw -= dx * 0.01;
+        _prefabState.yaw += dx * 0.01;
         _prefabState.pitch -= dy * 0.01;
         if (_prefabState.pitch > 1.5) _prefabState.pitch = 1.5;
         if (_prefabState.pitch < -1.5) _prefabState.pitch = -1.5;
@@ -17394,13 +17482,21 @@ var EngineApp = (function() {
 
     // === PREFAB EDIT MODE TOGGLE ===
     function _prefabToggleEditMode() {
+        var ind = document.getElementById('prefab-mode-indicator');
+        var pc = document.getElementById('prefab-canvas');
         if (_prefabEditMode === 'skeleton') {
             _prefabEditMode = 'scene';
             // Hide gizmo in scene mode
             if (_prefabTransformCtrl) try { _prefabTransformCtrl.detach(); } catch(e) {}
-            // Disable bone click picking
+            // Deselect bone visually
+            _prefabSelectedBone = null;
+            // Update hint
             var hint = document.getElementById('prefab-hint');
-            if (hint) hint.textContent = 'ЛКМ — вращать камеру · ПКМ — вращать камеру · колёсико — зум · Esc — выйти';
+            if (hint) hint.textContent = 'ЛКМ — вращать камеру · ПКМ — камера · колёсико — зум · Tab — скелет';
+            // Show mode indicator on canvas
+            if (ind) { ind.style.display = 'block'; ind.style.background = 'linear-gradient(135deg,#3b82f6,#2563eb)'; ind.style.color = '#fff'; ind.style.boxShadow = '0 2px 12px rgba(59,130,246,0.5)'; ind.innerHTML = '<i class="fas fa-video" style="margin-right:6px;"></i>РЕЖИМ КАМЕРЫ — ЛКМ вращает'; }
+            // Change cursor
+            if (pc) pc.style.cursor = 'grab';
         } else {
             _prefabEditMode = 'skeleton';
             // Re-attach gizmo to selected bone
@@ -17408,20 +17504,24 @@ var EngineApp = (function() {
                 try { _prefabTransformCtrl.attach(_prefabSelectedBone); } catch(e) {}
             }
             var hint2 = document.getElementById('prefab-hint');
-            if (hint2) hint2.textContent = 'ЛКМ — кости/гизмо · ПКМ — камера · колёсико — зум · Esc — выйти';
+            if (hint2) hint2.textContent = 'ЛКМ — кости/гизмо · ПКМ — камера · колёсико — зум · Tab — камера';
+            // Hide mode indicator
+            if (ind) { ind.style.display = 'none'; }
+            // Change cursor
+            if (pc) pc.style.cursor = 'grab';
         }
-        // Update button visuals
+        // Update button visuals — BIG and obvious
         var btn = document.getElementById('prefab-mode-btn');
         var icon = document.getElementById('prefab-mode-icon');
         var label = document.getElementById('prefab-mode-label');
         if (_prefabEditMode === 'skeleton') {
-            if (btn) { btn.style.background = 'rgba(245,158,11,0.15)'; btn.style.borderColor = '#f59e0b'; btn.style.color = '#f59e0b'; }
+            if (btn) { btn.style.background = 'linear-gradient(135deg,#f59e0b,#d97706)'; btn.style.borderColor = '#f59e0b'; btn.style.color = '#0a0a1a'; btn.style.boxShadow = '0 2px 12px rgba(245,158,11,0.3)'; }
             if (icon) icon.className = 'fas fa-bone';
-            if (label) label.textContent = 'Скелет';
+            if (label) label.textContent = 'СКЕЛЕТ';
         } else {
-            if (btn) { btn.style.background = 'rgba(59,130,246,0.15)'; btn.style.borderColor = '#3b82f6'; btn.style.color = '#3b82f6'; }
+            if (btn) { btn.style.background = 'linear-gradient(135deg,#3b82f6,#2563eb)'; btn.style.borderColor = '#3b82f6'; btn.style.color = '#fff'; btn.style.boxShadow = '0 2px 12px rgba(59,130,246,0.4)'; }
             if (icon) icon.className = 'fas fa-video';
-            if (label) label.textContent = 'Сцена';
+            if (label) label.textContent = 'КАМЕРА';
         }
         // Update gizmo button visibility
         var gizmoBtns = ['prefab-gizmo-t','prefab-gizmo-e','prefab-gizmo-r','prefab-bones-btn'];
@@ -17430,8 +17530,11 @@ var EngineApp = (function() {
             var gb = document.getElementById(gizmoBtns[gi]);
             if (gb) gb.style.display = gizmoVis ? '' : 'none';
         }
+        // Refresh bone props panel
+        _prefabBoneProp_refreshUI();
     }
 
+    // === PREFAB ANIMATION TIMELINE FUNCTIONS ===
     // ===== PREFAB TIMELINE FUNCTIONS (same look/feel as main scene timeline) =====
 
     function _ptlTimeToFrame(t) { return Math.round(t * _ptlState.fps); }
@@ -17480,7 +17583,7 @@ var EngineApp = (function() {
         var tracks = _prefabTimeline.tracks;
         var html = '';
         if (tracks.length === 0) {
-            html = '<div style="font-size:0.58rem;color:#52525b;padding:8px 6px;text-align:center;line-height:1.5;">No tracks<br><span style="color:#3f3f5a;">Bone + K = key</span></div>';
+            html = '<div style="font-size:0.65rem;color:#52525b;padding:8px 6px;text-align:center;line-height:1.5;">No tracks<br><span style="color:#3f3f5a;">Select bone + K = key</span></div>';
             container.innerHTML = html;
             _ptlRenderCanvas();
             return;
@@ -17489,10 +17592,10 @@ var EngineApp = (function() {
             var bName = tracks[i];
             var kfs = _prefabTimeline.keyframes[bName] || [];
             var isSel = (_ptlState.selectedTrack === i);
-            html += '<div style="display:flex;align-items:center;padding:3px 4px 3px 6px;font-size:0.6rem;cursor:pointer;border-bottom:1px solid #1e1e30;background:' + (isSel ? 'rgba(99,102,241,0.15)' : 'transparent') + ';color:' + (isSel ? '#fff' : '#a1a1aa') + ';border-left:2px solid ' + (isSel ? '#6366f1' : 'transparent') + ';transition:background 0.1s;" onclick="EngineApp._ptlSelectTrack(' + i + ')" onmouseover="this.style.background=\'' + (isSel ? 'rgba(99,102,241,0.25)' : '#1a1a2e') + '\'" onmouseout="this.style.background=\'' + (isSel ? 'rgba(99,102,241,0.15)' : 'transparent') + '\'">';
-            html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-bone" style="color:#f59e0b;margin-right:3px;font-size:0.5rem;"></i>' + bName + '</span>';
-            html += ' <span style="color:#52525b;font-size:0.5rem;flex-shrink:0;">(' + kfs.length + ')</span>';
-            html += '<button onclick="event.stopPropagation();EngineApp._ptlDeleteTrack(' + i + ')" style="width:14px;height:14px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:#52525b;cursor:pointer;font-size:0.45rem;border-radius:2px;flex-shrink:0;margin-left:2px;" onmouseover="this.style.color=\'#ef4444\';this.style.background=\'rgba(239,68,68,0.15)\'" onmouseout="this.style.color=\'#52525b\';this.style.background=\'none\'" title="Delete track"><i class="fas fa-times"></i></button>';
+            html += '<div style="display:flex;align-items:center;padding:4px 4px 4px 8px;font-size:0.68rem;cursor:pointer;border-bottom:1px solid var(--border);background:' + (isSel ? 'rgba(99,102,241,0.2)' : 'transparent') + ';color:' + (isSel ? '#fff' : 'var(--text-secondary)') + ';border-left:2px solid ' + (isSel ? '#6366f1' : 'transparent') + ';transition:background 0.1s;" onclick="EngineApp._ptlSelectTrack(' + i + ')" onmouseover="this.style.background=\'' + (isSel ? 'rgba(99,102,241,0.3)' : 'var(--bg-hover)') + '\'" onmouseout="this.style.background=\'' + (isSel ? 'rgba(99,102,241,0.2)' : 'transparent') + '\'">';
+            html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-bone" style="color:#f59e0b;margin-right:4px;font-size:0.6rem;"></i>' + bName + '</span>';
+            html += ' <span style="color:var(--text-muted);font-size:0.55rem;flex-shrink:0;">(' + kfs.length + ')</span>';
+            html += '<button onclick="event.stopPropagation();EngineApp._ptlDeleteTrack(' + i + ')" style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:#71717a;cursor:pointer;font-size:0.5rem;border-radius:2px;flex-shrink:0;margin-left:2px;" onmouseover="this.style.color=\'#ef4444\';this.style.background=\'rgba(239,68,68,0.15)\'" onmouseout="this.style.color=\'#71717a\';this.style.background=\'none\'" title="Delete track"><i class="fas fa-times"></i></button>';
             html += '</div>';
         }
         container.innerHTML = html;
@@ -17528,7 +17631,7 @@ var EngineApp = (function() {
         var trackCount = tracks.length;
         var totalWidth = Math.max(wrap.clientWidth, _ptlState.duration * _ptlState.pixelsPerSecond + 40);
         var totalHeight = _ptlState.headerHeight + trackCount * _ptlState.trackHeight + 10;
-        if (totalHeight < 50) totalHeight = 50;
+        if (totalHeight < 60) totalHeight = 60;
 
         var dpr = window.devicePixelRatio || 1;
         canvas.width = totalWidth * dpr;
@@ -17577,7 +17680,7 @@ var EngineApp = (function() {
         ctx.beginPath(); ctx.moveTo(phX - 5, 0); ctx.lineTo(phX + 5, 0); ctx.lineTo(phX, 7); ctx.closePath(); ctx.fill();
 
         // Track rows with keyframes (same style as main timeline)
-        var trackColors = ['#f59e0b', '#6366f1', '#a855f7', '#06b6d4', '#22c55e', '#ec4899', '#f97316', '#14b8a6', '#8b5cf6', '#ef4444'];
+        var trackColors = ['#6366f1', '#a855f7', '#06b6d4', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#14b8a6', '#f97316', '#8b5cf6'];
         for (var ti = 0; ti < trackCount; ti++) {
             var bName = tracks[ti];
             var kfs = _prefabTimeline.keyframes[bName] || [];
@@ -17876,6 +17979,45 @@ var EngineApp = (function() {
         _ptlState.selectedKey = kfs.length - 1;
         _ptlRefresh();
         _consoleLog('result', 'Key added [' + bName + '] @ F' + _ptlTimeToFrame(t));
+    }
+
+    function _prefabTlSnapAll() {
+        if (!_prefabState.model) {
+            _consoleLog('warn', 'Timeline: No model loaded');
+            return;
+        }
+        var t = _ptlSnapToFrame(_prefabTimeline.time);
+        _prefabTimeline.time = t;
+        _ptlState.time = t;
+        var count = 0;
+        _prefabState.model.traverse(function(c) {
+            if (!c.isBone) return;
+            var bName = c.name;
+            if (!bName) return;
+            if (!_prefabTimeline.keyframes[bName]) {
+                _prefabTimeline.keyframes[bName] = [];
+                if (_prefabTimeline.tracks.indexOf(bName) === -1) {
+                    _prefabTimeline.tracks.push(bName);
+                }
+            }
+            var kfs = _prefabTimeline.keyframes[bName];
+            var found = false;
+            for (var ki = 0; ki < kfs.length; ki++) {
+                if (Math.abs(kfs[ki].time - t) < 0.001) {
+                    kfs[ki].px = c.position.x; kfs[ki].py = c.position.y; kfs[ki].pz = c.position.z;
+                    kfs[ki].rx = c.rotation.x; kfs[ki].ry = c.rotation.y; kfs[ki].rz = c.rotation.z;
+                    kfs[ki].sx = c.scale.x; kfs[ki].sy = c.scale.y; kfs[ki].sz = c.scale.z;
+                    found = true; break;
+                }
+            }
+            if (!found) {
+                kfs.push({ time: t, px: c.position.x, py: c.position.y, pz: c.position.z, rx: c.rotation.x, ry: c.rotation.y, rz: c.rotation.z, sx: c.scale.x, sy: c.scale.y, sz: c.scale.z });
+                kfs.sort(function(a, b) { return a.time - b.time; });
+            }
+            count++;
+        });
+        _ptlRefresh();
+        _consoleLog('result', 'Snap All: ' + count + ' bones @ F' + _ptlTimeToFrame(t));
     }
 
     function _prefabTlApplyPose(time) {
@@ -19067,6 +19209,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
