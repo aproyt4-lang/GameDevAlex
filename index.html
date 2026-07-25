@@ -14349,6 +14349,7 @@ var EngineApp = (function() {
         // Auto-reconnect: retry with GPU recovery on failure
         var maxRetries = 2;
         var lastError = null;
+        try {
         for (var retry = 0; retry <= maxRetries; retry++) {
             if (retry > 0) {
                 addAIChat('ai', 'Попытка авто-восстановления GPU (' + retry + '/' + maxRetries + ')...');
