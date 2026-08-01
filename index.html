@@ -8927,7 +8927,7 @@ var SashaUISystem = (function() {
 
 // ============ EngineApp — Editor/Engine/AI Integration ============
 // ================================================================
-var EngineApp = function EngineApp() {
+var EngineApp = (function() {
     var editor = null;
     var liveMode = false;
     var liveTimer = null;
@@ -14487,8 +14487,40 @@ var EngineApp = function EngineApp() {
         _aiBusy = false;
     }
 
-    function _extractCode(text) {
-
+    function _extractCode(raw) {
+        if (!raw) return '';
+        var text = raw;
+        var blockMatch = text.match(/```(?:javascript|js)?\n([\s\S]*?)```/);
+        if (blockMatch && blockMatch[1] && blockMatch[1].trim().length > 5) {
+            text = blockMatch[1];
+        } else {
+            text = text.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '');
+        }
+        var lines = text.split('\n');
+        var codeLines = [];
+        for (var i = 0; i < lines.length; i++) {
+            var ln = lines[i].trim();
+            if (!ln) { codeLines.push(''); continue; }
+            if (ln.indexOf('# ') === 0) continue;
+            var isCode = false;
+            if (ln.indexOf('var ') !== -1 || ln.indexOf('Engine.') === 0 ||
+                ln.indexOf('//') === 0 || ln.indexOf('/*') === 0 || ln.indexOf('*') === 0 ||
+                ln.indexOf('{') === 0 || ln.indexOf('}') === 0 ||
+                ln.indexOf('if ') === 0 || ln.indexOf('for ') === 0 || ln.indexOf('while ') === 0 ||
+                ln.indexOf('function ') === 0 || ln.indexOf('return ') === 0 ||
+                ln.indexOf('=') !== -1 || ln.indexOf('(') !== -1 ||
+                ln.indexOf('try') === 0 || ln.indexOf('catch') === 0 ||
+                ln.indexOf('new ') === 0 || ln.indexOf('this.') === 0 ||
+                ln.indexOf('Math.') === 0 || ln.indexOf('THREE.') === 0 ||
+                ln.match(/^\s*[}\]);]/)) {
+                isCode = true;
+            }
+            if (!isCode && ln.length < 40 && /^[A-Z][a-z]+$/.test(ln)) continue;
+            if (!isCode) { for(var ci=0;ci<ln.length;ci++){var cd=ln.charCodeAt(ci);if(cd>=1040&&cd<=1103||cd===1025||cd===1105){isCode=true;break;}} if(!isCode) continue; }
+            codeLines.push(lines[i]);
+        }
+        return codeLines.join('\n').trim();
+    }
     function addAIChat(type, text) {
         var chat = document.getElementById('eng-ai-chat');
         if (!chat) return;
@@ -14504,7 +14536,7 @@ var EngineApp = function EngineApp() {
             else status.textContent = 'offline';
         }
     }
-   }
+
     function clearAIChat() {
         var chat = document.getElementById('eng-ai-chat');
         if (chat) chat.innerHTML = '';
@@ -19055,9 +19087,8 @@ var EngineApp = function EngineApp() {
         refreshAssetGrid: refreshAssetGrid, assetGridClick: assetGridClick, assetGridDblClick: assetGridDblClick, assetNavigateTo: assetNavigateTo, assetGridContext: assetGridContext, assetRename: assetRename,
         assetCreateFolderQuick: assetCreateFolderQuick, assetDeleteSelected: assetDeleteSelected, _assetGridClickEx: _assetGridClickEx,
         assetNavigateBack: assetNavigateBack, assetTreeContext: assetTreeContext,
-        get _assetCurrentFolder() { return _assetCurrentFolder; },
-        set _assetCurrentFolder(v) { _assetCurrentFolder = v; },
-        get _poseMode() { return _poseMode; },
+        _assetCurrentFolder: _assetCurrentFolder,
+        _poseMode: _poseMode,
         togglePoseMode: togglePoseMode, selectBone: selectBone, keyframeBonePose: keyframeBonePose,
         _getPoseModelName: function() { return _poseModelName; },
         _renderBoneInspector: _renderBoneInspector,
@@ -19109,7 +19140,7 @@ var EngineApp = function EngineApp() {
         _selectAll: _selectAll,
         isInitialized: function() { return initialized; }
     };
-}());
+})();
 // ============ CONSOLE INTERCEPT — feed browser errors into our console panel ============
 (function() {
     var origError = console.error;
@@ -19208,6 +19239,7 @@ var EngineApp = function EngineApp() {
 
 </body>
 </html>
+
 
 
 
