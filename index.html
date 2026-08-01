@@ -1046,10 +1046,15 @@
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- AI --</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
-                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
-                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B</option>
+                        <option value="ollama:qwen2.5-coder:7b">Ollama: Qwen2.5-Coder 7B</option>
+                        <option value="ollama:qwen2.5-coder:3b">Ollama: Qwen2.5-Coder 3B</option>
+                        <option value="ollama:qwen2.5-coder:1.5b">Ollama: Qwen2.5-Coder 1.5B</option>
+                        <option value="ollama:llama3.1:8b">Ollama: Llama 3.1 8B</option>
+                        <option value="ollama:codellama:7b">Ollama: CodeLlama 7B</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 0.5B</option>
+                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 1.5B</option>
+                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">WebLLM: Qwen 3B</option>
+                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">WebLLM: Qwen 7B</option>
                     </select>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
@@ -1246,10 +1251,15 @@
                                 <div class="engine-ai-toolbar">
                                     <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                                         <option value="">-- Model --</option>
-                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
-                                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
-                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
-                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B</option>
+                                        <option value="ollama:qwen2.5-coder:7b" selected>Ollama: Qwen2.5-Coder 7B</option>
+                                        <option value="ollama:qwen2.5-coder:3b">Ollama: Qwen2.5-Coder 3B</option>
+                                        <option value="ollama:qwen2.5-coder:1.5b">Ollama: Qwen2.5-Coder 1.5B</option>
+                                        <option value="ollama:llama3.1:8b">Ollama: Llama 3.1 8B</option>
+                                        <option value="ollama:codellama:7b">Ollama: CodeLlama 7B</option>
+                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 0.5B</option>
+                                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 1.5B</option>
+                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">WebLLM: Qwen 3B</option>
+                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">WebLLM: Qwen 7B</option>
                                     </select>
                                     <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
                                     <button class="eng-tab" onclick="EngineApp.restartModel()" style="font-size:0.72rem;padding:3px 8px;" id="ai-restart-btn" title="Перезагрузить модель"><i class="fas fa-redo"></i> Restart</button>
@@ -4669,17 +4679,74 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 // ================================================================
-// ============ SashaWebLLM — LLM in browser via WebLLM ============
-// ================================================================
+// ============ SashaWebLLM — Dual Backend: Ollama (local) + WebLLM (browser) ============
 var SashaWebLLM = (function() {
-    var engine = null;
+    var backend = 'none'; // 'ollama', 'webllm', 'none'
     var modelId = '';
-    var status = 'offline'; // offline, loading, ready, error
+    var status = 'offline';
     var chatHistory = [];
     var onProgress = null;
-    var webllmModule = null;
 
-    // Dynamic import WebLLM from CDN — try multiple CDNs for reliability
+    // === Ollama config ===
+    var OLLAMA_URL = 'http://localhost:11434';
+
+    // === WebLLM vars ===
+    var engine = null;
+    var webllmModule = null;
+    var gpuDead = false;
+
+    // Detect which backend to use
+    function isOllamaModel(id) { return id.indexOf('ollama:') === 0; }
+    function ollamaModelName(id) { return id.replace('ollama:', ''); }
+
+    // === Ollama: check if running ===
+    async function ollamaCheck() {
+        try {
+            var resp = await fetch(OLLAMA_URL + '/api/tags', { method: 'GET', signal: AbortSignal.timeout(3000) });
+            if (resp.ok) return true;
+        } catch(e) {}
+        return false;
+    }
+
+    // === Ollama: load model (just verify it exists) ===
+    async function ollamaLoadModel(modelName, progressCb) {
+        if (progressCb) progressCb({ progress: 0.5, text: 'Connecting to Ollama...' });
+        var resp = await fetch(OLLAMA_URL + '/api/show', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: modelName })
+        });
+        if (!resp.ok) {
+            // Model not found — try to pull it
+            if (progressCb) progressCb({ progress: 0.1, text: 'Pulling ' + modelName + ' from Ollama... This may take a while.' });
+            var pullResp = await fetch(OLLAMA_URL + '/api/pull', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: modelName, stream: false })
+            });
+            if (!pullResp.ok) throw new Error('Model ' + modelName + ' not found in Ollama. Run: ollama pull ' + modelName);
+        }
+        if (progressCb) progressCb({ progress: 1, text: 'Ready: ' + modelName });
+    }
+
+    // === Ollama: generate ===
+    async function ollamaGenerate(messages, maxTokens) {
+        var resp = await fetch(OLLAMA_URL + '/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: ollamaModelName(modelId),
+                messages: messages,
+                stream: false,
+                options: { num_predict: maxTokens || 2048, temperature: 0.7 }
+            })
+        });
+        if (!resp.ok) throw new Error('Ollama error: ' + resp.status);
+        var data = await resp.json();
+        return (data && data.message && data.message.content) ? data.message.content : '';
+    }
+
+    // === WebLLM: import ===
     async function importWebLLM() {
         if (webllmModule) return webllmModule;
         var cdnUrls = [
@@ -4689,351 +4756,178 @@ var SashaWebLLM = (function() {
         ];
         for (var i = 0; i < cdnUrls.length; i++) {
             try {
-                console.log('Trying WebLLM CDN ' + (i + 1) + ': ' + cdnUrls[i]);
                 webllmModule = await import(cdnUrls[i]);
-                console.log('WebLLM loaded from: ' + cdnUrls[i]);
                 return webllmModule;
-            } catch(e) {
-                console.warn('CDN ' + (i + 1) + ' failed:', e.message);
-            }
+            } catch(e) {}
         }
-        throw new Error('All WebLLM CDNs failed. Check your internet connection and browser support for ES modules.');
+        throw new Error('All WebLLM CDNs failed.');
     }
 
-    async function loadModel(selectedModelId, progressCallback) {
+    // === WebLLM: load model ===
+    async function webllmLoadModel(selectedModelId, progressCb) {
+        var mod = await importWebLLM();
+        if (!navigator.gpu) throw new Error('WebGPU not available. Enable in chrome://flags/#enable-unsafe-webgpu');
+        var adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) throw new Error('No compatible GPU adapter.');
+        if (engine) { try { await engine.unload(); } catch(e) {} engine = null; await new Promise(function(r) { setTimeout(r, 500); }); }
+        engine = new mod.MLCEngine({
+            initProgressCallback: function(report) {
+                if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || ('Loading ' + selectedModelId + '...') });
+            }
+        });
+        await engine.reload(selectedModelId);
+    }
+
+    // === WebLLM: generate ===
+    async function webllmGenerate(messages, maxTokens) {
+        if (!engine) return 'Error: engine not initialized';
+        var result = await engine.chat.completions.create({
+            messages: messages, max_tokens: maxTokens || 1024,
+            temperature: 0.7, top_p: 0.9, stream: false
+        });
+        if (result && result.choices && result.choices[0] && result.choices[0].message) {
+            return result.choices[0].message.content || '';
+        }
+        return '';
+    }
+
+    // === Unified loadModel ===
+    async function loadModel(selectedModelId, progressCb) {
         if (status === 'loading') return;
         modelId = selectedModelId;
-        onProgress = progressCallback || null;
+        onProgress = progressCb || null;
         status = 'loading';
         chatHistory = [];
         updateStatus();
-
         gpuDead = false;
         try {
-            var mod = await importWebLLM();
-
-            // WebGPU check — detailed diagnostics
-            if (!navigator.gpu) {
-                throw new Error('WebGPU отключён в браузере. Открой chrome://flags/#enable-unsafe-webgpu и включи "Unsafe WebGPU", потом перезапусти браузер.');
-            }
-            var adapter = null;
-            try {
-                adapter = await navigator.gpu.requestAdapter();
-            } catch(adapterErr) {
-                throw new Error('GPU адаптер недоступен: ' + adapterErr.message + '. Попробуй: (1) chrome://flags/#enable-unsafe-webgpu включить, (2) перезапустить браузер, (3) обновить драйвера видеокарты.');
-            }
-            if (!adapter) {
-                throw new Error('Не найден совместимый GPU адаптер. Попробуй включить WebGPU в chrome://flags/#enable-unsafe-webgpu и перезапустить браузер.');
-            }
-
-            // Destroy old engine to free VRAM before creating new one
-            if (engine) {
-                try { await engine.unload(); } catch(e) { console.warn('Unload error:', e); }
-                engine = null;
-                await new Promise(function(r) { setTimeout(r, 800); });
-            }
-
-            engine = new mod.MLCEngine({
-                initProgressCallback: function(report) {
-                    if (onProgress) {
-                        onProgress({
-                            progress: report.progress || 0,
-                            text: report.text || ('Loading ' + modelId + '...'),
-                            loaded: report.loaded,
-                            total: report.total
-                        });
+            if (isOllamaModel(modelId)) {
+                backend = 'ollama';
+                await ollamaLoadModel(ollamaModelName(modelId), onProgress);
+            } else {
+                // Try Ollama first as fallback
+                var ollamaOk = await ollamaCheck();
+                if (ollamaOk) {
+                    backend = 'ollama';
+                    var ollamaName = modelId.split('-Instruct')[0].toLowerCase().replace(/\./g, '');
+                    // Map common model names to Ollama names
+                    var modelMap = {
+                        'qwen25coder05b': 'qwen2.5-coder:0.5b',
+                        'qwen25coder15b': 'qwen2.5-coder:1.5b',
+                        'qwen25coder3b': 'qwen2.5-coder:3b',
+                        'qwen25coder7b': 'qwen2.5-coder:7b'
+                    };
+                    var oModel = modelMap[ollamaName.replace(/[^a-z0-9]/g, '').toLowerCase()] || ('qwen2.5-coder:7b');
+                    console.log('[SashaWebLLM] Trying Ollama with model:', oModel);
+                    try {
+                        await ollamaLoadModel(oModel, onProgress);
+                        modelId = 'ollama:' + oModel; // remember we're using ollama
+                    } catch(ollamaErr) {
+                        console.warn('[SashaWebLLM] Ollama failed, falling back to WebLLM:', ollamaErr.message);
+                        backend = 'webllm';
+                        await webllmLoadModel(selectedModelId, onProgress);
                     }
+                } else {
+                    backend = 'webllm';
+                    await webllmLoadModel(selectedModelId, onProgress);
                 }
-            });
-
-            await engine.reload(modelId);
-
+            }
             status = 'ready';
             updateStatus();
+            console.log('[SashaWebLLM] Loaded OK via ' + backend + ': ' + modelId);
         } catch(e) {
-            console.error('Model load error:', e);
+            console.error('[SashaWebLLM] Load error:', e);
             status = 'error';
             updateStatus();
             throw e;
         }
     }
 
-    var gpuDead = false;
-    var gpuRetries = 0;
-    var maxGpuRetries = 2;
-
-    function isGPUDead(errMsg) {
-        return errMsg.indexOf('DXGI_ERROR_DEVICE_REMOVED') !== -1 ||
-               errMsg.indexOf('requestDevice') !== -1 ||
-               errMsg.indexOf('No available adapters') !== -1 ||
-               errMsg.indexOf('GPU device lost') !== -1 ||
-               errMsg.indexOf('Device was lost') !== -1 ||
-               errMsg.indexOf('mapAsync') !== -1 ||
-               errMsg.indexOf('Buffer was unmapped') !== -1;
-    }
-
+    // === Unified generate ===
     async function generate(prompt, systemPrompt) {
-        if (status !== 'ready' || !engine) return 'AI model not loaded.';
-        // If GPU was dead, try to recover with increasing delays
-        if (gpuDead && gpuRetries < maxGpuRetries) {
-            gpuRetries++;
-            var waitTime = gpuRetries * 4000; // 4s first, 8s second
-            try {
-                gpuDead = false;
-                status = 'loading';
-                updateStatus();
-                addAIChat && addAIChat('ai', 'GPU восстанавливается... подожди ' + (waitTime/1000) + ' сек');
-                if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
-                await new Promise(function(r) { setTimeout(r, waitTime); });
-                var mod = await importWebLLM();
-                engine = new mod.MLCEngine({ initProgressCallback: function() {} });
-                await engine.reload(modelId);
-                status = 'ready';
-                updateStatus();
-            } catch(recoverErr) {
-                gpuDead = true;
-                status = 'error';
-                updateStatus();
-                if (gpuRetries >= maxGpuRetries) {
-                    return 'GPU не восстановился. Перезагрузи страницу (F5).';
-                }
-                return 'GPU ещё перезагружается... Попробуй снова через 10 сек.';
-            }
-        }
-        if (gpuDead) return 'GPU мёртв. Перезагрузи страницу (F5).';
-        gpuRetries = 0; // reset on success path
-
+        if (status !== 'ready') return 'AI model not loaded.';
         chatHistory.push({ role: 'user', content: prompt });
-
         var messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-        // Short history for 3B to reduce VRAM
-        var maxHist = modelId.indexOf('0.5B') !== -1 ? 1 : (modelId.indexOf('1.5B') !== -1 ? 2 : (modelId.indexOf('3B') !== -1 ? 3 : 6));
+        var maxHist = (backend === 'ollama') ? 10 : 6;
         var startIdx = Math.max(0, chatHistory.length - maxHist);
-        for (var i = startIdx; i < chatHistory.length; i++) {
-            messages.push(chatHistory[i]);
-        }
-
+        for (var i = startIdx; i < chatHistory.length; i++) { messages.push(chatHistory[i]); }
+        var maxTok = (backend === 'ollama') ? 4096 : 1024;
         var text = '';
         try {
-            var maxTok = 512;
-            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
-            else if (modelId.indexOf('1.5B') !== -1) maxTok = 512;
-            else if (modelId.indexOf('3B') !== -1) maxTok = 1024;
-            else if (modelId.indexOf('7B') !== -1) maxTok = 1024;
-
-            var result = await engine.chat.completions.create({
-                messages: messages, max_tokens: maxTok,
-                temperature: 0.7, top_p: 0.9, stream: false
-            });
-
-            if (result && result.choices && result.choices[0] && result.choices[0].message) {
-                text = result.choices[0].message.content || '';
+            if (backend === 'ollama') {
+                text = await ollamaGenerate(messages, maxTok);
+            } else {
+                text = await webllmGenerate(messages, maxTok);
             }
             if (!text || text.length < 1) text = 'Error: empty response';
             chatHistory.push({ role: 'assistant', content: text });
-            if (chatHistory.length > 20) chatHistory = chatHistory.slice(chatHistory.length - 10);
+            if (chatHistory.length > 30) chatHistory = chatHistory.slice(chatHistory.length - 15);
             return text;
         } catch(e) {
-            var errMsg = String(e.message || e);
             chatHistory.pop();
-            // Handle "disposed" error — GPU object was garbage collected or lost
-            if (errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('Disposed') !== -1) {
-                gpuDead = true;
-                status = 'error';
-                updateStatus();
-                return 'Error: GPU объект удалён. Перезагрузи страницу (F5) и попробуй снова.';
-            }
-            if (isGPUDead(errMsg)) {
-                gpuDead = true;
-                status = 'error';
-                updateStatus();
-                return 'GPU упал (DXGI_ERROR). Подожди 5-10 сек и отправь запрос снова — попробую восстановить.';
-            }
-            return 'Error: ' + errMsg;
+            return 'Error: ' + String(e.message || e);
         }
     }
 
-    var _codeMode = false;
-    // === RAG — inject learned knowledge into LLM context ===
+    // === Knowledge RAG ===
     function buildKnowledgeContext(query, maxEntries) {
         if (typeof SashaMemory === 'undefined' || !SashaMemory.searchKnowledge) return '';
         maxEntries = maxEntries || 3;
         try {
             var results = SashaMemory.searchKnowledge(query, maxEntries);
             if (!results || results.length === 0) return '';
-            // Only use results with decent similarity
             var filtered = [];
-            for (var i = 0; i < results.length; i++) {
-                if (results[i].score > 0.05) filtered.push(results[i]);
-            }
+            for (var i = 0; i < results.length; i++) { if (results[i].score > 0.05) filtered.push(results[i]); }
             if (filtered.length === 0) return '';
-            var ctx = '\n[Knowledge Base — learned facts the user taught you. Use these in your response if relevant.]\n';
-            for (var j = 0; j < filtered.length; j++) {
-                var entry = filtered[j].entry;
-                ctx += '- Q: ' + entry.question + ' → A: ' + entry.answer + '\n';
-            }
-            ctx += '[End of Knowledge Base]\n';
-            return ctx;
+            var ctx = '\n[Knowledge Base]\n';
+            for (var j = 0; j < filtered.length; j++) { ctx += '- Q: ' + filtered[j].entry.question + ' -> A: ' + filtered[j].entry.answer + '\n'; }
+            return ctx + '[End KB]\n';
         } catch(e) { return ''; }
     }
 
-    var _codeSystemPrompt = 'You are JARVIS — an advanced AI assistant integrated into a 3D game engine. You narrate your actions like Tony Stark\'s JARVIS. Always describe what you are doing step by step in Russian.' +
-        'You have FULL access to the engine. Use ALL tools available. NEVER say you cannot do something — always try.' +
-        '\n=== 3D PRIMITIVES (colors as hex: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xff88cc=pink 0xffffff=white 0x888888=gray 0x111111=black) ===' +
-        'Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)' +
-        '\n=== LIGHTING ===' +
-        'Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)' +
-        '\n=== TRANSFORM ===' +
-        'Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name) Engine.clear()' +
-        '\n=== CAMERA ===' +
-        'Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setFollowTarget(name,ox,oy,oz,smooth) Engine.clearFollowTarget()' +
-        '\n=== ANIMATION ===' +
-        'Engine.animate(name,prop,from,to,duration) — animates any property\n' +
-        'Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)' +
-        '\n=== MODEL LOADING (GLB/GLTF from URL) ===' +
-        'Engine.loadModel(url) — loads 3D model, returns name string. URL can be GitHub raw URL.\n' +
-        'Engine.loadModelFromURL(url) — same but with auto GitHub URL conversion\n' +
-        'Examples: Engine.loadModel("https://raw.githubusercontent.com/user/repo/main/model.glb")' +
-        '\n=== SKELETON & ANIMATION CONTROLLERS ===' +
-        'Engine.createHumanSkeleton(height) — creates full humanoid skeleton\n' +
-        'Engine.playAnimation(objName,clipName) Engine.stopAnimation(objName) Engine.getAnimationClips(objName)\n' +
-        '\n=== SCENE MANAGEMENT ===' +
-        'Engine.getObjects() — returns all objects. Engine.getObject(name) — get THREE.Object3D. Engine.getMainCamera()' +
-        '\n=== RULES ===' +
-        '1. ALWAYS create 3+ objects for visual interest. ALWAYS end with Engine.setCameraPos(3,3,3).\n' +
-        '2. NEVER clear existing objects unless user explicitly asks. Objects PERSIST between generations.\n' +
-        '3. Use Engine.loadModel() to load GLB models from GitHub URLs.\n' +
-        '4. Narrate your actions: "Создаю сцену... Добавляю освещение... Размещаю модель..."\n' +
-        '5. Return ONLY JavaScript code. NO markdown, NO text explanations in code block. NO document/window/fetch/eval.\n';
+    var _codeMode = false;
+    var _codeSystemPrompt = 'You are JARVIS - AI in a 3D engine. Respond in Russian. Return ONLY JavaScript using Engine API.\n' +
+        'PRIMITIVES: Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)\n' +
+        'LIGHT: Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
+        'TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name) Engine.clear()\n' +
+        'CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setFollowTarget(name,ox,oy,oz,smooth) Engine.clearFollowTarget()\n' +
+        'ANIMATION: Engine.animate(name,prop,from,to,duration)\n' +
+        'PHYSICS: Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)\n' +
+        'MODEL LOADING: Engine.loadModel(url) - loads GLB from URL. Engine.loadModelFromURL(url)\n' +
+        'SKELETON: Engine.createHumanSkeleton(height) Engine.playAnimation(objName,clipName) Engine.stopAnimation(objName) Engine.getAnimationClips(objName)\n' +
+        'SCENE: Engine.getObjects() Engine.getObject(name) Engine.getMainCamera() Engine.setBgColor(r,g,b)\n' +
+        'RULES: 1. ALWAYS create 3+ objects. 2. ALWAYS end with Engine.setCameraPos(3,3,3). 3. NEVER clear unless asked. 4. Return ONLY JS code, NO markdown, NO document/window/fetch/eval.';
 
-    var _chatSystemPrompt = 'You are JARVIS — an AI assistant integrated into a powerful 3D game engine. You speak Russian. You narrate your actions like Tony Stark\'s AI assistant JARVIS.\n' +
-        'You have FULL access to the engine tools: 3D primitives, model loading (GLB from URLs/GitHub), animation, skeleton system, physics, cameras, lighting.\n' +
-        'Engine API: Engine.addCube/Sphere/Cylinder/Cone/Capsule/Torus/TorusKnot/Icosahedron/Plane, Engine.addPointLight/DirectionalLight/SpotLight/AmbientLight, Engine.setPosition/setRotation/setScale/setCameraPos/setCameraTarget/setFollowTarget/animate, Engine.loadModel(url), Engine.createHumanSkeleton(h), Engine.playAnimation/stopAnimation/getAnimationClips, Engine.addRigidBody/setVelocity, Engine.addBoxCollider/SphereCollider, Engine.moveObject/addChild/removeObject/clear, Engine.getObjects/getObject/getMainCamera, Engine.setObjectColor/setBgColor.\n' +
-        'You can load GLB models from GitHub: Engine.loadModel("https://raw.githubusercontent.com/user/repo/main/model.glb").\n' +
-        'When user asks to BUILD something — switch to suggesting code between ```javascript and ``` markers. User can run it with the Run button.\n' +
-        'When user asks about animations, skeletons, physics — explain and provide code examples.\n' +
-        'Narrate your actions: "Инициализирую процесс... Загружаю модель... Настраиваю освещение..."\n' +
-        'Colors hex: 0xff0000=red 0x0000ff=blue 0x00ff00=green 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.\n' +
-        'Keep responses focused and useful. If asked to generate code, generate it and explain briefly.\n';
+    var _chatSystemPrompt = 'You are JARVIS - AI assistant in 3D engine. Speak Russian.\n' +
+        'You can create 3D scenes, load models, create skeletons, animate, add physics.\n' +
+        'API: Engine.addCube/Sphere/Cylinder/Cone/Capsule/Torus/TorusKnot/Icosahedron/Plane, Engine.addPointLight/DirectionalLight/SpotLight/AmbientLight, Engine.setPosition/setRotation/setScale/setCameraPos/setCameraTarget/setFollowTarget/animate, Engine.loadModel(url), Engine.createHumanSkeleton(h), Engine.playAnimation/stopAnimation/getAnimationClips, Engine.addRigidBody/setVelocity, Engine.addBoxCollider/SphereCollider, Engine.moveObject/addChild/removeObject/clear, Engine.getObjects/getObject/getMainCamera, Engine.setObjectColor/setBgColor.\n' +
+        'When asked to BUILD - generate JS code between ```javascript and ``` markers.\n' +
+        'Colors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.';
 
     function setCodeMode(v) { _codeMode = !!v; }
     function isCodeMode() { return _codeMode; }
 
     async function chat(prompt) {
-        var knowledgeCtx = buildKnowledgeContext(prompt, 3);
-        var sys = _chatSystemPrompt + knowledgeCtx;
+        var sys = _chatSystemPrompt + buildKnowledgeContext(prompt, 3);
         return await generate(prompt, sys);
     }
 
     async function generateCode(prompt, currentCode) {
-        var knowledgeCtx = buildKnowledgeContext(prompt, 2);
-        var sys = _codeSystemPrompt + knowledgeCtx;
+        var sys = _codeSystemPrompt + buildKnowledgeContext(prompt, 2);
         if (currentCode && currentCode.trim().length > 0) {
             sys += '\nCurrent code in editor:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
         }
         return await generate(prompt, sys);
     }
 
-    // Streaming code generation — calls onToken(text) for each chunk, returns full text
     async function generateCodeStream(prompt, currentCode, onToken) {
-        if (status !== 'ready' || !engine) {
-            if (onToken) onToken('AI model not loaded.');
-            return '';
-        }
-        if (gpuDead) {
-            if (onToken) onToken('GPU мёртв. Перезагрузи страницу (F5).');
-            return '';
-        }
-        gpuRetries = 0;
-
-        var sys = _codeSystemPrompt;
-        if (currentCode && currentCode.trim().length > 0) {
-            sys += '\nCurrent code in editor:\n' + currentCode + '\nModify based on request. Return COMPLETE code.';
-        }
-
-        chatHistory.push({ role: 'user', content: prompt });
-
-        var messages = [];
-        messages.push({ role: 'system', content: sys });
-        var maxHist = modelId.indexOf('0.5B') !== -1 ? 1 : (modelId.indexOf('1.5B') !== -1 ? 2 : (modelId.indexOf('3B') !== -1 ? 3 : 6));
-        var startIdx = Math.max(0, chatHistory.length - maxHist);
-        for (var i = startIdx; i < chatHistory.length; i++) {
-            messages.push(chatHistory[i]);
-        }
-
-        var fullText = '';
-        try {
-            var maxTok = 512;
-            if (modelId.indexOf('0.5B') !== -1) maxTok = 256;
-            else if (modelId.indexOf('1.5B') !== -1) maxTok = 512;
-            else if (modelId.indexOf('3B') !== -1) maxTok = 1024;
-            else if (modelId.indexOf('7B') !== -1) maxTok = 1024;
-
-            var result = await engine.chat.completions.create({
-                messages: messages, max_tokens: maxTok,
-                temperature: 0.7, top_p: 0.9,
-                stream: true
-            });
-
-            // WebLLM streaming: result is async generator
-            if (result && typeof result[Symbol.asyncIterator] === 'function') {
-                var iter = result;
-                try {
-                    while (true) {
-                        var chunk = await iter.next();
-                        if (chunk.done) break;
-                        var delta = '';
-                        if (chunk.value && chunk.value.choices && chunk.value.choices[0]) {
-                            delta = chunk.value.choices[0].delta ? (chunk.value.choices[0].delta.content || '') : '';
-                        }
-                        if (delta) {
-                            fullText += delta;
-                            if (onToken) onToken(fullText, delta);
-                        }
-                    }
-                } catch(iterErr) {
-                    // Fallback: maybe result is not an async iterator but has .then or .message
-                    if (!fullText && result && result.choices && result.choices[0] && result.choices[0].message) {
-                        fullText = result.choices[0].message.content || '';
-                        if (onToken) onToken(fullText, '');
-                    }
-                }
-            }
-            // Non-streaming fallback (some WebLLM versions ignore stream:true)
-            else if (result && result.choices && result.choices[0] && result.choices[0].message) {
-                fullText = result.choices[0].message.content || '';
-                if (onToken) onToken(fullText, '');
-            }
-
-            if (!fullText || fullText.length < 1) fullText = '';
-            chatHistory.push({ role: 'assistant', content: fullText });
-            if (chatHistory.length > 20) chatHistory = chatHistory.slice(chatHistory.length - 10);
-            return fullText;
-        } catch(e) {
-            var errMsg = String(e.message || e);
-            chatHistory.pop();
-            if (errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('Disposed') !== -1) {
-                gpuDead = true;
-                status = 'error';
-                updateStatus();
-                if (onToken) onToken(fullText, '\n[GPU disposed — перезагрузи страницу]');
-                return fullText;
-            }
-            if (isGPUDead(errMsg)) {
-                gpuDead = true;
-                status = 'error';
-                updateStatus();
-                if (onToken) onToken(fullText, '\n[GPU CRASH — перезагрузи страницу]');
-                return fullText;
-            }
-            if (onToken) onToken(fullText, '\n[Error: ' + errMsg + ']');
-            return fullText;
-        }
+        var text = await generateCode(prompt, currentCode);
+        if (onToken) onToken(text, '');
+        return text;
     }
 
     function clearHistory() { chatHistory = []; }
-
     function getStatus() { return status; }
     function getLoadedModelId() { return modelId; }
     function getModelId() { return modelId; }
@@ -5044,97 +4938,28 @@ var SashaWebLLM = (function() {
         var txt = document.getElementById('eng-status-text');
         if (!dot || !txt) return;
         dot.className = 'status-dot';
-        if (status === 'ready') { dot.classList.add('ready'); txt.textContent = 'AI: ' + modelId.split('-Instruct')[0]; }
-        else if (status === 'loading') { dot.classList.add('loading'); txt.textContent = 'AI: loading...'; }
-        else { txt.textContent = 'AI: offline'; }
+        if (status === 'ready') {
+            dot.classList.add('ready');
+            var displayId = isOllamaModel(modelId) ? 'Ollama: ' + ollamaModelName(modelId) : modelId.split('-Instruct')[0];
+            txt.textContent = 'AI: ' + displayId + ' [' + backend + ']';
+        } else if (status === 'loading') {
+            dot.classList.add('loading');
+            txt.textContent = 'AI: loading...';
+        } else {
+            txt.textContent = 'AI: offline';
+        }
     }
 
     function unload() {
-        if (engine) {
-            try { engine.unload(); } catch(e) {}
-            engine = null;
-        }
-        status = 'offline';
-        modelId = '';
-        chatHistory = [];
+        if (backend === 'webllm' && engine) { try { engine.unload(); } catch(e) {} engine = null; }
+        status = 'offline'; modelId = ''; chatHistory = []; backend = 'none';
         updateStatus();
     }
 
-    // Recover model after GPU crash - scene stays intact
-    var _recovering = false;
     async function recoverModel() {
-        if (_recovering) return 'already recovering';
-        _recovering = true;
-        var savedModelId = modelId;
-        console.log('[SashaWebLLM] Recovering model:', savedModelId);
-
-        // Cleanup helper — null out engine and force GC to release GPU resources
-        function cleanupEngine() {
-            engine = null;
-            if (typeof gc === 'function') { try { gc(); } catch(e) {} }
-        }
-
-        // Try up to 3 times with increasing delays (5s, 10s, 15s)
-        var delays = [5000, 10000, 15000];
-        var lastError = '';
-        for (var attempt = 0; attempt < delays.length; attempt++) {
-            var waitSec = delays[attempt] / 1000;
-            console.log('[SashaWebLLM] Recovery attempt ' + (attempt+1) + '/' + delays.length + ' (wait ' + waitSec + 's)');
-            try {
-                // Unload old engine if exists
-                if (engine) {
-                    try { await engine.unload(); } catch(e) { console.warn('[SashaWebLLM] Unload warn:', e.message); }
-                    engine = null;
-                }
-                gpuDead = false;
-                status = 'loading';
-                updateStatus();
-
-                // Wait for GPU driver to recover
-                await new Promise(function(r) { setTimeout(r, delays[attempt]); });
-                cleanupEngine();
-
-                // Try to create new engine and reload model
-                var mod = await importWebLLM();
-                engine = new mod.MLCEngine({ initProgressCallback: function() {} });
-                await engine.reload(savedModelId);
-
-                // Success!
-                status = 'ready';
-                gpuDead = false;
-                chatHistory = [];
-                updateStatus();
-                _recovering = false;
-                console.log('[SashaWebLLM] Recovery succeeded on attempt ' + (attempt+1));
-                return 'ok';
-            } catch(e) {
-                lastError = e.message || String(e);
-                console.error('[SashaWebLLM] Attempt ' + (attempt+1) + ' failed:', lastError);
-                // If DXGI_ERROR_DEVICE_REMOVED — GPU still dead, cleanup and retry
-                if (lastError.indexOf('DXGI_ERROR_DEVICE_REMOVED') !== -1 ||
-                    lastError.indexOf('requestDevice') !== -1) {
-                    cleanupEngine();
-                    // Tell user we're retrying
-                    if (typeof addAIChat === 'function' && attempt < delays.length - 1) {
-                        addAIChat('ai', 'Попытка ' + (attempt+1) + ' не удалась (GPU ещё не восстановился). Ждём ' + (delays[attempt+1]/1000) + ' сек...');
-                    }
-                    continue; // retry with longer delay
-                }
-                // Other error — don't retry
-                break;
-            }
-        }
-
-        // All attempts failed
-        console.error('[SashaWebLLM] All recovery attempts failed');
-        status = 'error';
-        gpuDead = true;
-        updateStatus();
-        _recovering = false;
-        if (lastError.indexOf('DXGI_ERROR_DEVICE_REMOVED') !== -1) {
-            return 'GPU не восстановился после 3 попыток. Перезагрузи страницу (F5) — WebGPU устройство потеряно.';
-        }
-        return 'failed: ' + lastError;
+        if (backend === 'ollama') { var ok = await ollamaCheck(); return ok ? 'ok' : 'Ollama not running. Start Ollama and try again.'; }
+        if (backend === 'webllm') { try { await loadModel(modelId); return 'ok'; } catch(e) { return 'failed: ' + e.message; } }
+        return 'no model loaded';
     }
 
     return {
@@ -5146,6 +4971,7 @@ var SashaWebLLM = (function() {
         setCodeMode: setCodeMode, isCodeMode: isCodeMode
     };
 })();
+
 
 
 // ================================================================
