@@ -4805,32 +4805,8 @@ var SashaWebLLM = (function() {
                 backend = 'ollama';
                 await ollamaLoadModel(ollamaModelName(modelId), onProgress);
             } else {
-                // Try Ollama first as fallback
-                var ollamaOk = await ollamaCheck();
-                if (ollamaOk) {
-                    backend = 'ollama';
-                    var ollamaName = modelId.split('-Instruct')[0].toLowerCase().replace(/\./g, '');
-                    // Map common model names to Ollama names
-                    var modelMap = {
-                        'qwen25coder05b': 'qwen2.5-coder:0.5b',
-                        'qwen25coder15b': 'qwen2.5-coder:1.5b',
-                        'qwen25coder3b': 'qwen2.5-coder:3b',
-                        'qwen25coder7b': 'qwen2.5-coder:7b'
-                    };
-                    var oModel = modelMap[ollamaName.replace(/[^a-z0-9]/g, '').toLowerCase()] || ('qwen2.5-coder:7b');
-                    console.log('[SashaWebLLM] Trying Ollama with model:', oModel);
-                    try {
-                        await ollamaLoadModel(oModel, onProgress);
-                        modelId = 'ollama:' + oModel; // remember we're using ollama
-                    } catch(ollamaErr) {
-                        console.warn('[SashaWebLLM] Ollama failed, falling back to WebLLM:', ollamaErr.message);
-                        backend = 'webllm';
-                        await webllmLoadModel(selectedModelId, onProgress);
-                    }
-                } else {
-                    backend = 'webllm';
-                    await webllmLoadModel(selectedModelId, onProgress);
-                }
+                backend = 'webllm';
+                await webllmLoadModel(selectedModelId, onProgress);
             }
             status = 'ready';
             updateStatus();
@@ -19065,7 +19041,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
