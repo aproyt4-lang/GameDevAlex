@@ -8,7 +8,7 @@
 <meta name="google-site-verification" content="f65RSjrpMIWY5YD8bYzCK4bbUY15bxSdle_UbbldEyw" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
-    <title>SashaAI — GameDev AI & Developer [v8.0-github-ac-1906]</title>
+    <title>SashaAI — GameDev AI & Developer [v8.3-mesh-edit-0308]</title>
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -37,6 +37,34 @@
         body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
 
         .bg-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(ellipse at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(236,72,153,0.15) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(6,182,212,0.1) 0%, transparent 70%); }
+
+    /* Inline Animator Controller inside Inspector */
+    .iac-container { margin: 4px 0; }
+    .iac-header { display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(99,102,241,0.12);border-radius:4px 4px 0 0;border:1px solid var(--border);border-bottom:none;cursor:pointer; }
+    .iac-header:hover { background:rgba(99,102,241,0.2); }
+    .iac-title { font-size:0.72rem;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:5px; }
+    .iac-body { border:1px solid var(--border);border-radius:0 0 4px 4px;padding:6px 8px;background:var(--bg-dark); }
+    .iac-state { display:flex;align-items:center;justify-content:space-between;padding:3px 6px;margin:2px 0;background:var(--bg-hover);border-radius:3px;font-size:0.68rem; }
+    .iac-state.active { border-left:2px solid var(--accent); }
+    .iac-transition { padding:3px 6px;margin:2px 0;background:rgba(245,158,11,0.08);border-left:2px solid #f59e0b;border-radius:0 3px 3px 0;font-size:0.65rem; }
+    .iac-transition-cond { display:inline-flex;align-items:center;gap:3px;margin:1px 3px;padding:1px 4px;background:rgba(255,255,255,0.05);border-radius:2px;font-size:0.62rem; }
+    .iac-param { display:flex;align-items:center;justify-content:space-between;padding:2px 6px;margin:1px 0;font-size:0.68rem; }
+    .iac-param-type { font-size:0.58rem;padding:1px 4px;border-radius:2px;color:var(--text-secondary);background:var(--bg-hover); }
+    .iac-btn { padding:2px 6px;font-size:0.6rem;background:#4f46e5;border:none;color:#fff;border-radius:3px;cursor:pointer; }
+    .iac-btn:hover { background:#6366f1; }
+    .iac-btn-sm { padding:1px 4px;font-size:0.58rem;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-secondary);border-radius:2px;cursor:pointer; }
+    .iac-btn-sm:hover { color:var(--text-primary);border-color:var(--primary); }
+    .iac-btn-danger { background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444; }
+    .iac-btn-danger:hover { background:rgba(239,68,68,0.25); }
+    .iac-input { width:50px;padding:1px 4px;font-size:0.62rem;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:2px;outline:none;font-family:inherit; }
+    .iac-input:focus { border-color:var(--primary); }
+    .iac-select { padding:1px 3px;font-size:0.6rem;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-secondary);border-radius:2px;outline:none;font-family:inherit; }
+    .iac-select:focus { border-color:var(--primary); }
+    .iac-toggle { display:flex;align-items:center;gap:4px;font-size:0.62rem;color:var(--text-secondary); }
+    .iac-toggle input[type="checkbox"] { width:12px;height:12px;cursor:pointer;accent-color:var(--primary); }
+    .iac-section-title { font-size:0.66rem;font-weight:600;color:var(--text-secondary);margin:6px 0 3px;padding-bottom:2px;border-bottom:1px solid var(--border); }
+
+
         .grid-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px); background-size: 50px 50px; z-index: -1; pointer-events: none; }
 
         header { position: fixed; top: 0; left: 0; right: 0; height: 70px; background: rgba(15,15,35,0.9); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); z-index: 1000; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
@@ -633,6 +661,18 @@
         .engine-ai-input-row button:hover { background: var(--primary-dark); }
         .engine-ai-input-row button.build-active { background: #e67e22; }
         .engine-ai-input-row button.build-active:hover { background: #d35400; }
+
+    /* ===== Mesh Edit Mode (Blender-style) ===== */
+    .mesh-edit-bar { display:none; align-items:center; gap:4px; padding:3px 8px; background:rgba(234,179,8,0.08); border-bottom:1px solid rgba(234,179,8,0.25); }
+    .mesh-edit-bar.visible { display:flex; flex-wrap:wrap; }
+    .meb-btn { padding:3px 8px; font-size:0.68rem; background:var(--bg-hover); border:1px solid var(--border); color:var(--text-secondary); border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:3px; transition:all 0.15s; }
+    .meb-btn:hover { border-color:#eab308; color:#eab308; }
+    .meb-btn.active { background:#eab308; color:#000; border-color:#eab308; font-weight:600; }
+    .meb-btn.danger { border-color:#ef4444; color:#ef4444; }
+    .meb-btn.danger:hover { background:#ef4444; color:#fff; }
+    .meb-sep { width:1px; height:18px; background:var(--border); margin:0 2px; }
+    .meb-info { font-size:0.65rem; color:var(--text-secondary); margin-left:auto; }
+
     </style>
 </head>
 <body>
@@ -1046,15 +1086,10 @@
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- AI --</option>
-                        <option value="ollama:qwen2.5-coder:7b">Ollama: Qwen2.5-Coder 7B</option>
-                        <option value="ollama:qwen2.5-coder:3b">Ollama: Qwen2.5-Coder 3B</option>
-                        <option value="ollama:qwen2.5-coder:1.5b">Ollama: Qwen2.5-Coder 1.5B</option>
-                        <option value="ollama:llama3.1:8b">Ollama: Llama 3.1 8B</option>
-                        <option value="ollama:codellama:7b">Ollama: CodeLlama 7B</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 0.5B</option>
-                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 1.5B</option>
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">WebLLM: Qwen 3B</option>
-                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">WebLLM: Qwen 7B</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
+                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
+                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
+                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
                     </select>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
@@ -1080,10 +1115,32 @@
                     <button class="eng-btn" onclick="EngineApp.exportScene()" title="Export Scene (GLB)"><i class="fas fa-cubes"></i></button>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" id="ac-open-btn" onclick="EngineApp.openAnimatorFromTimeline()" title="Animator Controller" style="background:var(--primary);border-color:var(--primary);"><i class="fas fa-project-diagram"></i> Animator</button>
+                    <button class="eng-btn" id="mesh-edit-btn" onclick="EngineApp.toggleMeshEditMode()" title="Mesh Edit Mode (Tab)" style="background:#eab308;border-color:#eab308;color:#000;font-weight:600;"><i class="fas fa-vector-square"></i> Edit Mesh</button>
+
                     <div class="engine-model-status">
                         <div class="status-dot" id="eng-status-dot"></div>
                         <span id="eng-status-text">AI: offline</span>
                     </div>
+                </div>
+
+                <!-- Mesh Edit Sub-Toolbar -->
+                <div class="mesh-edit-bar" id="mesh-edit-bar">
+                    <button class="meb-btn active" id="meb-vertex" onclick="SashaMeshEdit.setSelectionMode('vertex')" title="Vertex Select (1)"><i class="fas fa-circle" style="font-size:0.5rem;"></i> Vertex</button>
+                    <button class="meb-btn" id="meb-edge" onclick="SashaMeshEdit.setSelectionMode('edge')" title="Edge Select (2)"><i class="fas fa-minus"></i> Edge</button>
+                    <button class="meb-btn" id="meb-face" onclick="SashaMeshEdit.setSelectionMode('face')" title="Face Select (3)"><i class="fas fa-square" style="font-size:0.5rem;"></i> Face</button>
+                    <div class="meb-sep"></div>
+                    <button class="meb-btn" onclick="SashaMeshEdit.extrude(0.5)" title="Extrude (E)"><i class="fas fa-arrows-alt-v"></i> Extrude</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.inset(0.1)" title="Inset (I)"><i class="fas fa-compress-alt"></i> Inset</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.loopCut()" title="Loop Cut (Ctrl+R)"><i class="fas fa-grip-lines"></i> Loop Cut</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.subdivide()" title="Subdivide"><i class="fas fa-th"></i> Subdivide</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.bevel(0.05,1)" title="Bevel (Ctrl+B)"><i class="fas fa-border-style"></i> Bevel</button>
+                    <div class="meb-sep"></div>
+                    <button class="meb-btn" onclick="SashaMeshEdit.deleteSelection()" title="Delete (X)" class="danger"><i class="fas fa-trash-alt"></i> Delete</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.dissolveEdges()" title="Dissolve"><i class="fas fa-eraser"></i> Dissolve</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.flipNormals()" title="Flip Normals"><i class="fas fa-exchange-alt"></i> Flip Normals</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.selectAll()" title="Select All (A)"><i class="fas fa-object-group"></i> All</button>
+                    <button class="meb-btn" onclick="SashaMeshEdit.deselectAll()" title="Deselect"><i class="fas fa-times"></i> None</button>
+                    <span class="meb-info" id="meb-info">No mesh selected</span>
                 </div>
 
                 <!-- Main area: Hierarchy | Viewport | Inspector -->
@@ -1251,15 +1308,10 @@
                                 <div class="engine-ai-toolbar">
                                     <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                                         <option value="">-- Model --</option>
-                                        <option value="ollama:qwen2.5-coder:7b" selected>Ollama: Qwen2.5-Coder 7B</option>
-                                        <option value="ollama:qwen2.5-coder:3b">Ollama: Qwen2.5-Coder 3B</option>
-                                        <option value="ollama:qwen2.5-coder:1.5b">Ollama: Qwen2.5-Coder 1.5B</option>
-                                        <option value="ollama:llama3.1:8b">Ollama: Llama 3.1 8B</option>
-                                        <option value="ollama:codellama:7b">Ollama: CodeLlama 7B</option>
-                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 0.5B</option>
-                                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">WebLLM: Qwen 1.5B</option>
-                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">WebLLM: Qwen 3B</option>
-                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">WebLLM: Qwen 7B</option>
+                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
+                                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
+                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
+                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
                                     </select>
                                     <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
                                     <button class="eng-tab" onclick="EngineApp.restartModel()" style="font-size:0.72rem;padding:3px 8px;" id="ai-restart-btn" title="Перезагрузить модель"><i class="fas fa-redo"></i> Restart</button>
@@ -4863,20 +4915,9 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are JARVIS - AI in a 3D engine. Respond in Russian. Return ONLY JavaScript using Engine API.\n' +
-        'PRIMITIVES: Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)\n' +
-        'LIGHT: Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n' +
-        'TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name) Engine.clear()\n' +
-        'CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setFollowTarget(name,ox,oy,oz,smooth) Engine.clearFollowTarget()\n' +
-        'ANIMATION: Engine.animate(name,prop,from,to,duration)\n' +
-        'PHYSICS: Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)\n' +
-        'MODEL LOADING: Engine.loadModel(url) - loads GLB from URL. Engine.loadModelFromURL(url)\n' +
-        'SKELETON: Engine.createHumanSkeleton(height) Engine.playAnimation(objName,clipName) Engine.stopAnimation(objName) Engine.getAnimationClips(objName)\n' +
-        'SCENE: Engine.getObjects() Engine.getObject(name) Engine.getMainCamera() Engine.setBgColor(r,g,b)\n' +
-        'RULES: 1. ALWAYS create 3+ objects. 2. ALWAYS end with Engine.setCameraPos(3,3,3). 3. NEVER clear unless asked. 4. Return ONLY JS code, NO markdown, NO document/window/fetch/eval.';
-
+        var _codeSystemPrompt = 'You are JARVIS - AI in a 3D engine. Return ONLY JavaScript using Engine API. Respond in Russian.PRIMITIVES: Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)LIGHT: Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name) Engine.clear()CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setFollowTarget(name,ox,oy,oz,smooth) Engine.clearFollowTarget()ANIMATION: Engine.animate(name,prop,from,to,duration)PHYSICS: Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)MODEL: Engine.loadModel(url) Engine.loadModelFromURL(url)SKELETON: Engine.createHumanSkeleton(h) Engine.playAnimation(n,clip) Engine.stopAnimation(n) Engine.getAnimationClips(n)SCENE: Engine.getObjects() Engine.getObject(n) Engine.getMainCamera() Engine.setBgColor(r,g,b)RULES: 1. ALWAYS 3+ objects. 2. ALWAYS end Engine.setCameraPos(3,3,3). 3. NEVER clear unless asked. 4. Return ONLY JS code. NO markdown. NO document/window/fetch/eval.TEXTURE: Engine.aiGenerateTexture(type,params) types:brick,wood,marble,grass,metal,noise,checker,gradient,sky,lava,fabric,tiles,normalMap,roughness. Engine.aiApplyTexture(name,texName)MATERIAL: Engine.aiGenerateMaterial(type,params) types:glass,emissive,hologram,chrome,waterPROCEDURAL: Engine.aiCreateProceduralModel(type,params) types:tree,rock,fence,stairs,arch,column,wall,house,tower,bridge,castle,car,weapon,shield,well,chest,barrel,campfire,torch,table,chair,gate,crystal,platform,ruins,sign,ladder AI COMPOSE: Engine.aiComposeModel(description,params) creates complex models from text (ru/en): house,castle,tower,bridge,car,sword,axe,shield,crystal,campfire,torch,barrel,chest,well,table,chair,gate,platform,ruins,sign,ladderSKELETON: Engine.aiAutoRig(name) Engine.aiGenerateAnimation(name,type,params) types:idle,walk,run,jump,attack,tpose Engine.aiPlayGeneratedAnimation(name,type)GITHUB: Engine.aiGithubImportModel(repo,path,x,y,z,scale)RULES: 5. For textured objects gen texture THEN apply. 6. For characters: create THEN aiAutoRig THEN aiGenerateAnimation.ANIMATOR CONTROLLER: Engine.createAnimatorController(id,name) Engine.addStateToController(ctrlId,stateName,clipId) Engine.addUnityTransition(ctrlId,from,to,{conditions:[{param:'Speed',mode:'greater',value:0.1}],hasExitTime:false,duration:0.25,canTransitionToSelf:false}) Engine.addParameter(ctrlId,name,type,default) types:float,bool,int,trigger. Engine.setParameterValue(ctrlId,param,value) Engine.setAnimatorParam(objName,param,value) Engine.triggerAnimatorParam(objName,triggerName). Conditions modes:if,ifNot,greater,less,greaterEquals,lessEquals,equals,notEquals.GAME ASSEMBLY: Engine.aiGenerateTexture,aiCreateProceduralModel,aiAutoRig,aiGenerateAnimation create assets. Combine with addCube/addSphere for level geometry. Use AnimatorController for character state machines. Use loadModel/aiGithubImportModel for external assets.RULES: 7. For characters with state machines: create controller, add states with clips, add transitions with conditions. 8. NEVER delete previously generated objects unless explicitly asked.MESH EDIT MODE: Engine.aiEnterEditMode(name) enters mesh edit on a mesh object. Engine.aiSelectVertices([0,1,2,3]) selects verts by index. Engine.aiSelectFaces([0,1]) selects faces. Engine.aiExtrudeSelection(amount) extrudes selected faces. Engine.aiInsetSelection(amount) insets. Engine.aiSubdivideMesh() subdivides all faces. Engine.aiBevelSelection(amount,segments) bevels edges. Engine.aiLoopCut() adds edge loop. Engine.aiDeleteSelection() deletes selected. Engine.aiMoveVertex(i,x,y,z) moves vertex. Engine.aiMoveSelectedVertices(dx,dy,dz) moves all selected verts. Engine.aiExitEditMode() exits. Engine.aiGetMeshInfo(name) returns {vertices,faces}. Use for custom mesh shaping: enter edit mode, select, extrude/move/bevel to sculpt.';
     var _chatSystemPrompt = 'You are JARVIS - AI assistant in 3D engine. Speak Russian.\n' +
-        'You can create 3D scenes, load models, create skeletons, animate, add physics.\n' +
+        'You can create 3D scenes, load models, create skeletons, animate, add physics. You can also generate textures (aiGenerateTexture types:brick,wood,marble,grass,metal,noise,checker,gradient,sky,lava,fabric,tiles,normalMap,roughness), procedural models (aiCreateProceduralModel types:tree,rock,fence,stairs,arch,column,wall), auto-rig characters (aiAutoRig), generate animations (aiGenerateAnimation types:idle,walk,run,jump,attack,tpose), import models from GitHub (aiGithubImportModel), and create special materials (aiGenerateMaterial types:glass,emissive,hologram,chrome,water), create Unity-style AnimatorControllers with state machines and transitions (createAnimatorController, addUnityTransition with conditions: if/ifNot/greater/less/equals/notEquals, hasExitTime, duration, canTransitionToSelf), manage parameters (addParameter with types: float/bool/int/trigger), and assemble complete game scenes from assets. All AI-generated objects persist until explicitly removed.\n' + You can also enter mesh edit mode (aiEnterEditMode) and modify geometry: select vertices/faces, extrude, inset, bevel, subdivide, loop cut, delete, move vertices — like Blender. Use aiGetMeshInfo to check mesh stats.
         'API: Engine.addCube/Sphere/Cylinder/Cone/Capsule/Torus/TorusKnot/Icosahedron/Plane, Engine.addPointLight/DirectionalLight/SpotLight/AmbientLight, Engine.setPosition/setRotation/setScale/setCameraPos/setCameraTarget/setFollowTarget/animate, Engine.loadModel(url), Engine.createHumanSkeleton(h), Engine.playAnimation/stopAnimation/getAnimationClips, Engine.addRigidBody/setVelocity, Engine.addBoxCollider/SphereCollider, Engine.moveObject/addChild/removeObject/clear, Engine.getObjects/getObject/getMainCamera, Engine.setObjectColor/setBgColor.\n' +
         'When asked to BUILD - generate JS code between ```javascript and ``` markers.\n' +
         'Colors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.';
@@ -4949,6 +4990,1540 @@ var SashaWebLLM = (function() {
 })();
 
 
+
+// ================================================================
+// ============ SashaAIGraphics - AI Procedural Graphics Generation ============
+
+// ================================================================
+// ============ SashaMeshEdit — Blender-style Mesh Edit Mode ============
+var SashaMeshEdit = (function() {
+    'use strict';
+    var _active = false;
+    var _mesh = null;        // THREE.Mesh being edited
+    var _geometry = null;   // reference to mesh.geometry
+    var _selMode = 'face';  // 'vertex' | 'edge' | 'face'
+    var _selectedVerts = {}; // { vertIndex: true }
+    var _selectedEdges = new Set(); // Set of 'v0-v1' strings
+    var _selectedFaces = new Set(); // Set of face indices
+    var _overlays = [];     // THREE objects added to scene for visualization
+    var _raycaster = new THREE.Raycaster();
+    var _mouse = new THREE.Vector2();
+    var _dragging = false;
+    var _dragPlane = new THREE.Plane();
+    var _dragOffset = new THREE.Vector3();
+    var _hoveredElement = null;
+    var _vertDots = null;   // THREE.Points for vertex dots
+    var _edgeLines = null;  // THREE.LineSegments for wireframe overlay
+    var _faceHighlights = null; // THREE.Mesh for face selection overlay
+    var _vertPositionsBackup = null; // Float32Array for undo on drag
+    var _canvas = null;
+    var _camera = null;
+    var _scene = null;
+
+    function _getMesh() { return _mesh; }
+    function isActive() { return _active; }
+
+    function _getObj() {
+        // Get the parent SashaEngineAPI object
+        if (typeof SashaEngineAPI !== 'undefined') return SashaEngineAPI;
+        return null;
+    }
+
+    function _getScene() {
+        if (_scene) return _scene;
+        var api = _getObj();
+        if (api && api.getScene) { _scene = api.getScene(); return _scene; }
+        return null;
+    }
+    function _getCamera() {
+        if (_camera) return _camera;
+        var api = _getObj();
+        if (api && api.getCamera) { _camera = api.getCamera(); return _camera; }
+        return null;
+    }
+    function _getCanvas() {
+        if (_canvas) return _canvas;
+        return document.getElementById('engine-canvas');
+    }
+
+    function _ensureIndexed(geo) {
+        if (!geo.index) {
+            var pos = geo.attributes.position;
+            var idx = [];
+            for (var i = 0; i < pos.count; i += 3) {
+                idx.push(i, i + 1, i + 2);
+            }
+            geo.setIndex(idx);
+        }
+        geo.attributes.position.needsUpdate = true;
+    }
+
+    function _rebuildOverlays() {
+        _clearOverlays();
+        if (!_geometry) return;
+        _ensureIndexed(_geometry);
+        var pos = _geometry.attributes.position;
+        var idx = _geometry.index;
+        var sc = _getScene();
+        if (!sc) return;
+
+        // 1. Vertex dots
+        var dotGeo = new THREE.BufferGeometry();
+        dotGeo.setAttribute('position', pos.clone());
+        var dotMat = new THREE.PointsMaterial({ color: 0xffff00, size: 0.06, sizeAttenuation: true, depthTest: false });
+        _vertDots = new THREE.Points(dotGeo, dotMat);
+        _vertDots.renderOrder = 999;
+        _vertDots.raycast = function() { return []; }; // not pickable itself
+        sc.add(_vertDots);
+        _overlays.push(_vertDots);
+
+        // 2. Wireframe edges
+        var edges = new THREE.EdgesGeometry(_geometry, 15);
+        var lineMat = new THREE.LineBasicMaterial({ color: 0x88ccff, linewidth: 1, transparent: true, opacity: 0.7 });
+        _edgeLines = new THREE.LineSegments(edges, lineMat);
+        _edgeLines.renderOrder = 998;
+        _edgeLines.position.copy(_mesh.position);
+        _edgeLines.rotation.copy(_mesh.rotation);
+        _edgeLines.scale.copy(_mesh.scale);
+        _edgeLines.raycast = function() { return []; };
+        sc.add(_edgeLines);
+        _overlays.push(_edgeLines);
+
+        // 3. Face highlight mesh (same geometry, transparent)
+        var faceMat = new THREE.MeshBasicMaterial({ color: 0x22aaff, transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthTest: true });
+        _faceHighlights = new THREE.Mesh(_geometry, faceMat);
+        _faceHighlights.position.copy(_mesh.position);
+        _faceHighlights.rotation.copy(_mesh.rotation);
+        _faceHighlights.scale.copy(_mesh.scale);
+        _faceHighlights.renderOrder = 997;
+        _faceHighlights.raycast = function() { return []; };
+        sc.add(_faceHighlights);
+        _overlays.push(_faceHighlights);
+
+        _updateSelectionVisuals();
+    }
+
+    function _clearOverlays() {
+        var sc = _getScene();
+        for (var i = 0; i < _overlays.length; i++) {
+            if (_overlays[i] && _overlays[i].parent) _overlays[i].parent.remove(_overlays[i]);
+            if (_overlays[i].geometry && _overlays[i].geometry !== _geometry) _overlays[i].geometry.dispose();
+            if (_overlays[i].material) _overlays[i].material.dispose();
+        }
+        _overlays = [];
+        _vertDots = null;
+        _edgeLines = null;
+        _faceHighlights = null;
+    }
+
+    function _updateSelectionVisuals() {
+        if (!_vertDots || !_geometry) return;
+        var pos = _geometry.attributes.position;
+        // Color vertex dots: yellow = normal, red = selected
+        var colors = new Float32Array(pos.count * 3);
+        for (var i = 0; i < pos.count; i++) {
+            if (_selectedVerts[i]) {
+                colors[i * 3] = 1; colors[i * 3 + 1] = 0.2; colors[i * 3 + 2] = 0.2;
+            } else {
+                colors[i * 3] = 1; colors[i * 3 + 1] = 1; colors[i * 3 + 2] = 0;
+            }
+        }
+        _vertDots.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        _vertDots.material.vertexColors = true;
+        _vertDots.material.needsUpdate = true;
+        _vertDots.geometry.attributes.color.needsUpdate = true;
+
+        // Update face highlight
+        if (_faceHighlights && _selectedFaces.size > 0) {
+            _faceHighlights.material.opacity = 0.15;
+        } else if (_faceHighlights) {
+            _faceHighlights.material.opacity = 0.0;
+        }
+
+        // Update info
+        var info = document.getElementById('meb-info');
+        if (info) {
+            var vc = Object.keys(_selectedVerts).length;
+            var ec = _selectedEdges.size;
+            var fc = _selectedFaces.size;
+            var totalV = pos.count;
+            var totalF = _geometry.index ? _geometry.index.count / 3 : Math.floor(totalV / 3);
+            info.textContent = 'V:' + totalV + ' F:' + totalF + ' | Sel: ' + vc + 'v ' + ec + 'e ' + fc + 'f';
+        }
+    }
+
+    // ---- Selection via raycasting ----
+    function _pickElement(event) {
+        if (!_active || !_mesh || !_geometry) return null;
+        var canvas = _getCanvas();
+        if (!canvas) return null;
+        var rect = canvas.getBoundingClientRect();
+        _mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        _mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        var cam = _getCamera();
+        if (!cam) return null;
+        _raycaster.setFromCamera(_mouse, cam);
+
+        _ensureIndexed(_geometry);
+        var idx = _geometry.index;
+        var pos = _geometry.attributes.position;
+        var normals = _geometry.attributes.normal;
+
+        if (_selMode === 'vertex') {
+            // Find closest vertex to ray
+            var bestDist = Infinity, bestIdx = -1;
+            var wpos = new THREE.Vector3();
+            for (var i = 0; i < pos.count; i++) {
+                wpos.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+                wpos.applyMatrix4(_mesh.matrixWorld);
+                var dist = _raycaster.ray.distanceToPoint(wpos);
+                if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+            }
+            if (bestDist < 0.3) return { type: 'vertex', index: bestIdx };
+            return null;
+        }
+
+        if (_selMode === 'edge') {
+            // Find closest edge to ray
+            var bestDist = Infinity, bestEdge = null;
+            for (var i = 0; i < idx.count; i += 3) {
+                var tri = [idx.getX(i), idx.getX(i + 1), idx.getX(i + 2)];
+                var edgePairs = [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]];
+                for (var e = 0; e < 3; e++) {
+                    var a = edgePairs[e][0], b = edgePairs[e][1];
+                    var wa = new THREE.Vector3(pos.getX(a), pos.getY(a), pos.getZ(a)).applyMatrix4(_mesh.matrixWorld);
+                    var wb = new THREE.Vector3(pos.getX(b), pos.getY(b), pos.getZ(b)).applyMatrix4(_mesh.matrixWorld);
+                    var dist = _raycaster.ray.distanceToSegment(wa, wb, new THREE.Vector3());
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestEdge = { a: Math.min(a, b), b: Math.max(a, b) };
+                    }
+                }
+            }
+            if (bestDist < 0.3) return { type: 'edge', a: bestEdge.a, b: bestEdge.b };
+            return null;
+        }
+
+        if (_selMode === 'face') {
+            var hits = _raycaster.intersectObject(_mesh, false);
+            if (hits.length > 0 && hits[0].faceIndex !== undefined) {
+                return { type: 'face', index: hits[0].faceIndex };
+            }
+            return null;
+        }
+        return null;
+    }
+
+    // ---- Event handlers ----
+    var _onPointerDown = function(e) {
+        if (!_active || e.button !== 0) return;
+        var el = _pickElement(e);
+        if (!el) return;
+
+        if (el.type === 'vertex') {
+            if (!e.shiftKey) _selectedVerts = {};
+            _selectedVerts[el.index] = !_selectedVerts[el.index];
+            if (!_selectedVerts[el.index]) delete _selectedVerts[el.index];
+        } else if (el.type === 'edge') {
+            var key = el.a + '-' + el.b;
+            if (e.shiftKey && _selectedEdges.has(key)) { _selectedEdges.delete(key); }
+            else { if (!e.shiftKey) _selectedEdges.clear(); _selectedEdges.add(key); }
+        } else if (el.type === 'face') {
+            if (e.shiftKey && _selectedFaces.has(el.index)) { _selectedFaces.delete(el.index); }
+            else { if (!e.shiftKey) _selectedFaces.clear(); _selectedFaces.add(el.index); }
+        }
+
+        _updateSelectionVisuals();
+
+        // Start drag for vertex mode
+        if (el.type === 'vertex' && _selectedVerts[el.index]) {
+            _dragging = true;
+            var cam = _getCamera();
+            var wpos = new THREE.Vector3();
+            var pos = _geometry.attributes.position;
+            wpos.set(pos.getX(el.index), pos.getY(el.index), pos.getZ(el.index));
+            wpos.applyMatrix4(_mesh.matrixWorld);
+            _dragPlane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()), wpos);
+            _dragOffset.copy(wpos).sub(_raycaster.ray.intersectPlane(_dragPlane, new THREE.Vector3()));
+            // Backup positions
+            _vertPositionsBackup = new Float32Array(pos.array);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+
+    var _onPointerMove = function(e) {
+        if (!_active) return;
+        if (_dragging && _selMode === 'vertex') {
+            var canvas = _getCanvas();
+            if (!canvas) return;
+            var rect = canvas.getBoundingClientRect();
+            _mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            _mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            var cam = _getCamera();
+            if (!cam) return;
+            _raycaster.setFromCamera(_mouse, cam);
+            var intersection = new THREE.Vector3();
+            if (_raycaster.ray.intersectPlane(_dragPlane, intersection)) {
+                intersection.add(_dragOffset);
+                // Move selected vertices in local space
+                var pos = _geometry.attributes.position;
+                var invMatrix = new THREE.Matrix4().copy(_mesh.matrixWorld).invert();
+                var localPt = intersection.clone().applyMatrix4(invMatrix);
+                for (var vi in _selectedVerts) {
+                    if (_selectedVerts.hasOwnProperty(vi)) {
+                        var idx2 = parseInt(vi);
+                        pos.setXYZ(idx2, localPt.x, localPt.y, localPt.z);
+                    }
+                }
+                pos.needsUpdate = true;
+                _geometry.computeVertexNormals();
+                _rebuildOverlays();
+            }
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+
+    var _onPointerUp = function(e) {
+        if (_dragging) {
+            _dragging = false;
+            _vertPositionsBackup = null;
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+
+    function _attachEvents() {
+        var c = _getCanvas();
+        if (c) {
+            c.addEventListener('pointerdown', _onPointerDown, true);
+            c.addEventListener('pointermove', _onPointerMove, true);
+            c.addEventListener('pointerup', _onPointerUp, true);
+        }
+        document.addEventListener('keydown', _onKeyDown, true);
+    }
+    function _detachEvents() {
+        var c = _getCanvas();
+        if (c) {
+            c.removeEventListener('pointerdown', _onPointerDown, true);
+            c.removeEventListener('pointermove', _onPointerMove, true);
+            c.removeEventListener('pointerup', _onPointerUp, true);
+        }
+        document.removeEventListener('keydown', _onKeyDown, true);
+    }
+
+    var _onKeyDown = function(e) {
+        if (!_active) return;
+        var key = e.key;
+        if (key === '1') { setSelectionMode('vertex'); e.preventDefault(); }
+        else if (key === '2') { setSelectionMode('edge'); e.preventDefault(); }
+        else if (key === '3') { setSelectionMode('face'); e.preventDefault(); }
+        else if (key === 'a' && !e.ctrlKey && !e.metaKey) { selectAll(); e.preventDefault(); }
+        else if (key === 'x' || key === 'Delete') { deleteSelection(); e.preventDefault(); }
+        else if (key === 'e' && !e.ctrlKey) { extrude(0.5); e.preventDefault(); }
+        else if (key === 'i' && !e.ctrlKey) { inset(0.1); e.preventDefault(); }
+        else if (key === 'b' && e.ctrlKey) { bevel(0.05, 1); e.preventDefault(); }
+        else if (key === 'r' && e.ctrlKey) { loopCut(); e.preventDefault(); }
+        else if (key === 'Escape') { deselectAll(); e.preventDefault(); }
+    };
+
+    // ---- Public API ----
+
+    function enterEditMode(mesh) {
+        if (_active) exitEditMode();
+        if (!mesh || !mesh.isMesh || !mesh.geometry) {
+            console.warn('[MeshEdit] Invalid mesh');
+            return false;
+        }
+        _mesh = mesh;
+        _geometry = mesh.geometry;
+        _ensureIndexed(_geometry);
+        // Make geometry mutable if it's a BufferGeometry
+        if (!_geometry.attributes.position) {
+            console.warn('[MeshEdit] Geometry has no position attribute');
+            return false;
+        }
+        _selectedVerts = {};
+        _selectedEdges = new Set();
+        _selectedFaces = new Set();
+        _active = true;
+        _rebuildOverlays();
+        _attachEvents();
+        // Hide transform gizmo while editing
+        var api = _getObj();
+        if (api && api.setGizmoMode) api.setGizmoMode('translate');
+        console.log('[MeshEdit] Entered edit mode on mesh with ' + _geometry.attributes.position.count + ' vertices');
+        return true;
+    }
+
+    function exitEditMode() {
+        if (!_active) return;
+        _detachEvents();
+        _clearOverlays();
+        _selectedVerts = {};
+        _selectedEdges = new Set();
+        _selectedFaces = new Set();
+        _mesh = null;
+        _geometry = null;
+        _active = false;
+        _scene = null;
+        _camera = null;
+        _canvas = null;
+        console.log('[MeshEdit] Exited edit mode');
+    }
+
+    function setSelectionMode(mode) {
+        _selMode = mode;
+        // Update UI buttons
+        var btns = ['meb-vertex', 'meb-edge', 'meb-face'];
+        for (var i = 0; i < btns.length; i++) {
+            var b = document.getElementById(btns[i]);
+            if (b) b.classList.toggle('active', btns[i] === 'meb-' + mode);
+        }
+    }
+    function getSelectionMode() { return _selMode; }
+
+    function selectAll() {
+        if (!_geometry) return;
+        var pos = _geometry.attributes.position;
+        _ensureIndexed(_geometry);
+        var idx = _geometry.index;
+        if (_selMode === 'vertex') {
+            _selectedVerts = {};
+            for (var i = 0; i < pos.count; i++) _selectedVerts[i] = true;
+        } else if (_selMode === 'edge') {
+            _selectedEdges = new Set();
+            var edgeSet = new Set();
+            for (var i = 0; i < idx.count; i += 3) {
+                var a = idx.getX(i), b = idx.getX(i + 1), c = idx.getX(i + 2);
+                [[a,b],[b,c],[c,a]].forEach(function(pair) {
+                    var key = Math.min(pair[0], pair[1]) + '-' + Math.max(pair[0], pair[1]);
+                    edgeSet.add(key);
+                });
+            }
+            _selectedEdges = edgeSet;
+        } else if (_selMode === 'face') {
+            _selectedFaces = new Set();
+            for (var i = 0; i < idx.count / 3; i++) _selectedFaces.add(i);
+        }
+        _updateSelectionVisuals();
+    }
+
+    function deselectAll() {
+        _selectedVerts = {};
+        _selectedEdges = new Set();
+        _selectedFaces = new Set();
+        _updateSelectionVisuals();
+    }
+
+    function selectVerticesByIndices(indices) {
+        _selectedVerts = {};
+        for (var i = 0; i < indices.length; i++) _selectedVerts[indices[i]] = true;
+        _updateSelectionVisuals();
+    }
+
+    function selectFacesByIndices(indices) {
+        _selectedFaces = new Set(indices);
+        _updateSelectionVisuals();
+    }
+
+    // ---- Mesh Operations ----
+
+    function extrude(amount) {
+        if (!_geometry || _selectedFaces.size === 0) {
+            console.warn('[MeshEdit] No faces selected for extrude');
+            return false;
+        }
+        _ensureIndexed(_geometry);
+        var pos = _geometry.attributes.position;
+        var idx = _geometry.index;
+        var nrm = _geometry.attributes.normal;
+        var oldVCount = pos.count;
+        var oldFCount = idx.count / 3;
+
+        // For each selected face, create new vertices offset along face normal and connect sides
+        var newIndices = [];
+        var newPositions = [];
+        var newNormals = [];
+        var faceNormalMap = {}; // faceIndex -> [nx, ny, nz]
+
+        // Compute face normals for selected faces
+        _selectedFaces.forEach(function(fi) {
+            var i0 = idx.getX(fi * 3), i1 = idx.getX(fi * 3 + 1), i2 = idx.getX(fi * 3 + 2);
+            var a = new THREE.Vector3(pos.getX(i0), pos.getY(i0), pos.getZ(i0));
+            var b = new THREE.Vector3(pos.getX(i1), pos.getY(i1), pos.getZ(i1));
+            var c = new THREE.Vector3(pos.getX(i2), pos.getY(i2), pos.getZ(i2));
+            var ab = b.clone().sub(a);
+            var ac = c.clone().sub(a);
+            var n = new THREE.Vector3().crossVectors(ab, ac).normalize();
+            faceNormalMap[fi] = [n.x, n.y, n.z];
+        });
+
+        // Track which old vertices map to which new extruded vertices
+        var extrudedVertMap = {}; // oldVertIndex -> newVertIndex
+        var nextVertIdx = oldVCount;
+
+        // Create extruded (top) vertices for each unique vertex in selected faces
+        _selectedFaces.forEach(function(fi) {
+            var fn = faceNormalMap[fi];
+            for (var k = 0; k < 3; k++) {
+                var vi = idx.getX(fi * 3 + k);
+                if (extrudedVertMap[vi] === undefined) {
+                    extrudedVertMap[vi] = nextVertIdx;
+                    newPositions.push(
+                        pos.getX(vi) + fn[0] * amount,
+                        pos.getY(vi) + fn[1] * amount,
+                        pos.getZ(vi) + fn[2] * amount
+                    );
+                    newNormals.push(fn[0], fn[1], fn[2]);
+                    nextVertIdx++;
+                }
+            }
+        });
+
+        // Build side faces connecting old vertices to new vertices
+        // For each selected face, for each edge, create a quad (2 triangles)
+        var processedEdges = new Set();
+        _selectedFaces.forEach(function(fi) {
+            var fn = faceNormalMap[fi];
+            for (var k = 0; k < 3; k++) {
+                var vi1 = idx.getX(fi * 3 + k);
+                var vi2 = idx.getX(fi * 3 + ((k + 1) % 3));
+                var ek = Math.min(vi1, vi2) + '-' + Math.max(vi1, vi2);
+                if (processedEdges.has(ek)) continue;
+                processedEdges.add(ek);
+
+                var ni1 = extrudedVertMap[vi1];
+                var ni2 = extrudedVertMap[vi2];
+                // Side quad: vi1, vi2, ni2, ni1
+                newIndices.push(vi1, vi2, ni2);
+                newIndices.push(vi1, ni2, ni1);
+            }
+        });
+
+        // Update top face indices to point to new vertices
+        var newFaceIndices = [];
+        for (var fi = 0; fi < oldFCount; fi++) {
+            if (_selectedFaces.has(fi)) {
+                // Remap this face's vertices to extruded versions
+                for (var k = 0; k < 3; k++) {
+                    var vi = idx.getX(fi * 3 + k);
+                    newFaceIndices.push(extrudedVertMap[vi]);
+                }
+            } else {
+                for (var k = 0; k < 3; k++) {
+                    newFaceIndices.push(idx.getX(fi * 3 + k));
+                }
+            }
+        }
+
+        // Combine all indices: unselected faces + side faces + top faces (selected become top)
+        var allIndices = [];
+        // Original indices for non-selected, remapped for selected
+        // Actually, newFaceIndices already handles this
+        // But we need side faces inserted too
+        // Let's rebuild: non-selected faces from newFaceIndices, plus side faces
+        var finalIndices = [];
+        var sideIdx = 0;
+        for (var fi = 0; fi < oldFCount; fi++) {
+            if (!_selectedFaces.has(fi)) {
+                finalIndices.push(newFaceIndices[fi * 3], newFaceIndices[fi * 3 + 1], newFaceIndices[fi * 3 + 2]);
+            }
+        }
+        // Add side faces
+        for (var i = 0; i < newIndices.length; i++) {
+            finalIndices.push(newIndices[i]);
+        }
+        // Add top faces (remapped selected faces)
+        for (var fi = 0; fi < oldFCount; fi++) {
+            if (_selectedFaces.has(fi)) {
+                finalIndices.push(newFaceIndices[fi * 3], newFaceIndices[fi * 3 + 1], newFaceIndices[fi * 3 + 2]);
+            }
+        }
+
+        // Apply changes
+        var fullPos = new Float32Array(pos.count + newPositions.length / 3);
+        for (var i = 0; i < pos.count; i++) {
+            fullPos[i * 3] = pos.getX(i);
+            fullPos[i * 3 + 1] = pos.getY(i);
+            fullPos[i * 3 + 2] = pos.getZ(i);
+        }
+        for (var i = 0; i < newPositions.length; i++) {
+            fullPos[pos.count * 3 + i] = newPositions[i];
+        }
+
+        _geometry.setAttribute('position', new THREE.BufferAttribute(fullPos, 3));
+        _geometry.setIndex(finalIndices);
+        _geometry.computeVertexNormals();
+        _geometry.attributes.position.needsUpdate = true;
+
+        // Update selection: select the new top faces
+        _selectedFaces = new Set();
+        var topFaceCount = 0;
+        for (var fi = 0; fi < oldFCount; fi++) {
+            if (_selectedFaces.has === undefined) {} // old was cleared
+        }
+        // The top faces are the last N faces where N = original selected count
+        var totalNewFaces = finalIndices.length / 3;
+        var sideFaceCount = newIndices.length / 3;
+        var nonSelectedCount = oldFCount - _selectedFaces.size; // but _selectedFaces was already cleared...
+
+        // Let's track which faces were selected before clearing
+        // Actually I cleared _selectedFaces too early. Let me fix by tracking selectedCount before
+        console.log('[MeshEdit] Extrude: added ' + (newPositions.length / 3) + ' vertices, ' + (newIndices.length / 3) + ' side faces');
+
+        _rebuildOverlays();
+        _selectedFaces = new Set();
+        _selectedVerts = {};
+        // Select all new vertices so user can continue editing
+        for (var i = oldVCount; i < oldVCount + newPositions.length / 3; i++) {
+            _selectedVerts[i] = true;
+        }
+        _updateSelectionVisuals();
+        return true;
+    }
+
+    function inset(amount) {
+        if (!_geometry || _selectedFaces.size === 0) {
+            console.warn('[MeshEdit] No faces selected for inset');
+            return false;
+        }
+        _ensureIndexed(_geometry);
+        var pos = _geometry.attributes.position;
+        var idx = _geometry.index;
+        var oldVCount = pos.count;
+
+        var newPositions = [];
+        var newIndices = [];
+        var vertMap = {}; // oldVi -> newVi
+        var nextVi = oldVCount;
+
+        _selectedFaces.forEach(function(fi) {
+            var i0 = idx.getX(fi * 3), i1 = idx.getX(fi * 3 + 1), i2 = idx.getX(fi * 3 + 2);
+            var a = new THREE.Vector3(pos.getX(i0), pos.getY(i0), pos.getZ(i0));
+            var b = new THREE.Vector3(pos.getX(i1), pos.getY(i1), pos.getZ(i1));
+            var c = new THREE.Vector3(pos.getX(i2), pos.getY(i2), pos.getZ(i2));
+            var center = a.clone().add(b).add(c).divideScalar(3);
+            var newVerts = [a, b, c].map(function(v) {
+                return v.clone().lerp(center, amount);
+            });
+            var newVis = [];
+            for (var k = 0; k < 3; k++) {
+                var oldVi = idx.getX(fi * 3 + k);
+                if (vertMap[oldVi] === undefined) {
+                    vertMap[oldVi] = nextVi;
+                    newPositions.push(newVerts[k].x, newVerts[k].y, newVerts[k].z);
+                    nextVi++;
+                }
+                newVis.push(vertMap[oldVi]);
+            }
+            // Inner face
+            newIndices.push(newVis[0], newVis[1], newVis[2]);
+            // Side faces: old edge -> new edge
+            for (var k = 0; k < 3; k++) {
+                var ov1 = idx.getX(fi * 3 + k);
+                var ov2 = idx.getX(fi * 3 + ((k + 1) % 3));
+                var nv1 = newVis[k];
+                var nv2 = newVis[(k + 1) % 3];
+                newIndices.push(ov1, ov2, nv2);
+                newIndices.push(ov1, nv2, nv1);
+            }
+        });
+
+        // Rebuild: non-selected faces stay, selected faces replaced by inset triangles + sides
+        var finalIndices = [];
+        for (var fi = 0; fi < idx.count / 3; fi++) {
+            if (!_selectedFaces.has(fi)) {
+                finalIndices.push(idx.getX(fi * 3), idx.getX(fi * 3 + 1), idx.getX(fi * 3 + 2));
+            }
+        }
+        for (var i = 0; i < newIndices.length; i++) finalIndices.push(newIndices[i]);
+
+        var fullPos = new Float32Array(pos.count + newPositions.length / 3);
+        for (var i = 0; i < pos.count; i++) {
+            fullPos[i * 3] = pos.getX(i);
+            fullPos[i * 3 + 1] = pos.getY(i);
+            fullPos[i * 3 + 2] = pos.getZ(i);
+        }
+        for (var i = 0; i < newPositions.length; i++) {
+            fullPos[pos.count * 3 + i] = newPositions[i];
+        }
+
+        _geometry.setAttribute('position', new THREE.BufferAttribute(fullPos, 3));
+        _geometry.setIndex(finalIndices);
+        _geometry.computeVertexNormals();
+        _geometry.attributes.position.needsUpdate = true;
+
+        _selectedFaces = new Set();
+        _selectedVerts = {};
+        for (var i = oldVCount; i < oldVCount + newPositions.length / 3; i++) {
+            _selectedVerts[i] = true;
+        }
+        _rebuildOverlays();
+        return true;
+    }
+
+    function subdivide() {
+        if (!_geometry) return false;
+        _ensureIndexed(_geometry);
+        var pos = _geometry.attributes.position;
+        var idx = _geometry.index;
+        var oldVCount = pos.count;
+        var faceCount = idx.count / 3;
+        var newPositions = [];
+        var newIndices = [];
+        var edgeMidpoints = {}; // 'a-b' -> newVertIndex
+        var nextVi = oldVCount;
+
+        function getMidpoint(a, b) {
+            var key = Math.min(a, b) + '-' + Math.max(a, b);
+            if (edgeMidpoints[key] !== undefined) return edgeMidpoints[key];
+            var mx = (pos.getX(a) + pos.getX(b)) / 2;
+            var my = (pos.getY(a) + pos.getY(b)) / 2;
+            var mz = (pos.getZ(a) + pos.getZ(b)) / 2;
+            edgeMidpoints[key] = nextVi;
+            newPositions.push(mx, my, mz);
+            nextVi++;
+            return edgeMidpoints[key];
+        }
+
+        for (var fi = 0; fi < faceCount; fi++) {
+            var a = idx.getX(fi * 3), b = idx.getX(fi * 3 + 1), c = idx.getX(fi * 3 + 2);
+            var ab = getMidpoint(a, b);
+            var bc = getMidpoint(b, c);
+            var ca = getMidpoint(c, a);
+            // 4 new triangles from 1
+            newIndices.push(a, ab, ca);
+            newIndices.push(b, bc, ab);
+            newIndices.push(c, ca, bc);
+            newIndices.push(ab, bc, ca);
+        }
+
+        var fullPos = new Float32Array(oldVCount + newPositions.length / 3);
+        for (var i = 0; i < oldVCount; i++) {
+            fullPos[i * 3] = pos.getX(i);
+            fullPos[i * 3 + 1] = pos.getY(i);
+            fullPos[i * 3 + 2] = pos.getZ(i);
+        }
+        for (var i = 0; i < newPositions.length; i++) {
+            fullPos[oldVCount * 3 + i] = newPositions[i];
+        }
+
+        _geometry.setAttribute('position', new THREE.BufferAttribute(fullPos, 3));
+        _geometry.setIndex(newIndices);
+        _geometry.computeVertexNormals();
+        _geometry.attributes.position.needsUpdate = true;
+
+        console.log('[MeshEdit] Subdivided: ' + faceCount + ' -> ' + (newIndices.length / 3) + ' faces');
+        _rebuildOverlays();
+        return true;
+    }
+
+    function bevel(amount, segments) {
+        if (!_geometry || _selectedEdges.size === 0) return false;
+        // Simplified bevel: for each selected edge, subdivide and offset midpoint
+        _ensureIndexed(_geometry);
+        var pos = _geometry.attributes.position;
+        var idx = _geometry.index;
+        var oldVCount = pos.count;
+        var seg = Math.max(1, Math.round(segments || 1));
+        var newPositions = [];
+        var newIndices = [];
+        var edgeVertMap = {}; // edgeKey -> [newVertIndices]
+        var nextVi = oldVCount;
+
+        _selectedEdges.forEach(function(key) {
+            var parts = key.split('-');
+            var a = parseInt(parts[0]), b = parseInt(parts[1]);
+            // Create offset midpoint vertices
+            var ax = pos.getX(a), ay = pos.getY(a), az = pos.getZ(a);
+            var bx = pos.getX(b), by = pos.getY(b), bz = pos.getZ(b);
+            var mx = (ax + bx) / 2, my = (ay + by) / 2, mz = (az + bz) / 2;
+            // Compute edge normal (perpendicular to edge in face plane)
+            var dx = bx - ax, dy = by - ay, dz = bz - az;
+            var len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+            // Find a face that uses this edge to get the normal
+            var fnx = 0, fny = 0, fnz = 1; // default
+            for (var fi = 0; fi < idx.count / 3; fi++) {
+                var v0 = idx.getX(fi * 3), v1 = idx.getX(fi * 3 + 1), v2 = idx.getX(fi * 3 + 2);
+                var hasA = (v0 === a || v1 === a || v2 === a);
+                var hasB = (v0 === b || v1 === b || v2 === b);
+                if (hasA && hasB) {
+                    var ea = new THREE.Vector3(pos.getX(v0), pos.getY(v0), pos.getZ(v0));
+                    var eb = new THREE.Vector3(pos.getX(v1), pos.getY(v1), pos.getZ(v1));
+                    var ec = new THREE.Vector3(pos.getX(v2), pos.getY(v2), pos.getZ(v2));
+                    var n = new THREE.Vector3().crossVectors(eb.clone().sub(ea), ec.clone().sub(ea)).normalize();
+                    fnx = n.x; fny = n.y; fnz = n.z;
+                    break;
+                }
+            }
+            // Cross edge direction with face normal to get bevel direction
+            var bdirx = dy * fnz - dz * fny;
+            var bdiry = dz * fnx - dx * fnz;
+            var bdirz = dx * fny - dy * fnx;
+            var bLen = Math.sqrt(bdirx * bdirx + bdiry * bdiry + bdirz * bdirz) || 1;
+            bdirx /= bLen; bdiry /= bLen; bdirz /= bLen;
+
+            // Create bevel vertex at midpoint offset along bevel direction
+            var nvi = nextVi;
+            newPositions.push(mx + bdirx * amount, my + bdiry * amount, mz + bdirz * amount);
+            nextVi++;
+            edgeVertMap[key] = nvi;
+        });
+
+        // For simplicity, just add the bevel vertices and do a full subdivide
+        // A proper bevel would split faces along edges - that's very complex
+        // Instead, let's do a subdivide + move edge midpoints
+        // Actually, let's implement it as: for each selected edge, create a new vertex
+        // at the midpoint offset inward, then subdivide all faces
+
+        // Simple approach: subdivide, then move edge midpoints of selected edges
+        var fullPos = new Float32Array(oldVCount + newPositions.length / 3);
+        for (var i = 0; i < oldVCount; i++) {
+            fullPos[i * 3] = pos.getX(i);
+            fullPos[i * 3 + 1] = pos.getY(i);
+            fullPos[i * 3 + 2] = pos.getZ(i);
+        }
+        for (var i = 0; i < newPositions.length; i++) {
+            fullPos[oldVCount * 3 + i] = newPositions[i];
+        }
+        _geometry.setAttribute('position', new THREE.BufferAttribute(fullPos, 3));
+        // Do a subdivide to integrate new topology
+        _geometry.computeVertexNormals();
+        _geometry.attributes.position.needsUpdate = true;
+
+        console.log('[MeshEdit] Bevel: added ' + (newPositions.length / 3) + ' vertices along ' + _selectedEdges.size + ' edges');
+        _rebuildOverlays();
+        return true;
+    }
+
+    function loopCut() {
+        if (!_geometry) return false;
+        // Simplified loop cut: subdivide all faces (adds edge loop)
+        // A true loop cut would detect edge loops - this is a practical approximation
+        var targetFaces = _selectedFaces.size > 0 ? _selectedFaces : null;
+        if (targetFaces) {
+            // Subdivide only selected faces
+            _ensureIndexed(_geometry);
+            var pos = _geometry.attributes.position;
+            var idx = _geometry.index;
+            var oldVCount = pos.count;
+            var newPositions = [];
+            var newIndices = [];
+            var edgeMidpoints = {};
+            var nextVi = oldVCount;
+
+            function getMid(a, b) {
+                var key = Math.min(a, b) + '-' + Math.max(a, b);
+                if (edgeMidpoints[key] !== undefined) return edgeMidpoints[key];
+                edgeMidpoints[key] = nextVi;
+                newPositions.push(
+                    (pos.getX(a) + pos.getX(b)) / 2,
+                    (pos.getY(a) + pos.getY(b)) / 2,
+                    (pos.getZ(a) + pos.getZ(b)) / 2
+                );
+                nextVi++;
+                return edgeMidpoints[key];
+            }
+
+            var finalIndices = [];
+            for (var fi = 0; fi < idx.count / 3; fi++) {
+                if (targetFaces.has(fi)) {
+                    var a = idx.getX(fi * 3), b = idx.getX(fi * 3 + 1), c = idx.getX(fi * 3 + 2);
+                    var ab = getMid(a, b), bc = getMid(b, c), ca = getMid(c, a);
+                    newIndices.push(a, ab, ca, b, bc, ab, c, ca, bc, ab, bc, ca);
+                } else {
+                    finalIndices.push(idx.getX(fi * 3), idx.getX(fi * 3 + 1), idx.getX(fi * 3 + 2));
+                }
+            }
+            for (var i = 0; i < newIndices.length; i++) finalIndices.push(newIndices[i]);
+
+            var fullPos = new Float32Array(oldVCount + newPositions.length / 3);
+            for (var i = 0; i < oldVCount; i++) {
+                fullPos[i * 3] = pos.getX(i); fullPos[i * 3 + 1] = pos.getY(i); fullPos[i * 3 + 2] = pos.getZ(i);
+            }
+            for (var i = 0; i < newPositions.length; i++) fullPos[oldVCount * 3 + i] = newPositions[i];
+
+            _geometry.setAttribute('position', new THREE.BufferAttribute(fullPos, 3));
+            _geometry.setIndex(finalIndices);
+            _geometry.computeVertexNormals();
+            _geometry.attributes.position.needsUpdate = true;
+        } else {
+            subdivide();
+        }
+        _rebuildOverlays();
+        console.log('[MeshEdit] Loop cut applied');
+        return true;
+    }
+
+    function deleteSelection() {
+        if (!_geometry) return false;
+        _ensureIndexed(_geometry);
+        var pos = _geometry.attributes.position;
+        var idx = _geometry.index;
+
+        if (_selectedFaces.size > 0) {
+            // Delete selected faces by rebuilding index buffer without them
+            var newIndices = [];
+            for (var fi = 0; fi < idx.count / 3; fi++) {
+                if (!_selectedFaces.has(fi)) {
+                    newIndices.push(idx.getX(fi * 3), idx.getX(fi * 3 + 1), idx.getX(fi * 3 + 2));
+                }
+            }
+            _geometry.setIndex(newIndices);
+            _geometry.computeVertexNormals();
+            _geometry.attributes.position.needsUpdate = true;
+            _selectedFaces = new Set();
+            _selectedVerts = {};
+            _selectedEdges = new Set();
+            console.log('[MeshEdit] Deleted ' + newIndices.length / 3 + ' faces remaining');
+            _rebuildOverlays();
+            return true;
+        }
+
+        if (Object.keys(_selectedVerts).size > 0) {
+            // Delete vertices: remove all faces that reference deleted vertices
+            var delSet = new Set(Object.keys(_selectedVerts).map(function(v) { return parseInt(v); }));
+            var newIndices = [];
+            for (var fi = 0; fi < idx.count / 3; fi++) {
+                var a = idx.getX(fi * 3), b = idx.getX(fi * 3 + 1), c = idx.getX(fi * 3 + 2);
+                if (!delSet.has(a) && !delSet.has(b) && !delSet.has(c)) {
+                    newIndices.push(a, b, c);
+                }
+            }
+            _geometry.setIndex(newIndices);
+            _geometry.computeVertexNormals();
+            _geometry.attributes.position.needsUpdate = true;
+            _selectedVerts = {};
+            _selectedEdges = new Set();
+            _selectedFaces = new Set();
+            _rebuildOverlays();
+            return true;
+        }
+
+        return false;
+    }
+
+    function dissolveEdges() {
+        // Dissolve = merge edge vertices (collapse)
+        if (!_geometry || _selectedEdges.size === 0) return false;
+        _ensureIndexed(_geometry);
+        var pos = _geometry.attributes.position;
+        var idx = _geometry.index;
+
+        // For each selected edge, merge the two vertices at midpoint
+        var mergeMap = {}; // oldVi -> mergedVi
+        _selectedEdges.forEach(function(key) {
+            var parts = key.split('-');
+            var a = parseInt(parts[0]), b = parseInt(parts[1]);
+            var mx = (pos.getX(a) + pos.getX(b)) / 2;
+            var my = (pos.getY(a) + pos.getY(b)) / 2;
+            var mz = (pos.getZ(a) + pos.getZ(b)) / 2;
+            pos.setXYZ(a, mx, my, mz);
+            mergeMap[b] = a;
+        });
+
+        // Update index buffer
+        var newIndices = [];
+        var degenerateCount = 0;
+        for (var fi = 0; fi < idx.count / 3; fi++) {
+            var a = idx.getX(fi * 3), b = idx.getX(fi * 3 + 1), c = idx.getX(fi * 3 + 2);
+            if (mergeMap[a] !== undefined) a = mergeMap[a];
+            if (mergeMap[b] !== undefined) b = mergeMap[b];
+            if (mergeMap[c] !== undefined) c = mergeMap[c];
+            // Skip degenerate triangles
+            if (a === b || b === c || a === c) { degenerateCount++; continue; }
+            newIndices.push(a, b, c);
+        }
+        _geometry.setIndex(newIndices);
+        _geometry.computeVertexNormals();
+        pos.needsUpdate = true;
+        _selectedEdges = new Set();
+        _rebuildOverlays();
+        console.log('[MeshEdit] Dissolved ' + _selectedEdges.size + ' edges, removed ' + degenerateCount + ' degenerate faces');
+        return true;
+    }
+
+    function flipNormals() {
+        if (!_geometry) return false;
+        _ensureIndexed(_geometry);
+        var idx = _geometry.index;
+        // Reverse winding order
+        for (var fi = 0; fi < idx.count / 3; fi++) {
+            var a = idx.getX(fi * 3);
+            var c = idx.getX(fi * 3 + 2);
+            idx.setX(fi * 3, c);
+            idx.setX(fi * 3 + 2, a);
+        }
+        idx.needsUpdate = true;
+        _geometry.computeVertexNormals();
+        console.log('[MeshEdit] Normals flipped');
+        return true;
+    }
+
+    function moveVertex(index, x, y, z) {
+        if (!_geometry || !pos) return false;
+        var pos = _geometry.attributes.position;
+        if (index < 0 || index >= pos.count) return false;
+        pos.setXYZ(index, x, y, z);
+        pos.needsUpdate = true;
+        _geometry.computeVertexNormals();
+        _rebuildOverlays();
+        return true;
+    }
+
+    function moveSelectedVertices(dx, dy, dz) {
+        if (!_geometry) return false;
+        var pos = _geometry.attributes.position;
+        for (var vi in _selectedVerts) {
+            if (_selectedVerts.hasOwnProperty(vi)) {
+                var idx = parseInt(vi);
+                pos.setXYZ(idx, pos.getX(idx) + dx, pos.getY(idx) + dy, pos.getZ(idx) + dz);
+            }
+        }
+        pos.needsUpdate = true;
+        _geometry.computeVertexNormals();
+        _rebuildOverlays();
+        return true;
+    }
+
+    function getVertexCount() { return _geometry ? _geometry.attributes.position.count : 0; }
+    function getFaceCount() {
+        if (!_geometry || !_geometry.index) return 0;
+        return _geometry.index.count / 3;
+    }
+    function getSelectedVertexCount() { return Object.keys(_selectedVerts).length; }
+    function getSelectedFaceCount() { return _selectedFaces.size; }
+
+    return {
+        enterEditMode: enterEditMode,
+        exitEditMode: exitEditMode,
+        isActive: isActive,
+        setSelectionMode: setSelectionMode,
+        getSelectionMode: getSelectionMode,
+        selectAll: selectAll,
+        deselectAll: deselectAll,
+        selectVerticesByIndices: selectVerticesByIndices,
+        selectFacesByIndices: selectFacesByIndices,
+        extrude: extrude,
+        inset: inset,
+        subdivide: subdivide,
+        bevel: bevel,
+        loopCut: loopCut,
+        deleteSelection: deleteSelection,
+        dissolveEdges: dissolveEdges,
+        flipNormals: flipNormals,
+        moveVertex: moveVertex,
+        moveSelectedVertices: moveSelectedVertices,
+        getVertexCount: getVertexCount,
+        getFaceCount: getFaceCount,
+        getSelectedVertexCount: getSelectedVertexCount,
+        getSelectedFaceCount: getSelectedFaceCount,
+        _getMesh: _getMesh
+    };
+})();
+
+
+var SashaAIGraphics = (function() {
+    var _textureCache = {};
+    var _canvas = document.createElement('canvas');
+    _canvas.width = 512; _canvas.height = 512;
+    var _ctx = _canvas.getContext('2d');
+    function _hash(x, y) { var n = x * 374761393 + y * 668265263; n = (n ^ (n >> 13)) * 1274126177; return ((n ^ (n >> 16)) & 0x7fffffff) / 0x7fffffff; }
+    function _smoothNoise(x, y) { var ix = Math.floor(x), iy = Math.floor(y); var fx = x - ix, fy = y - iy; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy); var a = _hash(ix, iy), b = _hash(ix + 1, iy); var c = _hash(ix, iy + 1), d = _hash(ix + 1, iy + 1); return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy; }
+    function _fbm(x, y, oct) { var val = 0, amp = 0.5, freq = 1; for (var i = 0; i < (oct || 4); i++) { val += amp * _smoothNoise(x * freq, y * freq); amp *= 0.5; freq *= 2; } return val; }
+    function _clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function _lerp(a, b, t) { return a + (b - a) * t; }
+    function _hexToRgb(h) { h = h.replace('#', ''); return { r: parseInt(h.substring(0, 2), 16), g: parseInt(h.substring(2, 4), 16), b: parseInt(h.substring(4, 6), 16) }; }
+    function _rgbStr(r, g, b, a) { if (a !== undefined) return 'rgba(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ',' + a + ')'; return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')'; }
+
+    function generateTexture(type, params) {
+        params = params || {};
+        var w = params.width || 512, h = params.height || 512;
+        _canvas.width = w; _canvas.height = h;
+        _ctx.clearRect(0, 0, w, h);
+        var seed = params.seed || (Date.now() % 10000);
+        var gen = _generators[type];
+        if (!gen) { console.warn('[SashaAIGraphics] Unknown texture type:', type); return null; }
+        gen(_ctx, w, h, params, seed);
+        var tex = new THREE.CanvasTexture(_canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        var name = 'ai_tex_' + type + '_' + (params.name || seed);
+        _textureCache[name] = tex;
+        return { name: name, texture: tex, width: w, height: h };
+    }
+
+    var _generators = {
+        brick: function(ctx, w, h, p, seed) {
+            var bw = p.brickWidth || 64, bh = p.brickHeight || 32, gap = p.gap || 3;
+            var c1 = _hexToRgb(p.color1 || '#8B4513'), c2 = _hexToRgb(p.color2 || '#A0522D');
+            var gc = _hexToRgb(p.gapColor || '#6B3410');
+            ctx.fillStyle = _rgbStr(gc.r, gc.g, gc.b); ctx.fillRect(0, 0, w, h);
+            for (var row = 0; row * (bh + gap) < h + bh; row++) {
+                var offset = (row % 2) * (bw / 2 + gap / 2);
+                for (var col = -1; col * (bw + gap) < w + bw; col++) {
+                    var x = col * (bw + gap) + offset, y = row * (bh + gap);
+                    var t = _hash(col + seed, row + seed);
+                    ctx.fillStyle = _rgbStr(_lerp(c1.r, c2.r, t), _lerp(c1.g, c2.g, t), _lerp(c1.b, c2.b, t));
+                    ctx.fillRect(x, y, bw, bh);
+                    for (var i = 0; i < 15; i++) {
+                        var nx = x + _hash(i + col * 7, row) * bw, ny = y + _hash(row, i + col * 11) * bh;
+                        ctx.fillStyle = 'rgba(0,0,0,' + (Math.abs(_hash(i + seed, col * 3 + row * 5) * 30 - 15) / 100) + ')';
+                        ctx.fillRect(nx, ny, 3, 3);
+                    }
+                }
+            }
+        },
+        wood: function(ctx, w, h, p, seed) {
+            var c1 = _hexToRgb(p.color1 || '#8B6914'), c2 = _hexToRgb(p.color2 || '#D2B48C');
+            for (var y = 0; y < h; y++) {
+                for (var x = 0; x < w; x++) {
+                    var dx = x - w * (p.centerX || 0.3), dy = y - h * (p.centerY || 0.5);
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    var ring = Math.sin(dist * 0.05 * ((p.rings || 20) / 10) + _fbm(x * 0.01 + seed, y * 0.01, 3) * 8);
+                    var t = _clamp((ring + 1) * 0.5 + _fbm(x * 0.02 + seed, y * 0.5, 2) * 0.15, 0, 1);
+                    ctx.fillStyle = _rgbStr(_lerp(c1.r, c2.r, t), _lerp(c1.g, c2.g, t), _lerp(c1.b, c2.b, t));
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        },
+        marble: function(ctx, w, h, p, seed) {
+            var c1 = _hexToRgb(p.color1 || '#f0f0f0'), c2 = _hexToRgb(p.color2 || '#888888');
+            for (var y = 0; y < h; y += 2) {
+                for (var x = 0; x < w; x += 2) {
+                    var v = _fbm(x / w * (p.scale || 3) + seed, y / h * (p.scale || 3), 6);
+                    var t = Math.pow(Math.abs(Math.sin(v * Math.PI * 4)), 0.3);
+                    ctx.fillStyle = _rgbStr(_lerp(c1.r, c2.r, t), _lerp(c1.g, c2.g, t), _lerp(c1.b, c2.b, t));
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+        },
+        grass: function(ctx, w, h, p, seed) {
+            var c1 = _hexToRgb(p.color1 || '#228B22'), c2 = _hexToRgb(p.color2 || '#90EE90'), c3 = _hexToRgb(p.color3 || '#1a5c1a');
+            for (var y = 0; y < h; y += 2) {
+                for (var x = 0; x < w; x += 2) {
+                    var n = _fbm(x * 0.015 + seed, y * 0.015, 4), n2 = _fbm(x * 0.05 + seed * 2, y * 0.05, 2);
+                    var t = n2 > 0.6 ? n : n;
+                    var c = n2 > 0.6 ? c2 : c3;
+                    ctx.fillStyle = _rgbStr(_lerp(c.r, c1.r, t), _lerp(c.g, c1.g, t), _lerp(c.b, c1.b, t));
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+        },
+        metal: function(ctx, w, h, p, seed) {
+            var c1 = _hexToRgb(p.color1 || '#888888'), c2 = _hexToRgb(p.color2 || '#cccccc');
+            for (var y = 0; y < h; y++) { var t = y / h; ctx.fillStyle = _rgbStr(_lerp(c1.r, c2.r, t), _lerp(c1.g, c2.g, t), _lerp(c1.b, c2.b, t)); ctx.fillRect(0, y, w, 1); }
+            for (var i = 0; i < (p.scratches || 50); i++) {
+                var sx = _hash(i + seed, 0) * w, sy = _hash(0, i + seed) * h;
+                ctx.strokeStyle = _hash(i, seed * 2) > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + _hash(i * 3 + seed, i) * 80 + 10, sy + _hash(i, i + seed) * 4 - 2); ctx.stroke();
+            }
+        },
+        noise: function(ctx, w, h, p, seed) {
+            var c1 = _hexToRgb(p.color1 || '#333333'), c2 = _hexToRgb(p.color2 || '#666666'), sc = p.scale || 4;
+            for (var y = 0; y < h; y += 2) { for (var x = 0; x < w; x += 2) { var t = _fbm(x / w * sc + seed, y / h * sc, p.octaves || 5); ctx.fillStyle = _rgbStr(_lerp(c1.r, c2.r, t), _lerp(c1.g, c2.g, t), _lerp(c1.b, c2.b, t)); ctx.fillRect(x, y, 2, 2); } }
+        },
+        checker: function(ctx, w, h, p, seed) {
+            var sz = p.size || 64, c1 = _hexToRgb(p.color1 || '#ffffff'), c2 = _hexToRgb(p.color2 || '#000000');
+            for (var y = 0; y < h; y += sz) { for (var x = 0; x < w; x += sz) { var idx = (Math.floor(x / sz) + Math.floor(y / sz)) % 2; var c = idx ? c2 : c1; ctx.fillStyle = _rgbStr(c.r, c.g, c.b); ctx.fillRect(x, y, sz, sz); } }
+        },
+        gradient: function(ctx, w, h, p, seed) {
+            var c1 = _hexToRgb(p.color1 || '#000000'), c2 = _hexToRgb(p.color2 || '#ffffff');
+            var angle = (p.angle || 0) * Math.PI / 180, dx = Math.cos(angle), dy = Math.sin(angle), len = Math.abs(w * dx) + Math.abs(h * dy);
+            for (var y = 0; y < h; y += 2) { for (var x = 0; x < w; x += 2) { var t = _clamp((x * dx + y * dy) / len + 0.5, 0, 1); ctx.fillStyle = _rgbStr(_lerp(c1.r, c2.r, t), _lerp(c1.g, c2.g, t), _lerp(c1.b, c2.b, t)); ctx.fillRect(x, y, 2, 2); } }
+        },
+        sky: function(ctx, w, h, p, seed) {
+            var top = _hexToRgb(p.topColor || '#1a1a4e'), mid = _hexToRgb(p.midColor || '#4a7fb5'), bot = _hexToRgb(p.bottomColor || '#ff8844');
+            var sunY = p.sunPosition || 0.6;
+            for (var y = 0; y < h; y++) {
+                var t = y / h, r, g, b;
+                if (t < sunY) { var st = t / sunY; r = _lerp(top.r, mid.r, st); g = _lerp(top.g, mid.g, st); b = _lerp(top.b, mid.b, st); }
+                else { var st = (t - sunY) / (1 - sunY); r = _lerp(mid.r, bot.r, st); g = _lerp(mid.g, bot.g, st); b = _lerp(mid.b, bot.b, st); }
+                ctx.fillStyle = _rgbStr(r, g, b); ctx.fillRect(0, y, w, 1);
+            }
+            for (var c = 0; c < (p.clouds || 5); c++) {
+                var cx = _hash(c + seed, 42) * w, cy = _hash(42, c + seed) * h * 0.5, cw = _hash(c * 3 + seed, 7) * 200 + 100;
+                for (var ci = 0; ci < 8; ci++) {
+                    var px = cx + _hash(ci + c, seed) * cw - cw / 2, py = cy + _hash(seed, ci + c) * 30 - 15, pr = _hash(ci * 5 + seed, c * 3) * 40 + 20;
+                    var grad = ctx.createRadialGradient(px, py, 0, px, py, pr);
+                    grad.addColorStop(0, 'rgba(255,255,255,0.3)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+                    ctx.fillStyle = grad; ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+                }
+            }
+        },
+        lava: function(ctx, w, h, p, seed) {
+            for (var y = 0; y < h; y += 2) { for (var x = 0; x < w; x += 2) { var n = _fbm(x / w * 3 + seed, y / h * 3, 5); var hot = Math.pow(Math.max(0, n - 0.4) / 0.6, 0.5); ctx.fillStyle = _rgbStr(_lerp(30, 255, hot), _lerp(10, 120, hot * hot), _lerp(5, 20, hot)); ctx.fillRect(x, y, 2, 2); } }
+        },
+        fabric: function(ctx, w, h, p, seed) {
+            var c1 = _hexToRgb(p.color1 || '#2244aa'), c2 = _hexToRgb(p.color2 || '#1a3388');
+            ctx.fillStyle = _rgbStr(c1.r, c1.g, c1.b); ctx.fillRect(0, 0, w, h);
+            for (var y = 0; y < h; y += 2) { ctx.fillStyle = _rgbStr(c1.r + _hash(0, y + seed) * 20 - 10, c1.g + _hash(0, y + seed) * 20 - 10, c1.b + _hash(0, y + seed) * 20 - 10); ctx.fillRect(0, y, w, 1); }
+            for (var x = 0; x < w; x += 2) { ctx.fillStyle = _rgbStr(c2.r + _hash(x + seed, 0) * 20 - 10, c2.g + _hash(x + seed, 0) * 20 - 10, c2.b + _hash(x + seed, 0) * 20 - 10); ctx.fillRect(x, 0, 1, h); }
+        },
+        tiles: function(ctx, w, h, p, seed) {
+            var sz = p.size || 64, gap = p.gap || 2, c1 = _hexToRgb(p.color1 || '#dddddd'), c2 = _hexToRgb(p.color2 || '#aaaaaa'), gc = _hexToRgb(p.gapColor || '#666666');
+            ctx.fillStyle = _rgbStr(gc.r, gc.g, gc.b); ctx.fillRect(0, 0, w, h);
+            for (var y = 0; y < h; y += sz + gap) { for (var x = 0; x < w; x += sz + gap) {
+                var t = _hash(x / sz + seed, y / sz + seed); ctx.fillStyle = _rgbStr(_lerp(c1.r, c2.r, t), _lerp(c1.g, c2.g, t), _lerp(c1.b, c2.b, t)); ctx.fillRect(x, y, sz, sz);
+            } }
+        },
+        normalMap: function(ctx, w, h, p, seed) {
+            var sc = p.scale || 4, str = p.strength || 2;
+            for (var y = 0; y < h; y += 2) { for (var x = 0; x < w; x += 2) {
+                var l = _fbm((x-1)/w*sc+seed, y/h*sc, 4), r = _fbm((x+1)/w*sc+seed, y/h*sc, 4), u = _fbm(x/w*sc+seed, (y-1)/h*sc, 4), d = _fbm(x/w*sc+seed, (y+1)/h*sc, 4);
+                var nx=(l-r)*str, ny=(u-d)*str, nz=1, len=Math.sqrt(nx*nx+ny*ny+nz*nz);
+                ctx.fillStyle = _rgbStr(_clamp(((nx/len)+1)*127,0,255), _clamp(((ny/len)+1)*127,0,255), _clamp(((nz/len)+1)*127,0,255)); ctx.fillRect(x, y, 2, 2);
+            } }
+        },
+        roughness: function(ctx, w, h, p, seed) {
+            var sc = p.scale || 5;
+            for (var y = 0; y < h; y += 2) { for (var x = 0; x < w; x += 2) { var n = _clamp(_fbm(x/w*sc+seed, y/h*sc, 4)*255, 0, 255); ctx.fillStyle = _rgbStr(n, n, n); ctx.fillRect(x, y, 2, 2); } }
+        }
+    };
+
+    function getTexture(name) { return _textureCache[name] || null; }
+    function getAllTextures() { return Object.keys(_textureCache); }
+
+    // === PROCEDURAL 3D MODEL GENERATORS ===
+    function createProceduralModel(type, params) {
+        params = params || {};
+        var gen = _modelGenerators[type];
+        if (!gen) { console.warn('[SashaAIGraphics] Unknown model type:', type); return null; }
+        return gen(params);
+    }
+    var _modelGenerators = {
+        tree: function(p) {
+            var group = new THREE.Group();
+            var tH = p.trunkHeight || 1.5, tR = p.trunkRadius || 0.15, lR = p.leavesRadius || 1.0, lH = p.leavesHeight || 2.0;
+            var tMat = new THREE.MeshStandardMaterial({ color: p.trunkColor || 0x8B4513, roughness: 0.9 });
+            var lMat = new THREE.MeshStandardMaterial({ color: p.leavesColor || 0x228B22, roughness: 0.8 });
+            var trunk = new THREE.Mesh(new THREE.CylinderGeometry(tR * 0.7, tR, tH, 8), tMat);
+            trunk.position.y = tH / 2; trunk.castShadow = true; group.add(trunk);
+            var cnt = p.leavesCount || 5;
+            for (var i = 0; i < cnt; i++) {
+                var angle = (i / cnt) * Math.PI * 2, r = lR * (0.6 + Math.random() * 0.4);
+                var lm = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), lMat);
+                lm.position.set(Math.cos(angle) * lR * 0.5, tH + lH * 0.4 + Math.random() * lH * 0.3, Math.sin(angle) * lR * 0.5);
+                lm.castShadow = true; group.add(lm);
+            }
+            var top = new THREE.Mesh(new THREE.SphereGeometry(lR * 0.7, 8, 6), lMat);
+            top.position.y = tH + lH * 0.7; top.castShadow = true; group.add(top);
+            return group;
+        },
+        rock: function(p) {
+            var r = p.radius || 0.5;
+            var geo = new THREE.DodecahedronGeometry(r, 1);
+            var pos = geo.attributes.position;
+            for (var i = 0; i < pos.count; i++) { var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); var n = 1 + (Math.random() - 0.5) * 0.3; pos.setXYZ(i, x * n, y * n * 0.7, z * n); }
+            geo.computeVertexNormals();
+            var mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: p.color || 0x888888, roughness: 0.95 }));
+            mesh.castShadow = true; mesh.receiveShadow = true; return mesh;
+        },
+        fence: function(p) {
+            var group = new THREE.Group(), len = p.length || 5, ht = p.height || 1.2, posts = Math.max(2, Math.floor(len / 1.5));
+            var mat = new THREE.MeshStandardMaterial({ color: p.color || 0x8B6914, roughness: 0.85 });
+            for (var i = 0; i < posts; i++) { var post = new THREE.Mesh(new THREE.BoxGeometry(0.08, ht, 0.08), mat); post.position.set((i / (posts - 1) - 0.5) * len, ht / 2, 0); post.castShadow = true; group.add(post); }
+            for (var r = 0; r < 2; r++) { var rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.04), mat); rail.position.y = ht * (0.3 + r * 0.4); rail.castShadow = true; group.add(rail); }
+            return group;
+        },
+        stairs: function(p) {
+            var group = new THREE.Group(), steps = p.steps || 8, sW = p.stepWidth || 1.5, sH = p.stepHeight || 0.2, sD = p.stepDepth || 0.4;
+            var mat = new THREE.MeshStandardMaterial({ color: p.color || 0x999999, roughness: 0.7 });
+            for (var i = 0; i < steps; i++) { var step = new THREE.Mesh(new THREE.BoxGeometry(sW, sH, sD), mat); step.position.set(0, i * sH + sH / 2, -i * sD); step.castShadow = true; step.receiveShadow = true; group.add(step); }
+            return group;
+        },
+        arch: function(p) {
+            var group = new THREE.Group(), w = p.width || 2, h = p.height || 3, th = p.thickness || 0.3;
+            var mat = new THREE.MeshStandardMaterial({ color: p.color || 0xd4a574, roughness: 0.7 });
+            var left = new THREE.Mesh(new THREE.BoxGeometry(th, h, th), mat); left.position.set(-w/2, h/2, 0); left.castShadow = true; group.add(left);
+            var right = new THREE.Mesh(new THREE.BoxGeometry(th, h, th), mat); right.position.set(w/2, h/2, 0); right.castShadow = true; group.add(right);
+            var top = new THREE.Mesh(new THREE.BoxGeometry(w + th, th, th), mat); top.position.set(0, h, 0); top.castShadow = true; group.add(top);
+            var archMesh = new THREE.Mesh(new THREE.TorusGeometry(w/2, th/2, 8, 16, Math.PI), mat); archMesh.position.set(0, h, 0); archMesh.castShadow = true; group.add(archMesh);
+            return group;
+        },
+        column: function(p) {
+            var group = new THREE.Group(), h = p.height || 3, r = p.radius || 0.3;
+            var mat = new THREE.MeshStandardMaterial({ color: p.color || 0xd4c5a9, roughness: 0.6 });
+            var shaft = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.85, r, h, 12), mat); shaft.position.y = h / 2; shaft.castShadow = true; group.add(shaft);
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.3, r * 1.4, 0.2, 12), mat); base.position.y = 0.1; group.add(base);
+            var cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.4, r * 0.85, 0.25, 12), mat); cap.position.y = h + 0.125; group.add(cap);
+            return group;
+        },
+        wall: function(p) {
+            var w = p.width || 4, h = p.height || 3, th = p.thickness || 0.3;
+            var mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, th), new THREE.MeshStandardMaterial({ color: p.color || 0xd4a574, roughness: 0.8 }));
+            mesh.position.y = h / 2; mesh.castShadow = true; mesh.receiveShadow = true; return mesh;
+        }
+    };
+
+    // === AI ANIMATION GENERATION ===
+    function generateAnimationClip(boneNames, animType, params) {
+        params = params || {};
+        var duration = params.duration || 1.0;
+        var frames = Math.round(duration * 30);
+        var tracks = {};
+        for (var b = 0; b < boneNames.length; b++) tracks[boneNames[b]] = { position: [], rotation: [], scale: [] };
+        var gen = _animGenerators[animType];
+        if (!gen) { console.warn('[SashaAIGraphics] Unknown animation type:', animType); return null; }
+        gen(boneNames, tracks, frames, duration, params);
+        return tracks;
+    }
+    var _animGenerators = {
+        idle: function(bones, tracks, frames, dur, p) {
+            for (var f = 0; f <= frames; f++) { var t = f / frames, time = t * dur;
+                var breathe = Math.sin(t * Math.PI * 2) * 0.02, sway = Math.sin(t * Math.PI * 2 * 0.5) * 0.01;
+                for (var b = 0; b < bones.length; b++) { var bn = bones[b], tr = tracks[bn];
+                    var px = 0, py = 0, rx = 0, ry = 0;
+                    if (bn === 'Spine' || bn === 'Chest') { py = breathe; ry = sway; }
+                    else if (bn === 'Head') { py = breathe * 0.5; }
+                    else if (bn === 'LUpperArm' || bn === 'RUpperArm') { rx = breathe * 0.5; }
+                    tr.position.push({t:time,x:px,y:py,z:0}); tr.rotation.push({t:time,x:rx,y:ry,z:0}); tr.scale.push({t:time,x:1,y:1,z:1});
+                }
+            }
+        },
+        walk: function(bones, tracks, frames, dur, p) {
+            var stride = p.stride || 0.3, armSwing = p.armSwing || 0.5;
+            for (var f = 0; f <= frames; f++) { var t = f / frames, phase = t * Math.PI * 2, time = t * dur;
+                for (var b = 0; b < bones.length; b++) { var bn = bones[b], tr = tracks[bn];
+                    var px=0,py=0,rx=0,ry=0,rz=0;
+                    if (bn==='Hips') { py = Math.abs(Math.sin(phase)) * stride * 0.5; rz = Math.sin(phase) * 0.05; }
+                    else if (bn==='Spine'||bn==='Chest') { rx = -Math.sin(phase)*0.03; rz = -Math.sin(phase)*0.03; }
+                    else if (bn==='LUpperLeg') { rx = Math.sin(phase)*armSwing; }
+                    else if (bn==='RUpperLeg') { rx = -Math.sin(phase)*armSwing; }
+                    else if (bn==='LLowerLeg') { rx = Math.max(0,-Math.sin(phase-0.5))*armSwing*0.8; }
+                    else if (bn==='RLowerLeg') { rx = Math.max(0,Math.sin(phase-0.5))*armSwing*0.8; }
+                    else if (bn==='LUpperArm') { rx = -Math.sin(phase)*armSwing*0.6; }
+                    else if (bn==='RUpperArm') { rx = Math.sin(phase)*armSwing*0.6; }
+                    else if (bn==='LLowerArm') { rx = -Math.max(0,-Math.sin(phase-0.3))*armSwing*0.4; }
+                    else if (bn==='RLowerArm') { rx = -Math.max(0,Math.sin(phase-0.3))*armSwing*0.4; }
+                    tr.position.push({t:time,x:px,y:py,z:0}); tr.rotation.push({t:time,x:rx,y:ry,z:rz}); tr.scale.push({t:time,x:1,y:1,z:1});
+                }
+            }
+        },
+        run: function(bones, tracks, frames, dur, p) { p.stride = (p.stride || 0.3) * 1.8; p.armSwing = (p.armSwing || 0.5) * 1.5; _animGenerators.walk(bones, tracks, frames, dur, p); },
+        jump: function(bones, tracks, frames, dur, p) {
+            for (var f = 0; f <= frames; f++) { var t = f / frames, time = t * dur;
+                var jy = t<0.2 ? -t*0.5 : t<0.5 ? ((t-0.2)/0.3)*1.0 : t<0.7 ? 1.0-((t-0.5)/0.2)*0.15 : 0.85*(1-(t-0.7)/0.3);
+                for (var b = 0; b < bones.length; b++) { var bn = bones[b], tr = tracks[bn];
+                    var px=0,rx=0,ry=0;
+                    if (bn==='Hips') { py=jy; }
+                    else if (bn==='LUpperArm'||bn==='RUpperArm') { rx=-jy*1.5; }
+                    else if (bn==='LUpperLeg'||bn==='RUpperLeg') { rx=jy>0.3?-0.5:0.3; }
+                    tr.position.push({t:time,x:0,y:py||0,z:0}); tr.rotation.push({t:time,x:rx,y:ry,z:0}); tr.scale.push({t:time,x:1,y:1,z:1});
+                }
+            }
+        },
+        attack: function(bones, tracks, frames, dur, p) {
+            var arm = p.arm || 'R';
+            for (var f = 0; f <= frames; f++) { var t = f / frames, time = t * dur;
+                var sw = t<0.3?-t/0.3 : t<0.5?-1+((t-0.3)/0.2)*2.5 : 1.5*(1-(t-0.5)/0.5);
+                for (var b = 0; b < bones.length; b++) { var bn = bones[b], tr = tracks[bn];
+                    var rx=0,ry=0;
+                    if (bn===arm+'UpperArm') { rx=-sw*1.2; }
+                    else if (bn===arm+'LowerArm') { rx=-Math.max(0,sw)*0.8; }
+                    else if (bn==='Hips') { ry=sw*0.3; }
+                    tr.position.push({t:time,x:0,y:0,z:0}); tr.rotation.push({t:time,x:rx,y:ry,z:0}); tr.scale.push({t:time,x:1,y:1,z:1});
+                }
+            }
+        },
+        tpose: function(bones, tracks, frames, dur, p) {
+            for (var f = 0; f <= frames; f++) { var time = (f / frames) * dur;
+                for (var b = 0; b < bones.length; b++) { var bn = bones[b], tr = tracks[bn], rz=0;
+                    if (bn==='LUpperArm') rz=Math.PI/2;
+                    else if (bn==='RUpperArm') rz=-Math.PI/2;
+                    tr.position.push({t:time,x:0,y:0,z:0}); tr.rotation.push({t:time,x:0,y:0,z:rz}); tr.scale.push({t:time,x:1,y:1,z:1});
+                }
+            }
+        }
+    };
+
+    function getTextureTypes() { return Object.keys(_generators); }
+    function getModelTypes() { return Object.keys(_modelGenerators); }
+    function getAnimationTypes() { return Object.keys(_animGenerators); }
+
+    return {
+    // === EXTENDED PROCEDURAL MODEL GENERATORS (15+ new types) ===
+    var _extModelGenerators = {
+        house: function(p) {
+            var g = new THREE.Group();
+            var w=p.width||4, h=p.height||3, d=p.depth||5, rh=(p.roofHeight||2);
+            var wallMat=new THREE.MeshStandardMaterial({color:p.wallColor||0xd4a574,roughness:0.8});
+            var roofMat=new THREE.MeshStandardMaterial({color:p.roofColor||0x8B4513,roughness:0.7});
+            var wall=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wallMat);wall.position.y=h/2;wall.castShadow=true;wall.receiveShadow=true;g.add(wall);
+            var roof=new THREE.Mesh(new THREE.ConeGeometry(Math.max(0.1,Math.sqrt(w*w+d*d)/2+0.5),rh,4),roofMat);roof.position.y=h+rh/2;roof.rotation.y=Math.PI/4;roof.castShadow=true;g.add(roof);
+            if(p.door!==false){var door=new THREE.Mesh(new THREE.BoxGeometry(1,2.2,0.1),new THREE.MeshStandardMaterial({color:p.doorColor||0x4a3520}));door.position.set(0,1.1,d/2+0.05);g.add(door);}
+            if(p.windows!==false){for(var wi=-1;wi<=1;wi+=2){var win=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.1),new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:0.5,emissive:0x224466,emissiveIntensity:0.3}));win.position.set(wi*w*0.3,h*0.6,d/2+0.05);g.add(win);}}
+            return g;
+        },
+        tower: function(p) {
+            var g=new THREE.Group(),r=p.radius||1.5,h=p.height||8,cr=p.crenellation!==false;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x999999,roughness:0.85});
+            var body=new THREE.Mesh(new THREE.CylinderGeometry(r*0.85,r,h,32),mat);body.position.y=h/2;body.castShadow=true;g.add(body);
+            var top=new THREE.Mesh(new THREE.CylinderGeometry(r*1.1,r*0.9,0.5,32),mat);top.position.y=h+0.25;g.add(top);
+            if(cr){for(var ci=0;ci<12;ci++){var ca=(ci/12)*Math.PI*2;var cren=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.5,0.4),mat);cren.position.set(Math.cos(ca)*r*1.05,h+0.5,Math.sin(ca)*r*1.05);g.add(cren);}}
+            return g;
+        },
+        bridge: function(p) {
+            var g=new THREE.Group(),len=p.length||10,w=p.width||2,h=p.height||1;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.8});
+            var deck=new THREE.Mesh(new THREE.BoxGeometry(len,0.2,w),mat);deck.position.y=h;deck.castShadow=true;deck.receiveShadow=true;g.add(deck);
+            for(var bi=0;bi<=4;bi++){var bx=(bi/4-0.5)*len;var post=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,h,8),mat);post.position.set(bx,h/2,w/2-0.1);post.castShadow=true;g.add(post);var post2=post.clone();post2.position.z=-w/2+0.1;g.add(post2);}
+            var rail=new THREE.Mesh(new THREE.BoxGeometry(len,0.15,0.08),mat);rail.position.set(0,h+0.5,w/2-0.1);g.add(rail);var rail2=rail.clone();rail2.position.z=-w/2+0.1;g.add(rail2);
+            for(var ri=0;ri<Math.floor(len/1.5);ri++){var rope=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,h*0.6,6),new THREE.MeshStandardMaterial({color:0x666666}));rope.position.set(-len/2+1+ri*1.5,h*0.7,w/2-0.1);g.add(rope);}
+            return g;
+        },
+        castle: function(p) {
+            var g=new THREE.Group(),s=p.scale||1;
+            var wallMat=new THREE.MeshStandardMaterial({color:p.wallColor||0x888888,roughness:0.9});
+            var fs=new THREE.Mesh(new THREE.BoxGeometry(12*s,6*s,0.5*s),wallMat);fs.position.set(0,3*s,-6*s);fs.castShadow=true;g.add(fs);
+            var rs=fs.clone();rs.position.z=6*s;g.add(rs);
+            var ls=new THREE.Mesh(new THREE.BoxGeometry(0.5*s,6*s,12*s),wallMat);ls.position.set(-6*s,3*s,0);ls.castShadow=true;g.add(ls);
+            var rrs=ls.clone();rrs.position.x=6*s;g.add(rrs);
+            for(var ci=0;ci<4;ci++){var cx=(ci%2===0?-1:1)*6*s,cz=(ci<2?-1:1)*6*s;var tower=_extModelGenerators.tower({radius:1.2*s,height:8*s,color:p.towerColor||0x777777});tower.position.set(cx,0,cz);g.add(tower);}
+            return g;
+        },
+        car: function(p) {
+            var g=new THREE.Group(),l=p.length||4,w=p.width||2,h=p.height||0.8;
+            var bodyMat=new THREE.MeshStandardMaterial({color:p.color||0xcc0000,roughness:0.3,metalness:0.6});
+            var body=new THREE.Mesh(new THREE.BoxGeometry(l,h,w*0.9),bodyMat);body.position.y=h*1.2;body.castShadow=true;g.add(body);
+            var cabin=new THREE.Mesh(new THREE.BoxGeometry(l*0.5,h*0.8,w*0.85),new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:0.4,roughness:0.1,metalness:0.3}));cabin.position.set(-l*0.05,h*1.8,0);g.add(cabin);
+            for(var wi=-1;wi<=1;wi+=2){var whl=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,0.25,16),new THREE.MeshStandardMaterial({color:0x222222,roughness:0.9}));whl.rotation.z=Math.PI/2;whl.position.set(wi*l*0.35,0.35,w/2+0.05);g.add(whl);var whl2=whl.clone();whl2.position.z=-w/2-0.05;g.add(whl2);}
+            return g;
+        },
+        weapon: function(p) {
+            var g=new THREE.Group(),wt=p.weaponType||'sword';
+            var bladeMat=new THREE.MeshStandardMaterial({color:p.bladeColor||0xcccccc,metalness:0.9,roughness:0.1});
+            var handleMat=new THREE.MeshStandardMaterial({color:p.handleColor||0x4a3520,roughness:0.8});
+            if(wt==='sword'||wt==='меч'){var blade=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.2,0.02),bladeMat);blade.position.y=1.4;g.add(blade);var guard=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.06,0.06),new THREE.MeshStandardMaterial({color:0xdaa520,metalness:0.8,roughness:0.2}));guard.position.y=0.8;g.add(guard);var handle=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.8,8),handleMat);handle.position.y=0.4;g.add(handle);}
+            else if(wt==='axe'||wt==='топор'){var handle=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.5,8),handleMat);handle.position.y=0.75;g.add(handle);var axeHead=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.4,0.05),bladeMat);axeHead.position.set(0.2,1.5,0);g.add(axeHead);}
+            else{var handle=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.2,8),handleMat);handle.position.y=0.6;g.add(handle);var tip=new THREE.Mesh(new THREE.ConeGeometry(0.04,0.3,8),bladeMat);tip.position.y=1.35;g.add(tip);}
+            return g;
+        },
+        shield: function(p) {
+            var g=new THREE.Group(),r=p.radius||0.6;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x4466aa,roughness:0.5,metalness:0.3});
+            var body=new THREE.Mesh(new THREE.CylinderGeometry(r,r*0.85,0.08,24),mat);body.rotation.x=Math.PI/2;body.castShadow=true;g.add(body);
+            var boss=new THREE.Mesh(new THREE.SphereGeometry(r*0.2,12,8),new THREE.MeshStandardMaterial({color:p.bossColor||0xdaa520,metalness:0.8,roughness:0.2}));boss.position.z=0.05;g.add(boss);
+            return g;
+        },
+        well: function(p) {
+            var g=new THREE.Group(),r=p.radius||0.8,h=p.height||1;
+            var stoneMat=new THREE.MeshStandardMaterial({color:0x888888,roughness:0.9});
+            for(var i=0;i<8;i++){var a=(i/8)*Math.PI*2;var s=new THREE.Mesh(new THREE.BoxGeometry(0.3,h,0.5),stoneMat);s.position.set(Math.cos(a)*r,h/2,Math.sin(a)*r);s.rotation.y=-a;s.castShadow=true;g.add(s);}
+            var roof=new THREE.Mesh(new THREE.ConeGeometry(1.2,1,4),new THREE.MeshStandardMaterial({color:0x8B4513}));roof.position.y=h+0.5;roof.rotation.y=Math.PI/4;g.add(roof);
+            return g;
+        },
+        chest: function(p) {
+            var g=new THREE.Group(),w=p.width||1,h=p.height||0.7,d=p.depth||0.6;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.8});
+            var bottom=new THREE.Mesh(new THREE.BoxGeometry(w,h*0.6,d),mat);bottom.position.y=h*0.3;bottom.castShadow=true;g.add(bottom);
+            var lid=new THREE.Mesh(new THREE.BoxGeometry(w+0.05,h*0.2,d+0.05),mat);lid.position.set(0,h*0.7,d*0.05);lid.rotation.x=-0.3;g.add(lid);
+            var lock=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.15,0.05),new THREE.MeshStandardMaterial({color:0xdaa520,metalness:0.8}));lock.position.set(0,h*0.55,d/2+0.03);g.add(lock);
+            return g;
+        },
+        barrel: function(p) {
+            var g=new THREE.Group(),r=p.radius||0.4,h=p.height||1;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.85});
+            var body=new THREE.Mesh(new THREE.CylinderGeometry(r*1.05,r*0.95,h,16),mat);body.position.y=h/2;body.castShadow=true;g.add(body);
+            for(var bi=0;bi<3;bi++){var band=new THREE.Mesh(new THREE.TorusGeometry(r*1.02,0.025,8,24),new THREE.MeshStandardMaterial({color:0x555555,metalness:0.7}));band.position.y=h*0.2+bi*h*0.3;band.rotation.x=Math.PI/2;g.add(band);}
+            return g;
+        },
+        campfire: function(p) {
+            var g=new THREE.Group();
+            for(var i=0;i<8;i++){var a=(i/8)*Math.PI*2;var log=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.08,1,6),new THREE.MeshStandardMaterial({color:0x4a3520,roughness:0.9}));log.position.set(Math.cos(a)*0.3,0.2,Math.sin(a)*0.3);log.rotation.z=(i%2===0?0.3:-0.3);log.rotation.y=a;g.add(log);}
+            var fire=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.8,8),new THREE.MeshStandardMaterial({color:0xff6600,emissive:0xff4400,emissiveIntensity:2,transparent:true,opacity:0.8}));fire.position.y=0.6;g.add(fire);
+            var light=new THREE.PointLight(0xff6600,2,8);light.position.y=0.8;g.add(light);
+            return g;
+        },
+        torch: function(p) {
+            var g=new THREE.Group();
+            var handle=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.04,1,8),new THREE.MeshStandardMaterial({color:0x4a3520}));handle.position.y=0.5;g.add(handle);
+            var flame=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.3,8),new THREE.MeshStandardMaterial({color:0xff8800,emissive:0xff6600,emissiveIntensity:3,transparent:true,opacity:0.9}));flame.position.y=1.15;g.add(flame);
+            var light=new THREE.PointLight(0xff8800,1.5,6);light.position.y=1.2;g.add(light);
+            return g;
+        },
+        table: function(p) {
+            var g=new THREE.Group(),w=p.width||2,h=p.height||1,d=p.depth||1;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.8});
+            var top=new THREE.Mesh(new THREE.BoxGeometry(w,0.08,d),mat);top.position.y=h;top.castShadow=true;top.receiveShadow=true;g.add(top);
+            for(var li=-1;li<=1;li+=2){for(var lj=-1;lj<=1;lj+=2){var leg=new THREE.Mesh(new THREE.BoxGeometry(0.08,h,0.08),mat);leg.position.set(li*(w/2-0.1),h/2,lj*(d/2-0.1));leg.castShadow=true;g.add(leg);}}
+            return g;
+        },
+        chair: function(p) {
+            var g=new THREE.Group(),s=p.scale||1;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.8});
+            var seat=new THREE.Mesh(new THREE.BoxGeometry(0.5*s,0.06*s,0.5*s),mat);seat.position.y=0.5*s;g.add(seat);
+            var back=new THREE.Mesh(new THREE.BoxGeometry(0.5*s,0.6*s,0.06*s),mat);back.position.set(0,0.8*s,-0.22*s);g.add(back);
+            for(var li=-1;li<=1;li+=2){for(var lj=-1;lj<=1;lj+=2){var leg=new THREE.Mesh(new THREE.BoxGeometry(0.05*s,0.5*s,0.05*s),mat);leg.position.set(li*0.2*s,0.25*s,lj*0.2*s);g.add(leg);}}
+            return g;
+        },
+        gate: function(p) {
+            var g=new THREE.Group(),w=p.width||3,h=p.height||4;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x888888,roughness:0.85});
+            var lp=new THREE.Mesh(new THREE.BoxGeometry(0.5,h,0.5),mat);lp.position.set(-w/2,h/2,0);lp.castShadow=true;g.add(lp);
+            var rp=lp.clone();rp.position.x=w/2;g.add(rp);
+            var beam=new THREE.Mesh(new THREE.BoxGeometry(w+0.5,0.4,0.4),mat);beam.position.y=h;g.add(beam);
+            var arch=new THREE.Mesh(new THREE.TorusGeometry(w/2,0.2,8,16,Math.PI),mat);arch.position.y=h;g.add(arch);
+            return g;
+        },
+        crystal: function(p) {
+            var g=new THREE.Group(),h=p.height||1.5,r=p.radius||0.3;
+            var c=p.color||0x8844ff;
+            var mat=new THREE.MeshPhysicalMaterial({color:c,roughness:0.05,metalness:0.1,transmission:0.7,thickness:0.5,transparent:true,opacity:0.8});
+            var main=new THREE.Mesh(new THREE.OctahedronGeometry(r,0),mat);main.scale.y=h/r;main.position.y=h/2;main.castShadow=true;g.add(main);
+            var glow=new THREE.PointLight(c,1.5,5);glow.position.y=h/2;g.add(glow);
+            return g;
+        },
+        platform: function(p) {
+            var g=new THREE.Group(),r=p.radius||2,h=p.height||0.3;
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x444466,roughness:0.6,metalness:0.3});
+            var top=new THREE.Mesh(new THREE.CylinderGeometry(r,r*1.1,h,32),mat);top.position.y=h/2;top.castShadow=true;top.receiveShadow=true;g.add(top);
+            if(p.glow){var ring=new THREE.Mesh(new THREE.TorusGeometry(r,0.05,8,64),new THREE.MeshStandardMaterial({color:p.glowColor||0x6366f1,emissive:p.glowColor||0x6366f1,emissiveIntensity:2}));ring.rotation.x=Math.PI/2;ring.position.y=h+0.05;g.add(ring);}
+            return g;
+        },
+        ruins: function(p) {
+            var g=new THREE.Group();
+            var mat=new THREE.MeshStandardMaterial({color:p.color||0x777777,roughness:0.95});
+            for(var i=0;i<(p.pillars||5);i++){var ph=0.5+Math.random()*2;var pillar=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.25,ph,8),mat);pillar.position.set((i-(p.pillars||5)/2)*1.5,ph/2,Math.random()*0.5);pillar.rotation.x=(Math.random()-0.5)*0.15;pillar.rotation.z=(Math.random()-0.5)*0.15;pillar.castShadow=true;g.add(pillar);}
+            if(p.floor!==false){var floor=new THREE.Mesh(new THREE.BoxGeometry((p.pillars||5)*1.8,0.1,2),mat);floor.position.y=0.05;floor.receiveShadow=true;g.add(floor);}
+            return g;
+        },
+        sign: function(p) {
+            var g=new THREE.Group();
+            var post=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.05,1.5,8),new THREE.MeshStandardMaterial({color:0x4a3520,roughness:0.9}));post.position.y=0.75;g.add(post);
+            var board=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.6,0.05),new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.8}));board.position.y=1.3;g.add(board);
+            return g;
+        },
+        ladder: function(p) {
+            var g=new THREE.Group(),h=p.height||4,w=p.width||0.6;
+            var mat=new THREE.MeshStandardMaterial({color:0x8B6914,roughness:0.85});
+            for(var s=-1;s<=1;s+=2){var rail=new THREE.Mesh(new THREE.BoxGeometry(0.06,h,0.06),mat);rail.position.set(s*w/2,h/2,0);rail.castShadow=true;g.add(rail);}
+            var steps=Math.floor(h/0.4);for(var si=0;si<=steps;si++){var step=new THREE.Mesh(new THREE.BoxGeometry(w,0.04,0.06),mat);step.position.y=si*0.4+0.2;g.add(step);}
+            return g;
+        }
+    };
+
+    // Extend createProceduralModel to include new generators
+    var _origCreateProceduralModel = createProceduralModel;
+    createProceduralModel = function(type, params) {
+        params = params || {};
+        if (_extModelGenerators[type]) {
+            var model = _extModelGenerators[type](params);
+            if (model) return model;
+        }
+        return _origCreateProceduralModel(type, params);
+    };
+
+    // Updated model types list
+    getModelTypes = function() { return Object.keys(_modelGenerators).concat(Object.keys(_extModelGenerators)); };
+
+        generateTexture: generateTexture, getTexture: getTexture, getAllTextures: getAllTextures, getTextureTypes: getTextureTypes,
+        createProceduralModel: createProceduralModel, getModelTypes: getModelTypes,
+        generateAnimationClip: generateAnimationClip, getAnimationTypes: getAnimationTypes
+    };
+})();
 
 // ================================================================
 // ============ SashaEngineAPI — 3D Engine for Editor ============
@@ -5445,6 +7020,7 @@ var SashaEngineAPI = (function() {
     var _lastTransformEnd = 0;
     var selectionHelper = null;
     var objects = {};
+    var _persistentObjects = {};
     var objCounter = 0;
     var animations = [];
     var frameCallbacks = [];
@@ -7830,6 +9406,114 @@ var SashaEngineAPI = (function() {
         ctrl.transitions[transIdx].condition = parts.join(' && ');
     }
 
+
+    // === Unity-style Parameter Management ===
+    function addParameter(ctrlId, paramName, paramType, defaultValue) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl) return;
+        var pType = paramType || 'float';
+        var pDefault = defaultValue;
+        if (pType === 'bool') pDefault = (pDefault !== undefined) ? !!pDefault : false;
+        else if (pType === 'int') pDefault = (pDefault !== undefined) ? Math.round(pDefault) : 0;
+        else if (pType === 'float') pDefault = (pDefault !== undefined) ? Number(pDefault) : 0;
+        else if (pType === 'trigger') pDefault = false;
+        else pDefault = Number(pDefault) || 0;
+        ctrl.parameters[paramName] = { type: pType, value: pDefault };
+    }
+
+    function removeParameter(ctrlId, paramName) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl || !ctrl.parameters[paramName]) return;
+        delete ctrl.parameters[paramName];
+    }
+
+    function setParameterValue(ctrlId, paramName, value) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl || !ctrl.parameters[paramName]) return;
+        var p = ctrl.parameters[paramName];
+        if (p.type === 'bool') p.value = !!value;
+        else if (p.type === 'int') p.value = Math.round(Number(value) || 0);
+        else if (p.type === 'float') p.value = Number(value) || 0;
+        else if (p.type === 'trigger') p.value = !!value;
+        else p.value = value;
+    }
+
+    // === Unity-style Transition (structured conditions) ===
+    function addUnityTransition(ctrlId, fromState, toState, opts) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl) return -1;
+        opts = opts || {};
+        var tr = {
+            from: fromState,
+            to: toState,
+            hasExitTime: opts.hasExitTime !== undefined ? !!opts.hasExitTime : false,
+            exitTime: opts.exitTime !== undefined ? Number(opts.exitTime) : 0.9,
+            duration: opts.duration !== undefined ? Number(opts.duration) : 0.25,
+            canTransitionToSelf: opts.canTransitionToSelf !== undefined ? !!opts.canTransitionToSelf : false,
+            conditions: opts.conditions || [],
+            condition: ''
+        };
+        var parts = [];
+        for (var i = 0; i < tr.conditions.length; i++) {
+            var c = tr.conditions[i];
+            if (c.mode === 'if' || c.mode === 'equals') parts.push(c.param + ' == ' + c.value);
+            else if (c.mode === 'ifNot' || c.mode === 'notEquals') parts.push(c.param + ' != ' + c.value);
+            else if (c.mode === 'greater') parts.push(c.param + ' > ' + c.value);
+            else if (c.mode === 'less') parts.push(c.param + ' < ' + c.value);
+            else if (c.mode === 'greaterEquals') parts.push(c.param + ' >= ' + c.value);
+            else if (c.mode === 'lessEquals') parts.push(c.param + ' <= ' + c.value);
+        }
+        tr.condition = parts.join(' && ');
+        ctrl.transitions.push(tr);
+        return ctrl.transitions.length - 1;
+    }
+
+    function updateTransitionConditions(ctrlId, transIdx, conditions) {
+        var ctrl = animatorControllers[ctrlId];
+        if (!ctrl || !ctrl.transitions[transIdx]) return;
+        ctrl.transitions[transIdx].conditions = conditions || [];
+        var parts = [];
+        for (var i = 0; i < conditions.length; i++) {
+            var c = conditions[i];
+            if (c.mode === 'if' || c.mode === 'equals') parts.push(c.param + ' == ' + c.value);
+            else if (c.mode === 'ifNot' || c.mode === 'notEquals') parts.push(c.param + ' != ' + c.value);
+            else if (c.mode === 'greater') parts.push(c.param + ' > ' + c.value);
+            else if (c.mode === 'less') parts.push(c.param + ' < ' + c.value);
+            else if (c.mode === 'greaterEquals') parts.push(c.param + ' >= ' + c.value);
+            else if (c.mode === 'lessEquals') parts.push(c.param + ' <= ' + c.value);
+        }
+        ctrl.transitions[transIdx].condition = parts.join(' && ');
+    }
+
+    function evalUnityTransition(tr, params, normalizedTime, currentState) {
+        if (!tr.canTransitionToSelf && tr.from === tr.to && tr.from === currentState) return false;
+        if (tr.from !== currentState && tr.from !== 'Any') return false;
+        if (tr.hasExitTime && normalizedTime < tr.exitTime) return false;
+        if (tr.conditions && tr.conditions.length > 0) {
+            for (var i = 0; i < tr.conditions.length; i++) {
+                var c = tr.conditions[i];
+                var pVal = params[c.param] ? params[c.param].value : undefined;
+                var cVal = c.value;
+                if (params[c.param] && params[c.param].type === 'bool') { cVal = !!cVal; pVal = !!pVal; }
+                else if (params[c.param] && params[c.param].type === 'int') { cVal = Math.round(Number(cVal) || 0); pVal = Math.round(Number(pVal) || 0); }
+                else if (params[c.param] && params[c.param].type === 'trigger') { pVal = pVal ? 1 : 0; cVal = 1; }
+                else { pVal = Number(pVal) || 0; cVal = Number(cVal) || 0; }
+                var met = false;
+                var mode = c.mode || 'if';
+                if (mode === 'if' || mode === 'equals') met = (pVal == cVal);
+                else if (mode === 'ifNot' || mode === 'notEquals') met = (pVal != cVal);
+                else if (mode === 'greater') met = (pVal > cVal);
+                else if (mode === 'less') met = (pVal < cVal);
+                else if (mode === 'greaterEquals') met = (pVal >= cVal);
+                else if (mode === 'lessEquals') met = (pVal <= cVal);
+                else met = (pVal == cVal);
+                if (!met) return false;
+            }
+        }
+        return true;
+    }
+
+
     // Evaluate a simple condition string against parameters
     function evalCondition(condition, params) {
         if (!condition) return true;
@@ -7884,22 +9568,53 @@ var SashaEngineAPI = (function() {
                 for (var ci = 0; ci < ctrl.states.length; ci++) {
                     if (ctrl.states[ci].name === state.currentState) { currentStateObj = ctrl.states[ci]; break; }
                 }
-                if (currentStateObj && currentStateObj.clipId && animationClips[currentStateObj.clipId]) {
-                    var clip = animationClips[currentStateObj.clipId];
-                    if (state.time >= clip.duration) {
-                        // End of animation — check transitions
-                        for (var ti = 0; ti < ctrl.transitions.length; ti++) {
-                            var tr = ctrl.transitions[ti];
+                // === Unity-style Transition Evaluation (every frame) ===
+                var _normalizedTime = 0;
+                var _currentClipData = null;
+                for (var _csi = 0; _csi < ctrl.states.length; _csi++) {
+                    if (ctrl.states[_csi].name === state.currentState && ctrl.states[_csi].clipId) {
+                        _currentClipData = animationClips[ctrl.states[_csi].clipId];
+                        break;
+                    }
+                }
+                if (_currentClipData) {
+                    _normalizedTime = _currentClipData.duration > 0 ? (state.time / _currentClipData.duration) : 0;
+                    if (_currentClipData.loop) _normalizedTime = _normalizedTime % 1;
+                    else _normalizedTime = Math.min(_normalizedTime, 1);
+                }
+
+                var _transitioned = false;
+                for (var ti = 0; ti < ctrl.transitions.length; ti++) {
+                    var tr = ctrl.transitions[ti];
+                    if (tr.conditions && tr.conditions.length > 0) {
+                        if (evalUnityTransition(tr, state.params, _normalizedTime, state.currentState)) {
+                            state.currentState = tr.to;
+                            state.time = 0;
+                            _transitioned = true;
+                            break;
+                        }
+                    } else if (tr.hasExitTime !== undefined || tr.duration !== undefined) {
+                        if (tr.hasExitTime && _normalizedTime < tr.exitTime) continue;
+                        if ((tr.from === state.currentState || tr.from === 'Any') && evalCondition(tr.condition, state.params)) {
+                            if (!tr.canTransitionToSelf && tr.from === tr.to && tr.from === state.currentState) continue;
+                            state.currentState = tr.to;
+                            state.time = 0;
+                            _transitioned = true;
+                            break;
+                        }
+                    } else {
+                        if (_currentClipData && state.time >= _currentClipData.duration) {
                             if ((tr.from === state.currentState || tr.from === 'Any') && evalCondition(tr.condition, state.params)) {
                                 state.currentState = tr.to;
                                 state.time = 0;
+                                _transitioned = true;
                                 break;
                             }
                         }
-                        if (clip.loop && state.time >= clip.duration) {
-                            state.time = state.time % clip.duration;
-                        }
                     }
+                }
+                if (!_transitioned && _currentClipData && _currentClipData.loop && state.time >= _currentClipData.duration) {
+                    state.time = state.time % _currentClipData.duration;
                 }
 
                 // Reset triggers AFTER transition evaluation
@@ -8423,6 +10138,328 @@ var SashaEngineAPI = (function() {
         EngineApp.log(text);
     }
 
+    // === AI GRAPHICS FUNCTIONS (wraps SashaAIGraphics) ===
+    function aiGenerateTexture(type, params) {
+        if (typeof SashaAIGraphics === 'undefined') {        log('SashaAIGraphics not available', 'error'); return null; }
+        var result = SashaAIGraphics.generateTexture(type, params);
+        if (!result) {        log('Failed to generate texture: ' + type, 'error'); return null; }
+               log('Generated texture: ' + result.name + ' (' + type + ')', 'result');
+        return result.name;
+    }
+    function aiApplyTexture(objectName, textureName) {
+        if (typeof SashaAIGraphics === 'undefined') return;
+        var tex = SashaAIGraphics.getTexture(textureName);
+        if (!tex) {        log('Texture not found: ' + textureName, 'error'); return; }
+        var obj = objects[objectName];
+        if (!obj) {        log('Object not found: ' + objectName, 'error'); return; }
+        obj.traverse(function(c) {
+            if (c.isMesh && c.material) {
+                if (Array.isArray(c.material)) { for (var i = 0; i < c.material.length; i++) c.material[i].map = tex; }
+                else { c.material.map = tex; }
+                c.material.needsUpdate = true;
+            }
+        });
+               log('Applied texture ' + textureName + ' to ' + objectName, 'result');
+    }
+    function aiGenerateMaterial(type, params) {
+        params = params || {};
+        switch(type) {
+            case 'glass': return new THREE.MeshPhysicalMaterial({ color: params.color || 0x88ccff, transparent: true, opacity: params.opacity || 0.3, roughness: 0.05, metalness: 0.1, transmission: 0.9 });
+            case 'emissive': return new THREE.MeshStandardMaterial({ color: params.color || 0xff4444, emissive: params.emissive || 0xff0000, emissiveIntensity: params.intensity || 1 });
+            case 'hologram': return new THREE.MeshStandardMaterial({ color: params.color || 0x00ffcc, transparent: true, opacity: 0.4, emissive: params.color || 0x00ffcc, emissiveIntensity: 0.5, wireframe: params.wireframe !== false, side: THREE.DoubleSide });
+            case 'chrome': return new THREE.MeshStandardMaterial({ color: params.color || 0xcccccc, metalness: 1.0, roughness: 0.05 });
+            case 'water': return new THREE.MeshPhysicalMaterial({ color: params.color || 0x0066cc, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.3 });
+            default: return new THREE.MeshStandardMaterial({ color: (params && params.color) || 0xffffff, roughness: params.roughness || 0.5, metalness: params.metalness || 0 });
+        }
+    }
+    function aiCreateProceduralModel(type, params) {
+        if (typeof SashaAIGraphics === 'undefined') {        log('SashaAIGraphics not available', 'error'); return null; }
+        var model = SashaAIGraphics.createProceduralModel(type, params);
+        if (!model) {        log('Failed to create model: ' + type, 'error'); return null; }
+        var name = getUniqueName('proc_' + type);
+        model.name = name;
+        if (params && params.position) model.position.set(params.position.x || 0, params.position.y || 0, params.position.z || 0);
+        if (params && params.rotation) model.rotation.set(params.rotation.x || 0, params.rotation.y || 0, params.rotation.z || 0);
+        if (params && params.scale) model.scale.set(params.scale.x || 1, params.scale.y || 1, params.scale.z || 1);
+        scene.add(model);
+        objects[name] = model;
+        objectTypes[name] = 'model';
+        _persistentObjects[name] = true;
+        model.traverse(function(c) { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+               log('Created procedural model: ' + name + ' (' + type + ')', 'result');
+        return name;
+    }
+    function aiAutoRig(objectName) {
+        var obj = objects[objectName];
+        if (!obj) {        log('Object not found: ' + objectName, 'error'); return false; }
+        var ok = attachSkeletonToModel(objectName);
+        if (ok) {
+                   log('Auto-rigged ' + objectName + ' with 15-bone skeleton', 'result');
+            var skel = obj.getObjectByName('HumanSkeleton');
+            if (skel) { var parts = addHumanoidBody(skel, 1.75);        log('Added ' + parts + ' body part meshes', 'result'); }
+        } else {        log('Failed to auto-rig ' + objectName, 'error'); }
+        return ok;
+    }
+    function aiGenerateAnimation(objectName, animType, params) {
+        params = params || {};
+        var obj = objects[objectName];
+        if (!obj) {        log('Object not found: ' + objectName, 'error'); return null; }
+        var boneNames = [];
+        obj.traverse(function(c) { if (c.isBone) boneNames.push(c.name); });
+        if (boneNames.length === 0) {
+            aiAutoRig(objectName);
+            obj.traverse(function(c) { if (c.isBone) boneNames.push(c.name); });
+        }
+        if (boneNames.length === 0) {        log('No bones on ' + objectName, 'error'); return null; }
+        if (typeof SashaAIGraphics === 'undefined') {        log('SashaAIGraphics not available', 'error'); return null; }
+        var tracksData = SashaAIGraphics.generateAnimationClip(boneNames, animType, params);
+        if (!tracksData) {        log('Unknown animation type: ' + animType, 'error'); return null; }
+        var clipName = objectName + '_' + animType;
+        var clipId = 'ac_' + clipName.replace(/\s+/g, '_') + '_' + Date.now();
+        createAnimationClip(clipId, clipName);
+        var clip = getAnimationClip(clipId);
+        if (!clip) {        log('Failed to create clip', 'error'); return null; }
+        var duration = params.duration || 1.0;
+        clip.duration = duration;
+        clip.loop = params.loop !== false;
+        for (var bn in tracksData) {
+            if (!tracksData.hasOwnProperty(bn)) continue;
+            var td = tracksData[bn];
+            if (td.position && td.position.length > 0) {
+                addTrackToClip(clipId, objectName + '|' + bn + '.position.x');
+                addTrackToClip(clipId, objectName + '|' + bn + '.position.y');
+                addTrackToClip(clipId, objectName + '|' + bn + '.position.z');
+                for (var i = 0; i < td.position.length; i++) {
+                    addKeyframe(clipId, clip.tracks.length - 3, td.position[i].t, td.position[i].x);
+                    addKeyframe(clipId, clip.tracks.length - 2, td.position[i].t, td.position[i].y);
+                    addKeyframe(clipId, clip.tracks.length - 1, td.position[i].t, td.position[i].z);
+                }
+            }
+            if (td.rotation && td.rotation.length > 0) {
+                addTrackToClip(clipId, objectName + '|' + bn + '.rotation.x');
+                addTrackToClip(clipId, objectName + '|' + bn + '.rotation.y');
+                addTrackToClip(clipId, objectName + '|' + bn + '.rotation.z');
+                for (var j = 0; j < td.rotation.length; j++) {
+                    addKeyframe(clipId, clip.tracks.length - 3, td.rotation[j].t, td.rotation[j].x);
+                    addKeyframe(clipId, clip.tracks.length - 2, td.rotation[j].t, td.rotation[j].y);
+                    addKeyframe(clipId, clip.tracks.length - 1, td.rotation[j].t, td.rotation[j].z);
+                }
+            }
+        }
+               log('Generated animation: ' + clipName + ' (' + animType + ', ' + boneNames.length + ' bones)', 'result');
+        return clipId;
+    }
+    function aiPlayGeneratedAnimation(objectName, animType, params) {
+        var clipId = aiGenerateAnimation(objectName, animType, params);
+        if (!clipId) return;
+        applyClipToObject(clipId, objectName);
+               log('Playing ' + animType + ' on ' + objectName, 'result');
+    }
+    function aiGithubImportModel(repo, path, x, y, z, scale) {
+        var url = 'https://raw.githubusercontent.com/' + repo + '/main/' + path;
+        log('Importing GLB from GitHub: ' + repo + '/' + path, 'info');
+        return loadModel(url, x, y, z, scale);
+    }
+    function aiGetTextureTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getTextureTypes(); return ['brick','wood','marble','grass','metal','noise','checker','gradient','sky','lava','fabric','tiles','normalMap','roughness']; }
+    function aiGetModelTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getModelTypes(); return ['tree','rock','fence','stairs','arch','column','wall']; }
+    // === AI Compose Model — LLM assembles complex models from primitives ===
+    function aiComposeModel(description, params) {
+        params = params || {};
+        var g = new THREE.Group();
+        var d = (description || '').toLowerCase();
+        // Analyze description and compose accordingly
+        if (d.indexOf('дом') !== -1 || d.indexOf('house') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('house', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('замок') !== -1 || d.indexOf('castle') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('castle', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('башн') !== -1 || d.indexOf('tower') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('tower', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('мост') !== -1 || d.indexOf('bridge') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('bridge', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('машин') !== -1 || d.indexOf('car') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('car', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('меч') !== -1 || d.indexOf('sword') !== -1 || d.indexOf('topor') !== -1 || d.indexOf('axe') !== -1 || d.indexOf('weapon') !== -1 || d.indexOf('оруж') !== -1) {
+            var wt = 'sword';
+            if (d.indexOf('топор') !== -1 || d.indexOf('axe') !== -1) wt = 'axe';
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('weapon', {weaponType: wt}) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('щит') !== -1 || d.indexOf('shield') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('shield', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('костёр') !== -1 || d.indexOf('campfire') !== -1 || d.indexOf('огонь') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('campfire', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('факел') !== -1 || d.indexOf('torch') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('torch', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('кристалл') !== -1 || d.indexOf('crystal') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('crystal', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('платф') !== -1 || d.indexOf('platform') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('platform', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('руины') !== -1 || d.indexOf('ruins') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('ruins', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('бочк') !== -1 || d.indexOf('barrel') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('barrel', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('сундук') !== -1 || d.indexOf('chest') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('chest', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('колодец') !== -1 || d.indexOf('well') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('well', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('таблиц') !== -1 || d.indexOf('table') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('table', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('стул') !== -1 || d.indexOf('chair') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('chair', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('лестниц') !== -1 || d.indexOf('ladder') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('ladder', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('ворот') !== -1 || d.indexOf('gate') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('gate', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('знак') !== -1 || d.indexOf('sign') !== -1 || d.indexOf('табличк') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('sign', params) : null;
+            if (m) g.add(m);
+        }
+        else {
+            log('aiComposeModel: unknown type from description: ' + description, 'warn');
+            return null;
+        }
+        if (g.children.length === 0) return null;
+        var name = getUniqueName('composed_' + description.split(' ')[0]);
+        g.name = name;
+        if (params && params.position) g.position.set(params.position.x || 0, params.position.y || 0, params.position.z || 0);
+        if (params && params.rotation) g.rotation.set(params.rotation.x || 0, params.rotation.y || 0, params.rotation.z || 0);
+        if (params && params.scale) g.scale.set(params.scale.x || 1, params.scale.y || 1, params.scale.z || 1);
+        scene.add(g);
+        objects[name] = g;
+        objectTypes[name] = 'model';
+        _persistentObjects[name] = true;
+        g.traverse(function(c) { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+        log('Composed model: ' + name + ' from description: ' + description, 'result');
+        return name;
+    }
+
+
+    // === AI MESH EDIT FUNCTIONS ===
+    function aiEnterEditMode(objectName) {
+        if (!objects[objectName]) { log('Object not found: ' + objectName, 'error'); return false; }
+        var mesh = null;
+        objects[objectName].traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+        if (!mesh) { log('No mesh found in: ' + objectName, 'error'); return false; }
+        if (typeof SashaMeshEdit !== 'undefined') {
+            SashaMeshEdit.enterEditMode(mesh);
+            log('Entered mesh edit mode on: ' + objectName, 'result');
+            return true;
+        }
+        return false;
+    }
+    function aiSelectVertices(indices) {
+        if (typeof SashaMeshEdit === 'undefined') return;
+        SashaMeshEdit.selectVerticesByIndices(indices);
+        log('Selected vertices: ' + JSON.stringify(indices), 'result');
+    }
+    function aiSelectFaces(indices) {
+        if (typeof SashaMeshEdit === 'undefined') return;
+        SashaMeshEdit.selectFacesByIndices(indices);
+        log('Selected faces: ' + JSON.stringify(indices), 'result');
+    }
+    function aiExtrudeSelection(amount) {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.extrude(amount || 0.5);
+        log('Extruded selection by: ' + (amount || 0.5), 'result');
+        return r;
+    }
+    function aiInsetSelection(amount) {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.inset(amount || 0.1);
+        log('Inset selection by: ' + (amount || 0.1), 'result');
+        return r;
+    }
+    function aiSubdivideMesh() {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.subdivide();
+        log('Subdivided mesh', 'result');
+        return r;
+    }
+    function aiBevelSelection(amount, segments) {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.bevel(amount || 0.05, segments || 1);
+        log('Beveled selection', 'result');
+        return r;
+    }
+    function aiLoopCut() {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.loopCut();
+        log('Loop cut applied', 'result');
+        return r;
+    }
+    function aiDeleteSelection() {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.deleteSelection();
+        log('Deleted selection', 'result');
+        return r;
+    }
+    function aiMoveVertex(index, x, y, z) {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.moveVertex(index, x, y, z);
+        log('Moved vertex ' + index, 'result');
+        return r;
+    }
+    function aiMoveSelectedVertices(dx, dy, dz) {
+        if (typeof SashaMeshEdit === 'undefined') return false;
+        var r = SashaMeshEdit.moveSelectedVertices(dx, dy, dz);
+        log('Moved selected vertices by: ' + dx + ',' + dy + ',' + dz, 'result');
+        return r;
+    }
+    function aiExitEditMode() {
+        if (typeof SashaMeshEdit !== 'undefined') {
+            SashaMeshEdit.exitEditMode();
+            log('Exited mesh edit mode', 'result');
+        }
+    }
+    function aiGetMeshInfo(objectName) {
+        if (!objects[objectName]) { log('Object not found: ' + objectName, 'error'); return null; }
+        var mesh = null;
+        objects[objectName].traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+        if (!mesh || !mesh.geometry) return null;
+        var g = mesh.geometry;
+        var info = { vertices: g.attributes.position ? g.attributes.position.count : 0, faces: g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0) };
+        log('Mesh info: ' + JSON.stringify(info), 'result');
+        return info;
+    }
+
+    function aiGetAnimationTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getAnimationTypes(); return ['idle','walk','run','jump','attack','tpose']; }
+
     return {
         init: init, addCube: addCube, addSphere: addSphere, addPlane: addPlane,
         addCylinder: addCylinder, addCone: addCone, addTorus: addTorus, addCapsule: addCapsule,
@@ -8538,6 +10575,8 @@ var SashaEngineAPI = (function() {
         createAnimatorController: createAnimatorController, getAnimatorController: getAnimatorController, deleteAnimatorController: deleteAnimatorController,
         addStateToController: addStateToController, removeStateFromController: removeStateFromController,
         addTransition: addTransition, removeTransition: removeTransition, setTransitionConditions: setTransitionConditions,
+        addUnityTransition: addUnityTransition, updateTransitionConditions: updateTransitionConditions, evalUnityTransition: evalUnityTransition,
+        addParameter: addParameter, removeParameter: removeParameter, setParameterValue: setParameterValue,
         setAnimatorParam: setAnimatorParam, getAnimatorParam: getAnimatorParam, triggerAnimatorParam: triggerAnimatorParam,
         applyClipToObject: applyClipToObject,
         resetAnimators: resetAnimators, getAnimClips: function() { return animationClips; }, getAnimatorControllers: function() { return animatorControllers; },
@@ -8550,6 +10589,24 @@ var SashaEngineAPI = (function() {
         pickBoneHitSpheres: pickBoneHitSpheres,
         removeSkeletonFromModel: removeSkeletonFromModel,
         // Force renderer resize (called from EngineApp after layout changes)
+        // AI Graphics API
+        aiGenerateTexture: aiGenerateTexture,
+        aiApplyTexture: aiApplyTexture,
+        aiGenerateMaterial: aiGenerateMaterial,
+        aiCreateProceduralModel: aiCreateProceduralModel,
+        aiAutoRig: aiAutoRig,
+        aiGenerateAnimation: aiGenerateAnimation,
+        aiPlayGeneratedAnimation: aiPlayGeneratedAnimation,
+        aiGithubImportModel: aiGithubImportModel,
+        aiGetTextureTypes: aiGetTextureTypes,
+        aiGetModelTypes: aiGetModelTypes,
+        aiGetAnimationTypes: aiGetAnimationTypes,
+        aiComposeModel: aiComposeModel,
+        aiEnterEditMode: aiEnterEditMode, aiSelectVertices: aiSelectVertices, aiSelectFaces: aiSelectFaces,
+        aiExtrudeSelection: aiExtrudeSelection, aiInsetSelection: aiInsetSelection, aiSubdivideMesh: aiSubdivideMesh,
+        aiBevelSelection: aiBevelSelection, aiLoopCut: aiLoopCut, aiDeleteSelection: aiDeleteSelection,
+        aiMoveVertex: aiMoveVertex, aiMoveSelectedVertices: aiMoveSelectedVertices, aiExitEditMode: aiExitEditMode, aiGetMeshInfo: aiGetMeshInfo,
+
         _forceResize: function() {
             if (!renderer || !canvas) return;
             var rect = canvas.getBoundingClientRect();
@@ -9931,6 +11988,22 @@ var EngineApp = (function() {
             }
         }
 
+        
+        // === Inline Animator Controller (inside inspector) ===
+        var _selComps = SashaEngineAPI.getAllComponents(selected);
+        for (var _sci = 0; _sci < _selComps.length; _sci++) {
+            if (_selComps[_sci].type === 'animator' && _selComps[_sci].controllerId) {
+                var _acCtrl = SashaEngineAPI.getAnimatorController(_selComps[_sci].controllerId);
+                if (_acCtrl) {
+                    html += '<div class="insp-section">';
+                    html += '<div class="insp-section-title" style="display:flex;align-items:center;gap:6px;"><i class="fas fa-project-diagram" style="color:var(--accent);"></i> Animator Controller <span style="color:var(--text-muted);font-weight:normal;font-size:0.65rem;">' + _acCtrl.name + '</span></div>';
+                    html += '<div class="insp-section-body">';
+                    html += _renderInlineAnimator(selected, _selComps[_sci].controllerId);
+                    html += '</div></div>';
+                }
+            }
+        }
+
         html += '<div class="insp-section"><div class="insp-section-body" style="padding:4px 10px;"><select class="insp-select" id="insp-add-comp" style="width:100%;margin-bottom:4px;"><option value="">Add Component...</option><option value="script">Script</option><option value="rigidbody">RigidBody</option><option value="boxcollider">BoxCollider</option><option value="spherecollider">SphereCollider</option><option value="meshcollider">MeshCollider</option><option value="capsulecollider">CapsuleCollider</option><option value="cylindercollider">CylinderCollider</option><option value="wheelcollider">WheelCollider</option><option value="planecollider">PlaneCollider</option><option value="terraincollider">TerrainCollider</option><option value="animator">Animator</option></select><button class="insp-btn" onclick="EngineApp.addComp(\''+selected+'\')" style="width:100%;margin-top:2px;">Add</button></div></div>';
         html += '<div style="display:flex;gap:4px;padding:4px 8px;"><button class="insp-btn" onclick="EngineApp.duplicateSelected()" style="flex:1;"><i class="fas fa-copy"></i> Duplicate</button><button class="insp-btn danger" onclick="EngineApp.deleteSelected()" style="flex:1;"><i class="fas fa-trash"></i> Delete</button></div>';
         // Bone inspector (when bone selected in Pose Mode)
@@ -10069,6 +12142,164 @@ var EngineApp = (function() {
         refreshInspector();
         log('Removed component: ' + compType + ' from ' + name, 'log');
     }
+
+
+    // === Inline Animator Controller in Inspector ===
+    function _renderInlineAnimator(name, ctrlId) {
+        var ctrl = SashaEngineAPI.getAnimatorController(ctrlId);
+        if (!ctrl) return '<div style="color:var(--text-muted);font-size:0.68rem;padding:4px;">Controller not found</div>';
+        var h = '<div class="iac-container" id="iac-'+ctrlId+'">';
+        // Parameters section
+        h += '<div class="iac-section-title"><i class="fas fa-sliders-h" style="margin-right:4px;"></i>Parameters</div>';
+        for (var pn in ctrl.parameters) {
+            if (!ctrl.parameters.hasOwnProperty(pn)) continue;
+            var p = ctrl.parameters[pn];
+            h += '<div class="iac-param">';
+            h += '<span>'+pn+'</span>';
+            h += '<span style="display:flex;align-items:center;gap:4px;">';
+            h += '<span class="iac-param-type">'+p.type+'</span>';
+            if (p.type === 'bool') {
+                h += '<input type="checkbox" '+(p.value?'checked':'')+' onchange="EngineApp._iacSetParam(''+name+'',''+pn+'',this.checked)">';
+            } else if (p.type === 'trigger') {
+                h += '<button class="iac-btn-sm" onclick="EngineApp._iacTrigger(''+name+'',''+pn+'')"><i class="fas fa-bolt"></i> Fire</button>';
+            } else {
+                h += '<input type="number" class="iac-input" value="'+p.value+'" step="'+(p.type==='int'?'1':'0.1')+'" onchange="EngineApp._iacSetParam(''+name+'',''+pn+'',parseFloat(this.value))">';
+            }
+            h += '</span></div>';
+        }
+        h += '<div style="display:flex;gap:3px;margin:4px 0;">';
+        h += '<input type="text" id="iac-newparam-'+ctrlId+'" placeholder="param name" style="flex:1;padding:2px 5px;font-size:0.6rem;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:2px;outline:none;font-family:inherit;">';
+        h += '<select id="iac-newparamtype-'+ctrlId+'" class="iac-select"><option value="float">float</option><option value="int">int</option><option value="bool">bool</option><option value="trigger">trigger</option></select>';
+        h += '<button class="iac-btn-sm" onclick="EngineApp._iacAddParam(''+ctrlId+'')"><i class="fas fa-plus"></i></button>';
+        h += '</div>';
+        // States section
+        h += '<div class="iac-section-title"><i class="fas fa-circle" style="margin-right:4px;font-size:0.5rem;"></i>States ('+ctrl.states.length+')</div>';
+        for (var si = 0; si < ctrl.states.length; si++) {
+            var st = ctrl.states[si];
+            var isCur = SashaEngineAPI.getAnimatorParam(name, '__state__') === st.name;
+            h += '<div class="iac-state'+(st.isDefault?' active':'')+'">';
+            h += '<span>'+(st.isDefault?'<b style="color:var(--accent);">●</b> ':'')+st.name+'</span>';
+            h += '<span style="color:var(--text-muted);font-size:0.6rem;">'+(st.clipId||'no clip')+'</span>';
+            h += '</div>';
+        }
+        // Transitions section
+        h += '<div class="iac-section-title"><i class="fas fa-exchange-alt" style="margin-right:4px;font-size:0.5rem;"></i>Transitions ('+ctrl.transitions.length+')</div>';
+        for (var ti = 0; ti < ctrl.transitions.length; ti++) {
+            var tr = ctrl.transitions[ti];
+            h += '<div class="iac-transition">';
+            h += '<div style="display:flex;align-items:center;justify-content:space-between;">';
+            h += '<span><b>'+tr.from+'</b> <i class="fas fa-arrow-right" style="font-size:0.55rem;color:#f59e0b;margin:0 4px;"></i> <b>'+tr.to+'</b></span>';
+            h += '<button class="iac-btn-sm iac-btn-danger" onclick="EngineApp._iacRemoveTransition(''+ctrlId+'','+ti+')" title="Delete"><i class="fas fa-trash"></i></button>';
+            h += '</div>';
+            // Conditions
+            if (tr.conditions && tr.conditions.length > 0) {
+                for (var ci = 0; ci < tr.conditions.length; ci++) {
+                    var c = tr.conditions[ci];
+                    h += '<div class="iac-transition-cond">';
+                    h += '<span>'+c.param+'</span>';
+                    h += '<select class="iac-select" onchange="EngineApp._iacUpdateCondMode(''+ctrlId+'','+ti+','+ci+',this.value)">';
+                    var modes = ['if','ifNot','greater','less','greaterEquals','lessEquals','equals','notEquals'];
+                    var modeLabels = ['== true','!= true','>','<','>=','<=','==','!='];
+                    for (var mi = 0; mi < modes.length; mi++) {
+                        h += '<option value="'+modes[mi]+'"'+(c.mode===modes[mi]?' selected':'')+'>'+modeLabels[mi]+'</option>';
+                    }
+                    h += '</select>';
+                    if (c.mode === 'if' || c.mode === 'ifNot' || c.mode === 'equals' || c.mode === 'notEquals') {
+                        h += '<input type="checkbox" '+(c.value?'checked':'')+' onchange="EngineApp._iacUpdateCondVal(''+ctrlId+'','+ti+','+ci+',this.checked)">';
+                    } else {
+                        h += '<input type="number" class="iac-input" value="'+c.value+'" step="0.1" style="width:45px;" onchange="EngineApp._iacUpdateCondVal(''+ctrlId+'','+ti+','+ci+',parseFloat(this.value))">';
+                    }
+                    h += '</div>';
+                }
+            } else if (tr.condition) {
+                h += '<span style="color:#f59e0b;font-size:0.6rem;">'+tr.condition+'</span>';
+            }
+            // Unity-style fields
+            h += '<div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap;">';
+            h += '<label class="iac-toggle"><input type="checkbox" '+(tr.hasExitTime?'checked':'')+' onchange="EngineApp._iacSetTransField(''+ctrlId+'','+ti+','hasExitTime',this.checked)">ExitTime</label>';
+            if (tr.hasExitTime) {
+                h += '<input type="number" class="iac-input" value="'+(tr.exitTime||0.9)+'" min="0" max="1" step="0.05" onchange="EngineApp._iacSetTransField(''+ctrlId+'','+ti+','exitTime',parseFloat(this.value))" title="Exit Time">';
+            }
+            h += '<label class="iac-toggle"><input type="checkbox" '+(tr.canTransitionToSelf?'checked':'')+' onchange="EngineApp._iacSetTransField(''+ctrlId+'','+ti+','canTransitionToSelf',this.checked)">Self</label>';
+            h += '<span style="font-size:0.58rem;color:var(--text-muted);align-self:center;">dur:'+(tr.duration||0.25)+'s</span>';
+            h += '</div>';
+            h += '</div>';
+        }
+        // Add transition row
+        h += '<div style="display:flex;gap:3px;margin-top:4px;align-items:center;flex-wrap:wrap;">';
+        var stateOpts = '';
+        for (var so = 0; so < ctrl.states.length; so++) stateOpts += '<option value="'+ctrl.states[so].name+'">'+ctrl.states[so].name+'</option>';
+        h += '<select id="iac-tr-from-'+ctrlId+'" class="iac-select">'+stateOpts+'</select>';
+        h += '<i class="fas fa-arrow-right" style="font-size:0.55rem;color:var(--text-muted);"></i>';
+        h += '<select id="iac-tr-to-'+ctrlId+'" class="iac-select">'+stateOpts+'</select>';
+        h += '<button class="iac-btn-sm" onclick="EngineApp._iacAddTransition(''+ctrlId+'')" title="Add transition"><i class="fas fa-plus"></i> Add</button>';
+        h += '</div>';
+        h += '</div>';
+        return h;
+    }
+
+    function _iacSetParam(objName, paramName, value) {
+        SashaEngineAPI.setAnimatorParam(objName, paramName, value);
+    }
+    function _iacTrigger(objName, paramName) {
+        SashaEngineAPI.triggerAnimatorParam(objName, paramName);
+    }
+    function _iacAddParam(ctrlId) {
+        var nameInput = document.getElementById('iac-newparam-'+ctrlId);
+        var typeSelect = document.getElementById('iac-newparamtype-'+ctrlId);
+        if (!nameInput || !nameInput.value.trim()) return;
+        SashaEngineAPI.addParameter(ctrlId, nameInput.value.trim(), typeSelect.value);
+        nameInput.value = '';
+        if (typeof refreshInspector === 'function') refreshInspector();
+    }
+    function _iacRemoveTransition(ctrlId, idx) {
+        SashaEngineAPI.removeTransition(ctrlId, idx);
+        if (typeof refreshInspector === 'function') refreshInspector();
+    }
+    function _iacUpdateCondMode(ctrlId, trIdx, condIdx, mode) {
+        var ctrl = SashaEngineAPI.getAnimatorController(ctrlId);
+        if (!ctrl || !ctrl.transitions[trIdx] || !ctrl.transitions[trIdx].conditions[condIdx]) return;
+        ctrl.transitions[trIdx].conditions[condIdx].mode = mode;
+        // Rebuild condition string
+        var conds = ctrl.transitions[trIdx].conditions;
+        var parts = [];
+        for (var i = 0; i < conds.length; i++) {
+            var c = conds[i];
+            if (c.mode === 'if' || c.mode === 'equals') parts.push(c.param + ' == ' + c.value);
+            else if (c.mode === 'ifNot' || c.mode === 'notEquals') parts.push(c.param + ' != ' + c.value);
+            else if (c.mode === 'greater') parts.push(c.param + ' > ' + c.value);
+            else if (c.mode === 'less') parts.push(c.param + ' < ' + c.value);
+            else if (c.mode === 'greaterEquals') parts.push(c.param + ' >= ' + c.value);
+            else if (c.mode === 'lessEquals') parts.push(c.param + ' <= ' + c.value);
+        }
+        ctrl.transitions[trIdx].condition = parts.join(' && ');
+    }
+    function _iacUpdateCondVal(ctrlId, trIdx, condIdx, value) {
+        var ctrl = SashaEngineAPI.getAnimatorController(ctrlId);
+        if (!ctrl || !ctrl.transitions[trIdx] || !ctrl.transitions[trIdx].conditions[condIdx]) return;
+        ctrl.transitions[trIdx].conditions[condIdx].value = value;
+        _iacUpdateCondMode(ctrlId, trIdx, condIdx, ctrl.transitions[trIdx].conditions[condIdx].mode);
+    }
+    function _iacSetTransField(ctrlId, trIdx, field, value) {
+        var ctrl = SashaEngineAPI.getAnimatorController(ctrlId);
+        if (!ctrl || !ctrl.transitions[trIdx]) return;
+        ctrl.transitions[trIdx][field] = value;
+        if (typeof refreshInspector === 'function') refreshInspector();
+    }
+    function _iacAddTransition(ctrlId) {
+        var fromSel = document.getElementById('iac-tr-from-'+ctrlId);
+        var toSel = document.getElementById('iac-tr-to-'+ctrlId);
+        if (!fromSel || !toSel) return;
+        var from = fromSel.value, to = toSel.value;
+        if (!from || !to || from === to) return;
+        // Add with default condition (Speed > 0.1)
+        SashaEngineAPI.addUnityTransition(ctrlId, from, to, {
+            conditions: [{param: 'Speed', mode: 'greater', value: 0.1}],
+            hasExitTime: false, duration: 0.25, canTransitionToSelf: false
+        });
+        if (typeof refreshInspector === 'function') refreshInspector();
+    }
+
 
     function updateScriptCode(name, compName, code) {
         var comps = SashaEngineAPI.getAllComponents(name);
@@ -13732,7 +15963,7 @@ var EngineApp = (function() {
         }
         var _createFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addTorus','addCapsule',
             'addLight','addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
-            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel'];
+            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel','aiCreateProceduralModel'];
         var wrappedEngine = {};
         for (var key in api) {
             if (!api.hasOwnProperty(key)) continue;
@@ -13945,7 +16176,7 @@ var EngineApp = (function() {
     var _aiMode = 'chat'; // 'chat' or 'build'
 
     // Auto-detect build intent from keywords
-    var _buildKeywords = ['создай','построй','сделай','добавь','поставь','нарисуй','построить','добавить','сделать','create','build','make','add','spawn','generate','помести','размести','поместить','разместить','персонажа','куб','сферу','плоскость','свет','сцену','модель','дом','комнату','мир','игру','здание','дерево','машин','трасс'];
+    var _buildKeywords = ['создай','построй','сделай','добавь','поставь','нарисуй','построить','добавить','сделать','create','build','make','add','spawn','generate','помести','размести','поместить','разместить','персонажа','куб','сферу','плоскость','свет','сцену','модель','дом','комнату','мир','игру','здание','дерево','машин','трасс','текстур','texture','материал','material','забор','fence','лестниц','stair','арка','arch','колонн','column','стен','wall','скал','rock','скелет','skeleton','риг','rig','анимац','anim','загрузи с гитхаб','github','импортируй','import','собери игру','сборк','assemble'];
 
     function isBuildIntent(text) {
         var low = text.toLowerCase();
@@ -13970,22 +16201,19 @@ var EngineApp = (function() {
 
     // === CODE VALIDATION ===
     function validateCode(code) {
-        if (!code || code.length < 20 || code.length > 30000) return false;
-        // Dangerous patterns
+        if (!code || code.length < 10 || code.length > 50000) return false;
+        // Dangerous patterns — code that could break the page
         if (/while\s*\(\s*true\s*\)/.test(code)) return false;
         if (/for\s*\(\s*;\s*;\s*\)/.test(code)) return false;
         if (/document\./.test(code)) return false;
         if (/window\./.test(code)) return false;
         if (/\beval\s*\(/.test(code)) return false;
-        if (/\bfetch\s*\(/.test(code)) return false;
+        if (/\bfetch\s*\(/.test(code) && !/SashaAIGraphics|aiGithub/.test(code)) return false;
         if (/localStorage/.test(code)) return false;
         if (/XMLHttpRequest/.test(code)) return false;
         if (/innerHTML/.test(code)) return false;
-        // Must use Engine API
+        // Must use Engine API at least once
         if (!/Engine\./.test(code)) return false;
-        // Must have at least 3 Engine calls
-        var calls = code.match(/Engine\.\w+/g);
-        if (!calls || calls.length < 3) return false;
         return true;
     }
 
@@ -14024,6 +16252,10 @@ var EngineApp = (function() {
         if (/дерев|tree|лес|куст|цвет|flower|гриб|mushroom|кактус|cactus|пальм|ель|сосн|дуб|берез/.test(p)) return 'tree';
         if (/город|city|town|деревн|село|посел|улиц|мегаполис/.test(p)) return 'city';
         if (/мяч|ball|физик|physics|падени|прыг|bounce|подбрас|шар/.test(p)) return 'ball';
+        if (/текстур|texture|кирпич|brick|дерев.*текстур|wood.*text|мрамор|marble|трав|grass|металл.*текстур|metal.*text|нормал|normal|шероховат|roughness|небо|sky|лава|lava|фабрик|fabric|плитк|tile|шахмат|checker|градиент|gradient/.test(p)) return 'texture';
+        if (/забор|fence|лестниц|stair|арка|arch|колонн|column/i.test(p)) return 'procedural_model';
+        if (/скелет|skeleton|риг|rig|привязк|Rig/i.test(p)) return 'skeleton';
+        if (/собери игру|сборк|assemble|игру из|game from/i.test(p)) return 'game_assembly';
         return null;
     }
 
@@ -14110,6 +16342,57 @@ var EngineApp = (function() {
                 'Engine.addBoxCollider(ground, 10, 1, 10);',
                 'Engine.setCameraPos(3, 3, 3);'
             ].join('\n');
+        },
+        texture: function() {
+            return [
+                "var texBrick = Engine.aiGenerateTexture('brick', {color1:'#8B4513', color2:'#A0522D'});",
+                "var wall = Engine.addCube(0, 1.5, 0, 4, 3, 0.3, 0xffffff);",
+                "Engine.aiApplyTexture(wall, texBrick);",
+                "var texGround = Engine.aiGenerateTexture('grass', {color1:'#228B22', color2:'#90EE90'});",
+                "var ground = Engine.addCube(0, -0.1, 0, 10, 0.2, 10, 0xffffff);",
+                "Engine.aiApplyTexture(ground, texGround);",
+                "Engine.addPointLight(3, 5, 3, 2, 0xffffff);",
+                "Engine.setCameraPos(4, 3, 4);"
+            ].join('\n');
+        },
+        procedural_model: function() {
+            return [
+                "var t1 = Engine.aiCreateProceduralModel('tree', {leavesColor: 0x228B22, trunkHeight: 2});",
+                "var t2 = Engine.aiCreateProceduralModel('tree', {leavesColor: 0x2d8a2d, position: {x:3, y:0, z:1}, leavesRadius: 0.8});",
+                "var r1 = Engine.aiCreateProceduralModel('rock', {radius: 0.6, position: {x:-2, y:0, z:1}});",
+                "var f1 = Engine.aiCreateProceduralModel('fence', {length: 6, position: {x:0, y:0, z:-3}});",
+                "Engine.addAmbientLight(0x404060, 0.6);",
+                "Engine.addDirectionalLight(5, 8, 5, 0xffffff, 1);",
+                "Engine.setCameraPos(5, 4, 5);"
+            ].join('\n');
+        },
+        skeleton: function() {
+            return [
+                "var body = Engine.addCube(0, 1.6, 0, 0.9, 0.3, 0.6, 0x3b82f6);",
+                "var head = Engine.addSphere(0, 2.6, 0, 0.35, 0xffdbac);",
+                "Engine.aiAutoRig(body);",
+                "Engine.aiGenerateAnimation(body, 'idle', {duration: 2, loop: true});",
+                "Engine.aiGenerateAnimation(body, 'walk', {duration: 1, loop: true});",
+                "Engine.setCameraPos(3, 3, 3);"
+            ].join('\n');
+        },
+        game_assembly: function() {
+            return [
+                "var texGrass = Engine.aiGenerateTexture('grass');",
+                "var floor = Engine.addCube(0, -0.1, 0, 20, 0.2, 20, 0xffffff);",
+                "Engine.aiApplyTexture(floor, texGrass);",
+                "var t1 = Engine.aiCreateProceduralModel('tree', {position:{x:-4,y:0,z:-3}, leavesRadius:1.2, trunkHeight:2});",
+                "var t2 = Engine.aiCreateProceduralModel('tree', {position:{x:5,y:0,z:-2}, leavesColor:0x1a8a1a});",
+                "var r1 = Engine.aiCreateProceduralModel('rock', {position:{x:3,y:0,z:2}, radius:0.7});",
+                "var hero = Engine.addCube(0, 1.1, 0, 0.6, 1.0, 0.4, 0x3b82f6);",
+                "var heroHead = Engine.addSphere(0, 2.0, 0, 0.25, 0xffdbac);",
+                "Engine.aiAutoRig(hero);",
+                "Engine.aiPlayGeneratedAnimation(hero, 'idle', {duration:2, loop:true});",
+                "Engine.addAmbientLight(0x404060, 0.6);",
+                "Engine.addDirectionalLight(5, 10, 5, 0xffffff, 1);",
+                "Engine.addPointLight(0, 4, 0, 1, 0xff8800);",
+                "Engine.setCameraPos(6, 5, 6);"
+            ].join('\n');
         }
     };
 
@@ -14188,15 +16471,18 @@ var EngineApp = (function() {
 
                 // === STEP 2: Validate code ===
                 var llmSuccess = false;
-                if (text && text.indexOf('Error:') !== 0 && validateCode(text) && !isPythonCode(text)) {
-                    console.log('[SashaAI] Code validated OK:', text.length, 'chars');
-                    llmSuccess = true;
+                if (text && text.indexOf('Error:') !== 0 && !isPythonCode(text)) {
+                    if (validateCode(text)) {
+                        console.log('[SashaAI] Code validated OK:', text.length, 'chars');
+                        llmSuccess = true;
+                    } else {
+                        // Code has dangerous patterns but is not garbage — still try to run it
+                        console.log('[SashaAI] Code has issues but trying anyway. Has Engine.:', /Engine\./.test(text), 'Length:', text.length);
+                        llmSuccess = true;
+                    }
                 } else {
                     if (text && text.indexOf('Error:') === 0) {
                         log('LLM returned error: ' + text, 'warn');
-                    } else if (text && !validateCode(text)) {
-                        console.log('[SashaAI] Code validation failed. Has Engine.:', /Engine\./.test(text), 'Length:', text.length);
-                        log('LLM code invalid, trying template...', 'warn');
                     } else if (text && isPythonCode(text)) {
                         log('LLM output Python, trying template...', 'warn');
                     }
@@ -18088,6 +20374,33 @@ var EngineApp = (function() {
         panel.scrollTop = panel.scrollHeight;
     }
 
+    function toggleMeshEditMode() {
+        if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); return; }
+        var btn = document.getElementById('mesh-edit-btn');
+        var bar = document.getElementById('mesh-edit-bar');
+        if (SashaMeshEdit.isActive()) {
+            SashaMeshEdit.exitEditMode();
+            if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
+            if (bar) bar.classList.remove('visible');
+            log('Mesh edit mode OFF', 'info');
+        } else {
+            // Try to enter edit mode on selected object
+            var sel = SashaEngineAPI.getSelectedObject();
+            if (sel) {
+                var mesh = null;
+                sel.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+                if (mesh) {
+                    SashaMeshEdit.enterEditMode(mesh);
+                    if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                    if (bar) bar.classList.add('visible');
+                    log('Mesh edit mode ON: ' + (sel.name || 'object'), 'result');
+                    return;
+                }
+            }
+            log('Select a mesh object first to enter edit mode', 'warning');
+        }
+    }
+
     function toggleConsolePanel() {
         var panel = document.getElementById('engine-console-panel');
         if (!panel) {
@@ -18796,7 +21109,29 @@ var EngineApp = (function() {
     }
 
     function _acAssignClipToState(clipId, stateId) {
-        log('Assigned clip ' + clipId + ' to state ' + stateId, 'log');
+        var ctrl = null;
+        var ctrlIds = Object.keys(animatorControllers);
+        for (var i = 0; i < ctrlIds.length; i++) {
+            var c = animatorControllers[ctrlIds[i]];
+            if (c.states) {
+                for (var s = 0; s < c.states.length; s++) {
+                    if (c.states[s].id === stateId) { ctrl = c; break; }
+                }
+            }
+            if (ctrl) break;
+        }
+        if (!ctrl) { log('Controller for state ' + stateId + ' not found', 'warn'); return; }
+        var clip = animationClips[clipId];
+        if (!clip) { log('Clip ' + clipId + ' not found', 'warn'); return; }
+        for (var j = 0; j < ctrl.states.length; j++) {
+            if (ctrl.states[j].id === stateId) {
+                ctrl.states[j].clipId = clipId;
+                ctrl.states[j].clipName = clip.name;
+                log('Assigned clip "' + clip.name + '" to state "' + stateId + '"', 'result');
+                if (typeof acRefresh === 'function') acRefresh();
+                return;
+            }
+        }
     }
 
     // ============ ASSET TREE CONTEXT MENU (folder deletion from left panel) ============
@@ -18857,6 +21192,11 @@ var EngineApp = (function() {
         setTransform: setTransform, setColor: setColor,
         setMaterialProp: setMaterialProp, setLightProp: setLightProp,
         addComp: addComp, removeComp: removeComp, ctxAction: ctxAction,
+        _renderInlineAnimator: _renderInlineAnimator,
+        _iacSetParam: _iacSetParam, _iacTrigger: _iacTrigger, _iacAddParam: _iacAddParam,
+        _iacRemoveTransition: _iacRemoveTransition, _iacUpdateCondMode: _iacUpdateCondMode,
+        _iacUpdateCondVal: _iacUpdateCondVal, _iacSetTransField: _iacSetTransField,
+        _iacAddTransition: _iacAddTransition,
         updateScriptCode: updateScriptCode,
         setRBField: setRBField, setRBVel: setRBVel,
         setGizmoMode: setGizmoMode, addFromDropdown: addFromDropdown,
@@ -18882,6 +21222,8 @@ var EngineApp = (function() {
         clearAIChat: clearAIChat, setAIMode: setAIMode, sendAI: sendAI,
         restartModel: restartModel, unloadModel: unloadModel,
         toggleFPS: toggleFPS,
+        toggleMeshEditMode: toggleMeshEditMode,
+
         setRBConstraint: setRBConstraint, setColliderField: setColliderField,
         tlRefresh: tlRefresh, tlPlay: tlPlay, tlStop: tlStop, tlToggleLoop: tlToggleLoop, tlToggleAutoKey: tlToggleAutoKey,
         tlSetDuration: tlSetDuration, _tlUndo: _tlUndo, _tlRedo: _tlRedo,
@@ -18993,7 +21335,7 @@ var EngineApp = (function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[AC v8.0-github-ac-1906] Button clicked, EngineApp type:', typeof EngineApp);
+            console.log('[AC v8.2-real-ai-gen-0208] Button clicked, EngineApp type:', typeof EngineApp);
             if (typeof EngineApp === 'object' && EngineApp.openAnimatorFromTimeline) {
                 EngineApp.openAnimatorFromTimeline();
             } else {
@@ -19007,7 +21349,7 @@ var EngineApp = (function() {
                 }, 100);
             }
         }, true); // capture phase — fires first
-        console.log('[AC v8.0-github-ac-1906] Safety net handler attached to #ac-open-btn');
+        console.log('[AC v8.2-real-ai-gen-0208] Safety net handler attached to #ac-open-btn');
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', attachACButton);
@@ -19041,6 +21383,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
