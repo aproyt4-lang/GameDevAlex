@@ -12190,7 +12190,7 @@ var EngineApp = (function() {
             h += '<div class="iac-transition">';
             h += '<div style="display:flex;align-items:center;justify-content:space-between;">';
             h += '<span><b>'+tr.from+'</b> <i class="fas fa-arrow-right" style="font-size:0.55rem;color:#f59e0b;margin:0 4px;"></i> <b>'+tr.to+'</b></span>';
-            h += '<button class="iac-btn-sm iac-btn-danger" onclick="EngineApp._iacRemoveTransition(''+ctrlId+'','+ti+')" title="Delete"><i class="fas fa-trash"></i></button>';
+            h += '<button class="iac-btn-sm iac-btn-danger" onclick="EngineApp._iacRemoveTransition(\''+ctrlId+'\','+ti+')" title="Delete"><i class="fas fa-trash"></i></button>';
             h += '</div>';
             // Conditions
             if (tr.conditions && tr.conditions.length > 0) {
@@ -12198,7 +12198,7 @@ var EngineApp = (function() {
                     var c = tr.conditions[ci];
                     h += '<div class="iac-transition-cond">';
                     h += '<span>'+c.param+'</span>';
-                    h += '<select class="iac-select" onchange="EngineApp._iacUpdateCondMode(''+ctrlId+'','+ti+','+ci+',this.value)">';
+                    h += '<select class="iac-select" onchange="EngineApp._iacUpdateCondMode(\''+ctrlId+'\','+ti+','+ci+',this.value)">';
                     var modes = ['if','ifNot','greater','less','greaterEquals','lessEquals','equals','notEquals'];
                     var modeLabels = ['== true','!= true','>','<','>=','<=','==','!='];
                     for (var mi = 0; mi < modes.length; mi++) {
@@ -12206,9 +12206,9 @@ var EngineApp = (function() {
                     }
                     h += '</select>';
                     if (c.mode === 'if' || c.mode === 'ifNot' || c.mode === 'equals' || c.mode === 'notEquals') {
-                        h += '<input type="checkbox" '+(c.value?'checked':'')+' onchange="EngineApp._iacUpdateCondVal(''+ctrlId+'','+ti+','+ci+',this.checked)">';
+                        h += '<input type="checkbox" '+(c.value?'checked':'')+' onchange="EngineApp._iacUpdateCondVal(\''+ctrlId+'\','+ti+','+ci+',this.checked)">';
                     } else {
-                        h += '<input type="number" class="iac-input" value="'+c.value+'" step="0.1" style="width:45px;" onchange="EngineApp._iacUpdateCondVal(''+ctrlId+'','+ti+','+ci+',parseFloat(this.value))">';
+                        h += '<input type="number" class="iac-input" value="'+c.value+'" step="0.1" style="width:45px;" onchange="EngineApp._iacUpdateCondVal(\''+ctrlId+'\','+ti+','+ci+',parseFloat(this.value))">';
                     }
                     h += '</div>';
                 }
@@ -12217,11 +12217,11 @@ var EngineApp = (function() {
             }
             // Unity-style fields
             h += '<div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap;">';
-            h += '<label class="iac-toggle"><input type="checkbox" '+(tr.hasExitTime?'checked':'')+' onchange="EngineApp._iacSetTransField(''+ctrlId+'','+ti+','hasExitTime',this.checked)">ExitTime</label>';
+            h += '<label class="iac-toggle"><input type="checkbox" '+(tr.hasExitTime?'checked':'')+' onchange="EngineApp._iacSetTransField(\''+ctrlId+'\','+ti+',\'hasExitTime\',this.checked)">ExitTime</label>';
             if (tr.hasExitTime) {
-                h += '<input type="number" class="iac-input" value="'+(tr.exitTime||0.9)+'" min="0" max="1" step="0.05" onchange="EngineApp._iacSetTransField(''+ctrlId+'','+ti+','exitTime',parseFloat(this.value))" title="Exit Time">';
+                h += '<input type="number" class="iac-input" value="'+(tr.exitTime||0.9)+'" min="0" max="1" step="0.05" onchange="EngineApp._iacSetTransField(\''+ctrlId+'\','+ti+',\'exitTime\',parseFloat(this.value))" title="Exit Time">';
             }
-            h += '<label class="iac-toggle"><input type="checkbox" '+(tr.canTransitionToSelf?'checked':'')+' onchange="EngineApp._iacSetTransField(''+ctrlId+'','+ti+','canTransitionToSelf',this.checked)">Self</label>';
+            h += '<label class="iac-toggle"><input type="checkbox" '+(tr.canTransitionToSelf?'checked':'')+' onchange="EngineApp._iacSetTransField(\''+ctrlId+'\','+ti+',\'canTransitionToSelf\',this.checked)">Self</label>';
             h += '<span style="font-size:0.58rem;color:var(--text-muted);align-self:center;">dur:'+(tr.duration||0.25)+'s</span>';
             h += '</div>';
             h += '</div>';
