@@ -4802,17 +4802,20 @@ var SashaWebLLM = (function() {
     async function importWebLLM() {
         if (webllmModule) return webllmModule;
         var cdnUrls = [
-            'https://esm.run/@mlc-ai/web-llm',
-            'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/lib/index.min.mjs',
-            'https://unpkg.com/@mlc-ai/web-llm/lib/index.min.mjs'
+            'https://esm.run/@mlc-ai/web-llm@0.2.78',
+            'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.78/lib/index.min.mjs',
+            'https://unpkg.com/@mlc-ai/web-llm@0.2.78/lib/index.min.mjs'
         ];
         for (var i = 0; i < cdnUrls.length; i++) {
             try {
                 webllmModule = await import(cdnUrls[i]);
+                console.log('[SashaWebLLM] Imported from: ' + cdnUrls[i]);
                 return webllmModule;
-            } catch(e) {}
+            } catch(e) {
+                console.warn('[SashaWebLLM] CDN ' + i + ' failed:', e.message);
+            }
         }
-        throw new Error('All WebLLM CDNs failed.');
+        throw new Error('All WebLLM CDNs failed. Check internet connection.');
     }
 
     // === WebLLM: load model ===
@@ -4822,12 +4825,15 @@ var SashaWebLLM = (function() {
         var adapter = await navigator.gpu.requestAdapter();
         if (!adapter) throw new Error('No compatible GPU adapter.');
         if (engine) { try { await engine.unload(); } catch(e) {} engine = null; await new Promise(function(r) { setTimeout(r, 500); }); }
-        engine = new mod.MLCEngine({
+        if (progressCb) progressCb({ progress: 0, text: 'Initializing WebLLM engine for ' + selectedModelId + '...' });
+        engine = await mod.CreateMLCEngine(selectedModelId, {
             initProgressCallback: function(report) {
-                if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || ('Loading ' + selectedModelId + '...') });
+                var text = report.text || '';
+                var progress = report.progress || 0;
+                console.log('[SashaWebLLM] ' + Math.round(progress * 100) + '% - ' + text);
+                if (progressCb) progressCb({ progress: progress, text: text });
             }
         });
-        await engine.reload(selectedModelId);
     }
 
     // === WebLLM: generate ===
@@ -21384,7 +21390,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
