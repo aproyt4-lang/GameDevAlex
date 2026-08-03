@@ -1084,12 +1084,24 @@
                     <button class="eng-btn" onclick="EngineApp.clearScene()" title="Clear"><i class="fas fa-trash"></i></button>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
-                    <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
+                    <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;max-width:180px;">
                         <option value="">-- AI --</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
-                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
-                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
+                        <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (~80MB) ultra-fast</option>
+                        <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M (~200MB)</option>
+                        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5 0.5B (~350MB)</option>
+                        <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B (~600MB)</option>
+                        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (~700MB)</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B (~350MB)</option>
+                        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B (~1GB)</option>
+                        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B (~900MB)</option>
+                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B (~900MB)</option>
+                        <option value="Gemma-2-2b-it-q4f16_1-MLC">Gemma 2 2B (~1.4GB)</option>
+                        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5-mini 3.8B (~2.2GB)</option>
+                        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen2.5 3B (~1.8GB)</option>
+                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B (~1.8GB)</option>
+                        <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B (~2GB)</option>
+                        <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5 7B (~4GB)</option>
+                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B (~4GB)</option>
                     </select>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
@@ -1306,12 +1318,24 @@
                         <div class="eng-tab-content" id="eng-tab-ai" style="display:none;">
                             <div class="engine-ai-panel">
                                 <div class="engine-ai-toolbar">
-                                    <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
+                                    <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;max-width:220px;">
                                         <option value="">-- Model --</option>
-                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
-                                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
-                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
-                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
+                                        <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (~80MB) ultra-fast</option>
+                        <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M (~200MB)</option>
+                        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5 0.5B (~350MB)</option>
+                        <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B (~600MB)</option>
+                        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (~700MB)</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B (~350MB)</option>
+                        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B (~1GB)</option>
+                        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B (~900MB)</option>
+                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B (~900MB)</option>
+                        <option value="Gemma-2-2b-it-q4f16_1-MLC">Gemma 2 2B (~1.4GB)</option>
+                        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5-mini 3.8B (~2.2GB)</option>
+                        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen2.5 3B (~1.8GB)</option>
+                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B (~1.8GB)</option>
+                        <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B (~2GB)</option>
+                        <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5 7B (~4GB)</option>
+                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B (~4GB)</option>
                                     </select>
                                     <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
                                     <button class="eng-tab" onclick="EngineApp.restartModel()" style="font-size:0.72rem;padding:3px 8px;" id="ai-restart-btn" title="Перезагрузить модель"><i class="fas fa-redo"></i> Restart</button>
@@ -4840,7 +4864,7 @@ var SashaWebLLM = (function() {
     async function webllmGenerate(messages, maxTokens) {
         if (!engine) return 'Error: engine not initialized';
         var result = await engine.chat.completions.create({
-            messages: messages, max_tokens: maxTokens || 1024,
+            messages: messages, max_tokens: maxTokens || 4096,
             temperature: 0.7, top_p: 0.9, stream: false
         });
         if (result && result.choices && result.choices[0] && result.choices[0].message) {
@@ -4886,7 +4910,7 @@ var SashaWebLLM = (function() {
         var maxHist = (backend === 'ollama') ? 10 : 6;
         var startIdx = Math.max(0, chatHistory.length - maxHist);
         for (var i = startIdx; i < chatHistory.length; i++) { messages.push(chatHistory[i]); }
-        var maxTok = (backend === 'ollama') ? 4096 : 1024;
+        var maxTok = (backend === 'ollama') ? 4096 : 4096;
         var text = '';
         try {
             if (backend === 'ollama') {
@@ -4921,13 +4945,8 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-        var _codeSystemPrompt = 'You are JARVIS - AI in a 3D engine. Return ONLY JavaScript using Engine API. Respond in Russian.PRIMITIVES: Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)LIGHT: Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name) Engine.clear()CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setFollowTarget(name,ox,oy,oz,smooth) Engine.clearFollowTarget()ANIMATION: Engine.animate(name,prop,from,to,duration)PHYSICS: Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)MODEL: Engine.loadModel(url) Engine.loadModelFromURL(url)SKELETON: Engine.createHumanSkeleton(h) Engine.playAnimation(n,clip) Engine.stopAnimation(n) Engine.getAnimationClips(n)SCENE: Engine.getObjects() Engine.getObject(n) Engine.getMainCamera() Engine.setBgColor(r,g,b)RULES: 1. ALWAYS 3+ objects. 2. ALWAYS end Engine.setCameraPos(3,3,3). 3. NEVER clear unless asked. 4. Return ONLY JS code. NO markdown. NO document/window/fetch/eval.TEXTURE: Engine.aiGenerateTexture(type,params) types:brick,wood,marble,grass,metal,noise,checker,gradient,sky,lava,fabric,tiles,normalMap,roughness. Engine.aiApplyTexture(name,texName)MATERIAL: Engine.aiGenerateMaterial(type,params) types:glass,emissive,hologram,chrome,waterPROCEDURAL: Engine.aiCreateProceduralModel(type,params) types:tree,rock,fence,stairs,arch,column,wall,house,tower,bridge,castle,car,weapon,shield,well,chest,barrel,campfire,torch,table,chair,gate,crystal,platform,ruins,sign,ladder AI COMPOSE: Engine.aiComposeModel(description,params) creates complex models from text (ru/en): house,castle,tower,bridge,car,sword,axe,shield,crystal,campfire,torch,barrel,chest,well,table,chair,gate,platform,ruins,sign,ladderSKELETON: Engine.aiAutoRig(name) Engine.aiGenerateAnimation(name,type,params) types:idle,walk,run,jump,attack,tpose Engine.aiPlayGeneratedAnimation(name,type)GITHUB: Engine.aiGithubImportModel(repo,path,x,y,z,scale)RULES: 5. For textured objects gen texture THEN apply. 6. For characters: create THEN aiAutoRig THEN aiGenerateAnimation.ANIMATOR CONTROLLER: Engine.createAnimatorController(id,name) Engine.addStateToController(ctrlId,stateName,clipId) Engine.addUnityTransition(ctrlId,from,to,{conditions:[{param:\'Speed\',mode:\'greater\',value:0.1}],hasExitTime:false,duration:0.25,canTransitionToSelf:false}) Engine.addParameter(ctrlId,name,type,default) types:float,bool,int,trigger. Engine.setParameterValue(ctrlId,param,value) Engine.setAnimatorParam(objName,param,value) Engine.triggerAnimatorParam(objName,triggerName). Conditions modes:if,ifNot,greater,less,greaterEquals,lessEquals,equals,notEquals.GAME ASSEMBLY: Engine.aiGenerateTexture,aiCreateProceduralModel,aiAutoRig,aiGenerateAnimation create assets. Combine with addCube/addSphere for level geometry. Use AnimatorController for character state machines. Use loadModel/aiGithubImportModel for external assets.RULES: 7. For characters with state machines: create controller, add states with clips, add transitions with conditions. 8. NEVER delete previously generated objects unless explicitly asked.MESH EDIT MODE: Engine.aiEnterEditMode(name) enters mesh edit on a mesh object. Engine.aiSelectVertices([0,1,2,3]) selects verts by index. Engine.aiSelectFaces([0,1]) selects faces. Engine.aiExtrudeSelection(amount) extrudes selected faces. Engine.aiInsetSelection(amount) insets. Engine.aiSubdivideMesh() subdivides all faces. Engine.aiBevelSelection(amount,segments) bevels edges. Engine.aiLoopCut() adds edge loop. Engine.aiDeleteSelection() deletes selected. Engine.aiMoveVertex(i,x,y,z) moves vertex. Engine.aiMoveSelectedVertices(dx,dy,dz) moves all selected verts. Engine.aiExitEditMode() exits. Engine.aiGetMeshInfo(name) returns {vertices,faces}. Use for custom mesh shaping: enter edit mode, select, extrude/move/bevel to sculpt.';
-    var _chatSystemPrompt = 'You are JARVIS - AI assistant in 3D engine. Speak Russian.\n' +
-        'You can create 3D scenes, load models, create skeletons, animate, add physics. You can also generate textures (aiGenerateTexture types:brick,wood,marble,grass,metal,noise,checker,gradient,sky,lava,fabric,tiles,normalMap,roughness), procedural models (aiCreateProceduralModel types:tree,rock,fence,stairs,arch,column,wall), auto-rig characters (aiAutoRig), generate animations (aiGenerateAnimation types:idle,walk,run,jump,attack,tpose), import models from GitHub (aiGithubImportModel), and create special materials (aiGenerateMaterial types:glass,emissive,hologram,chrome,water), create Unity-style AnimatorControllers with state machines and transitions (createAnimatorController, addUnityTransition with conditions: if/ifNot/greater/less/equals/notEquals, hasExitTime, duration, canTransitionToSelf), manage parameters (addParameter with types: float/bool/int/trigger), and assemble complete game scenes from assets. All AI-generated objects persist until explicitly removed.\n' +
-        'You can also enter mesh edit mode (aiEnterEditMode) and modify geometry: select vertices/faces, extrude, inset, bevel, subdivide, loop cut, delete, move vertices — like Blender. Use aiGetMeshInfo to check mesh stats.\n' +
-        'API: Engine.addCube/Sphere/Cylinder/Cone/Capsule/Torus/TorusKnot/Icosahedron/Plane, Engine.addPointLight/DirectionalLight/SpotLight/AmbientLight, Engine.setPosition/setRotation/setScale/setCameraPos/setCameraTarget/setFollowTarget/animate, Engine.loadModel(url), Engine.createHumanSkeleton(h), Engine.playAnimation/stopAnimation/getAnimationClips, Engine.addRigidBody/setVelocity, Engine.addBoxCollider/SphereCollider, Engine.moveObject/addChild/removeObject/clear, Engine.getObjects/getObject/getMainCamera, Engine.setObjectColor/setBgColor.\n' +
-        'When asked to BUILD - generate JS code between ```javascript and ``` markers.\n' +
-        'Colors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.';
+    var _codeSystemPrompt = 'You are JARVIS, expert 3D game engine AI. Write JavaScript using Engine API. Respond in Russian.\n\nCRITICAL SYNTAX RULES (CAUSES CRASHES):\n- Return ONLY raw JavaScript. NO markdown. NO backticks. NO explanations.\n- NO trailing commas: addCube(1,2,3,1,1,1,0xff0000) NOT addCube(1,2,3,1,1,1,0xff0000,)\n- Colors are hex numbers WITHOUT quotes: 0xff0000 NOT "0xff0000".\n- Use var NOT const/let. Use semicolons. NO extra parentheses. NO document/window/fetch/eval.\n\nPRIMITIVES (x,y,z=position; color=hex number):\n- Engine.addCube(x,y,z,w,h,d,color) Example: Engine.addCube(0,0.5,0,2,1,3,0x8B4513)\n- Engine.addSphere(x,y,z,r,color) Example: Engine.addSphere(0,1,0,0.5,0xff0000)\n- Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color)\n- Engine.addTorus(x,y,z,r,tube,color) Engine.addPlane(w,h,color)\n\nLIGHT: Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n\nTRANSFORM: Engine.setPosition(n,x,y,z) Engine.setRotation(n,x,y,z) Engine.setScale(n,x,y,z) Engine.setObjectColor(n,color) Engine.moveObject(n,dx,dy,dz)\n\nPROCEDURAL MODELS (best for complex objects):\n- Engine.aiComposeModel(description, {params}) Example: Engine.aiComposeModel("house", {})\n- Engine.aiCreateProceduralModel(type, {params}) Types: tree,rock,fence,stairs,arch,column,wall,house,tower,bridge,castle,car,weapon,shield,well,chest,barrel,campfire,torch,table,chair,gate,crystal,platform,ruins,sign,ladder\n\nTEXTURE: Engine.aiGenerateTexture(type,params) Types: brick,wood,marble,grass,metal,checker,gradient. Engine.aiApplyTexture(name,texName)\n\nCAMERA: Engine.setCameraPos(x,y,z) ALWAYS call at end.\n\nRULES:\n1. For "create house/castle/car/tree" USE aiComposeModel(description) FIRST for best quality.\n2. If building from primitives: think like an architect with logical positions.\n3. Use appropriate colors: brown=wood, gray=stone, red/brown=roof, green=grass.\n4. ALWAYS add lights: Engine.addAmbientLight(0xffffff, 0.6) + Engine.addPointLight(5,5,5,2,0xffffff)\n5. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER clear scene. NEVER use const/let.\n';
+    var _chatSystemPrompt = 'You are JARVIS, AI assistant in 3D game engine. Speak Russian.\nYou create 3D scenes, models, textures, animations, physics.\nFor complex objects prefer Engine.aiComposeModel(description). For simple scenes use primitives.\nWhen asked to BUILD, generate JS code between ```javascript and ``` markers.\nColors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.'  ;
 
     function setCodeMode(v) { _codeMode = !!v; }
     function isCodeMode() { return _codeMode; }
@@ -15873,6 +15892,32 @@ var EngineApp = (function() {
         return codeLines.join('\n').trim();
     }
 
+    function _preprocessCode(code) {
+        // Strip ALL markdown wrappers aggressively
+        code = code.replace(/^```(?:javascript|js|json)?\s*\n?/gm, '');
+        code = code.replace(/\n?```\s*$/gm, '');
+        // Remove markdown bold/italic
+        code = code.replace(/\*\*([^*]+)\*\*/g, '$1');
+        code = code.replace(/\*([^*]+)\*/g, '$1');
+        // Fix common AI mistakes with colors — ensure 0x hex is valid
+        // AI sometimes writes 0xff0000. without quotes or extra parens
+        code = code.replace(/0x([0-9a-fA-F]{3,8})\.\s*;/g, '0x$1;');
+        // Fix trailing comma before closing paren in function calls
+        code = code.replace(/,\s*\)/g, ')');
+        code = code.replace(/,\s*\]/g, ']');
+        // Fix double commas
+        code = code.replace(/,,+/g, ',');
+        // Remove empty lines with only semicolons or stray characters  
+        code = code.replace(/^\s*[;\-]\s*$/gm, '');
+        // Fix AI sometimes wrapping args in extra parens like Engine.addCube((0,0,0))
+        code = code.replace(/Engine\.(\w+)\(\(([\d.,\s\-x]+)\)\)/g, 'Engine.$1($2');
+        // Rewrite const/let to var (for new Function scope)
+        code = code.replace(/^(const|let)\s+/gm, 'var ');
+        // Fix AI adding "return" at end unnecessarily  
+        code = code.replace(/^(return\s+Engine\.setCameraPos\(.+\);)\s*$/gm, '$1');
+        return code;
+    }
+
     function runCode() {
         if (!editor) return;
         var code = editor.getValue();
@@ -15885,8 +15930,9 @@ var EngineApp = (function() {
         console.log('[SashaAI] After extractCode, length:', code.length, 'code:', code.substring(0, 500));
         if (!code.trim()) { log('No valid code found', 'warn'); return; }
 
-        // Rewrite const/let to var
-        code = code.replace(/^(const|let)\s+/gm, 'var ');
+        // Pre-process: fix common AI mistakes
+        code = _preprocessCode(code);
+        console.log('[SashaAI] After preprocess, length:', code.length);
 
         // DO NOT clear scene — objects must persist across AI generations
         // Only clear if user explicitly requests it via Engine.clear() or clearScene()
@@ -20391,16 +20437,21 @@ var EngineApp = (function() {
             if (bar) bar.classList.remove('visible');
             log('Mesh edit mode OFF', 'info');
         } else {
-            // Try to enter edit mode on selected object
-            var sel = SashaEngineAPI.getSelectedObject();
-            if (sel) {
-                var mesh = null;
-                sel.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
-                if (mesh) {
-                    SashaMeshEdit.enterEditMode(mesh);
-                    if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-                    if (bar) bar.classList.add('visible');
-                    log('Mesh edit mode ON: ' + (sel.name || 'object'), 'result');
+            var selName = SashaEngineAPI.getSelectedObject();
+            if (selName) {
+                var selObj = SashaEngineAPI.getObject(selName);
+                if (selObj && typeof selObj.traverse === 'function') {
+                    var mesh = null;
+                    selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+                    if (mesh) {
+                        SashaMeshEdit.enterEditMode(mesh);
+                        if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                        if (bar) bar.classList.add('visible');
+                        log('Mesh edit mode ON: ' + selName, 'result');
+                        return;
+                    }
+                } else {
+                    log('Selected object has no mesh geometry', 'warning');
                     return;
                 }
             }
