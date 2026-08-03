@@ -4842,22 +4842,70 @@ var SashaWebLLM = (function() {
         throw new Error('All WebLLM CDNs failed. Check internet connection.');
     }
 
+    // === Kill service workers + clear caches to prevent Cache.add() errors ===
+    async function _clearBrowserCaches() {
+        try {
+            // Unregister all service workers
+            if (navigator.serviceWorker) {
+                var regs = await navigator.serviceWorker.getRegistrations();
+                for (var i = 0; i < regs.length; i++) {
+                    try { await regs[i].unregister(); console.log('[SashaWebLLM] Unregistered SW:', regs[i].scope); } catch(e) {}
+                }
+            }
+        } catch(e) { console.warn('[SashaWebLLM] SW unregister error:', e); }
+        try {
+            // Clear all Cache API caches that might conflict
+            if (caches) {
+                var cacheNames = await caches.keys();
+                for (var j = 0; j < cacheNames.length; j++) {
+                    try { await caches.delete(cacheNames[j]); console.log('[SashaWebLLM] Deleted cache:', cacheNames[j]); } catch(e) {}
+                }
+            }
+        } catch(e) { console.warn('[SashaWebLLM] Cache clear error:', e); }
+    }
     // === WebLLM: load model ===
     async function webllmLoadModel(selectedModelId, progressCb) {
+        // Clear caches and service workers first to prevent Cache.add() errors
+        await _clearBrowserCaches();
         var mod = await importWebLLM();
         if (!navigator.gpu) throw new Error('WebGPU not available. Enable in chrome://flags/#enable-unsafe-webgpu');
         var adapter = await navigator.gpu.requestAdapter();
         if (!adapter) throw new Error('No compatible GPU adapter.');
         if (engine) { try { await engine.unload(); } catch(e) {} engine = null; await new Promise(function(r) { setTimeout(r, 500); }); }
         if (progressCb) progressCb({ progress: 0, text: 'Initializing WebLLM engine for ' + selectedModelId + '...' });
-        engine = await mod.CreateMLCEngine(selectedModelId, {
-            initProgressCallback: function(report) {
-                var text = report.text || '';
-                var progress = report.progress || 0;
-                console.log('[SashaWebLLM] ' + Math.round(progress * 100) + '% - ' + text);
-                if (progressCb) progressCb({ progress: progress, text: text });
+        // Try loading with retry (Cache.add can fail on first attempt)
+        var loadAttempt = 0;
+        var maxLoadAttempts = 3;
+        var lastLoadError = null;
+        while (loadAttempt < maxLoadAttempts) {
+            try {
+                loadAttempt++;
+                if (progressCb) progressCb({ progress: 0, text: 'Loading model (attempt ' + loadAttempt + '/' + maxLoadAttempts + ')...' });
+                engine = await mod.CreateMLCEngine(selectedModelId, {
+                    initProgressCallback: function(report) {
+                        var text = report.text || '';
+                        var progress = report.progress || 0;
+                        console.log('[SashaWebLLM] ' + Math.round(progress * 100) + '% - ' + text);
+                        if (progressCb) progressCb({ progress: progress, text: text });
+                    }
+                });
+                lastLoadError = null;
+                break; // success
+            } catch(loadErr) {
+                lastLoadError = loadErr;
+                var errMsg = String(loadErr.message || loadErr);
+                console.warn('[SashaWebLLM] Load attempt ' + loadAttempt + ' failed:', errMsg);
+                if (errMsg.indexOf('Cache') !== -1 && loadAttempt < maxLoadAttempts) {
+                    console.log('[SashaWebLLM] Cache error detected, clearing caches and retrying...');
+                    await _clearBrowserCaches();
+                    await new Promise(function(r) { setTimeout(r, 1000 * loadAttempt); }); // exponential backoff
+                    if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
+                } else {
+                    throw loadErr;
+                }
             }
-        });
+        }
+        if (lastLoadError && !engine) throw lastLoadError;
     }
 
     // === WebLLM: generate ===
@@ -4945,7 +4993,85 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are JARVIS, expert 3D game engine AI. Write JavaScript using Engine API. Respond in Russian.\n\nCRITICAL SYNTAX RULES (CAUSES CRASHES):\n- Return ONLY raw JavaScript. NO markdown. NO backticks. NO explanations.\n- NO trailing commas: addCube(1,2,3,1,1,1,0xff0000) NOT addCube(1,2,3,1,1,1,0xff0000,)\n- Colors are hex numbers WITHOUT quotes: 0xff0000 NOT "0xff0000".\n- Use var NOT const/let. Use semicolons. NO extra parentheses. NO document/window/fetch/eval.\n\nPRIMITIVES (x,y,z=position; color=hex number):\n- Engine.addCube(x,y,z,w,h,d,color) Example: Engine.addCube(0,0.5,0,2,1,3,0x8B4513)\n- Engine.addSphere(x,y,z,r,color) Example: Engine.addSphere(0,1,0,0.5,0xff0000)\n- Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color)\n- Engine.addTorus(x,y,z,r,tube,color) Engine.addPlane(w,h,color)\n\nLIGHT: Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)\n\nTRANSFORM: Engine.setPosition(n,x,y,z) Engine.setRotation(n,x,y,z) Engine.setScale(n,x,y,z) Engine.setObjectColor(n,color) Engine.moveObject(n,dx,dy,dz)\n\nPROCEDURAL MODELS (best for complex objects):\n- Engine.aiComposeModel(description, {params}) Example: Engine.aiComposeModel("house", {})\n- Engine.aiCreateProceduralModel(type, {params}) Types: tree,rock,fence,stairs,arch,column,wall,house,tower,bridge,castle,car,weapon,shield,well,chest,barrel,campfire,torch,table,chair,gate,crystal,platform,ruins,sign,ladder\n\nTEXTURE: Engine.aiGenerateTexture(type,params) Types: brick,wood,marble,grass,metal,checker,gradient. Engine.aiApplyTexture(name,texName)\n\nCAMERA: Engine.setCameraPos(x,y,z) ALWAYS call at end.\n\nRULES:\n1. For "create house/castle/car/tree" USE aiComposeModel(description) FIRST for best quality.\n2. If building from primitives: think like an architect with logical positions.\n3. Use appropriate colors: brown=wood, gray=stone, red/brown=roof, green=grass.\n4. ALWAYS add lights: Engine.addAmbientLight(0xffffff, 0.6) + Engine.addPointLight(5,5,5,2,0xffffff)\n5. ALWAYS end with Engine.setCameraPos(3,3,3). NEVER clear scene. NEVER use const/let.\n';
+    var _codeSystemPrompt = 'You are JARVIS, expert 3D game engine AI. Write JavaScript using Engine API. Respond in Russian.
+
+CRITICAL SYNTAX RULES (CAUSES CRASHES IF VIOLATED):
+- Return ONLY raw JavaScript code. NO markdown. NO backticks. NO explanations. NO comments in Russian.
+- Use var NOT const/let. Use semicolons after every statement.
+- NO trailing commas before closing paren: addCube(1,2,3,1,1,1,0xff0000) NOT addCube(1,2,3,1,1,1,0xff0000,)
+- Colors are HEX NUMBERS without quotes: 0xff0000 NOT "red" NOT "#ff0000" NOT '0xff0000'.
+- NEVER use document.write, window.*, fetch(), eval(), require(), import.
+- NEVER wrap function calls in extra parentheses.
+- Every opening parenthesis MUST have a matching closing parenthesis. Count them before writing.
+- DO NOT use template literals (backticks). Use string concatenation with +.
+
+OBJECT CREATION API (x,y,z = center position; color = hex number like 0x8B4513):
+- Engine.addCube(x,y,z,width,height,depth,color)
+- Engine.addSphere(x,y,z,radius,color)
+- Engine.addCylinder(x,y,z,topRadius,bottomRadius,height,color)
+- Engine.addCone(x,y,z,radius,height,color)
+- Engine.addTorus(x,y,z,radius,tubeRadius,color)
+- Engine.addPlane(width,height,color)
+- Engine.addTorusKnot(x,y,z,radius,tubeRadius,tubularSegments,radialSegments,color)
+- Engine.addIcosahedron(x,y,z,radius,detail,color)
+- Engine.addDodecahedron(x,y,z,radius,detail,color)
+
+PROCEDURAL MODEL CREATION (USE THIS FOR COMPLEX OBJECTS - BEST QUALITY):
+- Engine.aiComposeModel(description, {params}) - Creates detailed models from description
+  Examples: Engine.aiComposeModel("house", {}), Engine.aiComposeModel("castle", {}), Engine.aiComposeModel("tree", {})
+  Supported: house, castle, tower, bridge, car, sword, shield, campfire, torch, crystal, platform, ruins, barrel, chest, well, table, chair, gate, sign, ladder, fence, stairs, arch, column, wall, rock, weapon
+- Engine.aiCreateProceduralModel(type, {params}) - Same but by type name
+
+MESH EDITING API (for detailed modeling):
+- Engine.aiEnterEditMode(objectName) - Enter mesh edit mode on object
+- Engine.aiSelectVertices([0,1,2,3]) - Select vertices by indices
+- Engine.aiSelectFaces([0,1]) - Select faces by indices
+- Engine.aiExtrudeSelection(amount) - Extrude selected faces
+- Engine.aiInsetSelection(amount) - Inset selected faces
+- Engine.aiSubdivideMesh() - Subdivide mesh
+- Engine.aiBevelSelection(amount, segments) - Bevel selected edges
+- Engine.aiLoopCut() - Add loop cut
+- Engine.aiDeleteSelection() - Delete selected elements
+- Engine.aiMoveVertex(index, x, y, z) - Move specific vertex
+- Engine.aiMoveSelectedVertices(dx, dy, dz) - Move all selected vertices
+- Engine.aiExitEditMode() - Exit mesh edit mode
+- Engine.aiGetMeshInfo(objectName) - Get vertex/face count
+
+LIGHTING (add AFTER creating objects):
+- Engine.addAmbientLight(color, intensity) - Ambient light
+- Engine.addPointLight(x,y,z,intensity,color) - Point light at position
+- Engine.addDirectionalLight(x,y,z,color,intensity) - Directional light
+
+TRANSFORM (objectName is the string returned by addCube etc):
+- Engine.setPosition(objectName,x,y,z) - Set position
+- Engine.setRotation(objectName,x,y,z) - Set rotation in radians
+- Engine.setScale(objectName,x,y,z) - Set scale
+- Engine.setObjectColor(objectName,color) - Change color
+- Engine.moveObject(objectName,dx,dy,dz) - Move by offset
+
+TEXTURE:
+- Engine.aiGenerateTexture(type, params) - Generate texture. Types: brick, wood, marble, grass, metal, checker, gradient
+- Engine.aiApplyTexture(objectName, textureName) - Apply texture to object
+
+CAMERA (ALWAYS call at the end of your code):
+- Engine.setCameraPos(x,y,z) - Move camera to see the scene
+
+COLORS REFERENCE (hex numbers):
+Brown=0x8B4513 DarkBrown=0x5C3317 Red=0xff0000 DarkRed=0x8B0000 Green=0x00ff00 DarkGreen=0x006400
+Blue=0x0000ff LightBlue=0x87CEEB Yellow=0xffff00 Orange=0xff8800 Purple=0x8800ff
+White=0xffffff LightGray=0xcccccc Gray=0x888888 DarkGray=0x444444 Black=0x111111
+Gold=0xFFD700 Silver=0xC0C0C0 Wood=0xDEB887 Brick=0xB22222 Stone=0x808080 Grass=0x228B22
+SkyBlue=0x87CEEB Sand=0xF4A460 Skin=0xFFDBAC Water=0x4169E1
+
+MANDATORY RULES:
+1. For "create house/castle/car/tree" ALWAYS use Engine.aiComposeModel(description, {}) FIRST.
+2. Add Engine.addAmbientLight(0xffffff, 0.6) for base lighting.
+3. Add Engine.addPointLight(x,y,z,1.5,0xffffff) near the main object.
+4. ALWAYS end with Engine.setCameraPos(x,y,z) where camera can see everything.
+5. NEVER call Engine.clear() or Engine.clearScene().
+6. Store object names: var wall = Engine.addCube(...);
+7. For mesh editing: create object first, then Engine.aiEnterEditMode(name), then edit operations.
+8. Keep code concise. 10-25 lines maximum. No unnecessary comments.';
     var _chatSystemPrompt = 'You are JARVIS, AI assistant in 3D game engine. Speak Russian.\nYou create 3D scenes, models, textures, animations, physics.\nFor complex objects prefer Engine.aiComposeModel(description). For simple scenes use primitives.\nWhen asked to BUILD, generate JS code between ```javascript and ``` markers.\nColors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.'  ;
 
     function setCodeMode(v) { _codeMode = !!v; }
@@ -15899,23 +16025,55 @@ var EngineApp = (function() {
         // Remove markdown bold/italic
         code = code.replace(/\*\*([^*]+)\*\*/g, '$1');
         code = code.replace(/\*([^*]+)\*/g, '$1');
-        // Fix common AI mistakes with colors — ensure 0x hex is valid
-        // AI sometimes writes 0xff0000. without quotes or extra parens
+        // Remove Russian text lines that are not code (AI sometimes adds explanations)
+        code = code.replace(/^[А-Яа-яЁё][^=;{}()\[\]']*$/gm, '');
+        // Fix common AI mistakes with colors
         code = code.replace(/0x([0-9a-fA-F]{3,8})\.\s*;/g, '0x$1;');
-        // Fix trailing comma before closing paren in function calls
+        // Fix trailing comma before closing paren/bracket
         code = code.replace(/,\s*\)/g, ')');
         code = code.replace(/,\s*\]/g, ']');
         // Fix double commas
         code = code.replace(/,,+/g, ',');
-        // Remove empty lines with only semicolons or stray characters  
+        // Remove empty lines with only semicolons or stray characters
         code = code.replace(/^\s*[;\-]\s*$/gm, '');
-        // Fix AI sometimes wrapping args in extra parens like Engine.addCube((0,0,0))
+        // Fix AI wrapping args in extra parens like Engine.addCube((0,0,0))
         code = code.replace(/Engine\.(\w+)\(\(([\d.,\s\-x]+)\)\)/g, 'Engine.$1($2');
-        // Rewrite const/let to var (for new Function scope)
+        // Rewrite const/let to var
         code = code.replace(/^(const|let)\s+/gm, 'var ');
-        // Fix AI adding "return" at end unnecessarily  
+        // Fix AI adding "return" at end unnecessarily
         code = code.replace(/^(return\s+Engine\.setCameraPos\(.+\);)\s*$/gm, '$1');
-        return code;
+        // Fix unbalanced parentheses and braces per line
+        var lines = code.split('\n');
+        var openParens = 0;
+        var openBraces = 0;
+        for (var li = 0; li < lines.length; li++) {
+            var line = lines[li];
+            var inStr = false;
+            var strChar = '';
+            for (var ci = 0; ci < line.length; ci++) {
+                var ch = line[ci];
+                if (inStr) { if (ch === strChar && ci > 0 && line[ci-1] !== '\\') inStr = false; continue; }
+                if (ch === "'" || ch === '"') { inStr = true; strChar = ch; continue; }
+                if (ch === '(') openParens++;
+                if (ch === ')') openParens--;
+                if (ch === '{') openBraces++;
+                if (ch === '}') openBraces--;
+            }
+        }
+        // Auto-fix missing closings
+        if (openParens > 0) {
+            var fix = '';
+            for (var p = 0; p < openParens; p++) fix += ')';
+            lines.push(fix + ';');
+            console.warn('[SashaAI] Auto-fixed ' + openParens + ' missing closing paren(s)');
+        }
+        if (openBraces > 0) {
+            var fix2 = '';
+            for (var b = 0; b < openBraces; b++) fix2 += '}';
+            lines.push(fix2);
+            console.warn('[SashaAI] Auto-fixed ' + openBraces + ' missing closing brace(s)');
+        }
+        return lines.join('\n');
     }
 
     function runCode() {
@@ -15949,7 +16107,7 @@ var EngineApp = (function() {
         } catch(e) {
             // Full exec failed — try line by line so some objects still appear
             console.error('[SashaAI] Full exec failed:', e.message, '— line by line fallback');
-            log('Trying line-by-line...', 'warn');
+            log('Full exec error: ' + e.message + ' — trying line-by-line...', 'warn');
             var allLines = code.split('\n');
             var vars = {};
             var skipped = 0;
@@ -16035,6 +16193,21 @@ var EngineApp = (function() {
             wrappedEngine.loadModelFromURL = function(url) { return EngineApp.loadModelFromURL ? EngineApp.loadModelFromURL() : 'not available'; };
             wrappedEngine.openPrefabMode = function(name) { if (EngineApp.openPrefabMode) EngineApp.openPrefabMode(name); };
         }
+        // Override getSelectedObject to return wrapped object (not just name string)
+        // so AI code like sel.traverse() works
+        var _origGetSelected = api.getSelectedObject;
+        wrappedEngine.getSelectedObject = function() {
+            var name = _origGetSelected();
+            if (!name) return null;
+            return wrapObj(name);
+        };
+        // Override getObject similarly
+        var _origGetObject = api.getObject;
+        wrappedEngine.getObject = function(name) {
+            var realObj = _origGetObject(name);
+            if (!realObj) return null;
+            return wrapObj(name);
+        };
         return wrappedEngine;
     }
 
@@ -20436,26 +20609,44 @@ var EngineApp = (function() {
             if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
             if (bar) bar.classList.remove('visible');
             log('Mesh edit mode OFF', 'info');
-        } else {
-            var selName = SashaEngineAPI.getSelectedObject();
-            if (selName) {
-                var selObj = SashaEngineAPI.getObject(selName);
-                if (selObj && typeof selObj.traverse === 'function') {
-                    var mesh = null;
-                    selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
-                    if (mesh) {
-                        SashaMeshEdit.enterEditMode(mesh);
-                        if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-                        if (bar) bar.classList.add('visible');
-                        log('Mesh edit mode ON: ' + selName, 'result');
-                        return;
-                    }
-                } else {
-                    log('Selected object has no mesh geometry', 'warning');
-                    return;
+            return;
+        }
+        // Find a mesh to edit: try selected, then any mesh in scene
+        var meshToEdit = null;
+        var meshName = '';
+        var selName = SashaEngineAPI.getSelectedObject();
+        if (selName) {
+            var selObj = SashaEngineAPI.getObject(selName);
+            if (selObj && selObj.traverse) {
+                selObj.traverse(function(c) { if (c.isMesh && !meshToEdit) { meshToEdit = c; meshName = selName; } });
+            } else if (selObj && selObj.isMesh) {
+                meshToEdit = selObj;
+                meshName = selName;
+            }
+        }
+        // If no selected mesh, try to find any mesh in scene
+        if (!meshToEdit) {
+            var allObjs = SashaEngineAPI.getObjects();
+            var objKeys = Object.keys(allObjs);
+            for (var i = 0; i < objKeys.length; i++) {
+                var obj = allObjs[objKeys[i]];
+                if (!obj) continue;
+                if (obj.isMesh) { meshToEdit = obj; meshName = objKeys[i]; break; }
+                if (obj.traverse) {
+                    (function(o, n) {
+                        o.traverse(function(c) { if (c.isMesh && !meshToEdit) { meshToEdit = c; meshName = n; } });
+                    })(obj, objKeys[i]);
+                    if (meshToEdit) break;
                 }
             }
-            log('Select a mesh object first to enter edit mode', 'warning');
+        }
+        if (meshToEdit) {
+            SashaMeshEdit.enterEditMode(meshToEdit);
+            if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+            if (bar) bar.classList.add('visible');
+            log('Mesh edit mode ON: ' + meshName, 'result');
+        } else {
+            log('No mesh found. Create a cube/sphere first, then click Edit Mesh', 'warning');
         }
     }
 
