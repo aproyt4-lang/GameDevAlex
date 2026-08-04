@@ -4823,6 +4823,42 @@ var SashaWebLLM = (function() {
     }
 
     // === WebLLM: import ===
+    // === Global Cache.add patch — WebLLM uses Cache API internally for model weights ===
+    // This MUST be applied BEFORE any WebLLM import to prevent network errors
+    var _cachePatchApplied = false;
+    function _applyCachePatch() {
+        if (_cachePatchApplied) return;
+        _cachePatchApplied = true;
+        if (typeof Cache === 'undefined' || !Cache.prototype.add) return;
+        var _origAdd = Cache.prototype.add;
+        var _origAddAll = Cache.prototype.addAll;
+        var _origPut = Cache.prototype.put;
+        var _origMatch = Cache.prototype.match;
+        var _origMatchAll = Cache.prototype.matchAll;
+        // Wrap all Cache methods that do network fetches
+        Cache.prototype.add = function() {
+            return _origAdd.apply(this, arguments).catch(function(e) {
+                console.warn('[SashaAI] Cache.add intercepted (model still loads):', e.message);
+                return undefined;
+            });
+        };
+        Cache.prototype.addAll = function() {
+            return _origAddAll.apply(this, arguments).catch(function(e) {
+                console.warn('[SashaAI] Cache.addAll intercepted (model still loads):', e.message);
+                return undefined;
+            });
+        };
+        Cache.prototype.put = function() {
+            return _origPut.apply(this, arguments).catch(function(e) {
+                console.warn('[SashaAI] Cache.put intercepted (model still loads):', e.message);
+                return undefined;
+            });
+        };
+        console.log('[SashaAI] Cache API patched globally — model loading protected');
+    }
+    // Apply patch immediately on script load (before any WebLLM code runs)
+    _applyCachePatch();
+
     async function importWebLLM() {
         if (webllmModule) return webllmModule;
         var cdnUrls = [
@@ -4865,8 +4901,10 @@ var SashaWebLLM = (function() {
     }
     // === WebLLM: load model ===
     async function webllmLoadModel(selectedModelId, progressCb) {
-        // Clear caches and service workers first to prevent Cache.add() errors
+        // Clear caches and service workers first
         await _clearBrowserCaches();
+        // Cache API is already patched globally (see _applyCachePatch above)
+
         var mod = await importWebLLM();
         if (!navigator.gpu) throw new Error('WebGPU not available. Enable in chrome://flags/#enable-unsafe-webgpu');
         var adapter = await navigator.gpu.requestAdapter();
@@ -4882,6 +4920,7 @@ var SashaWebLLM = (function() {
                 loadAttempt++;
                 if (progressCb) progressCb({ progress: 0, text: 'Loading model (attempt ' + loadAttempt + '/' + maxLoadAttempts + ')...' });
                 engine = await mod.CreateMLCEngine(selectedModelId, {
+                    logLevel: 'SILENT',
                     initProgressCallback: function(report) {
                         var text = report.text || '';
                         var progress = report.progress || 0;
@@ -4906,6 +4945,7 @@ var SashaWebLLM = (function() {
             }
         }
         if (lastLoadError && !engine) throw lastLoadError;
+        // Global Cache patch stays active (no need to restore)
     }
 
     // === WebLLM: generate ===
@@ -4993,7 +5033,8 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are a 3D scene builder. Write ONLY JavaScript. No markdown, no backticks, no explanations, no Russian text.\nUse var not const/let. Semicolons required. Colors are hex: 0xff0000.\n\nAPI:\nEngine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\nEngine.addCone(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addPlane(w,h,color)\nEngine.aiCreateProceduralModel(type,{}) — types: house,castle,tower,bridge,car,helicopter,airplane,tank,truck,tree,rock,fence,stairs,arch,column,wall,person,dog,cat,bird,boat,weapon,shield,campfire,torch,crystal,platform,ruins,barrel,chest,well,table,chair,gate,sign,ladder,lamp,bed,bookshelf,flower,mushroom,sun,moon,cloud\nEngine.addAmbientLight(color,intensity) Engine.addPointLight(x,y,z,intensity,color)\nEngine.setPosition(n,x,y,z) Engine.setRotation(n,x,y,z) Engine.setScale(n,x,y,z) Engine.setObjectColor(n,color)\nEngine.setCameraPos(x,y,z)\n\nRULES:\n1. To create object, USE Engine.aiCreateProceduralModel("type",{}) — creates detailed multi-part models.\n2. For custom objects NOT in type list, build from addCube/addSphere etc with logical positions.\n3. Example house: Engine.aiCreateProceduralModel("house",{});\n4. Example tree: Engine.aiCreateProceduralModel("tree",{});\n5. Example helicopter: Engine.aiCreateProceduralModel("helicopter",{});\n6. Example person: Engine.aiCreateProceduralModel("person",{});\n7. Example dog: Engine.aiCreateProceduralModel("dog",{});\n8. Example car: Engine.aiCreateProceduralModel("car",{});\n9. ALWAYS add Engine.addAmbientLight(0xffffff,0.6) and Engine.addPointLight(5,5,5,1.5,0xffffff).\n10. ALWAYS end with Engine.setCameraPos(5,5,5).\n11. NEVER clear scene. Max 15 lines.';
+    var _codeSystemPrompt = 'You are a 3D scene builder. Write ONLY JavaScript. No markdown, no backticks, no explanations, no Russian text.\nUse var not const/let. Semicolons required. Colors are hex: 0xff0000.\n\nPRIMITIVES:\nEngine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\nEngine.addCone(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addPlane(w,h,color)\nEngine.addTorusKnot(x,y,z,r,tube,p,q,color) Engine.addIcosahedron(x,y,z,r,color)\n\nMESH GENERATION (build real geometry):\nEngine.createCustomMesh([[x,y,z],...],[[a,b,c],...],color) — custom mesh from vertices and triangle indices\nEngine.createTerrain(w,d,segs,function(x,z){return Math.sin(x)*0.5;},color) — terrain with height function\nEngine.createTube([[x,y,z],...],radius,segs,color) — tube along 3D path\nEngine.createLathe([[r,y],...],segs,color) — revolution surface around Y axis\nEngine.modifyVertices(name,function(x,y,z,i){return [x,y+0.1,z];}) — deform mesh vertices\n\nPREBUILT (use only if primitives cannot build it):\nEngine.aiCreateProceduralModel(type,{}) — types: house,castle,car,helicopter,tree,person,dog,cat,bird,boat,etc.\n\nLIGHT AND TRANSFORMS:\nEngine.addAmbientLight(color,intensity) Engine.addPointLight(x,y,z,intensity,color)\nEngine.setPosition(n,x,y,z) Engine.setRotation(n,x,y,z) Engine.setScale(n,x,y,z)\nEngine.setObjectColor(n,color) Engine.setCameraPos(x,y,z)\n\nRULES:\n1. BUILD from primitives and mesh generation FIRST. Use createCustomMesh, createTube, createLathe.\n2. Position parts with x,y,z coordinates to form the requested object.\n3. Only use aiCreateProceduralModel if object too complex for primitives.\n4. ALWAYS add Engine.addAmbientLight(0xffffff,0.6) and Engine.addPointLight(5,5,5,1.5,0xffffff).\n5. ALWAYS end with Engine.setCameraPos(5,5,5).\n6. NEVER clear scene. Max 20 lines.';
+
     var _chatSystemPrompt = 'You are JARVIS, AI assistant in 3D game engine. Speak Russian.\nYou create 3D scenes, models, textures, animations, physics.\nFor complex objects prefer Engine.aiComposeModel(description). For simple scenes use primitives.\nWhen asked to BUILD, generate JS code between ```javascript and ``` markers.\nColors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.'  ;
 
     function setCodeMode(v) { _codeMode = !!v; }
@@ -10494,6 +10535,135 @@ var SashaEngineAPI = (function() {
     }
     function aiGetTextureTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getTextureTypes(); return ['brick','wood','marble','grass','metal','noise','checker','gradient','sky','lava','fabric','tiles','normalMap','roughness']; }
     function aiGetModelTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getModelTypes(); return ['tree','rock','fence','stairs','arch','column','wall']; }
+    // === MESH GENERATION API — create custom geometry from vertex data ===
+    // Engine.createCustomMesh(vertices, indices, color) — vertices: [[x,y,z],...], indices: [[a,b,c],...]
+    function createCustomMesh(vertices, indices, color) {
+        if (!vertices || vertices.length < 3) { log('createCustomMesh: need at least 3 vertices', 'error'); return null; }
+        var geo = new THREE.BufferGeometry();
+        var posArr = new Float32Array(vertices.length * 3);
+        for (var i = 0; i < vertices.length; i++) {
+            posArr[i * 3] = vertices[i][0] || 0;
+            posArr[i * 3 + 1] = vertices[i][1] || 0;
+            posArr[i * 3 + 2] = vertices[i][2] || 0;
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+        if (indices && indices.length > 0) {
+            var idxArr = new Uint16Array(indices.length * 3);
+            for (var j = 0; j < indices.length; j++) {
+                idxArr[j * 3] = indices[j][0];
+                idxArr[j * 3 + 1] = indices[j][1];
+                idxArr[j * 3 + 2] = indices[j][2];
+            }
+            geo.setIndex(new THREE.BufferAttribute(idxArr, 1));
+        }
+        geo.computeVertexNormals();
+        var mat = new THREE.MeshStandardMaterial({ color: color || 0xaaaaaa, roughness: 0.6, metalness: 0.2, flatShading: true });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        var name = getUniqueName('custom_mesh');
+        mesh.name = name;
+        scene.add(mesh);
+        objects[name] = mesh;
+        objectTypes[name] = 'mesh';
+        _persistentObjects[name] = true;
+        log('Created custom mesh: ' + name + ' (' + vertices.length + ' verts, ' + (indices ? indices.length : 0) + ' faces)', 'result');
+        return name;
+    }
+
+    // Engine.createTerrain(width, depth, segments, heightFunc, color) — procedural terrain
+    // heightFunc(x, z) returns y — AI can define any terrain shape
+    function createTerrain(width, depth, segments, heightFunc, color) {
+        width = width || 10; depth = depth || 10; segments = segments || 20;
+        color = color || 0x44aa44;
+        var geo = new THREE.PlaneGeometry(width, depth, segments, segments);
+        geo.rotateX(-Math.PI / 2);
+        var pos = geo.attributes.position;
+        for (var i = 0; i < pos.count; i++) {
+            var x = pos.getX(i), z = pos.getZ(i);
+            var y = typeof heightFunc === 'function' ? heightFunc(x, z) : 0;
+            pos.setY(i, y);
+        }
+        geo.computeVertexNormals();
+        var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.85, metalness: 0.05, flatShading: false });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        var name = getUniqueName('terrain');
+        mesh.name = name;
+        scene.add(mesh);
+        objects[name] = mesh;
+        objectTypes[name] = 'mesh';
+        _persistentObjects[name] = true;
+        log('Created terrain: ' + name + ' (' + segments + 'x' + segments + ' segments)', 'result');
+        return name;
+    }
+
+    // Engine.createTube(path, radius, segments, color) — tube along a 3D path
+    // path: [[x,y,z], ...] — series of points the tube follows
+    function createTube(path, radius, segments, color) {
+        if (!path || path.length < 2) { log('createTube: need at least 2 path points', 'error'); return null; }
+        radius = Math.max(0.01, radius || 0.1);
+        segments = segments || 16;
+        var pts = [];
+        for (var i = 0; i < path.length; i++) pts.push(new THREE.Vector3(path[i][0], path[i][1], path[i][2]));
+        var curve = new THREE.CatmullRomCurve3(pts);
+        var geo = new THREE.TubeGeometry(curve, Math.max(2, path.length * segments), radius, 8, false);
+        var mat = new THREE.MeshStandardMaterial({ color: color || 0xcccccc, roughness: 0.5, metalness: 0.3 });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        var name = getUniqueName('tube');
+        mesh.name = name;
+        scene.add(mesh);
+        objects[name] = mesh;
+        objectTypes[name] = 'mesh';
+        _persistentObjects[name] = true;
+        log('Created tube: ' + name + ' (' + path.length + ' points, r=' + radius + ')', 'result');
+        return name;
+    }
+
+    // Engine.createLathe(profile, segments, color) — revolution surface
+    // profile: [[x,y], ...] — 2D points that get rotated around Y axis
+    function createLathe(profile, segments, color) {
+        if (!profile || profile.length < 2) { log('createLathe: need at least 2 profile points', 'error'); return null; }
+        segments = segments || 16;
+        var pts = [];
+        for (var i = 0; i < profile.length; i++) pts.push(new THREE.Vector2(Math.max(0.001, profile[i][0]), profile[i][1]));
+        var geo = new THREE.LatheGeometry(pts, segments);
+        var mat = new THREE.MeshStandardMaterial({ color: color || 0xbbbbbb, roughness: 0.5, metalness: 0.3 });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        var name = getUniqueName('lathe');
+        mesh.name = name;
+        scene.add(mesh);
+        objects[name] = mesh;
+        objectTypes[name] = 'mesh';
+        _persistentObjects[name] = true;
+        log('Created lathe: ' + name + ' (' + profile.length + ' profile points)', 'result');
+        return name;
+    }
+
+    // Engine.modifyVertices(objectName, modifierFunc) — modify mesh vertices with a function
+    // modifierFunc(x, y, z, vertexIndex) returns [newX, newY, newZ]
+    function modifyVertices(objectName, modifierFunc) {
+        var obj = objects[objectName];
+        if (!obj) { log('modifyVertices: object not found: ' + objectName, 'error'); return false; }
+        var mesh = null;
+        obj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+        if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) { log('modifyVertices: no mesh geometry found', 'error'); return false; }
+        var pos = mesh.geometry.attributes.position;
+        for (var i = 0; i < pos.count; i++) {
+            var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+            var result = modifierFunc(x, y, z, i);
+            if (result && result.length >= 3) {
+                pos.setXYZ(i, result[0], result[1], result[2]);
+            }
+        }
+        pos.needsUpdate = true;
+        mesh.geometry.computeVertexNormals();
+        log('Modified ' + pos.count + ' vertices of ' + objectName, 'result');
+        return true;
+    }
+
     // === AI Compose Model — LLM assembles complex models from primitives ===
     function aiComposeModel(description, params) {
         params = params || {};
@@ -10806,6 +10976,7 @@ var SashaEngineAPI = (function() {
         aiGetModelTypes: aiGetModelTypes,
         aiGetAnimationTypes: aiGetAnimationTypes,
         aiComposeModel: aiComposeModel,
+        createCustomMesh: createCustomMesh, createTerrain: createTerrain, createTube: createTube, createLathe: createLathe, modifyVertices: modifyVertices,
         aiEnterEditMode: aiEnterEditMode, aiSelectVertices: aiSelectVertices, aiSelectFaces: aiSelectFaces,
         aiExtrudeSelection: aiExtrudeSelection, aiInsetSelection: aiInsetSelection, aiSubdivideMesh: aiSubdivideMesh,
         aiBevelSelection: aiBevelSelection, aiLoopCut: aiLoopCut, aiDeleteSelection: aiDeleteSelection,
@@ -16255,7 +16426,8 @@ var EngineApp = (function() {
         }
         var _createFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addTorus','addCapsule',
             'addLight','addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
-            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel','aiCreateProceduralModel'];
+            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel','aiCreateProceduralModel',
+            'createCustomMesh','createTerrain','createTube','createLathe'];
         var wrappedEngine = {};
         for (var key in api) {
             if (!api.hasOwnProperty(key)) continue;
