@@ -4814,31 +4814,10 @@ var SashaWebLLM = (function() {
     }
     _applyCachePatch();
 
-    // Fetch retry patch — retries failed fetches (e.g. HuggingFace model weights)
-    var _fetchPatchApplied = false;
-    function _applyFetchPatch() {
-        if (_fetchPatchApplied) return;
-        _fetchPatchApplied = true;
-        if (typeof window.fetch === 'undefined') return;
-        var _origFetch = window.fetch;
-        window.fetch = function() {
-            var args = arguments;
-            var url = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url) || '';
-            var isModelWeight = url.indexOf('huggingface.co') !== -1 || url.indexOf('params_shard') !== -1;
-            if (!isModelWeight) return _origFetch.apply(window, args);
-            var retries = 3;
-            var delay = 2000;
-            function attempt(n) {
-                return _origFetch.apply(window, args).catch(function(err) {
-                    console.warn('[SashaAI] Fetch retry ' + n + '/' + retries + ' for: ' + url.split('/').pop());
-                    if (n < retries) return new Promise(function(r) { setTimeout(r, delay * n); }).then(function() { return attempt(n + 1); });
-                    throw err;
-                });
-            }
-            return attempt(1);
-        };
-    }
-    _applyFetchPatch();
+    // NOTE: Do NOT patch global fetch for HuggingFace downloads.
+    // WebLLM has its own download pipeline with streaming, chunking, and progress.
+    // Intercepting fetch breaks large model weight downloads (4GB+).
+    // Cache.patch above is sufficient for WebLLM compatibility.
 
 
     // === WebLLM: import ===
@@ -4864,24 +4843,35 @@ var SashaWebLLM = (function() {
     // === WebLLM: load model ===
     async function webllmLoadModel(selectedModelId, progressCb) {
         var mod = await importWebLLM();
-        if (!navigator.gpu) throw new Error('WebGPU not available');
-        var adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) throw new Error('No GPU adapter');
+        if (!navigator.gpu) throw new Error('WebGPU not available - use Chrome/Edge with GPU');
+        var adapter = await navigator.gpu.requestAdapter({
+            powerPreference: 'high-performance'
+        });
+        if (!adapter) throw new Error('No GPU adapter found');
+        // Request max GPU limits for large models (7B needs big buffers)
+        var device = await adapter.requestDevice({
+            requiredLimits: {
+                maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
+                maxBufferSize: adapter.limits.maxBufferSize,
+                maxMemoryMappedSize: adapter.limits.maxMemoryMappedSize
+            }
+        });
         if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
-        if (progressCb) progressCb({ progress: 0, text: 'Loading ' + selectedModelId + '...' });
-        // Try CreateMLCEngine (new API) first, then MLCEngine+reload (old API)
+        if (progressCb) progressCb({ progress: 0, text: 'Initializing GPU for ' + selectedModelId + '...' });
         var lastErr = null;
         for (var attempt = 0; attempt < 2; attempt++) {
             try {
                 if (mod.CreateMLCEngine) {
                     engine = await mod.CreateMLCEngine(selectedModelId, {
                         logLevel: 'SILENT',
+                        device: device,
                         initProgressCallback: function(report) {
                             if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
                         }
                     });
                 } else if (mod.MLCEngine) {
                     engine = new mod.MLCEngine({
+                        device: device,
                         initProgressCallback: function(report) {
                             if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
                         }
@@ -4895,10 +4885,30 @@ var SashaWebLLM = (function() {
             } catch(e) {
                 lastErr = e;
                 console.warn('[SashaWebLLM] Load attempt ' + (attempt+1) + ' failed:', e.message);
-                if (attempt < 1) { await new Promise(function(r) { setTimeout(r, 2000); }); if (engine) { try { await engine.unload(); } catch(x) {} engine = null; } }
+                if (attempt < 1) { await new Promise(function(r) { setTimeout(r, 3000); }); if (engine) { try { await engine.unload(); } catch(x) {} engine = null; } }
             }
         }
-        if (lastErr && !engine) throw lastErr;
+        if (lastErr && !engine) {
+            if (selectedModelId.indexOf('0.5B') === -1) {
+                var fallbackId = selectedModelId.replace(/-[0-9.]+B-Instruct/, '-0.5B-Instruct');
+                console.log('[SashaWebLLM] Falling back to: ' + fallbackId);
+                if (progressCb) progressCb({ progress: 0, text: 'Retrying with: ' + fallbackId + '...' });
+                try {
+                    engine = await mod.CreateMLCEngine(fallbackId, {
+                        logLevel: 'SILENT',
+                        device: device,
+                        initProgressCallback: function(report) {
+                            if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
+                        }
+                    });
+                    _loadedModelId = fallbackId;
+                    return;
+                } catch(fbErr) {
+                    console.warn('[SashaWebLLM] Fallback failed:', fbErr.message);
+                }
+            }
+            throw lastErr;
+        }
     }
 
     // === WebLLM: generate ===
@@ -21637,6 +21647,7 @@ var EngineApp = (function() {
 
 </body>
 </html>
+
 
 
 
