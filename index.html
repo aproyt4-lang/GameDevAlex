@@ -16071,6 +16071,30 @@ var EngineApp = (function() {
     }
 
     function _preprocessCode(code) {
+        // === SANITIZE: remove Unicode junk that causes SyntaxError ===
+        // Remove control chars except tab and newline
+        code = code.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+        // BOM, soft hyphen
+        code = code.replace(/\uFEFF/g, '');
+        code = code.replace(/\u00AD/g, '');
+        // nbsp -> regular space
+        code = code.replace(/\u00A0/g, ' ');
+        // Zero-width chars, direction marks
+        code = code.replace(/[\u200B-\u200F]/g, '');
+        // Line/paragraph separators -> newlines
+        code = code.replace(/\u2028/g, '\n');
+        code = code.replace(/\u2029/g, '\n');
+        // Directional formatting
+        code = code.replace(/[\u202A-\u202E]/g, '');
+        // Invisible operators
+        code = code.replace(/[\u2060-\u2069]/g, '');
+        // Interlinear annotations
+        code = code.replace(/[\uFFF9-\uFFFB]/g, '');
+        // Emoji and dingbats (common AI junk)
+        code = code.replace(/[\u2702-\u27B0]/g, '');
+        code = code.replace(/[\u2600-\u26FF]/g, '');
+        // Variation selectors, ZWJ, combining keycap
+        code = code.replace(/[\uFE00-\uFE0F\u200D\u20E3]/g, '');
         // Strip ALL markdown wrappers aggressively
         code = code.replace(/^```(?:javascript|js|json)?\s*\n?/gm, '');
         code = code.replace(/\n?```\s*$/gm, '');
@@ -16158,8 +16182,13 @@ var EngineApp = (function() {
             log('Executed in ' + (Date.now() - start) + 'ms', 'result');
         } catch(e) {
             // Full exec failed — try line by line so some objects still appear
-            console.error('[SashaAI] Full exec failed:', e.message, '— line by line fallback');
-            log('Full exec error: ' + e.message + ' — trying line-by-line...', 'warn');
+            console.error('[SashaAI] Full exec failed:', e.name + ':', e.message);
+            if (e.name === 'SyntaxError') {
+                console.error('[SashaAI] Code preview (200 chars):', code.substring(0, 200));
+                log('SyntaxError в коде: ' + e.message, 'error');
+            } else {
+                log('Full exec error: ' + e.message + ' — trying line-by-line...', 'warn');
+            }
             var allLines = code.split('\n');
             var vars = {};
             var skipped = 0;
@@ -16266,6 +16295,11 @@ var EngineApp = (function() {
     function executeIncremental(fullCode) {
         var st = _liveRunState;
         if (!st.active) return;
+        // Sanitize unicode junk before processing
+        fullCode = fullCode.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+        fullCode = fullCode.replace(/\uFEFF|\u00AD/g, '');
+        fullCode = fullCode.replace(/\u00A0/g, ' ');
+        fullCode = fullCode.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFFF9-\uFFFB]/g, '');
         fullCode = fullCode.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
 
         var allLines = fullCode.split('\n');
@@ -16790,6 +16824,12 @@ var EngineApp = (function() {
                 _jarvisSay('Выполняю код на сцене...');
                 if (editor) editor.setValue(text);
                 stopLiveGeneration();
+
+                // Count scene objects BEFORE running code
+                var objsBefore = SashaEngineAPI.getObjects();
+                var countBefore = 0;
+                for (var ob in objsBefore) { if (objsBefore.hasOwnProperty(ob) && ob.indexOf('__builtin') !== 0) countBefore++; }
+
                 runCode();
 
                 // GPU cooldown
@@ -16797,12 +16837,25 @@ var EngineApp = (function() {
 
                 refreshHierarchy();
                 refreshInspector();
+
+                // Count scene objects AFTER - only claim success if objects were actually added
+                var objsAfter = SashaEngineAPI.getObjects();
+                var countAfter = 0;
+                for (var oa in objsAfter) { if (objsAfter.hasOwnProperty(oa) && oa.indexOf('__builtin') !== 0) countAfter++; }
+                var objectsAdded = countAfter - countBefore;
+
                 var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
                 if (llmSuccess) {
-                    addAIChat('ai', 'Готово! Сгенерировано за ' + elapsed + 's. Объекты добавлены на сцену.');
-                    _jarvisSay('Готово, сэр. Операция выполнена за ' + elapsed + ' секунд.');
+                    if (objectsAdded > 0) {
+                        addAIChat('ai', 'Готово! Сгенерировано за ' + elapsed + 's. Добавлено ' + objectsAdded + ' объектов на сцену.');
+                        _jarvisSay('Готово, сэр. Создано ' + objectsAdded + ' объектов за ' + elapsed + ' секунд.');
+                    } else {
+                        addAIChat('ai', 'Код выполнен за ' + elapsed + 's, но объекты не были созданы. Попробуй переформулировать запрос.');
+                        _jarvisSay('Код выполнен, но ничего не появилось. Попробуйте описать иначе.');
+                        console.warn('[SashaAI] No objects added. Before:', countBefore, 'After:', countAfter, 'Error:', _lastRunError);
+                    }
                 }
-                log('Done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
+                log('Done: ' + text.length + ' chars in ' + elapsed + 's (+' + objectsAdded + ' objects)', 'result');
                 break; // success, exit retry loop
 
             } else {
