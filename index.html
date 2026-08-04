@@ -3177,11 +3177,14 @@ var SashaScene3D = (function() {
         try {
             var loader = new THREE.GLTFLoader();
             if (!loader) { createPlaceholder(); return; }
-            var glbPath = 'SashaAI.glb';
-            
-            // Try loading with proper error handling
-            loader.load(glbPath, 
-            function(gltf) {
+            // Try multiple paths for SashaAI.glb
+            var glbPaths = ['SashaAI.glb', './SashaAI.glb', 'SashaAI.glb?nocache=' + Date.now()];
+            var pathIdx = 0;
+            function tryLoadPath() {
+                if (pathIdx >= glbPaths.length) { createPlaceholder(); return; }
+                var glbPath = glbPaths[pathIdx++];
+                loader.load(glbPath, 
+                function(gltf) {
                 // SUCCESS — add the real GLB model to the scene
                 var model = gltf.scene;
                 model.name = 'SashaAI_avatar';
@@ -3223,11 +3226,13 @@ var SashaScene3D = (function() {
                 // Progress callback — silent
             },
             function(error) {
-                // ERROR — fallback to placeholder
-                console.warn('[Avatar] SashaAI.glb not found, using placeholder');
-                createPlaceholder();
+                // ERROR — try next path or fallback to placeholder
+                console.warn('[Avatar] SashaAI.glb failed for: ' + glbPath + ' Error:', error && error.type || error);
+                tryLoadPath();
             }
         );
+            }
+            tryLoadPath();
         } catch(e) {
             console.warn('[Avatar] GLTFLoader not available, using placeholder');
             createPlaceholder();
@@ -4851,13 +4856,15 @@ var SashaWebLLM = (function() {
         });
         if (!adapter) throw new Error('No GPU adapter found');
         // Request max GPU limits for large models (7B needs big buffers)
-        var device = await adapter.requestDevice({
-            requiredLimits: {
-                maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
-                maxBufferSize: adapter.limits.maxBufferSize,
-                maxMemoryMappedSize: adapter.limits.maxMemoryMappedSize
-            }
-        });
+        // Request max GPU limits for large models (7B needs big buffers)
+        // Note: maxMemoryMappedSize removed — not supported on Windows Chrome
+        var limits = {
+            maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
+            maxBufferSize: adapter.limits.maxBufferSize
+        };
+        // Only add limits that the adapter actually reports
+        try { if (adapter.limits.maxStorageBufferBindingSize) limits.maxStorageBufferBindingSize = adapter.limits.maxStorageBufferBindingSize; } catch(e){}
+        var device = await adapter.requestDevice({ requiredLimits: limits });
         if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
         if (progressCb) progressCb({ progress: 0, text: 'Initializing GPU for ' + selectedModelId + '...' });
         var lastErr = null;
@@ -7312,8 +7319,14 @@ var SashaEngineAPI = (function() {
 
     function _loadSashaAIOnMainSceneReal() {
         var loader = new THREE.GLTFLoader();
-        var glbPath = 'SashaAI.glb';
-        
+        var glbPaths = ['SashaAI.glb', './SashaAI.glb', 'SashaAI.glb?nocache=' + Date.now()];
+        var _sashaPathIdx = 0;
+        function _trySashaPath() {
+            if (_sashaPathIdx >= glbPaths.length) {
+                console.warn('[Engine] SashaAI.glb not found on any path, skipping');
+                return;
+            }
+            var glbPath = glbPaths[_sashaPathIdx++];
         loader.load(glbPath,
             function(gltf) {
                 // SUCCESS — add to main engine scene
@@ -7374,11 +7387,13 @@ var SashaEngineAPI = (function() {
                 // Progress — silent
             },
             function(error) {
-                // ERROR — file not found or load failed
-                console.warn('[Engine] SashaAI.glb not found on main scene, skipping. Error:', error);
-                // Don't create placeholder on main scene — user can import manually
+                // ERROR — try next path
+                console.warn('[Engine] SashaAI.glb failed for: ' + glbPath + ' Error:', error && error.type || error);
+                _trySashaPath();
             }
         );
+        }
+        _trySashaPath();
     }
 
     function init() {
@@ -10345,9 +10360,51 @@ var SashaEngineAPI = (function() {
                log('Playing ' + animType + ' on ' + objectName, 'result');
     }
     function aiGithubImportModel(repo, path, x, y, z, scale) {
-        var url = 'https://raw.githubusercontent.com/' + repo + '/main/' + path;
-        log('Importing GLB from GitHub: ' + repo + '/' + path, 'info');
-        return loadModel(url, x, y, z, scale);
+        // Use jsdelivr CDN as primary (better CORS/SSL support)
+        // Fallback to raw.githubusercontent.com
+        var cdnUrl = 'https://cdn.jsdelivr.net/gh/' + repo + '/main/' + path;
+        var rawUrl = 'https://raw.githubusercontent.com/' + repo + '/main/' + path;
+        log('[aiGithubImport] Importing from GitHub: ' + repo + '/' + path, 'info');
+        log('[aiGithubImport] CDN: ' + cdnUrl, 'info');
+        // loadModel already has fallback chain (direct -> jsdelivr -> allorigins proxy)
+        // But we start with CDN for better compatibility
+        var targetName = getUniqueName('gh_model');
+        var loader = new THREE.GLTFLoader();
+        var urls = [cdnUrl, rawUrl];
+        var urlIdx = 0;
+        function tryUrl() {
+            if (urlIdx >= urls.length) {
+                log('[aiGithubImport] All URLs failed for: ' + repo + '/' + path, 'error');
+                return;
+            }
+            var url = urls[urlIdx++];
+            log('[aiGithubImport] Trying: ' + url, 'info');
+            loader.load(url, function(gltf) {
+                var model = gltf.scene;
+                model.position.set(x || 0, y || 0, z || 0);
+                if (scale) model.scale.set(scale, scale, scale);
+                model.traverse(function(c) { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+                if (gltf.animations && gltf.animations.length > 0) {
+                    var mix = new THREE.AnimationMixer(model);
+                    _skeletonData[targetName] = { mixer: mix, clips: gltf.animations.slice(), actions: [] };
+                    if (typeof EngineApp !== 'undefined' && EngineApp._registerModelAnimations) {
+                        EngineApp._registerModelAnimations(targetName, mix, gltf.animations.slice());
+                    }
+                }
+                model.name = targetName;
+                scene.add(model);
+                objects[targetName] = model;
+                objectTypes[targetName] = 'model';
+                objectRenames[targetName] = targetName;
+                log('[aiGithubImport] Loaded: ' + targetName, 'result');
+                if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+            }, undefined, function(err) {
+                log('[aiGithubImport] Failed: ' + url + ' — trying next...', 'warn');
+                tryUrl();
+            });
+        }
+        tryUrl();
+        return targetName;
     }
     function aiGetTextureTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getTextureTypes(); return ['brick','wood','marble','grass','metal','noise','checker','gradient','sky','lava','fabric','tiles','normalMap','roughness']; }
     function aiGetModelTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getModelTypes(); return ['tree','rock','fence','stairs','arch','column','wall']; }
@@ -16247,6 +16304,18 @@ var EngineApp = (function() {
         if (typeof EngineApp !== 'undefined') {
             wrappedEngine.loadModelFromURL = function(url) { return EngineApp.loadModelFromURL ? EngineApp.loadModelFromURL() : 'not available'; };
             wrappedEngine.openPrefabMode = function(name) { if (EngineApp.openPrefabMode) EngineApp.openPrefabMode(name); };
+        }
+        // Give LLM direct access to loadModel (GLB/GLTF from any URL)
+        // loadModel already has CORS proxy fallback chain built in
+        // Also add aiGithubImportModel directly (it's in api but make sure)
+        if (!wrappedEngine.aiGithubImportModel && api.aiGithubImportModel) {
+            wrappedEngine.aiGithubImportModel = function() { return api.aiGithubImportModel.apply(api, arguments); };
+        }
+        if (!wrappedEngine.aiComposeModel && api.aiComposeModel) {
+            wrappedEngine.aiComposeModel = function() { return api.aiComposeModel.apply(api, arguments); };
+        }
+        if (!wrappedEngine.aiCreateProceduralModel && api.aiCreateProceduralModel) {
+            wrappedEngine.aiCreateProceduralModel = function() { return api.aiCreateProceduralModel.apply(api, arguments); };
         }
         return wrappedEngine;
     }
