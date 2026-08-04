@@ -1084,24 +1084,12 @@
                     <button class="eng-btn" onclick="EngineApp.clearScene()" title="Clear"><i class="fas fa-trash"></i></button>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
-                    <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;max-width:180px;">
+                    <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- AI --</option>
-                        <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (~80MB) ultra-fast</option>
-                        <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M (~200MB)</option>
-                        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5 0.5B (~350MB)</option>
-                        <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B (~600MB)</option>
-                        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (~700MB)</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B (~350MB)</option>
-                        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B (~1GB)</option>
-                        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B (~900MB)</option>
-                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B (~900MB)</option>
-                        <option value="Gemma-2-2b-it-q4f16_1-MLC">Gemma 2 2B (~1.4GB)</option>
-                        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5-mini 3.8B (~2.2GB)</option>
-                        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen2.5 3B (~1.8GB)</option>
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B (~1.8GB)</option>
-                        <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B (~2GB)</option>
-                        <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5 7B (~4GB)</option>
-                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B (~4GB)</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
+                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
+                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
+                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
                     </select>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
@@ -1318,24 +1306,12 @@
                         <div class="eng-tab-content" id="eng-tab-ai" style="display:none;">
                             <div class="engine-ai-panel">
                                 <div class="engine-ai-toolbar">
-                                    <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;max-width:220px;">
+                                    <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                                         <option value="">-- Model --</option>
-                                        <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (~80MB) ultra-fast</option>
-                        <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M (~200MB)</option>
-                        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5 0.5B (~350MB)</option>
-                        <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B (~600MB)</option>
-                        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (~700MB)</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B (~350MB)</option>
-                        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B (~1GB)</option>
-                        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B (~900MB)</option>
-                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B (~900MB)</option>
-                        <option value="Gemma-2-2b-it-q4f16_1-MLC">Gemma 2 2B (~1.4GB)</option>
-                        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5-mini 3.8B (~2.2GB)</option>
-                        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen2.5 3B (~1.8GB)</option>
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B (~1.8GB)</option>
-                        <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B (~2GB)</option>
-                        <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5 7B (~4GB)</option>
-                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B (~4GB)</option>
+                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
+                                        <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 1.5B</option>
+                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
+                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
                                     </select>
                                     <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
                                     <button class="eng-tab" onclick="EngineApp.restartModel()" style="font-size:0.72rem;padding:3px 8px;" id="ai-restart-btn" title="Перезагрузить модель"><i class="fas fa-redo"></i> Restart</button>
@@ -3193,9 +3169,12 @@ var SashaScene3D = (function() {
     }
 
     function loadAvatar() {
+        // Try loading real SashaAI.glb — fallback to placeholder if file missing
+        _loadAvatarGLB();
+    }
+
+    function _loadAvatarGLB() {
         try {
-            // Try to load SashaAI.glb from the same directory as this HTML file.
-            // If it fails (file missing, CORS, SSL), fall back to placeholder.
             var loader = new THREE.GLTFLoader();
             if (!loader) { createPlaceholder(); return; }
             var glbPath = 'SashaAI.glb';
@@ -4822,43 +4801,47 @@ var SashaWebLLM = (function() {
         return (data && data.message && data.message.content) ? data.message.content : '';
     }
 
-    // === WebLLM: import ===
-    // === Global Cache.add patch — WebLLM uses Cache API internally for model weights ===
-    // This MUST be applied BEFORE any WebLLM import to prevent network errors
+    // === Global Cache API patch — prevents WebLLM Cache.add/put network errors ===
     var _cachePatchApplied = false;
     function _applyCachePatch() {
         if (_cachePatchApplied) return;
         _cachePatchApplied = true;
         if (typeof Cache === 'undefined' || !Cache.prototype.add) return;
-        var _origAdd = Cache.prototype.add;
-        var _origAddAll = Cache.prototype.addAll;
-        var _origPut = Cache.prototype.put;
-        var _origMatch = Cache.prototype.match;
-        var _origMatchAll = Cache.prototype.matchAll;
-        // Wrap all Cache methods that do network fetches
-        Cache.prototype.add = function() {
-            return _origAdd.apply(this, arguments).catch(function(e) {
-                console.warn('[SashaAI] Cache.add intercepted (model still loads):', e.message);
-                return undefined;
-            });
-        };
-        Cache.prototype.addAll = function() {
-            return _origAddAll.apply(this, arguments).catch(function(e) {
-                console.warn('[SashaAI] Cache.addAll intercepted (model still loads):', e.message);
-                return undefined;
-            });
-        };
-        Cache.prototype.put = function() {
-            return _origPut.apply(this, arguments).catch(function(e) {
-                console.warn('[SashaAI] Cache.put intercepted (model still loads):', e.message);
-                return undefined;
-            });
-        };
-        console.log('[SashaAI] Cache API patched globally — model loading protected');
+        var _a = Cache.prototype.add, _aa = Cache.prototype.addAll, _p = Cache.prototype.put;
+        Cache.prototype.add = function() { return _a.apply(this, arguments).catch(function() { return undefined; }); };
+        Cache.prototype.addAll = function() { return _aa.apply(this, arguments).catch(function() { return undefined; }); };
+        Cache.prototype.put = function() { return _p.apply(this, arguments).catch(function() { return undefined; }); };
     }
-    // Apply patch immediately on script load (before any WebLLM code runs)
     _applyCachePatch();
 
+    // Fetch retry patch — retries failed fetches (e.g. HuggingFace model weights)
+    var _fetchPatchApplied = false;
+    function _applyFetchPatch() {
+        if (_fetchPatchApplied) return;
+        _fetchPatchApplied = true;
+        if (typeof window.fetch === 'undefined') return;
+        var _origFetch = window.fetch;
+        window.fetch = function() {
+            var args = arguments;
+            var url = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url) || '';
+            var isModelWeight = url.indexOf('huggingface.co') !== -1 || url.indexOf('params_shard') !== -1;
+            if (!isModelWeight) return _origFetch.apply(window, args);
+            var retries = 3;
+            var delay = 2000;
+            function attempt(n) {
+                return _origFetch.apply(window, args).catch(function(err) {
+                    console.warn('[SashaAI] Fetch retry ' + n + '/' + retries + ' for: ' + url.split('/').pop());
+                    if (n < retries) return new Promise(function(r) { setTimeout(r, delay * n); }).then(function() { return attempt(n + 1); });
+                    throw err;
+                });
+            }
+            return attempt(1);
+        };
+    }
+    _applyFetchPatch();
+
+
+    // === WebLLM: import ===
     async function importWebLLM() {
         if (webllmModule) return webllmModule;
         var cdnUrls = [
@@ -4875,84 +4858,54 @@ var SashaWebLLM = (function() {
                 console.warn('[SashaWebLLM] CDN ' + i + ' failed:', e.message);
             }
         }
-        throw new Error('All WebLLM CDNs failed. Check internet connection.');
+        throw new Error('All WebLLM CDNs failed. Check internet.');
     }
 
-    // === Kill service workers + clear caches to prevent Cache.add() errors ===
-    async function _clearBrowserCaches() {
-        try {
-            // Unregister all service workers
-            if (navigator.serviceWorker) {
-                var regs = await navigator.serviceWorker.getRegistrations();
-                for (var i = 0; i < regs.length; i++) {
-                    try { await regs[i].unregister(); console.log('[SashaWebLLM] Unregistered SW:', regs[i].scope); } catch(e) {}
-                }
-            }
-        } catch(e) { console.warn('[SashaWebLLM] SW unregister error:', e); }
-        try {
-            // Clear all Cache API caches that might conflict
-            if (caches) {
-                var cacheNames = await caches.keys();
-                for (var j = 0; j < cacheNames.length; j++) {
-                    try { await caches.delete(cacheNames[j]); console.log('[SashaWebLLM] Deleted cache:', cacheNames[j]); } catch(e) {}
-                }
-            }
-        } catch(e) { console.warn('[SashaWebLLM] Cache clear error:', e); }
-    }
     // === WebLLM: load model ===
     async function webllmLoadModel(selectedModelId, progressCb) {
-        // Clear caches and service workers first
-        await _clearBrowserCaches();
-        // Cache API is already patched globally (see _applyCachePatch above)
-
         var mod = await importWebLLM();
-        if (!navigator.gpu) throw new Error('WebGPU not available. Enable in chrome://flags/#enable-unsafe-webgpu');
+        if (!navigator.gpu) throw new Error('WebGPU not available');
         var adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) throw new Error('No compatible GPU adapter.');
-        if (engine) { try { await engine.unload(); } catch(e) {} engine = null; await new Promise(function(r) { setTimeout(r, 500); }); }
-        if (progressCb) progressCb({ progress: 0, text: 'Initializing WebLLM engine for ' + selectedModelId + '...' });
-        // Try loading with retry (Cache.add can fail on first attempt)
-        var loadAttempt = 0;
-        var maxLoadAttempts = 3;
-        var lastLoadError = null;
-        while (loadAttempt < maxLoadAttempts) {
+        if (!adapter) throw new Error('No GPU adapter');
+        if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
+        if (progressCb) progressCb({ progress: 0, text: 'Loading ' + selectedModelId + '...' });
+        // Try CreateMLCEngine (new API) first, then MLCEngine+reload (old API)
+        var lastErr = null;
+        for (var attempt = 0; attempt < 2; attempt++) {
             try {
-                loadAttempt++;
-                if (progressCb) progressCb({ progress: 0, text: 'Loading model (attempt ' + loadAttempt + '/' + maxLoadAttempts + ')...' });
-                engine = await mod.CreateMLCEngine(selectedModelId, {
-                    logLevel: 'SILENT',
-                    initProgressCallback: function(report) {
-                        var text = report.text || '';
-                        var progress = report.progress || 0;
-                        console.log('[SashaWebLLM] ' + Math.round(progress * 100) + '% - ' + text);
-                        if (progressCb) progressCb({ progress: progress, text: text });
-                    }
-                });
-                lastLoadError = null;
-                break; // success
-            } catch(loadErr) {
-                lastLoadError = loadErr;
-                var errMsg = String(loadErr.message || loadErr);
-                console.warn('[SashaWebLLM] Load attempt ' + loadAttempt + ' failed:', errMsg);
-                if (errMsg.indexOf('Cache') !== -1 && loadAttempt < maxLoadAttempts) {
-                    console.log('[SashaWebLLM] Cache error detected, clearing caches and retrying...');
-                    await _clearBrowserCaches();
-                    await new Promise(function(r) { setTimeout(r, 1000 * loadAttempt); }); // exponential backoff
-                    if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
+                if (mod.CreateMLCEngine) {
+                    engine = await mod.CreateMLCEngine(selectedModelId, {
+                        logLevel: 'SILENT',
+                        initProgressCallback: function(report) {
+                            if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
+                        }
+                    });
+                } else if (mod.MLCEngine) {
+                    engine = new mod.MLCEngine({
+                        initProgressCallback: function(report) {
+                            if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
+                        }
+                    });
+                    await engine.reload(selectedModelId);
                 } else {
-                    throw loadErr;
+                    throw new Error('WebLLM: no CreateMLCEngine or MLCEngine found');
                 }
+                lastErr = null;
+                break;
+            } catch(e) {
+                lastErr = e;
+                console.warn('[SashaWebLLM] Load attempt ' + (attempt+1) + ' failed:', e.message);
+                if (attempt < 1) { await new Promise(function(r) { setTimeout(r, 2000); }); if (engine) { try { await engine.unload(); } catch(x) {} engine = null; } }
             }
         }
-        if (lastLoadError && !engine) throw lastLoadError;
-        // Global Cache patch stays active (no need to restore)
+        if (lastErr && !engine) throw lastErr;
     }
 
     // === WebLLM: generate ===
     async function webllmGenerate(messages, maxTokens) {
         if (!engine) return 'Error: engine not initialized';
         var result = await engine.chat.completions.create({
-            messages: messages, max_tokens: maxTokens || 4096,
+            messages: messages, max_tokens: maxTokens || 1024,
             temperature: 0.7, top_p: 0.9, stream: false
         });
         if (result && result.choices && result.choices[0] && result.choices[0].message) {
@@ -4998,7 +4951,7 @@ var SashaWebLLM = (function() {
         var maxHist = (backend === 'ollama') ? 10 : 6;
         var startIdx = Math.max(0, chatHistory.length - maxHist);
         for (var i = startIdx; i < chatHistory.length; i++) { messages.push(chatHistory[i]); }
-        var maxTok = (backend === 'ollama') ? 4096 : 4096;
+        var maxTok = (backend === 'ollama') ? 4096 : 1024;
         var text = '';
         try {
             if (backend === 'ollama') {
@@ -5033,9 +4986,13 @@ var SashaWebLLM = (function() {
     }
 
     var _codeMode = false;
-    var _codeSystemPrompt = 'You are a 3D scene builder. Write ONLY JavaScript. No markdown, no backticks, no explanations, no Russian text.\nUse var not const/let. Semicolons required. Colors are hex: 0xff0000.\n\nPRIMITIVES:\nEngine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rTop,rBot,h,color)\nEngine.addCone(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addPlane(w,h,color)\nEngine.addTorusKnot(x,y,z,r,tube,p,q,color) Engine.addIcosahedron(x,y,z,r,color)\n\nMESH GENERATION (build real geometry):\nEngine.createCustomMesh([[x,y,z],...],[[a,b,c],...],color) — custom mesh from vertices and triangle indices\nEngine.createTerrain(w,d,segs,function(x,z){return Math.sin(x)*0.5;},color) — terrain with height function\nEngine.createTube([[x,y,z],...],radius,segs,color) — tube along 3D path\nEngine.createLathe([[r,y],...],segs,color) — revolution surface around Y axis\nEngine.modifyVertices(name,function(x,y,z,i){return [x,y+0.1,z];}) — deform mesh vertices\n\nPREBUILT (use only if primitives cannot build it):\nEngine.aiCreateProceduralModel(type,{}) — types: house,castle,car,helicopter,tree,person,dog,cat,bird,boat,etc.\n\nLIGHT AND TRANSFORMS:\nEngine.addAmbientLight(color,intensity) Engine.addPointLight(x,y,z,intensity,color)\nEngine.setPosition(n,x,y,z) Engine.setRotation(n,x,y,z) Engine.setScale(n,x,y,z)\nEngine.setObjectColor(n,color) Engine.setCameraPos(x,y,z)\n\nRULES:\n1. BUILD from primitives and mesh generation FIRST. Use createCustomMesh, createTube, createLathe.\n2. Position parts with x,y,z coordinates to form the requested object.\n3. Only use aiCreateProceduralModel if object too complex for primitives.\n4. ALWAYS add Engine.addAmbientLight(0xffffff,0.6) and Engine.addPointLight(5,5,5,1.5,0xffffff).\n5. ALWAYS end with Engine.setCameraPos(5,5,5).\n6. NEVER clear scene. Max 20 lines.';
-
-    var _chatSystemPrompt = 'You are JARVIS, AI assistant in 3D game engine. Speak Russian.\nYou create 3D scenes, models, textures, animations, physics.\nFor complex objects prefer Engine.aiComposeModel(description). For simple scenes use primitives.\nWhen asked to BUILD, generate JS code between ```javascript and ``` markers.\nColors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.'  ;
+        var _codeSystemPrompt = 'You are JARVIS - AI in a 3D engine. Return ONLY JavaScript using Engine API. Respond in Russian.PRIMITIVES: Engine.addCube(x,y,z,w,h,d,color) Engine.addSphere(x,y,z,r,color) Engine.addCylinder(x,y,z,rT,rB,h,color) Engine.addCone(x,y,z,r,h,color) Engine.addCapsule(x,y,z,r,h,color) Engine.addTorus(x,y,z,r,tube,color) Engine.addTorusKnot(x,y,z,r,tube,color) Engine.addIcosahedron(x,y,z,r,color) Engine.addPlane(w,h,color)LIGHT: Engine.addPointLight(x,y,z,intensity,color) Engine.addDirectionalLight(x,y,z,color,intensity) Engine.addSpotLight(x,y,z,color,intensity) Engine.addAmbientLight(color,intensity)TRANSFORM: Engine.setPosition(name,x,y,z) Engine.setRotation(name,x,y,z) Engine.setScale(name,x,y,z) Engine.setObjectColor(name,color) Engine.moveObject(name,dx,dy,dz) Engine.addChild(parent,child) Engine.removeObject(name) Engine.clear()CAMERA: Engine.setCameraPos(x,y,z) Engine.setCameraTarget(x,y,z) Engine.setFollowTarget(name,ox,oy,oz,smooth) Engine.clearFollowTarget()ANIMATION: Engine.animate(name,prop,from,to,duration)PHYSICS: Engine.addRigidBody(name,mass,drag,gravity) Engine.setVelocity(name,vx,vy,vz) Engine.addBoxCollider(name,sx,sy,sz) Engine.addSphereCollider(name,r)MODEL: Engine.loadModel(url) Engine.loadModelFromURL(url)SKELETON: Engine.createHumanSkeleton(h) Engine.playAnimation(n,clip) Engine.stopAnimation(n) Engine.getAnimationClips(n)SCENE: Engine.getObjects() Engine.getObject(n) Engine.getMainCamera() Engine.setBgColor(r,g,b)RULES: 1. ALWAYS 3+ objects. 2. ALWAYS end Engine.setCameraPos(3,3,3). 3. NEVER clear unless asked. 4. Return ONLY JS code. NO markdown. NO document/window/fetch/eval.TEXTURE: Engine.aiGenerateTexture(type,params) types:brick,wood,marble,grass,metal,noise,checker,gradient,sky,lava,fabric,tiles,normalMap,roughness. Engine.aiApplyTexture(name,texName)MATERIAL: Engine.aiGenerateMaterial(type,params) types:glass,emissive,hologram,chrome,waterPROCEDURAL: Engine.aiCreateProceduralModel(type,params) types:tree,rock,fence,stairs,arch,column,wall,house,tower,bridge,castle,car,weapon,shield,well,chest,barrel,campfire,torch,table,chair,gate,crystal,platform,ruins,sign,ladder AI COMPOSE: Engine.aiComposeModel(description,params) creates complex models from text (ru/en): house,castle,tower,bridge,car,sword,axe,shield,crystal,campfire,torch,barrel,chest,well,table,chair,gate,platform,ruins,sign,ladderSKELETON: Engine.aiAutoRig(name) Engine.aiGenerateAnimation(name,type,params) types:idle,walk,run,jump,attack,tpose Engine.aiPlayGeneratedAnimation(name,type)GITHUB: Engine.aiGithubImportModel(repo,path,x,y,z,scale)RULES: 5. For textured objects gen texture THEN apply. 6. For characters: create THEN aiAutoRig THEN aiGenerateAnimation.ANIMATOR CONTROLLER: Engine.createAnimatorController(id,name) Engine.addStateToController(ctrlId,stateName,clipId) Engine.addUnityTransition(ctrlId,from,to,{conditions:[{param:\'Speed\',mode:\'greater\',value:0.1}],hasExitTime:false,duration:0.25,canTransitionToSelf:false}) Engine.addParameter(ctrlId,name,type,default) types:float,bool,int,trigger. Engine.setParameterValue(ctrlId,param,value) Engine.setAnimatorParam(objName,param,value) Engine.triggerAnimatorParam(objName,triggerName). Conditions modes:if,ifNot,greater,less,greaterEquals,lessEquals,equals,notEquals.GAME ASSEMBLY: Engine.aiGenerateTexture,aiCreateProceduralModel,aiAutoRig,aiGenerateAnimation create assets. Combine with addCube/addSphere for level geometry. Use AnimatorController for character state machines. Use loadModel/aiGithubImportModel for external assets.RULES: 7. For characters with state machines: create controller, add states with clips, add transitions with conditions. 8. NEVER delete previously generated objects unless explicitly asked.CUSTOM MESH: Engine.createCustomMesh(name,vertices,indices,params) vertices=[[x,y,z],...] or [x,y,z,x,y,z,...] indices=[i0,i1,i2,...] params={color,material,position,rotation,scale,normals,uvs,computeNormals}. Engine.createTerrain(name,width,depth,heightFn,resolution,params) heightFn=function(x,z){return y} creates heightmap terrain. Engine.createTube(name,pathPoints,radius,segments,params) pathPoints=[[x,y,z],...] creates tube along curve. Engine.createLathe(name,profilePoints,segments,params) profilePoints=[[radius,height],...] creates surface of revolution. Engine.modifyVertices(name,function(verts){verts[i*3]+=dx}) modifies vertex positions. MESH EDIT MODE: Engine.aiEnterEditMode(name) enters mesh edit on a mesh object. Engine.aiSelectVertices([0,1,2,3]) selects verts by index. Engine.aiSelectFaces([0,1]) selects faces. Engine.aiExtrudeSelection(amount) extrudes selected faces. Engine.aiInsetSelection(amount) insets. Engine.aiSubdivideMesh() subdivides all faces. Engine.aiBevelSelection(amount,segments) bevels edges. Engine.aiLoopCut() adds edge loop. Engine.aiDeleteSelection() deletes selected. Engine.aiMoveVertex(i,x,y,z) moves vertex. Engine.aiMoveSelectedVertices(dx,dy,dz) moves all selected verts. Engine.aiExitEditMode() exits. Engine.aiGetMeshInfo(name) returns {vertices,faces}. Use for custom mesh shaping: enter edit mode, select, extrude/move/bevel to sculpt.';
+    var _chatSystemPrompt = 'You are JARVIS - AI assistant in 3D engine. Speak Russian.\n' +
+        'You can create 3D scenes, load models, create skeletons, animate, add physics. You can also generate textures (aiGenerateTexture types:brick,wood,marble,grass,metal,noise,checker,gradient,sky,lava,fabric,tiles,normalMap,roughness), procedural models (aiCreateProceduralModel types:tree,rock,fence,stairs,arch,column,wall), auto-rig characters (aiAutoRig), generate animations (aiGenerateAnimation types:idle,walk,run,jump,attack,tpose), import models from GitHub (aiGithubImportModel), and create special materials (aiGenerateMaterial types:glass,emissive,hologram,chrome,water), create Unity-style AnimatorControllers with state machines and transitions (createAnimatorController, addUnityTransition with conditions: if/ifNot/greater/less/equals/notEquals, hasExitTime, duration, canTransitionToSelf), manage parameters (addParameter with types: float/bool/int/trigger), and assemble complete game scenes from assets. All AI-generated objects persist until explicitly removed.\n' +
+        'You can also enter mesh edit mode (aiEnterEditMode) and modify geometry: select vertices/faces, extrude, inset, bevel, subdivide, loop cut, delete, move vertices — like Blender. Use aiGetMeshInfo to check mesh stats.\n' +
+        'API: Engine.addCube/Sphere/Cylinder/Cone/Capsule/Torus/TorusKnot/Icosahedron/Plane, Engine.addPointLight/DirectionalLight/SpotLight/AmbientLight, Engine.setPosition/setRotation/setScale/setCameraPos/setCameraTarget/setFollowTarget/animate, Engine.loadModel(url), Engine.createHumanSkeleton(h), Engine.playAnimation/stopAnimation/getAnimationClips, Engine.addRigidBody/setVelocity, Engine.addBoxCollider/SphereCollider, Engine.moveObject/addChild/removeObject/clear, Engine.getObjects/getObject/getMainCamera, Engine.setObjectColor/setBgColor.\n' +
+        'When asked to BUILD - generate JS code between ```javascript and ``` markers.\n' +
+        'Colors: 0xff0000=red 0x00ff00=green 0x0000ff=blue 0xffff00=yellow 0xff8800=orange 0x8800ff=purple 0xffffff=white 0x888888=gray 0x111111=black.';
 
     function setCodeMode(v) { _codeMode = !!v; }
     function isCodeMode() { return _codeMode; }
@@ -6616,165 +6573,7 @@ var SashaAIGraphics = (function() {
             for(var s=-1;s<=1;s+=2){var rail=new THREE.Mesh(new THREE.BoxGeometry(0.06,h,0.06),mat);rail.position.set(s*w/2,h/2,0);rail.castShadow=true;g.add(rail);}
             var steps=Math.floor(h/0.4);for(var si=0;si<=steps;si++){var step=new THREE.Mesh(new THREE.BoxGeometry(w,0.04,0.06),mat);step.position.y=si*0.4+0.2;g.add(step);}
             return g;
-        },
-        helicopter: function(p) {
-            var g=new THREE.Group();
-            var bodyMat=new THREE.MeshStandardMaterial({color:p.color||0x556677,roughness:0.3,metalness:0.6});
-            var body=new THREE.Mesh(new THREE.BoxGeometry(1.5,1,4),bodyMat);body.position.y=1.5;body.castShadow=true;g.add(body);
-            var glass=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.8,1.5),new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:0.4}));glass.position.set(0,2,0.8);g.add(glass);
-            var tail=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.4,3),bodyMat);tail.position.set(0,1.5,-3);tail.castShadow=true;g.add(tail);
-            var tailFin=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.2,0.6),bodyMat);tailFin.position.set(0,2.2,-4.2);g.add(tailFin);
-            var mainRotor=new THREE.Mesh(new THREE.BoxGeometry(6,0.05,0.3),new THREE.MeshStandardMaterial({color:0x333333,metalness:0.8}));mainRotor.position.y=2.1;g.add(mainRotor);
-            var hub=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.3,12),new THREE.MeshStandardMaterial({color:0x444444,metalness:0.7}));hub.position.y=2;g.add(hub);
-            var tailRotor=new THREE.Mesh(new THREE.BoxGeometry(0.05,1.2,0.15),new THREE.MeshStandardMaterial({color:0x333333}));tailRotor.position.set(0.3,2.2,-4.2);g.add(tailRotor);
-            var skid1=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,2,8),new THREE.MeshStandardMaterial({color:0x333333}));skid1.rotation.z=Math.PI/2;skid1.position.set(-0.6,0.3,0);g.add(skid1);
-            var skid2=skid1.clone();skid2.position.x=0.6;g.add(skid2);
-            return g;
-        },
-        person: function(p) {
-            var g=new THREE.Group(),s=p.scale||1;
-            var skinMat=new THREE.MeshStandardMaterial({color:p.skinColor||0xFFDBAC,roughness:0.7});
-            var shirtMat=new THREE.MeshStandardMaterial({color:p.shirtColor||0x4466aa,roughness:0.6});
-            var pantsMat=new THREE.MeshStandardMaterial({color:p.pantsColor||0x333355,roughness:0.7});
-            var head=new THREE.Mesh(new THREE.SphereGeometry(0.2*s,12,8),skinMat);head.position.y=1.7*s;head.castShadow=true;g.add(head);
-            var torso=new THREE.Mesh(new THREE.BoxGeometry(0.5*s,0.6*s,0.25*s),shirtMat);torso.position.y=1.2*s;torso.castShadow=true;g.add(torso);
-            for(var li=-1;li<=1;li+=2){
-                var leg=new THREE.Mesh(new THREE.BoxGeometry(0.15*s,0.6*s,0.18*s),pantsMat);leg.position.set(li*0.12*s,0.5*s,0);leg.castShadow=true;g.add(leg);
-                var shoe=new THREE.Mesh(new THREE.BoxGeometry(0.16*s,0.1*s,0.25*s),new THREE.MeshStandardMaterial({color:0x222222}));shoe.position.set(li*0.12*s,0.15*s,0.03*s);g.add(shoe);
-                var arm=new THREE.Mesh(new THREE.BoxGeometry(0.12*s,0.5*s,0.12*s),shirtMat);arm.position.set(li*0.35*s,1.15*s,0);arm.castShadow=true;g.add(arm);
-            }
-            return g;
-        },
-        dog: function(p) {
-            var g=new THREE.Group(),s=p.scale||1;
-            var furMat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.85});
-            var body=new THREE.Mesh(new THREE.BoxGeometry(0.4*s,0.35*s,0.9*s),furMat);body.position.set(0,0.45*s,0);body.castShadow=true;g.add(body);
-            var head=new THREE.Mesh(new THREE.BoxGeometry(0.3*s,0.28*s,0.35*s),furMat);head.position.set(0,0.55*s,0.55*s);head.castShadow=true;g.add(head);
-            for(var li=-1;li<=1;li+=2){var leg=new THREE.Mesh(new THREE.CylinderGeometry(0.04*s,0.04*s,0.3*s,8),furMat);leg.position.set(li*0.15*s,0.15*s,li===-1?0.25*s:-0.25*s);leg.castShadow=true;g.add(leg);}
-            var tail=new THREE.Mesh(new THREE.CylinderGeometry(0.02*s,0.03*s,0.4*s,6),furMat);tail.position.set(0,0.6*s,-0.55*s);tail.rotation.x=-0.8;g.add(tail);
-            return g;
-        },
-        cat: function(p) {
-            var g=new THREE.Group(),s=p.scale||1;
-            var furMat=new THREE.MeshStandardMaterial({color:p.color||0xff8800,roughness:0.85});
-            var body=new THREE.Mesh(new THREE.BoxGeometry(0.25*s,0.25*s,0.5*s),furMat);body.position.set(0,0.3*s,0);body.castShadow=true;g.add(body);
-            var head=new THREE.Mesh(new THREE.SphereGeometry(0.15*s,10,8),furMat);head.position.set(0,0.4*s,0.3*s);head.castShadow=true;g.add(head);
-            for(var li=-1;li<=1;li+=2){var ear=new THREE.Mesh(new THREE.ConeGeometry(0.05*s,0.1*s,4),furMat);ear.position.set(li*0.08*s,0.58*s,0.3*s);g.add(ear);}
-            var tail=new THREE.Mesh(new THREE.CylinderGeometry(0.02*s,0.015*s,0.5*s,6),furMat);tail.position.set(0,0.35*s,-0.4*s);tail.rotation.x=0.5;g.add(tail);
-            return g;
-        },
-        bird: function(p) {
-            var g=new THREE.Group(),s=p.scale||1;
-            var bodyMat=new THREE.MeshStandardMaterial({color:p.color||0x8B4513,roughness:0.7});
-            var body=new THREE.Mesh(new THREE.SphereGeometry(0.15*s,10,8),bodyMat);body.scale.set(1,0.8,1.3);body.castShadow=true;g.add(body);
-            var head=new THREE.Mesh(new THREE.SphereGeometry(0.1*s,10,8),bodyMat);head.position.set(0,0.1*s,0.2*s);g.add(head);
-            var beak=new THREE.Mesh(new THREE.ConeGeometry(0.03*s,0.08*s,6),new THREE.MeshStandardMaterial({color:0xffaa00}));beak.position.set(0,0.08*s,0.32*s);beak.rotation.x=Math.PI/2;g.add(beak);
-            for(var li=-1;li<=1;li+=2){var wing=new THREE.Mesh(new THREE.BoxGeometry(0.4*s,0.02*s,0.15*s),bodyMat);wing.position.set(li*0.25*s,0.05*s,-0.05*s);wing.rotation.z=li*0.1;g.add(wing);}
-            return g;
-        },
-        boat: function(p) {
-            var g=new THREE.Group(),l=p.length||4,w=p.width||1.5;
-            var hullMat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.8});
-            var hull=new THREE.Mesh(new THREE.BoxGeometry(l,0.5,w),hullMat);hull.position.y=0.15;hull.castShadow=true;g.add(hull);
-            var mast=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,3,8),new THREE.MeshStandardMaterial({color:0x8B4513}));mast.position.set(0,1.8,0);mast.castShadow=true;g.add(mast);
-            var sail=new THREE.Mesh(new THREE.PlaneGeometry(1.5,2),new THREE.MeshStandardMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:0.9}));sail.position.set(0.5,2.5,0);g.add(sail);
-            return g;
-        },
-        tank: function(p) {
-            var g=new THREE.Group(),s=p.scale||1;
-            var mat=new THREE.MeshStandardMaterial({color:p.color||0x4a5c3a,roughness:0.6,metalness:0.3});
-            var tracks=new THREE.Mesh(new THREE.BoxGeometry(1.2*s,0.4*s,3*s),new THREE.MeshStandardMaterial({color:0x333333}));tracks.position.y=0.3*s;tracks.castShadow=true;g.add(tracks);
-            var body=new THREE.Mesh(new THREE.BoxGeometry(1*s,0.5*s,2.2*s),mat);body.position.y=0.75*s;body.castShadow=true;g.add(body);
-            var turret=new THREE.Mesh(new THREE.CylinderGeometry(0.4*s,0.5*s,0.4*s,12),mat);turret.position.y=1.2*s;turret.castShadow=true;g.add(turret);
-            var barrel=new THREE.Mesh(new THREE.CylinderGeometry(0.06*s,0.06*s,2*s,8),new THREE.MeshStandardMaterial({color:0x444444,metalness:0.7}));barrel.rotation.x=Math.PI/2;barrel.position.set(0,1.2*s,1.3*s);barrel.castShadow=true;g.add(barrel);
-            return g;
-        },
-        airplane: function(p) {
-            var g=new THREE.Group(),s=p.scale||1;
-            var bodyMat=new THREE.MeshStandardMaterial({color:p.color||0xcccccc,roughness:0.3,metalness:0.5});
-            var fuselage=new THREE.Mesh(new THREE.CylinderGeometry(0.3*s,0.2*s,4*s,12),bodyMat);fuselage.rotation.x=Math.PI/2;fuselage.position.y=1*s;fuselage.castShadow=true;g.add(fuselage);
-            var wing=new THREE.Mesh(new THREE.BoxGeometry(5*s,0.05*s,0.8*s),bodyMat);wing.position.y=1*s;wing.castShadow=true;g.add(wing);
-            var tailV=new THREE.Mesh(new THREE.BoxGeometry(0.05*s,0.8*s,0.5*s),bodyMat);tailV.position.set(0,1.5*s,-2*s);g.add(tailV);
-            var tailH=new THREE.Mesh(new THREE.BoxGeometry(1.5*s,0.05*s,0.4*s),bodyMat);tailH.position.set(0,1*s,-2*s);g.add(tailH);
-            return g;
-        },
-        truck: function(p) {
-            var g=new THREE.Group(),s=p.scale||1;
-            var cabMat=new THREE.MeshStandardMaterial({color:p.cabColor||0xcc0000,roughness:0.3,metalness:0.5});
-            var bedMat=new THREE.MeshStandardMaterial({color:p.bedColor||0x666666,roughness:0.7,metalness:0.3});
-            var cab=new THREE.Mesh(new THREE.BoxGeometry(2*s,1.5*s,2*s),cabMat);cab.position.set(1.5*s,1*s,0);cab.castShadow=true;g.add(cab);
-            var bed=new THREE.Mesh(new THREE.BoxGeometry(3*s,1*s,2.2*s),bedMat);bed.position.set(-1*s,0.75*s,0);bed.castShadow=true;g.add(bed);
-            for(var wi=-1;wi<=1;wi+=2){for(var wz=-1;wz<=1;wz+=2){var whl=new THREE.Mesh(new THREE.CylinderGeometry(0.4*s,0.4*s,0.3*s,16),new THREE.MeshStandardMaterial({color:0x222222}));whl.rotation.z=Math.PI/2;whl.position.set(wi*2*s,0.4*s,wz*1.1*s);g.add(whl);}}
-            return g;
-        },
-        lamp: function(p) {
-            var g=new THREE.Group(),h=p.height||2.5;
-            var poleMat=new THREE.MeshStandardMaterial({color:0x444444,metalness:0.7,roughness:0.3});
-            var pole=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.05,h,8),poleMat);pole.position.y=h/2;g.add(pole);
-            var shade=new THREE.Mesh(new THREE.ConeGeometry(0.4,0.3,16,1,true),new THREE.MeshStandardMaterial({color:p.shadeColor||0xFFD700,emissive:p.shadeColor||0xFFD700,emissiveIntensity:0.5,side:THREE.DoubleSide}));shade.position.y=h;shade.rotation.x=Math.PI;g.add(shade);
-            var bulb=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6),new THREE.MeshStandardMaterial({color:0xffffcc,emissive:0xffffaa,emissiveIntensity:2}));bulb.position.y=h-0.1;g.add(bulb);
-            var light=new THREE.PointLight(0xffffcc,1.5,8);light.position.y=h-0.1;g.add(light);
-            var base=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.25,0.1,16),poleMat);base.position.y=0.05;g.add(base);
-            return g;
-        },
-        bed: function(p) {
-            var g=new THREE.Group(),w=p.width||2,d=p.depth||3;
-            var woodMat=new THREE.MeshStandardMaterial({color:0x8B6914,roughness:0.8});
-            var frame=new THREE.Mesh(new THREE.BoxGeometry(w+0.1,0.3,d+0.1),woodMat);frame.position.y=0.15;frame.castShadow=true;g.add(frame);
-            var matt=new THREE.Mesh(new THREE.BoxGeometry(w-0.1,0.15,d-0.2),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9}));matt.position.y=0.38;g.add(matt);
-            var headboard=new THREE.Mesh(new THREE.BoxGeometry(w+0.1,1.2,0.15),woodMat);headboard.position.set(0,0.75,-d/2);headboard.castShadow=true;g.add(headboard);
-            var pillow=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.12,0.4),new THREE.MeshStandardMaterial({color:0xeeeeee,roughness:0.95}));pillow.position.set(0,0.52,-d/2+0.35);g.add(pillow);
-            return g;
-        },
-        bookshelf: function(p) {
-            var g=new THREE.Group(),w=p.width||2,h=p.height||3,d=p.depth||0.4;
-            var mat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.8});
-            var back=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.05),mat);back.position.y=h/2;back.position.z=-d/2;g.add(back);
-            for(var si=0;si<2;si++){var side=new THREE.Mesh(new THREE.BoxGeometry(0.05,h,d),mat);side.position.set((si===0?-1:1)*(w/2),h/2,0);side.castShadow=true;g.add(side);}
-            var shelves=4;for(var i=0;i<=shelves;i++){var shelf=new THREE.Mesh(new THREE.BoxGeometry(w,0.05,d),mat);shelf.position.y=i*(h/shelves)+0.025;shelf.castShadow=true;g.add(shelf);}
-            return g;
-        },
-        flower: function(p) {
-            var g=new THREE.Group();
-            var stem=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.025,0.8,6),new THREE.MeshStandardMaterial({color:0x228B22}));stem.position.y=0.4;g.add(stem);
-            var petalMat=new THREE.MeshStandardMaterial({color:p.color||0xff4488,roughness:0.6});
-            for(var i=0;i<6;i++){var a=(i/6)*Math.PI*2;var petal=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6),petalMat);petal.scale.set(1,0.3,1);petal.position.set(Math.cos(a)*0.12,0.85,Math.sin(a)*0.12);g.add(petal);}
-            var center=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,6),new THREE.MeshStandardMaterial({color:0xffdd00}));center.position.y=0.85;g.add(center);
-            return g;
-        },
-        mushroom: function(p) {
-            var g=new THREE.Group();
-            var stem=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.3,8),new THREE.MeshStandardMaterial({color:0xFFF8DC,roughness:0.8}));stem.position.y=0.15;g.add(stem);
-            var cap=new THREE.Mesh(new THREE.SphereGeometry(0.25,12,8,0,Math.PI*2,0,Math.PI*0.5),new THREE.MeshStandardMaterial({color:p.color||0xcc3333,roughness:0.6}));cap.position.y=0.3;g.add(cap);
-            return g;
-        },
-        sun: function(p) {
-            var g=new THREE.Group();
-            var core=new THREE.Mesh(new THREE.SphereGeometry(p.radius||2,32,24),new THREE.MeshStandardMaterial({color:0xffdd00,emissive:0xffaa00,emissiveIntensity:2}));g.add(core);
-            var light=new THREE.PointLight(0xffdd00,3,50);g.add(light);
-            for(var i=0;i<12;i++){var a=(i/12)*Math.PI*2;var ray=new THREE.Mesh(new THREE.BoxGeometry(0.1,1,0.1),new THREE.MeshStandardMaterial({color:0xffee44,emissive:0xffaa00,emissiveIntensity:1}));ray.position.set(Math.cos(a)*3,Math.sin(a)*3,0);ray.rotation.z=a;g.add(ray);}
-            return g;
-        },
-        moon: function(p) {
-            var g=new THREE.Group();
-            var body=new THREE.Mesh(new THREE.SphereGeometry(p.radius||1.5,32,24),new THREE.MeshStandardMaterial({color:0xeeeedd,emissive:0xaaaacc,emissiveIntensity:0.5,roughness:0.9}));g.add(body);
-            var light=new THREE.PointLight(0x8888cc,1,30);g.add(light);
-            return g;
-        },
-        cloud: function(p) {
-            var g=new THREE.Group();
-            var mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:0.85});
-            for(var i=0;i<5;i++){var r=0.5+Math.random()*0.5;var puff=new THREE.Mesh(new THREE.SphereGeometry(r,12,8),mat);puff.position.set((i-2)*0.7,Math.random()*0.3,Math.random()*0.3);puff.scale.y=0.6;g.add(puff);}
-            return g;
-        },
-        fence: function(p) {
-            var g=new THREE.Group(),len=p.length||5,ht=p.height||1.2,posts=Math.max(2,Math.floor(len/1.5));
-            var mat=new THREE.MeshStandardMaterial({color:p.color||0x8B6914,roughness:0.85});
-            for(var i=0;i<posts;i++){var post=new THREE.Mesh(new THREE.BoxGeometry(0.08,ht,0.08),mat);post.position.set((i/(posts-1)-0.5)*len,ht/2,0);post.castShadow=true;g.add(post);}
-            for(var r=0;r<2;r++){var rail=new THREE.Mesh(new THREE.BoxGeometry(len,0.06,0.04),mat);rail.position.y=ht*(0.3+r*0.4);rail.castShadow=true;g.add(rail);}
-            return g;
-        },
-
+        }
     };
 
     // Extend createProceduralModel to include new generators
@@ -7495,6 +7294,11 @@ var SashaEngineAPI = (function() {
     // This function loads the model into the main 3D editor viewport (engine-canvas),
     // registering it properly in the engine's object system so it appears in hierarchy.
     function loadSashaAIOnMainScene() {
+        // Load SashaAI.glb onto the main engine scene — silent fallback if file missing
+        _loadSashaAIOnMainSceneReal();
+    }
+
+    function _loadSashaAIOnMainSceneReal() {
         var loader = new THREE.GLTFLoader();
         var glbPath = 'SashaAI.glb';
         
@@ -10535,198 +10339,97 @@ var SashaEngineAPI = (function() {
     }
     function aiGetTextureTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getTextureTypes(); return ['brick','wood','marble','grass','metal','noise','checker','gradient','sky','lava','fabric','tiles','normalMap','roughness']; }
     function aiGetModelTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getModelTypes(); return ['tree','rock','fence','stairs','arch','column','wall']; }
-    // === MESH GENERATION API — create custom geometry from vertex data ===
-    // Engine.createCustomMesh(vertices, indices, color) — vertices: [[x,y,z],...], indices: [[a,b,c],...]
-    function createCustomMesh(vertices, indices, color) {
-        if (!vertices || vertices.length < 3) { log('createCustomMesh: need at least 3 vertices', 'error'); return null; }
-        var geo = new THREE.BufferGeometry();
-        var posArr = new Float32Array(vertices.length * 3);
-        for (var i = 0; i < vertices.length; i++) {
-            posArr[i * 3] = vertices[i][0] || 0;
-            posArr[i * 3 + 1] = vertices[i][1] || 0;
-            posArr[i * 3 + 2] = vertices[i][2] || 0;
-        }
-        geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-        if (indices && indices.length > 0) {
-            var idxArr = new Uint16Array(indices.length * 3);
-            for (var j = 0; j < indices.length; j++) {
-                idxArr[j * 3] = indices[j][0];
-                idxArr[j * 3 + 1] = indices[j][1];
-                idxArr[j * 3 + 2] = indices[j][2];
-            }
-            geo.setIndex(new THREE.BufferAttribute(idxArr, 1));
-        }
-        geo.computeVertexNormals();
-        var mat = new THREE.MeshStandardMaterial({ color: color || 0xaaaaaa, roughness: 0.6, metalness: 0.2, flatShading: true });
-        var mesh = new THREE.Mesh(geo, mat);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        var name = getUniqueName('custom_mesh');
-        mesh.name = name;
-        scene.add(mesh);
-        objects[name] = mesh;
-        objectTypes[name] = 'mesh';
-        _persistentObjects[name] = true;
-        log('Created custom mesh: ' + name + ' (' + vertices.length + ' verts, ' + (indices ? indices.length : 0) + ' faces)', 'result');
-        return name;
-    }
-
-    // Engine.createTerrain(width, depth, segments, heightFunc, color) — procedural terrain
-    // heightFunc(x, z) returns y — AI can define any terrain shape
-    function createTerrain(width, depth, segments, heightFunc, color) {
-        width = width || 10; depth = depth || 10; segments = segments || 20;
-        color = color || 0x44aa44;
-        var geo = new THREE.PlaneGeometry(width, depth, segments, segments);
-        geo.rotateX(-Math.PI / 2);
-        var pos = geo.attributes.position;
-        for (var i = 0; i < pos.count; i++) {
-            var x = pos.getX(i), z = pos.getZ(i);
-            var y = typeof heightFunc === 'function' ? heightFunc(x, z) : 0;
-            pos.setY(i, y);
-        }
-        geo.computeVertexNormals();
-        var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.85, metalness: 0.05, flatShading: false });
-        var mesh = new THREE.Mesh(geo, mat);
-        mesh.castShadow = true; mesh.receiveShadow = true;
-        var name = getUniqueName('terrain');
-        mesh.name = name;
-        scene.add(mesh);
-        objects[name] = mesh;
-        objectTypes[name] = 'mesh';
-        _persistentObjects[name] = true;
-        log('Created terrain: ' + name + ' (' + segments + 'x' + segments + ' segments)', 'result');
-        return name;
-    }
-
-    // Engine.createTube(path, radius, segments, color) — tube along a 3D path
-    // path: [[x,y,z], ...] — series of points the tube follows
-    function createTube(path, radius, segments, color) {
-        if (!path || path.length < 2) { log('createTube: need at least 2 path points', 'error'); return null; }
-        radius = Math.max(0.01, radius || 0.1);
-        segments = segments || 16;
-        var pts = [];
-        for (var i = 0; i < path.length; i++) pts.push(new THREE.Vector3(path[i][0], path[i][1], path[i][2]));
-        var curve = new THREE.CatmullRomCurve3(pts);
-        var geo = new THREE.TubeGeometry(curve, Math.max(2, path.length * segments), radius, 8, false);
-        var mat = new THREE.MeshStandardMaterial({ color: color || 0xcccccc, roughness: 0.5, metalness: 0.3 });
-        var mesh = new THREE.Mesh(geo, mat);
-        mesh.castShadow = true; mesh.receiveShadow = true;
-        var name = getUniqueName('tube');
-        mesh.name = name;
-        scene.add(mesh);
-        objects[name] = mesh;
-        objectTypes[name] = 'mesh';
-        _persistentObjects[name] = true;
-        log('Created tube: ' + name + ' (' + path.length + ' points, r=' + radius + ')', 'result');
-        return name;
-    }
-
-    // Engine.createLathe(profile, segments, color) — revolution surface
-    // profile: [[x,y], ...] — 2D points that get rotated around Y axis
-    function createLathe(profile, segments, color) {
-        if (!profile || profile.length < 2) { log('createLathe: need at least 2 profile points', 'error'); return null; }
-        segments = segments || 16;
-        var pts = [];
-        for (var i = 0; i < profile.length; i++) pts.push(new THREE.Vector2(Math.max(0.001, profile[i][0]), profile[i][1]));
-        var geo = new THREE.LatheGeometry(pts, segments);
-        var mat = new THREE.MeshStandardMaterial({ color: color || 0xbbbbbb, roughness: 0.5, metalness: 0.3 });
-        var mesh = new THREE.Mesh(geo, mat);
-        mesh.castShadow = true; mesh.receiveShadow = true;
-        var name = getUniqueName('lathe');
-        mesh.name = name;
-        scene.add(mesh);
-        objects[name] = mesh;
-        objectTypes[name] = 'mesh';
-        _persistentObjects[name] = true;
-        log('Created lathe: ' + name + ' (' + profile.length + ' profile points)', 'result');
-        return name;
-    }
-
-    // Engine.modifyVertices(objectName, modifierFunc) — modify mesh vertices with a function
-    // modifierFunc(x, y, z, vertexIndex) returns [newX, newY, newZ]
-    function modifyVertices(objectName, modifierFunc) {
-        var obj = objects[objectName];
-        if (!obj) { log('modifyVertices: object not found: ' + objectName, 'error'); return false; }
-        var mesh = null;
-        obj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
-        if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) { log('modifyVertices: no mesh geometry found', 'error'); return false; }
-        var pos = mesh.geometry.attributes.position;
-        for (var i = 0; i < pos.count; i++) {
-            var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-            var result = modifierFunc(x, y, z, i);
-            if (result && result.length >= 3) {
-                pos.setXYZ(i, result[0], result[1], result[2]);
-            }
-        }
-        pos.needsUpdate = true;
-        mesh.geometry.computeVertexNormals();
-        log('Modified ' + pos.count + ' vertices of ' + objectName, 'result');
-        return true;
-    }
-
     // === AI Compose Model — LLM assembles complex models from primitives ===
     function aiComposeModel(description, params) {
         params = params || {};
         var g = new THREE.Group();
         var d = (description || '').toLowerCase();
-        var typeMap = [
-            ['дом','house'],['house','house'],['хата','house'],
-            ['замок','castle'],['castle','castle'],['крепость','castle'],
-            ['башн','tower'],['tower','tower'],['колонн','column'],
-            ['мост','bridge'],['bridge','bridge'],
-            ['машин','car'],['car','car'],['авто','car'],['автомобил','car'],
-            ['грузовик','truck'],['truck','truck'],['фура','truck'],
-            ['вертолет','helicopter'],['вертолёт','helicopter'],['helicopter','helicopter'],['хеликоптер','helicopter'],
-            ['самолет','airplane'],['airplane','airplane'],['plane','airplane'],['самолёт','airplane'],
-            ['танк','tank'],['tank','tank'],
-            ['корабл','boat'],['лодк','boat'],['boat','boat'],['ship','boat'],['парус','boat'],
-            ['дерев','tree'],['tree','tree'],['лес','tree'],['ель','tree'],['сосн','tree'],['дуб','tree'],
-            ['челов','person'],['person','person'],['human','person'],['персонаж','person'],['бот','person'],['npc','person'],['man','person'],['girl','person'],['woman','person'],['мужчин','person'],['женщин','person'],['ребёнок','person'],['ребенок','person'],
-            ['собак','dog'],['dog','dog'],['пёс','dog'],['щенок','dog'],
-            ['кот','cat'],['кошк','cat'],['cat','cat'],
-            ['птиц','bird'],['bird','bird'],['ворон','bird'],['орёл','bird'],['орел','bird'],
-            ['меч','weapon'],['sword','weapon'],['topor','weapon'],['топор','weapon'],['weapon','weapon'],['оруж','weapon'],
-            ['щит','shield'],['shield','shield'],
-            ['костёр','campfire'],['campfire','campfire'],['костер','campfire'],['огонь','campfire'],['fire','campfire'],
-            ['факел','torch'],['torch','torch'],
-            ['кристалл','crystal'],['crystal','crystal'],
-            ['платф','platform'],['platform','platform'],
-            ['руин','ruins'],['ruins','ruins'],
-            ['бочк','barrel'],['barrel','barrel'],
-            ['сундук','chest'],['chest','chest'],
-            ['колод','well'],['well','well'],
-            ['таблиц','table'],['table','table'],['стол','table'],
-            ['стул','chair'],['chair','chair'],
-            ['лестниц','ladder'],['ladder','ladder'],
-            ['ворот','gate'],['gate','gate'],['врата','gate'],
-            ['знак','sign'],['sign','sign'],['табличк','sign'],
-            ['стена','wall'],['wall','wall'],
-            ['скал','rock'],['rock','rock'],['камен','rock'],
-            ['ламп','lamp'],['lamp','lamp'],['светильн','lamp'],['фонар','lamp'],
-            ['кровать','bed'],['bed','bed'],
-            ['книжн','bookshelf'],['bookshelf','bookshelf'],['полка','bookshelf'],['стеллаж','bookshelf'],
-            ['цвет','flower'],['flower','flower'],['роз','flower'],
-            ['гриб','mushroom'],['mushroom','mushroom'],
-            ['солнц','sun'],['sun','sun'],
-            ['лун','moon'],['moon','moon'],
-            ['облак','cloud'],['cloud','cloud'],
-            ['забор','fence'],['fence','fence'],
-            ['арка','arch'],['arch','arch'],
-            ['ступен','stairs'],['stairs','stairs'],
-        ];
-        var matchedType = null;
-        for (var mi = 0; mi < typeMap.length; mi++) {
-            if (d.indexOf(typeMap[mi][0]) !== -1) { matchedType = typeMap[mi][1]; break; }
-        }
-        if (matchedType) {
-            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel(matchedType, params) : null;
+        // Analyze description and compose accordingly
+        if (d.indexOf('дом') !== -1 || d.indexOf('house') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('house', params) : null;
             if (m) g.add(m);
         }
-        // GENERIC FALLBACK: always create something visible
-        if (g.children.length === 0) {
-            var fb = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color: 0x8888ff, roughness: 0.5, metalness: 0.2}));
-            fb.position.y = 0.5; fb.castShadow = true; fb.receiveShadow = true; g.add(fb);
-            log('aiComposeModel: generic fallback for: ' + description, 'warn');
+        else if (d.indexOf('замок') !== -1 || d.indexOf('castle') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('castle', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('башн') !== -1 || d.indexOf('tower') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('tower', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('мост') !== -1 || d.indexOf('bridge') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('bridge', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('машин') !== -1 || d.indexOf('car') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('car', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('меч') !== -1 || d.indexOf('sword') !== -1 || d.indexOf('topor') !== -1 || d.indexOf('axe') !== -1 || d.indexOf('weapon') !== -1 || d.indexOf('оруж') !== -1) {
+            var wt = 'sword';
+            if (d.indexOf('топор') !== -1 || d.indexOf('axe') !== -1) wt = 'axe';
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('weapon', {weaponType: wt}) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('щит') !== -1 || d.indexOf('shield') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('shield', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('костёр') !== -1 || d.indexOf('campfire') !== -1 || d.indexOf('огонь') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('campfire', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('факел') !== -1 || d.indexOf('torch') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('torch', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('кристалл') !== -1 || d.indexOf('crystal') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('crystal', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('платф') !== -1 || d.indexOf('platform') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('platform', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('руины') !== -1 || d.indexOf('ruins') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('ruins', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('бочк') !== -1 || d.indexOf('barrel') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('barrel', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('сундук') !== -1 || d.indexOf('chest') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('chest', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('колодец') !== -1 || d.indexOf('well') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('well', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('таблиц') !== -1 || d.indexOf('table') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('table', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('стул') !== -1 || d.indexOf('chair') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('chair', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('лестниц') !== -1 || d.indexOf('ladder') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('ladder', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('ворот') !== -1 || d.indexOf('gate') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('gate', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('знак') !== -1 || d.indexOf('sign') !== -1 || d.indexOf('табличк') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('sign', params) : null;
+            if (m) g.add(m);
+        }
+        else {
+            log('aiComposeModel: unknown type from description: ' + description, 'warn');
+            return null;
         }
         if (g.children.length === 0) return null;
         var name = getUniqueName('composed_' + description.split(' ')[0]);
@@ -10739,7 +10442,7 @@ var SashaEngineAPI = (function() {
         objectTypes[name] = 'model';
         _persistentObjects[name] = true;
         g.traverse(function(c) { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
-        log('Composed model: ' + name + ' from: ' + description + (matchedType ? ' (type: ' + matchedType + ')' : ' (fallback)'), 'result');
+        log('Composed model: ' + name + ' from description: ' + description, 'result');
         return name;
     }
 
@@ -10830,6 +10533,177 @@ var SashaEngineAPI = (function() {
         var info = { vertices: g.attributes.position ? g.attributes.position.count : 0, faces: g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0) };
         log('Mesh info: ' + JSON.stringify(info), 'result');
         return info;
+    }
+
+
+    // === REAL MESH GENERATION (not templates, actual geometry from code) ===
+    function createCustomMesh(name, vertices, indices, params) {
+        // vertices: flat array [x0,y0,z0, x1,y1,z1, ...] or array of [x,y,z]
+        // indices: flat array [i0,i1,i2, ...] (triangles) or null for non-indexed
+        // params: { color, material, position, rotation, scale, normals, uvs, computeNormals }
+        if (!vertices || vertices.length < 3) { log('createCustomMesh: need at least 3 vertices', 'error'); return null; }
+        var verts = [];
+        if (Array.isArray(vertices[0])) {
+            for (var i = 0; i < vertices.length; i++) { verts.push(vertices[i][0]||0, vertices[i][1]||0, vertices[i][2]||0); }
+        } else { verts = vertices.slice(); }
+        var vertCount = verts.length / 3;
+        var geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        if (indices && indices.length > 0) {
+            geom.setIndex(indices);
+        }
+        if (params && params.normals) {
+            geom.setAttribute('normal', new THREE.Float32BufferAttribute(params.normals, 3));
+        } else if (params && params.computeNormals !== false) {
+            geom.computeVertexNormals();
+        }
+        if (params && params.uvs) {
+            geom.setAttribute('uv', new THREE.Float32BufferAttribute(params.uvs, 2));
+        }
+        var mat = new THREE.MeshStandardMaterial({ color: (params && params.color) || 0x6366f1, roughness: 0.5, metalness: 0.1 });
+        if (params && params.material) mat = params.material;
+        var mesh = new THREE.Mesh(geom, mat);
+        var objName = name || getUniqueName('custom_mesh');
+        mesh.name = objName;
+        if (params && params.position) mesh.position.set(params.position.x||0, params.position.y||0, params.position.z||0);
+        if (params && params.rotation) mesh.rotation.set(params.rotation.x||0, params.rotation.y||0, params.rotation.z||0);
+        if (params && params.scale) mesh.scale.set(params.scale.x||1, params.scale.y||1, params.scale.z||1);
+        scene.add(mesh);
+        objects[objName] = mesh;
+        objectTypes[objName] = 'model';
+        _persistentObjects[objName] = true;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        log('Created custom mesh: ' + objName + ' (' + vertCount + ' verts, ' + (indices ? indices.length/3 : Math.floor(vertCount/3)) + ' faces)', 'result');
+        return objName;
+    }
+
+    function createTerrain(name, width, depth, heightFn, resolution, params) {
+        // heightFn: function(x, z) -> y  (called for each vertex)
+        // resolution: grid subdivisions (default 32)
+        // params: { color, wireframe, position }
+        width = width || 10; depth = depth || 10;
+        resolution = resolution || 32;
+        var stepX = width / resolution, stepZ = depth / resolution;
+        var verts = [], uvs = [], indices = [];
+        for (var iz = 0; iz <= resolution; iz++) {
+            for (var ix = 0; ix <= resolution; ix++) {
+                var x = (ix - resolution/2) * stepX;
+                var z = (iz - resolution/2) * stepZ;
+                var y = 0;
+                if (typeof heightFn === 'function') { y = heightFn(x, z); }
+                else if (typeof heightFn === 'number') { y = heightFn; }
+                verts.push(x, y, z);
+                uvs.push(ix / resolution, iz / resolution);
+            }
+        }
+        for (var iz = 0; iz < resolution; iz++) {
+            for (var ix = 0; ix < resolution; ix++) {
+                var a = iz * (resolution+1) + ix;
+                var b = a + 1;
+                var c = a + (resolution+1);
+                var d = c + 1;
+                indices.push(a, c, b, b, c, d);
+            }
+        }
+        var geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        geom.setIndex(indices);
+        geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geom.computeVertexNormals();
+        var mat = new THREE.MeshStandardMaterial({ color: (params && params.color) || 0x4ade80, roughness: 0.8, metalness: 0.0, wireframe: !!(params && params.wireframe) });
+        var mesh = new THREE.Mesh(geom, mat);
+        var objName = name || getUniqueName('terrain');
+        mesh.name = objName;
+        if (params && params.position) mesh.position.set(params.position.x||0, params.position.y||0, params.position.z||0);
+        scene.add(mesh);
+        objects[objName] = mesh;
+        objectTypes[objName] = 'model';
+        _persistentObjects[objName] = true;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        log('Created terrain: ' + objName + ' (' + ((resolution+1)*(resolution+1)) + ' verts)', 'result');
+        return objName;
+    }
+
+    function createTube(name, pathPoints, radius, segments, params) {
+        // pathPoints: array of [x,y,z] points defining the tube path
+        // radius: tube radius (default 0.1)
+        // segments: tubular segments (default 32)
+        // params: { color, radialSegments, closed, position }
+        if (!pathPoints || pathPoints.length < 2) { log('createTube: need at least 2 path points', 'error'); return null; }
+        var pts = [];
+        for (var i = 0; i < pathPoints.length; i++) {
+            var p = pathPoints[i];
+            pts.push(new THREE.Vector3(p[0]||0, p[1]||0, p[2]||0));
+        }
+        var curve = new THREE.CatmullRomCurve3(pts, !!(params && params.closed));
+        var geom = new THREE.TubeGeometry(curve, segments || 32, radius || 0.1, (params && params.radialSegments) || 8, !!(params && params.closed));
+        var mat = new THREE.MeshStandardMaterial({ color: (params && params.color) || 0xf59e0b, roughness: 0.4, metalness: 0.3 });
+        var mesh = new THREE.Mesh(geom, mat);
+        var objName = name || getUniqueName('tube');
+        mesh.name = objName;
+        if (params && params.position) mesh.position.set(params.position.x||0, params.position.y||0, params.position.z||0);
+        if (params && params.rotation) mesh.rotation.set(params.rotation.x||0, params.rotation.y||0, params.rotation.z||0);
+        scene.add(mesh);
+        objects[objName] = mesh;
+        objectTypes[objName] = 'model';
+        _persistentObjects[objName] = true;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        log('Created tube: ' + objName + ' (' + pathPoints.length + ' path points)', 'result');
+        return objName;
+    }
+
+    function createLathe(name, profilePoints, segments, params) {
+        // profilePoints: array of [x, y] points (x=radius, y=height) - will be rotated around Y axis
+        // segments: radial segments (default 32)
+        // params: { color, phiStart, phiLength, position }
+        if (!profilePoints || profilePoints.length < 2) { log('createLathe: need at least 2 profile points', 'error'); return null; }
+        var pts = [];
+        for (var i = 0; i < profilePoints.length; i++) {
+            pts.push(new THREE.Vector2(profilePoints[i][0]||0, profilePoints[i][1]||0));
+        }
+        var geom = new THREE.LatheGeometry(pts, segments || 32, (params && params.phiStart) || 0, (params && params.phiLength) || Math.PI * 2);
+        var mat = new THREE.MeshStandardMaterial({ color: (params && params.color) || 0xa855f7, roughness: 0.3, metalness: 0.5 });
+        var mesh = new THREE.Mesh(geom, mat);
+        var objName = name || getUniqueName('lathe');
+        mesh.name = objName;
+        if (params && params.position) mesh.position.set(params.position.x||0, params.position.y||0, params.position.z||0);
+        if (params && params.rotation) mesh.rotation.set(params.rotation.x||0, params.rotation.y||0, params.rotation.z||0);
+        scene.add(mesh);
+        objects[objName] = mesh;
+        objectTypes[objName] = 'model';
+        _persistentObjects[objName] = true;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        log('Created lathe: ' + objName + ' (' + profilePoints.length + ' profile points)', 'result');
+        return objName;
+    }
+
+    function modifyVertices(objectName, modifierFn) {
+        // modifierFn: function(vertices_array, index) -> modifies vertices in place
+        // vertices_array is flat [x0,y0,z0, x1,y1,z1, ...]
+        // Returns true on success
+        var obj = objects[objectName];
+        if (!obj) { log('modifyVertices: object not found: ' + objectName, 'error'); return false; }
+        var mesh = null;
+        obj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+        if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) {
+            log('modifyVertices: no mesh with geometry found in: ' + objectName, 'error'); return false;
+        }
+        var posAttr = mesh.geometry.attributes.position;
+        var arr = posAttr.array;
+        if (typeof modifierFn === 'function') {
+            modifierFn(arr);
+        } else {
+            log('modifyVertices: modifierFn must be a function', 'error'); return false;
+        }
+        posAttr.needsUpdate = true;
+        mesh.geometry.computeVertexNormals();
+        mesh.geometry.computeBoundingSphere();
+        log('Modified ' + (arr.length/3) + ' vertices of: ' + objectName, 'result');
+        return true;
     }
 
     function aiGetAnimationTypes() { if (typeof SashaAIGraphics !== 'undefined') return SashaAIGraphics.getAnimationTypes(); return ['idle','walk','run','jump','attack','tpose']; }
@@ -10976,11 +10850,16 @@ var SashaEngineAPI = (function() {
         aiGetModelTypes: aiGetModelTypes,
         aiGetAnimationTypes: aiGetAnimationTypes,
         aiComposeModel: aiComposeModel,
-        createCustomMesh: createCustomMesh, createTerrain: createTerrain, createTube: createTube, createLathe: createLathe, modifyVertices: modifyVertices,
         aiEnterEditMode: aiEnterEditMode, aiSelectVertices: aiSelectVertices, aiSelectFaces: aiSelectFaces,
         aiExtrudeSelection: aiExtrudeSelection, aiInsetSelection: aiInsetSelection, aiSubdivideMesh: aiSubdivideMesh,
         aiBevelSelection: aiBevelSelection, aiLoopCut: aiLoopCut, aiDeleteSelection: aiDeleteSelection,
         aiMoveVertex: aiMoveVertex, aiMoveSelectedVertices: aiMoveSelectedVertices, aiExitEditMode: aiExitEditMode, aiGetMeshInfo: aiGetMeshInfo,
+        // Real mesh generation (not templates)
+        createCustomMesh: createCustomMesh,
+        createTerrain: createTerrain,
+        createTube: createTube,
+        createLathe: createLathe,
+        modifyVertices: modifyVertices,
 
         _forceResize: function() {
             if (!renderer || !canvas) return;
@@ -12564,7 +12443,7 @@ var EngineApp = (function() {
             h += '<div class="iac-transition">';
             h += '<div style="display:flex;align-items:center;justify-content:space-between;">';
             h += '<span><b>'+tr.from+'</b> <i class="fas fa-arrow-right" style="font-size:0.55rem;color:#f59e0b;margin:0 4px;"></i> <b>'+tr.to+'</b></span>';
-            h += '<button class="iac-btn-sm iac-btn-danger" onclick="EngineApp._iacRemoveTransition(\''+ctrlId+'\','+ti+')" title="Delete"><i class="fas fa-trash"></i></button>';
+            h += '<button class="iac-btn-sm iac-btn-danger" onclick="EngineApp._iacRemoveTransition(\''+ctrlId+'\',\''+ti+'\')" title="Delete"><i class="fas fa-trash"></i></button>';
             h += '</div>';
             // Conditions
             if (tr.conditions && tr.conditions.length > 0) {
@@ -16241,88 +16120,6 @@ var EngineApp = (function() {
         return codeLines.join('\n').trim();
     }
 
-    function _preprocessCode(code) {
-        // === SANITIZE: remove Unicode junk that causes SyntaxError ===
-        // Remove control chars except tab and newline
-        code = code.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
-        // BOM, soft hyphen
-        code = code.replace(/\uFEFF/g, '');
-        code = code.replace(/\u00AD/g, '');
-        // nbsp -> regular space
-        code = code.replace(/\u00A0/g, ' ');
-        // Zero-width chars, direction marks
-        code = code.replace(/[\u200B-\u200F]/g, '');
-        // Line/paragraph separators -> newlines
-        code = code.replace(/\u2028/g, '\n');
-        code = code.replace(/\u2029/g, '\n');
-        // Directional formatting
-        code = code.replace(/[\u202A-\u202E]/g, '');
-        // Invisible operators
-        code = code.replace(/[\u2060-\u2069]/g, '');
-        // Interlinear annotations
-        code = code.replace(/[\uFFF9-\uFFFB]/g, '');
-        // Emoji and dingbats (common AI junk)
-        code = code.replace(/[\u2702-\u27B0]/g, '');
-        code = code.replace(/[\u2600-\u26FF]/g, '');
-        // Variation selectors, ZWJ, combining keycap
-        code = code.replace(/[\uFE00-\uFE0F\u200D\u20E3]/g, '');
-        // Strip ALL markdown wrappers aggressively
-        code = code.replace(/^```(?:javascript|js|json)?\s*\n?/gm, '');
-        code = code.replace(/\n?```\s*$/gm, '');
-        // Remove markdown bold/italic
-        code = code.replace(/\*\*([^*]+)\*\*/g, '$1');
-        code = code.replace(/\*([^*]+)\*/g, '$1');
-        // Remove Russian text lines that are not code (AI sometimes adds explanations)
-        code = code.replace(/^[А-Яа-яЁё][^=;{}()\[\]']*$/gm, '');
-        // Fix common AI mistakes with colors
-        code = code.replace(/0x([0-9a-fA-F]{3,8})\.\s*;/g, '0x$1;');
-        // Fix trailing comma before closing paren/bracket
-        code = code.replace(/,\s*\)/g, ')');
-        code = code.replace(/,\s*\]/g, ']');
-        // Fix double commas
-        code = code.replace(/,,+/g, ',');
-        // Remove empty lines with only semicolons or stray characters
-        code = code.replace(/^\s*[;\-]\s*$/gm, '');
-        // Fix AI wrapping args in extra parens like Engine.addCube((0,0,0))
-        code = code.replace(/Engine\.(\w+)\(\(([\d.,\s\-x]+)\)\)/g, 'Engine.$1($2');
-        // Rewrite const/let to var
-        code = code.replace(/^(const|let)\s+/gm, 'var ');
-        // Fix AI adding "return" at end unnecessarily
-        code = code.replace(/^(return\s+Engine\.setCameraPos\(.+\);)\s*$/gm, '$1');
-        // Fix unbalanced parentheses and braces per line
-        var lines = code.split('\n');
-        var openParens = 0;
-        var openBraces = 0;
-        for (var li = 0; li < lines.length; li++) {
-            var line = lines[li];
-            var inStr = false;
-            var strChar = '';
-            for (var ci = 0; ci < line.length; ci++) {
-                var ch = line[ci];
-                if (inStr) { if (ch === strChar && ci > 0 && line[ci-1] !== '\\') inStr = false; continue; }
-                if (ch === "'" || ch === '"') { inStr = true; strChar = ch; continue; }
-                if (ch === '(') openParens++;
-                if (ch === ')') openParens--;
-                if (ch === '{') openBraces++;
-                if (ch === '}') openBraces--;
-            }
-        }
-        // Auto-fix missing closings
-        if (openParens > 0) {
-            var fix = '';
-            for (var p = 0; p < openParens; p++) fix += ')';
-            lines.push(fix + ';');
-            console.warn('[SashaAI] Auto-fixed ' + openParens + ' missing closing paren(s)');
-        }
-        if (openBraces > 0) {
-            var fix2 = '';
-            for (var b = 0; b < openBraces; b++) fix2 += '}';
-            lines.push(fix2);
-            console.warn('[SashaAI] Auto-fixed ' + openBraces + ' missing closing brace(s)');
-        }
-        return lines.join('\n');
-    }
-
     function runCode() {
         if (!editor) return;
         var code = editor.getValue();
@@ -16335,9 +16132,8 @@ var EngineApp = (function() {
         console.log('[SashaAI] After extractCode, length:', code.length, 'code:', code.substring(0, 500));
         if (!code.trim()) { log('No valid code found', 'warn'); return; }
 
-        // Pre-process: fix common AI mistakes
-        code = _preprocessCode(code);
-        console.log('[SashaAI] After preprocess, length:', code.length);
+        // Rewrite const/let to var
+        code = code.replace(/^(const|let)\s+/gm, 'var ');
 
         // DO NOT clear scene — objects must persist across AI generations
         // Only clear if user explicitly requests it via Engine.clear() or clearScene()
@@ -16353,13 +16149,8 @@ var EngineApp = (function() {
             log('Executed in ' + (Date.now() - start) + 'ms', 'result');
         } catch(e) {
             // Full exec failed — try line by line so some objects still appear
-            console.error('[SashaAI] Full exec failed:', e.name + ':', e.message);
-            if (e.name === 'SyntaxError') {
-                console.error('[SashaAI] Code preview (200 chars):', code.substring(0, 200));
-                log('SyntaxError в коде: ' + e.message, 'error');
-            } else {
-                log('Full exec error: ' + e.message + ' — trying line-by-line...', 'warn');
-            }
+            console.error('[SashaAI] Full exec failed:', e.message, '— line by line fallback');
+            log('Trying line-by-line...', 'warn');
             var allLines = code.split('\n');
             var vars = {};
             var skipped = 0;
@@ -16426,8 +16217,7 @@ var EngineApp = (function() {
         }
         var _createFns = ['addCube','addSphere','addPlane','addCylinder','addCone','addTorus','addCapsule',
             'addLight','addPointLight','addDirectionalLight','addSpotLight','addAmbientLight',
-            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel','aiCreateProceduralModel',
-            'createCustomMesh','createTerrain','createTube','createLathe'];
+            'addTorusKnot','addIcosahedron','addDodecahedron','addObject','loadModel','aiCreateProceduralModel','createCustomMesh','createTerrain','createTube','createLathe'];
         var wrappedEngine = {};
         for (var key in api) {
             if (!api.hasOwnProperty(key)) continue;
@@ -16446,32 +16236,12 @@ var EngineApp = (function() {
             wrappedEngine.loadModelFromURL = function(url) { return EngineApp.loadModelFromURL ? EngineApp.loadModelFromURL() : 'not available'; };
             wrappedEngine.openPrefabMode = function(name) { if (EngineApp.openPrefabMode) EngineApp.openPrefabMode(name); };
         }
-        // Override getSelectedObject to return wrapped object (not just name string)
-        // so AI code like sel.traverse() works
-        var _origGetSelected = api.getSelectedObject;
-        wrappedEngine.getSelectedObject = function() {
-            var name = _origGetSelected();
-            if (!name) return null;
-            return wrapObj(name);
-        };
-        // Override getObject similarly
-        var _origGetObject = api.getObject;
-        wrappedEngine.getObject = function(name) {
-            var realObj = _origGetObject(name);
-            if (!realObj) return null;
-            return wrapObj(name);
-        };
         return wrappedEngine;
     }
 
     function executeIncremental(fullCode) {
         var st = _liveRunState;
         if (!st.active) return;
-        // Sanitize unicode junk before processing
-        fullCode = fullCode.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
-        fullCode = fullCode.replace(/\uFEFF|\u00AD/g, '');
-        fullCode = fullCode.replace(/\u00A0/g, ' ');
-        fullCode = fullCode.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFFF9-\uFFFB]/g, '');
         fullCode = fullCode.replace(/^```(?:javascript|js)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
 
         var allLines = fullCode.split('\n');
@@ -16996,12 +16766,6 @@ var EngineApp = (function() {
                 _jarvisSay('Выполняю код на сцене...');
                 if (editor) editor.setValue(text);
                 stopLiveGeneration();
-
-                // Count scene objects BEFORE running code
-                var objsBefore = SashaEngineAPI.getObjects();
-                var countBefore = 0;
-                for (var ob in objsBefore) { if (objsBefore.hasOwnProperty(ob) && ob.indexOf('__builtin') !== 0) countBefore++; }
-
                 runCode();
 
                 // GPU cooldown
@@ -17009,25 +16773,12 @@ var EngineApp = (function() {
 
                 refreshHierarchy();
                 refreshInspector();
-
-                // Count scene objects AFTER - only claim success if objects were actually added
-                var objsAfter = SashaEngineAPI.getObjects();
-                var countAfter = 0;
-                for (var oa in objsAfter) { if (objsAfter.hasOwnProperty(oa) && oa.indexOf('__builtin') !== 0) countAfter++; }
-                var objectsAdded = countAfter - countBefore;
-
                 var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
                 if (llmSuccess) {
-                    if (objectsAdded > 0) {
-                        addAIChat('ai', 'Готово! Сгенерировано за ' + elapsed + 's. Добавлено ' + objectsAdded + ' объектов на сцену.');
-                        _jarvisSay('Готово, сэр. Создано ' + objectsAdded + ' объектов за ' + elapsed + ' секунд.');
-                    } else {
-                        addAIChat('ai', 'Код выполнен за ' + elapsed + 's, но объекты не были созданы. Попробуй переформулировать запрос.');
-                        _jarvisSay('Код выполнен, но ничего не появилось. Попробуйте описать иначе.');
-                        console.warn('[SashaAI] No objects added. Before:', countBefore, 'After:', countAfter, 'Error:', _lastRunError);
-                    }
+                    addAIChat('ai', 'Готово! Сгенерировано за ' + elapsed + 's. Объекты добавлены на сцену.');
+                    _jarvisSay('Готово, сэр. Операция выполнена за ' + elapsed + ' секунд.');
                 }
-                log('Done: ' + text.length + ' chars in ' + elapsed + 's (+' + objectsAdded + ' objects)', 'result');
+                log('Done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
                 break; // success, exit retry loop
 
             } else {
@@ -20886,44 +20637,21 @@ var EngineApp = (function() {
             if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
             if (bar) bar.classList.remove('visible');
             log('Mesh edit mode OFF', 'info');
-            return;
-        }
-        // Find a mesh to edit: try selected, then any mesh in scene
-        var meshToEdit = null;
-        var meshName = '';
-        var selName = SashaEngineAPI.getSelectedObject();
-        if (selName) {
-            var selObj = SashaEngineAPI.getObject(selName);
-            if (selObj && selObj.traverse) {
-                selObj.traverse(function(c) { if (c.isMesh && !meshToEdit) { meshToEdit = c; meshName = selName; } });
-            } else if (selObj && selObj.isMesh) {
-                meshToEdit = selObj;
-                meshName = selName;
-            }
-        }
-        // If no selected mesh, try to find any mesh in scene
-        if (!meshToEdit) {
-            var allObjs = SashaEngineAPI.getObjects();
-            var objKeys = Object.keys(allObjs);
-            for (var i = 0; i < objKeys.length; i++) {
-                var obj = allObjs[objKeys[i]];
-                if (!obj) continue;
-                if (obj.isMesh) { meshToEdit = obj; meshName = objKeys[i]; break; }
-                if (obj.traverse) {
-                    (function(o, n) {
-                        o.traverse(function(c) { if (c.isMesh && !meshToEdit) { meshToEdit = c; meshName = n; } });
-                    })(obj, objKeys[i]);
-                    if (meshToEdit) break;
+        } else {
+            // Try to enter edit mode on selected object
+            var sel = SashaEngineAPI.getSelectedObject();
+            if (sel) {
+                var mesh = null;
+                sel.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+                if (mesh) {
+                    SashaMeshEdit.enterEditMode(mesh);
+                    if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                    if (bar) bar.classList.add('visible');
+                    log('Mesh edit mode ON: ' + (sel.name || 'object'), 'result');
+                    return;
                 }
             }
-        }
-        if (meshToEdit) {
-            SashaMeshEdit.enterEditMode(meshToEdit);
-            if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-            if (bar) bar.classList.add('visible');
-            log('Mesh edit mode ON: ' + meshName, 'result');
-        } else {
-            log('No mesh found. Create a cube/sphere first, then click Edit Mesh', 'warning');
+            log('Select a mesh object first to enter edit mode', 'warning');
         }
     }
 
@@ -21909,7 +21637,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
