@@ -4997,6 +4997,7 @@ var SashaMeshEdit = (function() {
         enterEditMode: enterEditMode,
         exitEditMode: exitEditMode,
         isEditMode: isEditMode,
+        isActive: isEditMode,  // alias — toggleMeshEditMode() calls isActive()
         getSelectionMode: getSelectionMode,
         getSelectedIndices: getSelectedIndices,
         selectVerticesByIndices: selectVerticesByIndices,
@@ -5300,7 +5301,19 @@ var SashaEngineAPI = (function() {
     var _boneHitSpheres = [];
     var _boneVisualization = null;
     var _gizmoBoneAttachment = null;
+    // Animation / scripting state (declared here so animate() and animateObj() can use them)
+    var animations = [];
+    var frameCallbacks = [];
+    var animationClips = {};
+    var animatorControllers = {};
+    var animatorStates = {};
+    var _poseModelName = null;
+    var _scriptUpdateCache = {};
+    var _editModeActive = false;
+    var _multiSelected = [];
     var _boneVisGroup = null;
+    var _lastTransformEnd = 0;
+    var _boneGizmoAttached = false;
     var _transformDragging = false;
     var selectionHelper = null;
     var transformCtrl = null;
@@ -8203,9 +8216,26 @@ var SashaEngineAPI = (function() {
     }
 
     // ============ SKELETAL ANIMATION MIXERS ============
-    // _skeletonData and updateSkeletonMixers are now declared at TOP of SashaEngineAPI
-    // (lines 4983 and 4987) for proper hoisting throughout the IIFE.
-    // The duplicate definitions here have been removed.
+    // updateSkeletonMixers: advances all AnimationMixers registered in _skeletonData.
+    // Called every frame from animate(). Wrapped in try/catch by the caller so a single
+    // broken mixer doesn't kill the render loop.
+    function updateSkeletonMixers(delta) {
+        if (!delta || delta <= 0) return;
+        for (var key in _skeletonData) {
+            if (!_skeletonData.hasOwnProperty(key)) continue;
+            var sd = _skeletonData[key];
+            if (!sd || !sd.mixer) continue;
+            try {
+                sd.mixer.update(delta);
+                // Update bone visualization if active
+                if (_boneVisGroup && _boneVisGroup.parent) {
+                    // Bone positions update automatically because helpers are children of bones
+                }
+            } catch(e) {
+                console.warn('[Skeleton] mixer.update failed for', key, ':', e.message);
+            }
+        }
+    }
 
     function animate() {
         animFrameId = requestAnimationFrame(animate);
@@ -21110,7 +21140,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
-
 
 
 
