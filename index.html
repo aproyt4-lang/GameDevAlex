@@ -9,11 +9,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
     <title>SashaAI — GameDev AI & Developer [v8.3-mesh-edit-0308]</title>
-    <!-- WebLLM: model URLs patched via prebuiltAppConfig in importWebLLM() -->
-    <script>
-    // WebLLM model URL patch applied after module import in importWebLLM()
-    console.log('[SashaAI] WebLLM config patch ready');
-    </script>
+    <!-- AI backends: WebLLM (browser), Ollama (local), Groq (cloud API) -->
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1091,11 +1087,15 @@
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- AI --</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
+                        <option value="groq:llama-3.3-70b">Groq Llama 3.3 70B (cloud)</option>
+                        <option value="groq:llama-3.1-8b">Groq Llama 3.1 8B (cloud)</option>
+                        <option value="groq:qwen-2.5-32b">Groq Qwen 2.5 32B (cloud)</option>
+                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B (browser)</option>
                         
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
-                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
+                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B (browser)</option>
+                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B (browser)</option>
                     </select>
+                    <button class="eng-btn" id="groq-key-btn" onclick="EngineApp.setGroqKey()" title="Set Groq API Key" style="background:#f55036;border-color:#f55036;color:#fff;"><i class="fas fa-key"></i></button>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
                     <button class="eng-btn" onclick="EngineApp.redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
@@ -1313,11 +1313,15 @@
                                 <div class="engine-ai-toolbar">
                                     <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                                         <option value="">-- Model --</option>
+                                        <option value="groq:llama-3.3-70b">Groq Llama 3.3 70B</option>
+                                        <option value="groq:llama-3.1-8b">Groq Llama 3.1 8B</option>
+                                        <option value="groq:qwen-2.5-32b">Groq Qwen 2.5 32B</option>
                                         <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
                                         
                                         <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
-                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC" selected>Qwen2.5-Coder 7B</option>
+                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B</option>
                                     </select>
+                                    <button class="eng-tab" onclick="EngineApp.setGroqKey()" style="font-size:0.72rem;padding:3px 8px;background:#f55036;border-color:#f55036;color:#fff;" title="Groq API Key"><i class="fas fa-key"></i></button>
                                     <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
                                     <button class="eng-tab" onclick="EngineApp.restartModel()" style="font-size:0.72rem;padding:3px 8px;" id="ai-restart-btn" title="Перезагрузить модель"><i class="fas fa-redo"></i> Restart</button>
                                     <button class="eng-tab" onclick="EngineApp.unloadModel()" style="font-size:0.72rem;padding:3px 8px;color:#ef4444;" id="ai-unload-btn" title="Выключить модель"><i class="fas fa-power-off"></i> Off</button>
@@ -4746,7 +4750,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // ================================================================
 // ============ SashaWebLLM — Dual Backend: Ollama (local) + WebLLM (browser) ============
 var SashaWebLLM = (function() {
-    var backend = 'none'; // 'ollama', 'webllm', 'none'
+    var backend = 'none'; // 'ollama', 'webllm', 'groq', 'none'
+    var groqApiKey = localStorage.getItem('sasha_groq_api_key') || '';
+    var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+    var GROQ_MODELS = {
+        'groq:llama-3.3-70b': 'llama-3.3-70b-versatile',
+        'groq:llama-3.1-8b': 'llama-3.1-8b-instant',
+        'groq:qwen-2.5-32b': 'qwen-qwq-32b'
+    };
+    function isGroqModel(id) { return id.indexOf('groq:') === 0; }
+    function groqModelName(id) { return GROQ_MODELS[id] || id.replace('groq:', ''); }
     var modelId = '';
     var status = 'offline';
     var chatHistory = [];
@@ -4838,48 +4851,6 @@ var SashaWebLLM = (function() {
             try {
                 webllmModule = await import(cdnUrls[i]);
                 console.log('[SashaWebLLM] Imported from: ' + cdnUrls[i]);
-                // Patch prebuiltAppConfig: replace HuggingFace URLs with hf-mirror.com
-                try {
-                    var cfg = webllmModule.prebuiltAppConfig;
-                    if (cfg) {
-                        var ml = cfg.model_list || [];
-                        for (var mi = 0; mi < ml.length; mi++) {
-                            if (ml[mi].model) ml[mi].model = ml[mi].model.replace(/huggingface\.co/g, 'hf-mirror.com');
-                            if (ml[mi].model_lib) ml[mi].model_lib = ml[mi].model_lib.replace(/huggingface\.co/g, 'hf-mirror.com');
-                            if (ml[mi].model_lib_url) ml[mi].model_lib_url = ml[mi].model_lib_url.replace(/huggingface\.co/g, 'hf-mirror.com');
-                            if (ml[mi].model_url) ml[mi].model_url = ml[mi].model_url.replace(/huggingface\.co/g, 'hf-mirror.com');
-                        }
-                        // Also patch modelLibURLPrefix if it points to huggingface
-                        if (webllmModule.modelLibURLPrefix && typeof webllmModule.modelLibURLPrefix === 'string') {
-                            webllmModule.modelLibURLPrefix = webllmModule.modelLibURLPrefix.replace(/huggingface\.co/g, 'hf-mirror.com');
-                        }
-                        console.log('[SashaWebLLM] Patched ' + ml.length + ' models -> hf-mirror.com');
-                        // Verify patch worked
-                        for (var vi = 0; vi < ml.length; vi++) {
-                            if (ml[vi].model_id && ml[vi].model_id.indexOf('Qwen2.5-Coder-7B') !== -1) {
-                                console.log('[SashaWebLLM] Verify 7B model URL:', ml[vi].model);
-                                break;
-                            }
-                        }
-                    } else {
-                        console.warn('[SashaWebLLM] prebuiltAppConfig not found, trying direct property scan');
-                        for (var key in webllmModule) {
-                            try {
-                                var val = webllmModule[key];
-                                if (val && typeof val === 'object' && val.model_list) {
-                                    var ml2 = val.model_list;
-                                    for (var mi2 = 0; mi2 < ml2.length; mi2++) {
-                                        if (ml2[mi2].model) ml2[mi2].model = ml2[mi2].model.replace(/huggingface\.co/g, 'hf-mirror.com');
-                                        if (ml2[mi2].model_lib) ml2[mi2].model_lib = ml2[mi2].model_lib.replace(/huggingface\.co/g, 'hf-mirror.com');
-                                    }
-                                    console.log('[SashaWebLLM] Patched via fallback key: ' + key + ' (' + ml2.length + ' models)');
-                                }
-                            } catch(ignored) {}
-                        }
-                    }
-                } catch(patchErr) {
-                    console.warn('[SashaWebLLM] Config patch failed:', patchErr.message);
-                }
                 return webllmModule;
             } catch(e) {
                 console.warn('[SashaWebLLM] CDN ' + i + ' failed:', e.message);
@@ -4973,6 +4944,43 @@ var SashaWebLLM = (function() {
         return '';
     }
 
+    // === Groq: load (just validate API key) ===
+    async function groqLoadModel(selectedModelId, progressCb) {
+        if (!groqApiKey) throw new Error('Groq API key not set. Click the key icon next to model selector to set it.');
+        if (progressCb) progressCb({ progress: 0.5, text: 'Connecting to Groq...' });
+        // Validate key with a tiny request
+        var testResp = await fetch(GROQ_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqApiKey },
+            body: JSON.stringify({ model: groqModelName(selectedModelId), messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+        });
+        if (!testResp.ok) {
+            var errData = {}; try { errData = await testResp.json(); } catch(x) {}
+            throw new Error('Groq API error: ' + (errData.error?.message || testResp.status) + '. Get free key at console.groq.com');
+        }
+        if (progressCb) progressCb({ progress: 1, text: 'Groq ready: ' + groqModelName(selectedModelId) });
+    }
+
+    // === Groq: generate ===
+    async function groqGenerate(messages, maxTokens) {
+        var resp = await fetch(GROQ_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqApiKey },
+            body: JSON.stringify({
+                model: groqModelName(modelId),
+                messages: messages,
+                max_tokens: maxTokens || 4096,
+                temperature: 0.7, top_p: 0.9
+            })
+        });
+        if (!resp.ok) {
+            var errData = {}; try { errData = await resp.json(); } catch(x) {}
+            throw new Error('Groq: ' + (errData.error?.message || resp.status));
+        }
+        var data = await resp.json();
+        return (data && data.choices && data.choices[0] && data.choices[0].message) ? data.choices[0].message.content : '';
+    }
+
     // === Unified loadModel ===
     async function loadModel(selectedModelId, progressCb) {
         if (status === 'loading') return;
@@ -4986,6 +4994,9 @@ var SashaWebLLM = (function() {
             if (isOllamaModel(modelId)) {
                 backend = 'ollama';
                 await ollamaLoadModel(ollamaModelName(modelId), onProgress);
+            } else if (isGroqModel(modelId)) {
+                backend = 'groq';
+                await groqLoadModel(selectedModelId, onProgress);
             } else {
                 backend = 'webllm';
                 await webllmLoadModel(selectedModelId, onProgress);
@@ -5007,14 +5018,16 @@ var SashaWebLLM = (function() {
         chatHistory.push({ role: 'user', content: prompt });
         var messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-        var maxHist = (backend === 'ollama') ? 10 : 6;
+        var maxHist = (backend === 'ollama' || backend === 'groq') ? 10 : 6;
         var startIdx = Math.max(0, chatHistory.length - maxHist);
         for (var i = startIdx; i < chatHistory.length; i++) { messages.push(chatHistory[i]); }
-        var maxTok = (backend === 'ollama') ? 4096 : 1024;
+        var maxTok = (backend === 'ollama' || backend === 'groq') ? 4096 : 1024;
         var text = '';
         try {
             if (backend === 'ollama') {
                 text = await ollamaGenerate(messages, maxTok);
+            } else if (backend === 'groq') {
+                text = await groqGenerate(messages, maxTok);
             } else {
                 text = await webllmGenerate(messages, maxTok);
             }
@@ -17006,6 +17019,18 @@ var EngineApp = (function() {
         log('AI chat cleared', 'info');
     }
 
+    function setGroqKey() {
+        var existing = localStorage.getItem('sasha_groq_api_key') || '';
+        var key = prompt('Groq API Key (free at console.groq.com):', existing);
+        if (key && key.trim()) {
+            localStorage.setItem('sasha_groq_api_key', key.trim());
+            log('Groq API key saved', 'result');
+        } else if (key === '') {
+            localStorage.removeItem('sasha_groq_api_key');
+            log('Groq API key removed', 'info');
+        }
+    }
+
     // Manually restart LLM model after GPU crash (scene stays intact)
     async function restartModel() {
         if (_aiBusy) { log('Model busy...', 'warn'); return; }
@@ -21595,6 +21620,7 @@ var EngineApp = (function() {
         toggleUICanvas: toggleUICanvas, clearUICanvas: clearUICanvas,
         clearAIChat: clearAIChat, setAIMode: setAIMode, sendAI: sendAI,
         restartModel: restartModel, unloadModel: unloadModel,
+        setGroqKey: setGroqKey,
         toggleFPS: toggleFPS,
         toggleMeshEditMode: toggleMeshEditMode,
 
