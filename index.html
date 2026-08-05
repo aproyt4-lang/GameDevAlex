@@ -9,7 +9,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
     <title>SashaAI — GameDev AI & Developer [v8.3-mesh-edit-0308]</title>
-    <!-- AI backends: WebLLM (browser), Ollama (local), Groq (cloud API) -->
+    <!-- AI backends: Transformers.js (browser), Ollama (local), Groq (cloud API) -->
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1087,13 +1087,10 @@
                     <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">-- AI --</option>
-                        <option value="groq:llama-3.3-70b">Groq Llama 3.3 70B (cloud)</option>
-                        <option value="groq:llama-3.1-8b">Groq Llama 3.1 8B (cloud)</option>
-                        <option value="groq:qwen-2.5-32b">Groq Qwen 2.5 32B (cloud)</option>
-                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B (browser)</option>
-                        
-                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B (browser)</option>
-                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B (browser)</option>
+                        <option value="onnx-community/Qwen2.5-Coder-0.5B-Instruct">Qwen2.5-Coder 0.5B (browser)</option>
+                        <option value="onnx-community/Qwen2.5-Coder-1.5B-Instruct">Qwen2.5-Coder 1.5B (browser)</option>
+                        <option value="onnx-community/Qwen2.5-Coder-3B-Instruct">Qwen2.5-Coder 3B (browser)</option>
+                        <option value="onnx-community/Qwen2.5-Coder-7B-Instruct">Qwen2.5-Coder 7B (browser)</option>
                     </select>
                     <button class="eng-btn" id="groq-key-btn" onclick="EngineApp.setGroqKey()" title="Set Groq API Key" style="background:#f55036;border-color:#f55036;color:#fff;"><i class="fas fa-key"></i></button>
                     <div class="eng-separator"></div>
@@ -1313,13 +1310,10 @@
                                 <div class="engine-ai-toolbar">
                                     <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                                         <option value="">-- Model --</option>
-                                        <option value="groq:llama-3.3-70b">Groq Llama 3.3 70B</option>
-                                        <option value="groq:llama-3.1-8b">Groq Llama 3.1 8B</option>
-                                        <option value="groq:qwen-2.5-32b">Groq Qwen 2.5 32B</option>
-                                        <option value="Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 0.5B</option>
-                                        
-                                        <option value="Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 3B</option>
-                                        <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5-Coder 7B</option>
+                                        <option value="onnx-community/Qwen2.5-Coder-0.5B-Instruct">Qwen2.5-Coder 0.5B</option>
+                                        <option value="onnx-community/Qwen2.5-Coder-1.5B-Instruct">Qwen2.5-Coder 1.5B</option>
+                                        <option value="onnx-community/Qwen2.5-Coder-3B-Instruct">Qwen2.5-Coder 3B</option>
+                                        <option value="onnx-community/Qwen2.5-Coder-7B-Instruct">Qwen2.5-Coder 7B</option>
                                     </select>
                                     <button class="eng-tab" onclick="EngineApp.setGroqKey()" style="font-size:0.72rem;padding:3px 8px;background:#f55036;border-color:#f55036;color:#fff;" title="Groq API Key"><i class="fas fa-key"></i></button>
                                     <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
@@ -4748,9 +4742,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 // ================================================================
-// ============ SashaWebLLM — Dual Backend: Ollama (local) + WebLLM (browser) ============
+// ============ SashaAI — Dual Backend: Ollama (local) + Transformers.js (browser) ===========
 var SashaWebLLM = (function() {
-    var backend = 'none'; // 'ollama', 'webllm', 'groq', 'none'
+    var backend = 'none'; // 'ollama', 'transformers', 'groq', 'none'
     var groqApiKey = localStorage.getItem('sasha_groq_api_key') || '';
     var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
     var GROQ_MODELS = {
@@ -4768,9 +4762,9 @@ var SashaWebLLM = (function() {
     // === Ollama config ===
     var OLLAMA_URL = 'http://localhost:11434';
 
-    // === WebLLM vars ===
-    var engine = null;
-    var webllmModule = null;
+    // === Transformers.js vars ===
+    var tfGenerator = null;
+    var transformersModule = null;
     var gpuDead = false;
 
     // Detect which backend to use
@@ -4824,122 +4818,103 @@ var SashaWebLLM = (function() {
         return (data && data.message && data.message.content) ? data.message.content : '';
     }
 
-    // === Global Cache API patch — prevents WebLLM Cache.add/put network errors ===
-    var _cachePatchApplied = false;
-    function _applyCachePatch() {
-        if (_cachePatchApplied) return;
-        _cachePatchApplied = true;
-        if (typeof Cache === 'undefined' || !Cache.prototype.add) return;
-        var _a = Cache.prototype.add, _aa = Cache.prototype.addAll, _p = Cache.prototype.put;
-        Cache.prototype.add = function() { return _a.apply(this, arguments).catch(function() { return undefined; }); };
-        Cache.prototype.addAll = function() { return _aa.apply(this, arguments).catch(function() { return undefined; }); };
-        Cache.prototype.put = function() { return _p.apply(this, arguments).catch(function() { return undefined; }); };
-    }
-    _applyCachePatch();
-
-    // === WebLLM: import ===
-    async function importWebLLM() {
-        if (webllmModule) return webllmModule;
+    // === Transformers.js: import ===
+    async function importTransformers() {
+        if (transformersModule) return transformersModule;
         var cdnUrls = [
-            'https://esm.run/@mlc-ai/web-llm@0.2.78',
-            'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.78/lib/index.min.mjs',
-            'https://unpkg.com/@mlc-ai/web-llm@0.2.78/lib/index.min.mjs',
-            'https://esm.run/@mlc-ai/web-llm@0.2.80',
-            'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/lib/index.min.mjs'
+            'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1',
+            'https://esm.run/@huggingface/transformers@3',
+            'https://unpkg.com/@huggingface/transformers@3'
         ];
         for (var i = 0; i < cdnUrls.length; i++) {
             try {
-                webllmModule = await import(cdnUrls[i]);
-                console.log('[SashaWebLLM] Imported from: ' + cdnUrls[i]);
-                return webllmModule;
+                transformersModule = await import(cdnUrls[i]);
+                console.log('[SashaAI] Transformers.js imported from: ' + cdnUrls[i]);
+                return transformersModule;
             } catch(e) {
-                console.warn('[SashaWebLLM] CDN ' + i + ' failed:', e.message);
+                console.warn('[SashaAI] CDN ' + i + ' failed:', e.message);
             }
         }
-        throw new Error('All WebLLM CDNs failed. Check internet.');
+        throw new Error('All Transformers.js CDNs failed. Check internet.');
     }
 
-    // === WebLLM: load model ===
-    async function webllmLoadModel(selectedModelId, progressCb) {
-        var mod = await importWebLLM();
-        if (!navigator.gpu) throw new Error('WebGPU not available - use Chrome/Edge with GPU');
-        var adapter = await navigator.gpu.requestAdapter({
-            powerPreference: 'high-performance'
-        });
-        if (!adapter) throw new Error('No GPU adapter found');
-        // Request max GPU limits for large models (7B needs big buffers)
-        // Note: maxMemoryMappedSize removed — not supported on Windows Chrome
-        var limits = {
-            maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
-            maxBufferSize: adapter.limits.maxBufferSize
-        };
-        // Only add limits that the adapter actually reports
-        try { if (adapter.limits.maxStorageBufferBindingSize) limits.maxStorageBufferBindingSize = adapter.limits.maxStorageBufferBindingSize; } catch(e){}
-        var device = await adapter.requestDevice({ requiredLimits: limits });
-        if (engine) { try { await engine.unload(); } catch(e) {} engine = null; }
-        if (progressCb) progressCb({ progress: 0, text: 'Initializing GPU for ' + selectedModelId + '...' });
-        var lastErr = null;
-        for (var attempt = 0; attempt < 2; attempt++) {
-            try {
-                if (mod.CreateMLCEngine) {
-                    engine = await mod.CreateMLCEngine(selectedModelId, {
-                        logLevel: 'SILENT',
-                        device: device,
-                        initProgressCallback: function(report) {
-                            if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
-                        }
-                    });
-                } else if (mod.MLCEngine) {
-                    engine = new mod.MLCEngine({
-                        device: device,
-                        initProgressCallback: function(report) {
-                            if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
-                        }
-                    });
-                    await engine.reload(selectedModelId);
-                } else {
-                    throw new Error('WebLLM: no CreateMLCEngine or MLCEngine found');
-                }
-                lastErr = null;
-                break;
-            } catch(e) {
-                lastErr = e;
-                console.warn('[SashaWebLLM] Load attempt ' + (attempt+1) + ' failed:', e.message);
-                if (attempt < 1) { await new Promise(function(r) { setTimeout(r, 3000); }); if (engine) { try { await engine.unload(); } catch(x) {} engine = null; } }
-            }
+    // === Transformers.js: load model ===
+    async function transformersLoadModel(selectedModelId, progressCb) {
+        var mod = await importTransformers();
+        if (!navigator.gpu) {
+            console.warn('[SashaAI] WebGPU not available, trying WASM fallback...');
         }
-        if (lastErr && !engine) {
-            if (selectedModelId.indexOf('0.5B') === -1) {
-                var fallbackId = selectedModelId.replace(/-[0-9.]+B-Instruct/, '-0.5B-Instruct');
-                console.log('[SashaWebLLM] Falling back to: ' + fallbackId);
-                if (progressCb) progressCb({ progress: 0, text: 'Retrying with: ' + fallbackId + '...' });
-                try {
-                    engine = await mod.CreateMLCEngine(fallbackId, {
-                        logLevel: 'SILENT',
-                        device: device,
-                        initProgressCallback: function(report) {
-                            if (progressCb) progressCb({ progress: report.progress || 0, text: report.text || '' });
-                        }
-                    });
-                    _loadedModelId = fallbackId;
-                    return;
-                } catch(fbErr) {
-                    console.warn('[SashaWebLLM] Fallback failed:', fbErr.message);
+        if (tfGenerator) { tfGenerator = null; }
+        if (progressCb) progressCb({ progress: 0, text: 'Loading ' + selectedModelId + '...' });
+        try {
+            tfGenerator = await mod.pipeline('text-generation', selectedModelId, {
+                device: 'webgpu',
+                dtype: 'q4',
+                progress_callback: function(p) {
+                    if (!progressCb) return;
+                    var pct = 0, txt = '';
+                    if (p.status === 'progress' && p.total > 0) {
+                        pct = p.loaded / p.total;
+                        txt = 'Downloading ' + (p.file || '') + ' (' + Math.round(pct * 100) + '%)...';
+                    } else if (p.status === 'done') {
+                        pct = 1;
+                        txt = 'Loaded: ' + (p.file || '');
+                    } else if (p.status === 'initiate') {
+                        txt = 'Preparing ' + (p.file || '') + '...';
+                    } else if (p.status === 'ready') {
+                        pct = 1;
+                        txt = 'Model ready!';
+                    } else {
+                        txt = p.status || '';
+                    }
+                    progressCb({ progress: pct, text: txt });
                 }
+            });
+            if (progressCb) progressCb({ progress: 1, text: 'Model ready!' });
+        } catch(e) {
+            // WebGPU failed, try WASM
+            if (e.message && (e.message.indexOf('webgpu') !== -1 || e.message.indexOf('WebGPU') !== -1)) {
+                console.warn('[SashaAI] WebGPU failed, falling back to WASM...');
+                if (progressCb) progressCb({ progress: 0, text: 'WebGPU unavailable, using WASM (slower)...' });
+                tfGenerator = await mod.pipeline('text-generation', selectedModelId, {
+                    device: 'wasm',
+                    dtype: 'q4',
+                    progress_callback: function(p) {
+                        if (!progressCb) return;
+                        var pct = 0, txt = '';
+                        if (p.status === 'progress' && p.total > 0) {
+                            pct = p.loaded / p.total;
+                            txt = 'Downloading ' + (p.file || '') + ' (' + Math.round(pct * 100) + '%)...';
+                        } else if (p.status === 'done') {
+                            pct = 1; txt = 'Loaded: ' + (p.file || '');
+                        } else if (p.status === 'ready') {
+                            pct = 1; txt = 'Model ready (WASM)!';
+                        } else { txt = p.status || ''; }
+                        progressCb({ progress: pct, text: txt });
+                    }
+                });
+            } else {
+                throw e;
             }
-            throw lastErr;
         }
     }
 
-    // === WebLLM: generate ===
-    async function webllmGenerate(messages, maxTokens) {
-        if (!engine) return 'Error: engine not initialized';
-        var result = await engine.chat.completions.create({
-            messages: messages, max_tokens: maxTokens || 1024,
-            temperature: 0.7, top_p: 0.9, stream: false
+    // === Transformers.js: generate ===
+    async function transformersGenerate(messages, maxTokens) {
+        if (!tfGenerator) return 'Error: pipeline not initialized';
+        var result = await tfGenerator(messages, {
+            max_new_tokens: maxTokens || 1024,
+            temperature: 0.7,
+            top_p: 0.9,
+            do_sample: true
         });
-        if (result && result.choices && result.choices[0] && result.choices[0].message) {
-            return result.choices[0].message.content || '';
+        if (result && result.length > 0) {
+            var generated = result[0].generated_text;
+            if (Array.isArray(generated)) {
+                var last = generated[generated.length - 1];
+                return (last && last.content) ? last.content : '';
+            }
+            if (typeof generated === 'string') return generated;
         }
         return '';
     }
@@ -4998,14 +4973,14 @@ var SashaWebLLM = (function() {
                 backend = 'groq';
                 await groqLoadModel(selectedModelId, onProgress);
             } else {
-                backend = 'webllm';
-                await webllmLoadModel(selectedModelId, onProgress);
+                backend = 'transformers';
+                await transformersLoadModel(selectedModelId, onProgress);
             }
             status = 'ready';
             updateStatus();
-            console.log('[SashaWebLLM] Loaded OK via ' + backend + ': ' + modelId);
+            console.log('[SashaAI] Loaded OK via ' + backend + ': ' + modelId);
         } catch(e) {
-            console.error('[SashaWebLLM] Load error:', e);
+            console.error('[SashaAI] Load error:', e);
             status = 'error';
             updateStatus();
             throw e;
@@ -5018,10 +4993,10 @@ var SashaWebLLM = (function() {
         chatHistory.push({ role: 'user', content: prompt });
         var messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-        var maxHist = (backend === 'ollama' || backend === 'groq') ? 10 : 6;
+        var maxHist = (backend === 'ollama' || backend === 'groq' || backend === 'transformers') ? 10 : 6;
         var startIdx = Math.max(0, chatHistory.length - maxHist);
         for (var i = startIdx; i < chatHistory.length; i++) { messages.push(chatHistory[i]); }
-        var maxTok = (backend === 'ollama' || backend === 'groq') ? 4096 : 1024;
+        var maxTok = (backend === 'ollama' || backend === 'groq' || backend === 'transformers') ? 4096 : 1024;
         var text = '';
         try {
             if (backend === 'ollama') {
@@ -5029,7 +5004,7 @@ var SashaWebLLM = (function() {
             } else if (backend === 'groq') {
                 text = await groqGenerate(messages, maxTok);
             } else {
-                text = await webllmGenerate(messages, maxTok);
+                text = await transformersGenerate(messages, maxTok);
             }
             if (!text || text.length < 1) text = 'Error: empty response';
             chatHistory.push({ role: 'assistant', content: text });
@@ -5112,14 +5087,14 @@ var SashaWebLLM = (function() {
     }
 
     function unload() {
-        if (backend === 'webllm' && engine) { try { engine.unload(); } catch(e) {} engine = null; }
+        if (backend === 'transformers' && tfGenerator) { tfGenerator = null; }
         status = 'offline'; modelId = ''; chatHistory = []; backend = 'none';
         updateStatus();
     }
 
     async function recoverModel() {
         if (backend === 'ollama') { var ok = await ollamaCheck(); return ok ? 'ok' : 'Ollama not running. Start Ollama and try again.'; }
-        if (backend === 'webllm') { try { await loadModel(modelId); return 'ok'; } catch(e) { return 'failed: ' + e.message; } }
+        if (backend === 'transformers') { try { await loadModel(modelId); return 'ok'; } catch(e) { return 'failed: ' + e.message; } }
         return 'no model loaded';
     }
 
