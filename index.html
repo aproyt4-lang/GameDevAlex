@@ -4840,13 +4840,42 @@ var SashaWebLLM = (function() {
                 console.log('[SashaWebLLM] Imported from: ' + cdnUrls[i]);
                 // Patch prebuiltAppConfig: replace HuggingFace URLs with hf-mirror.com
                 try {
-                    if (webllmModule.prebuiltAppConfig && webllmModule.prebuiltAppConfig.model_list) {
-                        var ml = webllmModule.prebuiltAppConfig.model_list;
+                    var cfg = webllmModule.prebuiltAppConfig;
+                    if (cfg) {
+                        var ml = cfg.model_list || [];
                         for (var mi = 0; mi < ml.length; mi++) {
-                            if (ml[mi].model_url) ml[mi].model_url = ml[mi].model_url.replace(/huggingface\.co/g, 'hf-mirror.com').replace(/([a-z0-9-]+)\.hf\.co/g, 'hf-mirror.com');
-                            if (ml[mi].model_lib_url) ml[mi].model_lib_url = ml[mi].model_lib_url.replace(/huggingface\.co/g, 'hf-mirror.com').replace(/([a-z0-9-]+)\.hf\.co/g, 'hf-mirror.com');
+                            if (ml[mi].model) ml[mi].model = ml[mi].model.replace(/huggingface\.co/g, 'hf-mirror.com');
+                            if (ml[mi].model_lib) ml[mi].model_lib = ml[mi].model_lib.replace(/huggingface\.co/g, 'hf-mirror.com');
+                            if (ml[mi].model_lib_url) ml[mi].model_lib_url = ml[mi].model_lib_url.replace(/huggingface\.co/g, 'hf-mirror.com');
+                            if (ml[mi].model_url) ml[mi].model_url = ml[mi].model_url.replace(/huggingface\.co/g, 'hf-mirror.com');
                         }
-                        console.log('[SashaWebLLM] Patched prebuiltAppConfig -> hf-mirror.com (' + ml.length + ' models)');
+                        // Also patch modelLibURLPrefix if it points to huggingface
+                        if (webllmModule.modelLibURLPrefix && typeof webllmModule.modelLibURLPrefix === 'string') {
+                            webllmModule.modelLibURLPrefix = webllmModule.modelLibURLPrefix.replace(/huggingface\.co/g, 'hf-mirror.com');
+                        }
+                        console.log('[SashaWebLLM] Patched ' + ml.length + ' models -> hf-mirror.com');
+                        // Verify patch worked
+                        for (var vi = 0; vi < ml.length; vi++) {
+                            if (ml[vi].model_id && ml[vi].model_id.indexOf('Qwen2.5-Coder-7B') !== -1) {
+                                console.log('[SashaWebLLM] Verify 7B model URL:', ml[vi].model);
+                                break;
+                            }
+                        }
+                    } else {
+                        console.warn('[SashaWebLLM] prebuiltAppConfig not found, trying direct property scan');
+                        for (var key in webllmModule) {
+                            try {
+                                var val = webllmModule[key];
+                                if (val && typeof val === 'object' && val.model_list) {
+                                    var ml2 = val.model_list;
+                                    for (var mi2 = 0; mi2 < ml2.length; mi2++) {
+                                        if (ml2[mi2].model) ml2[mi2].model = ml2[mi2].model.replace(/huggingface\.co/g, 'hf-mirror.com');
+                                        if (ml2[mi2].model_lib) ml2[mi2].model_lib = ml2[mi2].model_lib.replace(/huggingface\.co/g, 'hf-mirror.com');
+                                    }
+                                    console.log('[SashaWebLLM] Patched via fallback key: ' + key + ' (' + ml2.length + ' models)');
+                                }
+                            } catch(ignored) {}
+                        }
                     }
                 } catch(patchErr) {
                     console.warn('[SashaWebLLM] Config patch failed:', patchErr.message);
@@ -21728,7 +21757,6 @@ var EngineApp = (function() {
 
 </body>
 </html>
-
 
 
 
