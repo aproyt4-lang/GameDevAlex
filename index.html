@@ -1153,7 +1153,6 @@
                         <option value="onnx-community/Qwen2.5-Coder-1.5B-Instruct">Qwen2.5-Coder 1.5B</option>
                         <option value="onnx-community/LFM2-2.6B-ONNX">LFM2 2.6B</option>
                         <option value="onnx-community/Qwen2.5-Coder-3B-Instruct">Qwen2.5-Coder 3B</option>
-                        <option value="onnx-community/Phi-3.5-mini-instruct-onnx-web">Phi-3.5-mini 3.8B ★</option>
                     </select>
                     <button class="eng-btn" id="groq-key-btn" onclick="EngineApp.setGroqKey()" title="Set Groq API Key" style="background:#f55036;border-color:#f55036;color:#fff;"><i class="fas fa-key"></i></button>
                     <div class="eng-separator"></div>
@@ -1377,7 +1376,7 @@
                                         <option value="onnx-community/Qwen2.5-Coder-1.5B-Instruct">Qwen2.5-Coder 1.5B</option>
                                         <option value="onnx-community/LFM2-2.6B-ONNX">LFM2 2.6B</option>
                                         <option value="onnx-community/Qwen2.5-Coder-3B-Instruct">Qwen2.5-Coder 3B</option>
-                                        <option value="onnx-community/Phi-3.5-mini-instruct-onnx-web">Phi-3.5-mini 3.8B ★</option>
+
                                     </select>
                                     <button class="eng-tab" onclick="EngineApp.setGroqKey()" style="font-size:0.72rem;padding:3px 8px;background:#f55036;border-color:#f55036;color:#fff;" title="Groq API Key"><i class="fas fa-key"></i></button>
                                     <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
@@ -2154,7 +2153,7 @@ var SashaCodeEngine = (function() {
         var _sashaPathIdx = 0;
         function _trySashaPath() {
             if (_sashaPathIdx >= glbPaths.length) {
-                console.warn('[Engine] SashaAI.glb not found on any path, skipping');
+                // All paths failed — file does not exist, skip silently
                 return;
             }
             var glbPath = glbPaths[_sashaPathIdx++];
@@ -2217,9 +2216,7 @@ var SashaCodeEngine = (function() {
             function(progress) {
                 // Progress — silent
             },
-            function(error) {
-                // ERROR — try next path
-                console.warn('[Engine] SashaAI.glb failed for: ' + glbPath + ' Error:', error && error.type || error);
+            function(error) {\n                // ERROR — try next path silently
                 _trySashaPath();
             }
         );
@@ -15562,15 +15559,21 @@ var EngineApp = (function() {
             log('Mesh edit mode OFF', 'info');
         } else {
             // Try to enter edit mode on selected object
-            var sel = SashaEngineAPI.getSelectedObject();
-            if (sel) {
-                var mesh = null;
-                sel.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
-                if (mesh) {
-                    SashaMeshEdit.enterEditMode(mesh);
-                    if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-                    if (bar) bar.classList.add('visible');
-                    log('Mesh edit mode ON: ' + (sel.name || 'object'), 'result');
+            var selName = SashaEngineAPI.getSelectedObject();
+            if (selName) {
+                var selObj = SashaEngineAPI.getObjects()[selName];
+                if (selObj && typeof selObj.traverse === 'function') {
+                    var mesh = null;
+                    selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+                    if (mesh) {
+                        SashaMeshEdit.enterEditMode(mesh);
+                        if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                        if (bar) bar.classList.add('visible');
+                        log('Mesh edit mode ON: ' + selName, 'result');
+                        return;
+                    }
+                } else {
+                    log('Selected object is not a 3D object', 'warning');
                     return;
                 }
             }
