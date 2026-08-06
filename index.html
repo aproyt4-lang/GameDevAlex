@@ -28,7 +28,20 @@
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- JSZip with fallback — if cdnjs fails, try jsdelivr, then unpkg -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// Fallback: if JSZip didn't load from cdnjs, try jsdelivr
+if (typeof JSZip === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"><\/script>');
+}
+</script>
+<script>
+// Fallback 2: if jsdelivr also failed, try unpkg
+if (typeof JSZip === 'undefined') {
+    document.write('<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"><\/script>');
+}
+</script>
 
     
     <!-- Google Fonts -->
@@ -175,12 +188,15 @@
         .code-btn:hover { background: var(--primary); }
         #monaco-editor { flex: 1; }
 
-        .about-grid { display: grid; grid-template-columns: 300px 1fr; gap: 40px; }
+        .about-grid { display: grid; grid-template-columns: 400px 1fr; gap: 40px; }
         .about-avatar { width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, #1a0533 0%, #0a1628 40%, #1a0a2e 100%); border-radius: 20px; border: 1px solid var(--border); overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
         .about-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .about-avatar .avatar-placeholder { display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .about-avatar .avatar-placeholder i { font-size: 5rem; color: rgba(99,102,241,0.3); }
         .about-avatar .avatar-placeholder span { color: var(--text-muted); font-size: 0.9rem; }
+        .about-avatar canvas { width: 100% !important; height: 100% !important; display: block; }
+        .about-avatar .avatar-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: var(--text-muted); font-size: 0.8rem; pointer-events: none; }
+        .about-avatar .avatar-hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); font-size: 0.7rem; pointer-events: none; background: rgba(0,0,0,0.4); padding: 4px 10px; border-radius: 10px; }
         .about-content h1 { font-size: 2.5rem; margin-bottom: 20px; }
         .about-content p { color: var(--text-secondary); font-size: 1.1rem; line-height: 1.8; margin-bottom: 30px; }
         .skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 30px; }
@@ -801,11 +817,10 @@
         <!-- About Section (first for SEO) -->
         <section id="about" class="section active">
             <div class="about-grid">
-                <div class="about-avatar">
-                    <div class="avatar-placeholder">
-                        <i class="fas fa-user-astronaut"></i>
-                        <span>Sasha AI</span>
-                    </div>
+                <div class="about-avatar" id="about-avatar-container">
+                    <canvas id="about-canvas"></canvas>
+                    <div class="avatar-loading" id="about-loading">Загрузка модели...</div>
+                    <div class="avatar-hint">Drag — вращать · Scroll — зум</div>
                 </div>
                 
                 <div class="about-content">
@@ -20771,15 +20786,296 @@ var _tplUnderwater = [
     else initChatInput();
 })();
 
+// ============================================================
+// ============ SashaAvatar — 3D Model Viewer for About/Home ===
+// ============================================================
+// Renders SashaAI.glb on the About section canvas (and home if needed).
+// Uses Three.js (already loaded in <head>). Falls back gracefully if
+// the .glb file is missing — shows a placeholder 3D character instead.
+var SashaAvatar = (function() {
+    var scenes = [];  // [{ canvas, scene, camera, renderer, controls, mixer, model }]
+
+    function _createScene(canvas, options) {
+        if (!canvas || !window.THREE) return null;
+        options = options || {};
+
+        var scene = new THREE.Scene();
+        // Subtle gradient background via fog + color
+        scene.background = new THREE.Color(0x0a0a1a);
+        scene.fog = new THREE.Fog(0x0a0a1a, 8, 25);
+
+        var w = canvas.clientWidth || 400;
+        var h = canvas.clientHeight || 400;
+        var camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+        camera.position.set(0, 1.5, 4);
+
+        var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(w, h, false);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        // Lights — 3-point setup for a nice character look
+        var ambient = new THREE.AmbientLight(0x404060, 0.5);
+        scene.add(ambient);
+        var keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        keyLight.position.set(3, 5, 4);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(1024, 1024);
+        keyLight.shadow.camera.near = 0.5;
+        keyLight.shadow.camera.far = 20;
+        keyLight.shadow.camera.left = -3;
+        keyLight.shadow.camera.right = 3;
+        keyLight.shadow.camera.top = 3;
+        keyLight.shadow.camera.bottom = -3;
+        scene.add(keyLight);
+        var fillLight = new THREE.DirectionalLight(0x88aaff, 0.4);
+        fillLight.position.set(-3, 2, 2);
+        scene.add(fillLight);
+        var rimLight = new THREE.DirectionalLight(0xff66cc, 0.5);
+        rimLight.position.set(0, 3, -4);
+        scene.add(rimLight);
+
+        // Ground plane (subtle, catches shadow)
+        var groundGeo = new THREE.CircleGeometry(2.5, 32);
+        var groundMat = new THREE.MeshStandardMaterial({
+            color: 0x1a1a2e,
+            roughness: 0.8,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.6
+        });
+        var ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.01;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grid helper for cyberpunk feel
+        var grid = new THREE.PolarGridHelper(2.5, 8, 6, 64, 0x6366f1, 0x2e2e4a);
+        grid.position.y = 0.001;
+        grid.material.transparent = true;
+        grid.material.opacity = 0.3;
+        scene.add(grid);
+
+        // OrbitControls for drag-rotate / scroll-zoom
+        var controls = null;
+        if (window.THREE.OrbitControls) {
+            controls = new THREE.OrbitControls(camera, canvas);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.minDistance = 1.5;
+            controls.maxDistance = 8;
+            controls.minPolarAngle = 0;
+            controls.maxPolarAngle = Math.PI * 0.85;
+            controls.target.set(0, 1, 0);
+            controls.enablePan = false;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.8;
+        }
+
+        var entry = { canvas: canvas, scene: scene, camera: camera, renderer: renderer, controls: controls, mixer: null, model: null, options: options };
+        scenes.push(entry);
+        return entry;
+    }
+
+    function _loadGLB(entry, onLoaded) {
+        if (!window.THREE || !THREE.GLTFLoader) {
+            _createPlaceholderModel(entry);
+            if (onLoaded) onLoaded(false);
+            return;
+        }
+        var loader = new THREE.GLTFLoader();
+        var paths = ['SashaAI.glb', './SashaAI.glb', 'SashaAI.glb?nocache=' + Date.now()];
+        var idx = 0;
+        function tryPath() {
+            if (idx >= paths.length) {
+                console.warn('[SashaAvatar] SashaAI.glb not found — using placeholder model');
+                _createPlaceholderModel(entry);
+                if (onLoaded) onLoaded(false);
+                return;
+            }
+            var path = paths[idx++];
+            loader.load(path, function(gltf) {
+                var model = gltf.scene;
+                // Center and scale model
+                var box = new THREE.Box3().setFromObject(model);
+                var size = box.getSize(new THREE.Vector3());
+                var center = box.getCenter(new THREE.Vector3());
+                var maxDim = Math.max(size.x, size.y, size.z);
+                var scale = 2.0 / maxDim;
+                model.scale.setScalar(scale);
+                model.position.x = -center.x * scale;
+                model.position.y = -box.min.y * scale;
+                model.position.z = -center.z * scale;
+                model.traverse(function(c) {
+                    if (c.isMesh) {
+                        c.castShadow = true;
+                        c.receiveShadow = true;
+                    }
+                });
+                entry.scene.add(model);
+                entry.model = model;
+                // Animations
+                if (gltf.animations && gltf.animations.length > 0) {
+                    entry.mixer = new THREE.AnimationMixer(model);
+                    var action = entry.mixer.clipAction(gltf.animations[0]);
+                    action.play();
+                    console.log('[SashaAvatar] Loaded with', gltf.animations.length, 'animations');
+                } else {
+                    console.log('[SashaAvatar] Loaded (no animations)');
+                }
+                // Hide loading text
+                var loading = document.getElementById('about-loading');
+                if (loading) loading.style.display = 'none';
+                if (onLoaded) onLoaded(true);
+            }, function(progress) {
+                // Could update loading %
+            }, function(err) {
+                console.warn('[SashaAvatar] Failed', path, '— trying next');
+                tryPath();
+            });
+        }
+        tryPath();
+    }
+
+    function _createPlaceholderModel(entry) {
+        // Simple stylized character: cylinder body + sphere head (r128-compatible)
+        var group = new THREE.Group();
+        var bodyMat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4, metalness: 0.3 });
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.4, 16), bodyMat);
+        body.position.y = 0.9;
+        body.castShadow = true;
+        group.add(body);
+        var headMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.3, metalness: 0.2, emissive: 0x6a1a3a, emissiveIntensity: 0.3 });
+        var head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 16), headMat);
+        head.position.y = 1.95;
+        head.castShadow = true;
+        group.add(head);
+        // Eyes
+        var eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        var eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), eyeMat);
+        eyeL.position.set(-0.12, 2.0, 0.3);
+        group.add(eyeL);
+        var eyeR = eyeL.clone();
+        eyeR.position.x = 0.12;
+        group.add(eyeR);
+        // Glow ring under feet
+        var ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
+        var ringMat = new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+        var ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.02;
+        group.add(ring);
+        entry.scene.add(group);
+        entry.model = group;
+        // Hide loading text
+        var loading = document.getElementById('about-loading');
+        if (loading) loading.textContent = 'Модель не найдена — показываю заглушку';
+        setTimeout(function() { if (loading) loading.style.display = 'none'; }, 2000);
+    }
+
+    var clock = null;
+    function _animate() {
+        requestAnimationFrame(_animate);
+        if (!clock) clock = new THREE.Clock();
+        var delta = clock.getDelta();
+        for (var i = 0; i < scenes.length; i++) {
+            var e = scenes[i];
+            if (!e.canvas.isConnected) continue;  // canvas removed from DOM
+            if (e.mixer) e.mixer.update(delta);
+            if (e.controls) e.controls.update();
+            // Gentle floating animation if no mixer
+            if (!e.mixer && e.model) {
+                e.model.position.y = (e.model.userData.baseY || e.model.position.y) + Math.sin(Date.now() * 0.001) * 0.002;
+                e.model.rotation.y += delta * 0.15;
+            }
+            // Resize check
+            var w = e.canvas.clientWidth;
+            var h = e.canvas.clientHeight;
+            if (w > 0 && h > 0) {
+                var needResize = e.canvas.width !== Math.round(w * e.renderer.getPixelRatio()) ||
+                                 e.canvas.height !== Math.round(h * e.renderer.getPixelRatio());
+                if (needResize) {
+                    e.camera.aspect = w / h;
+                    e.camera.updateProjectionMatrix();
+                    e.renderer.setSize(w, h, false);
+                }
+            }
+            e.renderer.render(e.scene, e.camera);
+        }
+    }
+
+    function initAbout() {
+        var canvas = document.getElementById('about-canvas');
+        if (!canvas) return null;
+        var entry = _createScene(canvas, { autoRotate: true });
+        if (entry) _loadGLB(entry);
+        return entry;
+    }
+
+    function initHome() {
+        var canvas = document.getElementById('sasha-canvas');
+        if (!canvas) return null;
+        // Check if already initialized
+        for (var i = 0; i < scenes.length; i++) {
+            if (scenes[i].canvas === canvas) return scenes[i];
+        }
+        var entry = _createScene(canvas, { autoRotate: false });
+        if (entry) _loadGLB(entry);
+        return entry;
+    }
+
+    function initAll() {
+        var any = false;
+        if (document.getElementById('about-canvas')) {
+            initAbout();
+            any = true;
+        }
+        if (document.getElementById('sasha-canvas')) {
+            initHome();
+            any = true;
+        }
+        if (any && scenes.length > 0) {
+            _animate();
+        }
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        for (var i = 0; i < scenes.length; i++) {
+            var e = scenes[i];
+            var w = e.canvas.clientWidth;
+            var h = e.canvas.clientHeight;
+            if (w > 0 && h > 0) {
+                e.camera.aspect = w / h;
+                e.camera.updateProjectionMatrix();
+                e.renderer.setSize(w, h, false);
+            }
+        }
+    });
+
+    return {
+        initAbout: initAbout,
+        initHome: initHome,
+        initAll: initAll,
+        scenes: scenes
+    };
+})();
+
 // ===== Auto-init on page load =====
 (function() {
     function autoInit() {
         if (typeof SashaTTS !== 'undefined') SashaTTS.init();
         if (typeof SashaMemory !== 'undefined') SashaMemory._updateMemoryBadge();
+        // Init 3D avatar scenes (About + Home)
+        if (typeof SashaAvatar !== 'undefined') SashaAvatar.initAll();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoInit);
     else autoInit();
 })();
+
 
 // ============ CONSOLE INTERCEPT — feed browser errors into our console panel ============
 (function() {
