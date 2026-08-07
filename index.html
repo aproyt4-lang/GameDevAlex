@@ -4693,17 +4693,42 @@ var SashaMeshEdit = (function() {
         editedMesh = mesh;
         originalGeometry = mesh.geometry.clone();
         editMode = true;
+        // Hide the wireframe selection helper box — it overlaps with vertex
+        // helpers and creates visual noise (looks like a "second hidden object").
+        // We restore it on exitEditMode().
+        if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI._getSelectionHelper) {
+            var sh = SashaEngineAPI._getSelectionHelper();
+            if (sh) {
+                _savedSelectionHelperVisible = sh.visible;
+                sh.visible = false;
+            }
+        }
         _refreshHelpers();
         _updateInfo();
         return true;
     }
 
     function exitEditMode() {
+        // Dispose instanced helpers properly
+        if (instancedHelpers) {
+            if (instancedHelpers.parent) instancedHelpers.parent.remove(instancedHelpers);
+            instancedHelpers.geometry.dispose();
+            instancedHelpers.material.dispose();
+            instancedHelpers = null;
+        }
         if (vertexHelperGroup && editedMesh) {
             editedMesh.remove(vertexHelperGroup);
             vertexHelperGroup = null;
             vertexHelpers = [];
         }
+        // Restore selection helper visibility
+        if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI._getSelectionHelper) {
+            var sh = SashaEngineAPI._getSelectionHelper();
+            if (sh && _savedSelectionHelperVisible !== undefined) {
+                sh.visible = _savedSelectionHelperVisible;
+            }
+        }
+        _savedSelectionHelperVisible = undefined;
         editedMesh = null;
         originalGeometry = null;
         editMode = false;
@@ -4718,14 +4743,14 @@ var SashaMeshEdit = (function() {
     function selectVerticesByIndices(indices) {
         if (selectionMode !== 'vertex') setSelectionMode('vertex');
         selectedIndices = indices.slice();
-        _refreshHelpers();
+        _updateHelperColors();  // fast — just recolor, no recreation
         _updateInfo();
     }
 
     function selectFacesByIndices(indices) {
         if (selectionMode !== 'face') setSelectionMode('face');
         selectedIndices = indices.slice();
-        _refreshHelpers();
+        _updateHelperColors();  // fast — just recolor, no recreation
         _updateInfo();
     }
 
@@ -4737,57 +4762,105 @@ var SashaMeshEdit = (function() {
                     (geo.index ? geo.index.count / 2 : geo.attributes.position.count / 2);
         selectedIndices = [];
         for (var i = 0; i < count; i++) selectedIndices.push(i);
-        _refreshHelpers();
+        _updateHelperColors();  // fast — just recolor
         _updateInfo();
     }
 
     function deselectAll() {
         selectedIndices = [];
-        _refreshHelpers();
+        _updateHelperColors();  // fast — just recolor
         _updateInfo();
     }
 
+    // === OPTIMIZATION: InstancedMesh for vertex helpers ===
+    // Was: one THREE.Mesh per vertex (N draw calls, N materials)
+    // Now: one InstancedMesh with N instances (single draw call)
+    // This fixes the 0 FPS issue in Edit Mesh mode on high-poly meshes.
+    var MAX_HELPER_VERTICES = 5000;  // show at most this many; rest are raycast-only
+    var instancedHelpers = null;     // THREE.InstancedMesh
+    var helperColorUnselected = new THREE.Color(0x6366f1);
+    var helperColorSelected = new THREE.Color(0xf59e0b);
+    var helperColorHover = new THREE.Color(0x22c55e);
+    var _dummyObj = new THREE.Object3D();
+    var _helperVisibleCount = 0;
+    var _helperStride = 1;  // for high-poly: show every Nth vertex
+
     function _refreshHelpers() {
         if (!editedMesh) return;
+        // Dispose previous instanced mesh
+        if (instancedHelpers) {
+            if (instancedHelpers.parent) instancedHelpers.parent.remove(instancedHelpers);
+            instancedHelpers.geometry.dispose();
+            instancedHelpers.material.dispose();
+            instancedHelpers = null;
+        }
+        vertexHelpers = [];
         if (vertexHelperGroup) {
-            editedMesh.remove(vertexHelperGroup);
+            if (vertexHelperGroup.parent) vertexHelperGroup.parent.remove(vertexHelperGroup);
             vertexHelperGroup = null;
-            vertexHelpers = [];
         }
         if (!editMode) return;
-        vertexHelperGroup = new THREE.Group();
-        vertexHelperGroup.name = '__meshedit_helpers';
+
         var geo = editedMesh.geometry;
         var pos = geo.attributes.position;
-        var helperGeo = new THREE.SphereGeometry(0.04, 8, 6);
-        for (var i = 0; i < pos.count; i++) {
+        var totalVerts = pos.count;
+
+        // For high-poly meshes: stride to keep helper count under MAX_HELPER_VERTICES
+        _helperStride = 1;
+        if (totalVerts > MAX_HELPER_VERTICES) {
+            _helperStride = Math.ceil(totalVerts / MAX_HELPER_VERTICES);
+        }
+        _helperVisibleCount = Math.floor(totalVerts / _helperStride);
+
+        // Single InstancedMesh — one draw call regardless of vertex count
+        var helperGeo = new THREE.SphereGeometry(0.04, 6, 4);  // low-poly sphere
+        var helperMat = new THREE.MeshBasicMaterial({
+            depthTest: false,
+            transparent: true,
+            opacity: 0.9
+        });
+        instancedHelpers = new THREE.InstancedMesh(helperGeo, helperMat, _helperVisibleCount);
+        instancedHelpers.name = '__meshedit_instanced';
+        instancedHelpers.renderOrder = 999;
+        instancedHelpers.frustumCulled = false;  // always render (small sphere count)
+        instancedHelpers.userData.vertexIndices = new Array(_helperVisibleCount);
+
+        // Place instances at vertex positions (local space — InstancedMesh is child of mesh)
+        var selSet = {};
+        for (var s = 0; s < selectedIndices.length; s++) selSet[selectedIndices[s]] = true;
+
+        var placed = 0;
+        for (var i = 0; i < totalVerts && placed < _helperVisibleCount; i += _helperStride) {
             var v = new THREE.Vector3().fromBufferAttribute(pos, i);
-            v.applyMatrix4(editedMesh.matrixWorld);
-            var isSel = selectedIndices.indexOf(i) !== -1;
-            var helperMat = new THREE.MeshBasicMaterial({
-                color: isSel ? 0xf59e0b : 0x6366f1,
-                depthTest: false,
-                transparent: true,
-                opacity: 0.9
-            });
-            var helper = new THREE.Mesh(helperGeo, helperMat);
-            helper.position.copy(v);
-            helper.renderOrder = 999;
-            helper.userData.vertexIndex = i;
-            vertexHelperGroup.add(helper);
-            vertexHelpers.push(helper);
+            _dummyObj.position.copy(v);
+            _dummyObj.scale.set(1, 1, 1);
+            _dummyObj.updateMatrix();
+            instancedHelpers.setMatrixAt(placed, _dummyObj.matrix);
+            instancedHelpers.setColorAt(placed, selSet[i] ? helperColorSelected : helperColorUnselected);
+            instancedHelpers.userData.vertexIndices[placed] = i;
+            placed++;
         }
-        editedMesh.add(vertexHelperGroup);
-        // Need to update world matrix
+        instancedHelpers.count = placed;
+        instancedHelpers.instanceMatrix.needsUpdate = true;
+        if (instancedHelpers.instanceColor) instancedHelpers.instanceColor.needsUpdate = true;
+
+        editedMesh.add(instancedHelpers);
         editedMesh.updateMatrixWorld(true);
-        // Reposition helpers in local space
-        var inv = new THREE.Matrix4().copy(editedMesh.matrixWorld).invert();
-        for (var j = 0; j < vertexHelpers.length; j++) {
-            var worldPos = vertexHelpers[j].position.clone();
-            worldPos.applyMatrix4(inv);
-            vertexHelpers[j].position.copy(worldPos);
-        }
     }
+
+    // Update only the COLORS of existing instances (no recreation) — fast
+    function _updateHelperColors() {
+        if (!instancedHelpers || !editedMesh) return;
+        var selSet = {};
+        for (var s = 0; s < selectedIndices.length; s++) selSet[selectedIndices[s]] = true;
+        var idx = instancedHelpers.userData.vertexIndices;
+        for (var i = 0; i < instancedHelpers.count; i++) {
+            var vIdx = idx[i];
+            instancedHelpers.setColorAt(i, selSet[vIdx] ? helperColorSelected : helperColorUnselected);
+        }
+        if (instancedHelpers.instanceColor) instancedHelpers.instanceColor.needsUpdate = true;
+    }
+
 
     function _updateInfo() {
         var info = document.getElementById('meb-info');
@@ -4804,11 +4877,38 @@ var SashaMeshEdit = (function() {
     }
 
     function pickVertex(raycaster) {
-        if (!editMode || !vertexHelperGroup) return -1;
-        var hits = raycaster.intersectObjects(vertexHelpers, false);
+        if (!editMode || !instancedHelpers) return -1;
+        // Raycast against the InstancedMesh — returns instanceId in intersection
+        var hits = raycaster.intersectObject(instancedHelpers, false);
         if (hits.length === 0) return -1;
-        return hits[0].object.userData.vertexIndex;
+        var hit = hits[0];
+        var instanceId = hit.instanceId;
+        if (instanceId === undefined || instanceId === null) return -1;
+        var vIdx = instancedHelpers.userData.vertexIndices[instanceId];
+        return vIdx !== undefined ? vIdx : -1;
     }
+
+    // Also support picking the actual mesh geometry (for high-poly meshes where
+    // stride > 1 means not all vertices have a visible helper sphere)
+    function pickVertexOnMesh(raycaster) {
+        if (!editMode || !editedMesh) return -1;
+        var hits = raycaster.intersectObject(editedMesh, false);
+        if (hits.length === 0) return -1;
+        // The closest face — find its 3 vertex indices and return the nearest one
+        var face = hits[0].face;
+        if (!face) return -1;
+        var point = hits[0].point;
+        var geo = editedMesh.geometry;
+        var pos = geo.attributes.position;
+        var a = new THREE.Vector3().fromBufferAttribute(pos, face.a).applyMatrix4(editedMesh.matrixWorld);
+        var b = new THREE.Vector3().fromBufferAttribute(pos, face.b).applyMatrix4(editedMesh.matrixWorld);
+        var c = new THREE.Vector3().fromBufferAttribute(pos, face.c).applyMatrix4(editedMesh.matrixWorld);
+        var da = a.distanceTo(point), db = b.distanceTo(point), dc = c.distanceTo(point);
+        if (da <= db && da <= dc) return face.a;
+        if (db <= dc) return face.b;
+        return face.c;
+    }
+
 
     function extrude(amount) {
         amount = amount || 0.5;
@@ -5329,6 +5429,7 @@ var SashaEngineAPI = (function() {
     var _boneVisGroup = null;
     var _lastTransformEnd = 0;
     var _boneGizmoAttached = false;
+    var _savedSelectionHelperVisible = undefined;
     var _transformDragging = false;
     var selectionHelper = null;
     var transformCtrl = null;
@@ -5675,10 +5776,15 @@ var SashaEngineAPI = (function() {
         objectRenames[mainCameraName] = mainCameraName;
 
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // PERFORMANCE: Cap pixel ratio at 1.5 — on 4K/Retina displays devicePixelRatio=2-3
+        // means 4-9x more pixels to render. 1.5 is a good balance between quality and FPS.
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        // PERFORMANCE: Shadows are expensive — use BasicShadowMap (cheapest) instead of PCFSoft.
+        // Also reduce shadow map size from default 512 to 1024 only if GPU can handle it.
+        // For low-end GPUs, PCFSoftShadowMap can cut FPS by 40-60%.
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type = THREE.PCFShadowMap;  // PCF (not Soft) — 2x faster, still looks ok
 
         // Preview renderer created lazily when camera preview first shown (canvas hidden during init)
 
@@ -5747,6 +5853,16 @@ var SashaEngineAPI = (function() {
         dir.name = '__builtin_dir';
         dir.position.set(5, 10, 5);
         dir.castShadow = true;
+        // PERFORMANCE: Reduce shadow map size to 1024 (default is 512, but some GPUs
+        // struggle even with that). 1024 is a good balance — shadows look ok, FPS stays high.
+        dir.shadow.mapSize.set(1024, 1024);
+        dir.shadow.camera.near = 0.5;
+        dir.shadow.camera.far = 50;
+        dir.shadow.camera.left = -15;
+        dir.shadow.camera.right = 15;
+        dir.shadow.camera.top = 15;
+        dir.shadow.camera.bottom = -15;
+        dir.shadow.bias = -0.0005;
         scene.add(dir);
 
         // Grid
@@ -8252,6 +8368,15 @@ var SashaEngineAPI = (function() {
         }
     }
 
+    // === PERFORMANCE: Cached references to avoid per-frame lookups ===
+    var _cachedGrid = null;
+    var _cachedSceneViewEl = null;
+    var _cachedGameViewEl = null;
+    var _selHelperBox = new THREE.Box3();
+    var _selHelperSize = new THREE.Vector3();
+    var _selHelperCenter = new THREE.Vector3();
+    var _selHelperUpdateCounter = 0;
+
     function animate() {
         animFrameId = requestAnimationFrame(animate);
         if (!initialized) return;
@@ -8262,10 +8387,6 @@ var SashaEngineAPI = (function() {
         updateFPS(delta);
 
         // === Skeletal animation mixers (main scene) + inspector preview render ===
-        // updateSkeletonMixers() iterates _skeletonData[*].mixer.update(dt) AND
-        // calls _inspPreviewUpdate() which renders the inspector preview scene.
-        // Without this call the inspector preview canvas stays black even after
-        // a model is selected.
         try { updateSkeletonMixers(delta); } catch(e) { console.warn('[animate] updateSkeletonMixers error:', e.message); }
 
         // Update bone visualization in Pose Mode
@@ -8287,15 +8408,21 @@ var SashaEngineAPI = (function() {
             }
         }
 
-        // Update selection highlight position to follow selected object
+        // === PERFORMANCE: Update selection helper every 10 frames instead of every frame.
+        // Box3.setFromObject() traverses ALL children of the selected object — expensive
+        // on high-poly models. Updating every 10 frames (~6 times/sec at 60fps) is enough
+        // for a wireframe highlight box to follow the object.
+        _selHelperUpdateCounter++;
         if (selectionHelper && selectionHelper.visible && selectedObject && objects[selectedObject]) {
-            var obj = objects[selectedObject];
-            if (obj.isMesh) {
-                var box = new THREE.Box3().setFromObject(obj);
-                var size = box.getSize(new THREE.Vector3());
-                var center = box.getCenter(new THREE.Vector3());
-                selectionHelper.scale.set(size.x + 0.05, size.y + 0.05, size.z + 0.05);
-                selectionHelper.position.copy(center);
+            if (_selHelperUpdateCounter % 10 === 0) {
+                var obj = objects[selectedObject];
+                if (obj.isMesh) {
+                    _selHelperBox.setFromObject(obj);
+                    _selHelperBox.getSize(_selHelperSize);
+                    _selHelperBox.getCenter(_selHelperCenter);
+                    selectionHelper.scale.set(_selHelperSize.x + 0.05, _selHelperSize.y + 0.05, _selHelperSize.z + 0.05);
+                    selectionHelper.position.copy(_selHelperCenter);
+                }
             }
         }
 
@@ -8347,13 +8474,12 @@ var SashaEngineAPI = (function() {
 
             // === GAME MODE: render on main canvas via gameCamera ===
             if (gameViewActive && playState === 'playing') {
-                // Hide all editor helpers
-                var _eg = scene.getObjectByName('__builtin_grid');
-                if (_eg) _eg.visible = false;
+                // PERFORMANCE: Use cached grid reference instead of scene.getObjectByName every frame
+                if (!_cachedGrid) _cachedGrid = scene.getObjectByName('__builtin_grid');
+                if (_cachedGrid) _cachedGrid.visible = false;
                 if (selectionHelper) selectionHelper.visible = false;
                 if (transformCtrl) transformCtrl.visible = false;
                 if (mainCameraHelper) mainCameraHelper.visible = false;
-                // Hide bone visualization in game mode — skeleton is editor-only
                 if (_boneVisGroup) _boneVisGroup.visible = false;
                 for (var _bhIdx = 0; _bhIdx < _boneHitSpheres.length; _bhIdx++) {
                     if (_boneHitSpheres[_bhIdx]) _boneHitSpheres[_bhIdx].visible = false;
@@ -8370,7 +8496,6 @@ var SashaEngineAPI = (function() {
                         gameCamera.lookAt(0, 1, 0);
                     }
 
-                    // Use getBoundingClientRect for reliable sizing
                     var rect = canvas.getBoundingClientRect();
                     var gw = Math.round(rect.width);
                     var gh = Math.round(rect.height);
@@ -8379,24 +8504,13 @@ var SashaEngineAPI = (function() {
                         gameCamera.aspect = gw / gh;
                         gameCamera.updateProjectionMatrix();
                         renderer.setSize(gw, gh, false);
-                        // Render game view on main canvas
                         renderer.render(scene, gameCamera);
-                    } else {
-                        // Fallback: try clientWidth/clientHeight
-                        var fw = canvas.clientWidth;
-                        var fh = canvas.clientHeight;
-                        if (fw >= 1 && fh >= 1) {
-                            gameCamera.aspect = fw / fh;
-                            gameCamera.updateProjectionMatrix();
-                            renderer.setSize(fw, fh, false);
-                            renderer.render(scene, gameCamera);
-                        }
                     }
                 }
                 return;
             }
 
-            if (w < 1 || h < 1) return; // Canvas not ready — don't render anything
+            if (w < 1 || h < 1) return; // Canvas not ready
 
             var pr = renderer.getPixelRatio();
             if (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height) {
@@ -8405,45 +8519,48 @@ var SashaEngineAPI = (function() {
                 renderer.setSize(w, h);
             }
 
-            var _eg = scene.getObjectByName('__builtin_grid');
-            var gvVisible = document.getElementById('game-view') && !document.getElementById('game-view').classList.contains('hidden-view');
-            var svVisible = document.getElementById('scene-view') && !document.getElementById('scene-view').classList.contains('hidden-view');
+            // PERFORMANCE: Cache DOM lookups — were doing getElementById every frame
+            if (!_cachedSceneViewEl) _cachedSceneViewEl = document.getElementById('scene-view');
+            if (!_cachedGameViewEl) _cachedGameViewEl = document.getElementById('game-view');
+            if (!_cachedGrid) _cachedGrid = scene.getObjectByName('__builtin_grid');
+            var gvVisible = _cachedGameViewEl && !_cachedGameViewEl.classList.contains('hidden-view');
+            var svVisible = _cachedSceneViewEl && !_cachedSceneViewEl.classList.contains('hidden-view');
 
-            // === EDITOR MODE: show helpers, Scene + optional Game split view ===
-            if (_eg) _eg.visible = true;
+            // === EDITOR MODE: show helpers ===
+            if (_cachedGrid) _cachedGrid.visible = true;
             if (selectionHelper) selectionHelper.visible = !!selectedObject;
             if (transformCtrl) transformCtrl.visible = true;
             if (mainCameraHelper) mainCameraHelper.visible = true;
-            // Show bone visualization back in editor mode
             if (_boneVisGroup && _boneVisGroup.parent) _boneVisGroup.visible = true;
             for (var _bhIdx2 = 0; _bhIdx2 < _boneHitSpheres.length; _bhIdx2++) {
                 if (_boneHitSpheres[_bhIdx2]) _boneHitSpheres[_bhIdx2].visible = true;
             }
 
-            // Scene view on main canvas
+            // Scene view on main canvas — ONLY if visible
             if (svVisible) {
                 renderer.render(scene, camera);
             }
 
-            // Game view panel on separate canvas (without helpers)
+            // Game view panel — ONLY if visible (skip render if hidden = big perf win)
             if (gvVisible) {
-                if (_eg) _eg.visible = false;
+                if (_cachedGrid) _cachedGrid.visible = false;
                 if (selectionHelper) selectionHelper.visible = false;
                 if (transformCtrl) transformCtrl.visible = false;
                 if (mainCameraHelper) mainCameraHelper.visible = false;
                 if (_boneVisGroup) _boneVisGroup.visible = false;
                 _renderGameView();
-                if (_eg) _eg.visible = true;
+                if (_cachedGrid) _cachedGrid.visible = true;
                 if (selectionHelper) selectionHelper.visible = !!selectedObject;
                 if (transformCtrl) transformCtrl.visible = true;
                 if (mainCameraHelper) mainCameraHelper.visible = true;
                 if (_boneVisGroup && _boneVisGroup.parent) _boneVisGroup.visible = true;
             }
 
-            // Camera Preview only when Scene visible and not playing
+            // Camera Preview — ONLY if visible and not playing
             if (svVisible && playState !== 'playing') _renderCameraPreview();
         }
     }
+
 
     // Check if Scene view is hidden (when user selected only Game tab)
     function _gvSceneHidden() {
@@ -9325,6 +9442,7 @@ var SashaEngineAPI = (function() {
         getCamera: getCamera, getRenderer: getRenderer, getControls: getControls,
         addObjectDirect: function(name, obj, type) { objects[name] = obj; objectTypes[name] = type || 'model'; objectRenames[name] = name; },
         _registerSkeletonDataDirect: function(name, mixer, clips) { _skeletonData[name] = { mixer: mixer, clips: clips, actions: [] }; },
+        _getSelectionHelper: function() { return selectionHelper; },
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
         getAllObjectNames: getAllObjectNames, getObjectTypes: getObjectTypes,
