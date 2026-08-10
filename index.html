@@ -8372,10 +8372,57 @@ var SashaEngineAPI = (function() {
     var _cachedGrid = null;
     var _cachedSceneViewEl = null;
     var _cachedGameViewEl = null;
+    var _cachedPreviewEl = null;
     var _selHelperBox = new THREE.Box3();
     var _selHelperSize = new THREE.Vector3();
     var _selHelperCenter = new THREE.Vector3();
     var _selHelperUpdateCounter = 0;
+
+    // === PERFORMANCE PROFILER ===
+    // Tracks time spent in each section of animate(). Toggle with F8 or
+    // EngineApp.toggleProfiler(). Shows breakdown in console every 60 frames.
+    var _profiler = {
+        enabled: false,
+        frame: 0,
+        timers: {},
+        start: function(name) { if (this.enabled) this.timers[name] = performance.now(); },
+        end: function(name) {
+            if (!this.enabled) return;
+            var t = performance.now() - (this.timers[name] || 0);
+            this[name] = (this[name] || 0) + t;
+        },
+        report: function() {
+            if (!this.enabled) return;
+            this.frame++;
+            if (this.frame % 60 === 0) {
+                var total = (this.mixers || 0) + (this.boneViz || 0) + (this.physics || 0) +
+                            (this.selHelper || 0) + (this.anims || 0) + (this.callbacks || 0) +
+                            (this.fpsCam || 0) + (this.editCam || 0) + (this.mainCam || 0) +
+                            (this.controls || 0) + (this.render || 0) + (this.gameView || 0) +
+                            (this.preview || 0);
+                console.log('=== PROFILER (60 frames avg) ===');
+                console.log('  Total per frame: ' + (total / 60).toFixed(2) + 'ms');
+                console.log('  mixers:    ' + ((this.mixers || 0) / 60).toFixed(2) + 'ms');
+                console.log('  boneViz:   ' + ((this.boneViz || 0) / 60).toFixed(2) + 'ms');
+                console.log('  physics:   ' + ((this.physics || 0) / 60).toFixed(2) + 'ms');
+                console.log('  selHelper: ' + ((this.selHelper || 0) / 60).toFixed(2) + 'ms');
+                console.log('  anims:     ' + ((this.anims || 0) / 60).toFixed(2) + 'ms');
+                console.log('  callbacks: ' + ((this.callbacks || 0) / 60).toFixed(2) + 'ms');
+                console.log('  fpsCam:    ' + ((this.fpsCam || 0) / 60).toFixed(2) + 'ms');
+                console.log('  editCam:   ' + ((this.editCam || 0) / 60).toFixed(2) + 'ms');
+                console.log('  mainCam:   ' + ((this.mainCam || 0) / 60).toFixed(2) + 'ms');
+                console.log('  controls:  ' + ((this.controls || 0) / 60).toFixed(2) + 'ms');
+                console.log('  render:    ' + ((this.render || 0) / 60).toFixed(2) + 'ms');
+                console.log('  gameView:  ' + ((this.gameView || 0) / 60).toFixed(2) + 'ms');
+                console.log('  preview:   ' + ((this.preview || 0) / 60).toFixed(2) + 'ms');
+                console.log('  FPS: ' + currentFPS);
+                // Reset
+                this.mixers = this.boneViz = this.physics = this.selHelper = 0;
+                this.anims = this.callbacks = this.fpsCam = this.editCam = this.mainCam = 0;
+                this.controls = this.render = this.gameView = this.preview = 0;
+            }
+        }
+    };
 
     function animate() {
         animFrameId = requestAnimationFrame(animate);
@@ -8383,38 +8430,44 @@ var SashaEngineAPI = (function() {
         var delta = clock ? clock.getDelta() : 0.016;
         var t = Date.now() * 0.001;
 
-        // Update FPS
-        updateFPS(delta);
+        _profiler.start('mixers');
+        // === Skeletal animation mixers — ONLY if any exist ===
+        // Skip the for-in loop entirely if _skeletonData is empty (common case
+        // when just editing geometry without rigged models).
+        var hasSkeletons = false;
+        for (var _sk in _skeletonData) { if (_skeletonData.hasOwnProperty(_sk)) { hasSkeletons = true; break; } }
+        if (hasSkeletons) {
+            try { updateSkeletonMixers(delta); } catch(e) { console.warn('[animate] updateSkeletonMixers error:', e.message); }
+        }
+        _profiler.end('mixers');
 
-        // === Skeletal animation mixers (main scene) + inspector preview render ===
-        try { updateSkeletonMixers(delta); } catch(e) { console.warn('[animate] updateSkeletonMixers error:', e.message); }
-
-        // Update bone visualization in Pose Mode
-        if (typeof EngineApp !== 'undefined' && EngineApp._getPoseModelName) {
+        _profiler.start('boneViz');
+        // Update bone visualization in Pose Mode — ONLY if pose mode active
+        if (typeof EngineApp !== 'undefined' && EngineApp._poseMode && EngineApp._getPoseModelName) {
             var pmn = EngineApp._getPoseModelName();
             if (pmn) {
                 try { updateBoneVisualization(pmn); } catch(e2) {}
             }
         }
+        _profiler.end('boneViz');
 
-        // Play mode: run physics, scripts, animators
+        _profiler.start('physics');
+        // Play mode: run physics, scripts, animators — ONLY when playing
         if (playState === 'playing') {
             var collisionPairs = updatePhysics(delta);
             stepScripts(delta, collisionPairs);
             stepAnimators(delta);
-            // Auto-refresh inspector during play
             if (inspectorAutoRefresh && selectedObject) {
                 EngineApp.refreshInspector();
             }
         }
+        _profiler.end('physics');
 
-        // === PERFORMANCE: Update selection helper every 10 frames instead of every frame.
-        // Box3.setFromObject() traverses ALL children of the selected object — expensive
-        // on high-poly models. Updating every 10 frames (~6 times/sec at 60fps) is enough
-        // for a wireframe highlight box to follow the object.
+        _profiler.start('selHelper');
+        // === Update selection helper every 15 frames (~4 times/sec at 60fps) ===
         _selHelperUpdateCounter++;
         if (selectionHelper && selectionHelper.visible && selectedObject && objects[selectedObject]) {
-            if (_selHelperUpdateCounter % 10 === 0) {
+            if (_selHelperUpdateCounter % 15 === 0) {
                 var obj = objects[selectedObject];
                 if (obj.isMesh) {
                     _selHelperBox.setFromObject(obj);
@@ -8425,48 +8478,61 @@ var SashaEngineAPI = (function() {
                 }
             }
         }
+        _profiler.end('selHelper');
 
-        // Process animations
-        for (var i = animations.length - 1; i >= 0; i--) {
-            var a = animations[i];
-            var elapsed = Date.now() - a.start;
-            var progress = Math.min(1, elapsed / a.dur);
-            var val = a.from + (a.to - a.from) * progress;
-            if (a.prop === 'position.x') a.obj.position.x = val;
-            else if (a.prop === 'position.y') a.obj.position.y = val;
-            else if (a.prop === 'position.z') a.obj.position.z = val;
-            else if (a.prop === 'rotation.x') a.obj.rotation.x = val;
-            else if (a.prop === 'rotation.y') a.obj.rotation.y = val;
-            else if (a.prop === 'rotation.z') a.obj.rotation.z = val;
-            else if (a.prop === 'scale.x') a.obj.scale.x = val;
-            else if (a.prop === 'scale.y') a.obj.scale.y = val;
-            else if (a.prop === 'scale.z') a.obj.scale.z = val;
-            if (progress >= 1) { animations.splice(i, 1); }
+        _profiler.start('anims');
+        // Process animations — ONLY if any exist
+        if (animations.length > 0) {
+            for (var i = animations.length - 1; i >= 0; i--) {
+                var a = animations[i];
+                var elapsed = Date.now() - a.start;
+                var progress = Math.min(1, elapsed / a.dur);
+                var val = a.from + (a.to - a.from) * progress;
+                if (a.prop === 'position.x') a.obj.position.x = val;
+                else if (a.prop === 'position.y') a.obj.position.y = val;
+                else if (a.prop === 'position.z') a.obj.position.z = val;
+                else if (a.prop === 'rotation.x') a.obj.rotation.x = val;
+                else if (a.prop === 'rotation.y') a.obj.rotation.y = val;
+                else if (a.prop === 'rotation.z') a.obj.rotation.z = val;
+                else if (a.prop === 'scale.x') a.obj.scale.x = val;
+                else if (a.prop === 'scale.y') a.obj.scale.y = val;
+                else if (a.prop === 'scale.z') a.obj.scale.z = val;
+                if (progress >= 1) { animations.splice(i, 1); }
+            }
         }
+        _profiler.end('anims');
 
-        // Frame callbacks
-        for (var j = 0; j < frameCallbacks.length; j++) {
-            try { frameCallbacks[j](delta, t); } catch(e) {}
+        _profiler.start('callbacks');
+        if (frameCallbacks.length > 0) {
+            for (var j = 0; j < frameCallbacks.length; j++) {
+                try { frameCallbacks[j](delta, t); } catch(e) {}
+            }
         }
+        _profiler.end('callbacks');
 
-        // === FPS Camera (WASD + Mouse Look) — only in FPS mode ===
-        updateFPSCamera(delta);
+        _profiler.start('fpsCam');
+        if (fpsMode) updateFPSCamera(delta);
+        _profiler.end('fpsCam');
 
-        // === Edit Mode WASD Camera Panning — only when NOT in FPS mode ===
-        updateEditCamera(delta);
+        _profiler.start('editCam');
+        if (!fpsMode) updateEditCamera(delta);
+        _profiler.end('editCam');
 
-        // === Main Camera Follow Update (only when follow target set and NOT in FPS mode) ===
-        if (!fpsMode) updateMainCamera(delta);
+        _profiler.start('mainCam');
+        if (!fpsMode && followTarget) updateMainCamera(delta);
+        _profiler.end('mainCam');
 
-        // Controls: disabled in FPS mode or during gizmo drag (Scene view always editable)
+        _profiler.start('controls');
+        // Controls: disabled in FPS mode or during gizmo drag
         if (fpsMode || _transformDragging) {
             if (controls) controls.enabled = false;
         } else {
             if (controls) controls.enabled = true;
         }
-
         if (controls && controls.enabled) controls.update();
+        _profiler.end('controls');
 
+        _profiler.start('render');
         // === RENDER ===
         if (renderer && scene && camera) {
             var w = canvas ? canvas.clientWidth : 0;
@@ -8474,7 +8540,6 @@ var SashaEngineAPI = (function() {
 
             // === GAME MODE: render on main canvas via gameCamera ===
             if (gameViewActive && playState === 'playing') {
-                // PERFORMANCE: Use cached grid reference instead of scene.getObjectByName every frame
                 if (!_cachedGrid) _cachedGrid = scene.getObjectByName('__builtin_grid');
                 if (_cachedGrid) _cachedGrid.visible = false;
                 if (selectionHelper) selectionHelper.visible = false;
@@ -8485,11 +8550,8 @@ var SashaEngineAPI = (function() {
                     if (_boneHitSpheres[_bhIdx]) _boneHitSpheres[_bhIdx].visible = false;
                 }
 
-                // Sync gameCamera from Main Camera helper
                 if (gameCamera) {
-                    if (mainCameraObj) {
-                        gameCamera.position.copy(mainCameraObj.position);
-                    }
+                    if (mainCameraObj) gameCamera.position.copy(mainCameraObj.position);
                     if (followTarget && objects[followTarget]) {
                         gameCamera.lookAt(objects[followTarget].position);
                     } else {
@@ -8507,10 +8569,12 @@ var SashaEngineAPI = (function() {
                         renderer.render(scene, gameCamera);
                     }
                 }
+                _profiler.end('render');
+                _profiler.report();
                 return;
             }
 
-            if (w < 1 || h < 1) return; // Canvas not ready
+            if (w < 1 || h < 1) { _profiler.end('render'); return; }
 
             var pr = renderer.getPixelRatio();
             if (Math.round(w * pr) !== renderer.domElement.width || Math.round(h * pr) !== renderer.domElement.height) {
@@ -8519,12 +8583,14 @@ var SashaEngineAPI = (function() {
                 renderer.setSize(w, h);
             }
 
-            // PERFORMANCE: Cache DOM lookups — were doing getElementById every frame
+            // Cache DOM lookups
             if (!_cachedSceneViewEl) _cachedSceneViewEl = document.getElementById('scene-view');
             if (!_cachedGameViewEl) _cachedGameViewEl = document.getElementById('game-view');
+            if (!_cachedPreviewEl) _cachedPreviewEl = document.getElementById('camera-preview');
             if (!_cachedGrid) _cachedGrid = scene.getObjectByName('__builtin_grid');
             var gvVisible = _cachedGameViewEl && !_cachedGameViewEl.classList.contains('hidden-view');
             var svVisible = _cachedSceneViewEl && !_cachedSceneViewEl.classList.contains('hidden-view');
+            var pvVisible = _cachedPreviewEl && _cachedPreviewEl.classList.contains('visible');
 
             // === EDITOR MODE: show helpers ===
             if (_cachedGrid) _cachedGrid.visible = true;
@@ -8540,25 +8606,34 @@ var SashaEngineAPI = (function() {
             if (svVisible) {
                 renderer.render(scene, camera);
             }
-
-            // Game view panel — ONLY if visible (skip render if hidden = big perf win)
-            if (gvVisible) {
-                if (_cachedGrid) _cachedGrid.visible = false;
-                if (selectionHelper) selectionHelper.visible = false;
-                if (transformCtrl) transformCtrl.visible = false;
-                if (mainCameraHelper) mainCameraHelper.visible = false;
-                if (_boneVisGroup) _boneVisGroup.visible = false;
-                _renderGameView();
-                if (_cachedGrid) _cachedGrid.visible = true;
-                if (selectionHelper) selectionHelper.visible = !!selectedObject;
-                if (transformCtrl) transformCtrl.visible = true;
-                if (mainCameraHelper) mainCameraHelper.visible = true;
-                if (_boneVisGroup && _boneVisGroup.parent) _boneVisGroup.visible = true;
-            }
-
-            // Camera Preview — ONLY if visible and not playing
-            if (svVisible && playState !== 'playing') _renderCameraPreview();
         }
+        _profiler.end('render');
+
+        _profiler.start('gameView');
+        // Game view panel — ONLY if visible
+        if (gvVisible && renderer && scene && camera) {
+            if (_cachedGrid) _cachedGrid.visible = false;
+            if (selectionHelper) selectionHelper.visible = false;
+            if (transformCtrl) transformCtrl.visible = false;
+            if (mainCameraHelper) mainCameraHelper.visible = false;
+            if (_boneVisGroup) _boneVisGroup.visible = false;
+            _renderGameView();
+            if (_cachedGrid) _cachedGrid.visible = true;
+            if (selectionHelper) selectionHelper.visible = !!selectedObject;
+            if (transformCtrl) transformCtrl.visible = true;
+            if (mainCameraHelper) mainCameraHelper.visible = true;
+            if (_boneVisGroup && _boneVisGroup.parent) _boneVisGroup.visible = true;
+        }
+        _profiler.end('gameView');
+
+        _profiler.start('preview');
+        // Camera Preview — ONLY if visible and not playing
+        if (pvVisible && svVisible && playState !== 'playing') {
+            _renderCameraPreview();
+        }
+        _profiler.end('preview');
+
+        _profiler.report();
     }
 
 
@@ -9906,6 +9981,7 @@ var EngineApp = (function() {
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') { e.preventDefault(); copySelected(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'v') { e.preventDefault(); pasteSelected(); }
             if (e.key === 'F12') { e.preventDefault(); toggleConsolePanel(); }
+            if (e.key === 'F8') { e.preventDefault(); if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.toggleProfiler) SashaEngineAPI.toggleProfiler(); }
         });
 
         // Right-click context menu on viewport and hierarchy
@@ -20498,7 +20574,17 @@ var EngineApp = (function() {
         _multiDuplicate: _multiDuplicate,
         _multiSetTransform: _multiSetTransform,
         _selectAll: _selectAll,
-        isInitialized: function() { return initialized; }
+        isInitialized: function() { return initialized; },
+        toggleProfiler: function() {
+            _profiler.enabled = !_profiler.enabled;
+            if (_profiler.enabled) {
+                console.log('[PROFILER] ENABLED — profiling next 60 frames. Check console.');
+                _profiler.frame = 0;
+            } else {
+                console.log('[PROFILER] DISABLED');
+            }
+            return _profiler.enabled;
+        }
     };
 })();
 
@@ -21554,7 +21640,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
-
 
 
 
