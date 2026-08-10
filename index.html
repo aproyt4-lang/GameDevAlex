@@ -7454,6 +7454,15 @@ var SashaEngineAPI = (function() {
         }
 
         // --- Step 4: Physics objects vs static colliders (no RigidBody) ---
+        // Static colliders never move inside updatePhysics(), so their AABB is
+        // identical for every physics object tested against them this frame.
+        // Precompute once instead of recomputing per (physics object x static collider) pair —
+        // this does not change collision results, only avoids redundant work.
+        var _staticAABBCache = {};
+        for (var tci = 0; tci < staticColliderNames.length; tci++) {
+            var tcName = staticColliderNames[tci];
+            _staticAABBCache[tcName] = _getColliderAABB(tcName);
+        }
         for (var si = 0; si < physNames.length; si++) {
             var sObjName = physNames[si];
             var sObj = objects[sObjName];
@@ -7465,7 +7474,7 @@ var SashaEngineAPI = (function() {
                 var tName = staticColliderNames[ti];
                 var tObj = objects[tName];
                 if (!tObj) continue;
-                var tAABB = _getColliderAABB(tName);
+                var tAABB = _staticAABBCache[tName];
                 if (!tAABB) continue;
                 // AABB overlap
                 if (sAABB.maxX > tAABB.minX && sAABB.minX < tAABB.maxX &&
@@ -7610,6 +7619,11 @@ var SashaEngineAPI = (function() {
     // Cache compiled update functions to avoid recompiling every frame
     var _scriptUpdateCache = {};
     var _scriptUpdateCacheVer = {};
+    // Cache compiled onCollision functions to avoid recompiling every frame
+    // (collisions between resting/overlapping objects fire every frame they touch,
+    // so without this cache the engine was calling `new Function(...)` 60x/sec per contact)
+    var _scriptCollisionCache = {};
+    var _scriptCollisionCacheVer = {};
 
     function stepScripts(delta, collisionPairs) {
         collisionPairs = collisionPairs || [];
@@ -7671,7 +7685,13 @@ var SashaEngineAPI = (function() {
                 var obj = objects[name];
                 if (!obj) continue;
                 try {
-                    var collFn = _safeCompileScript(['other', 'Engine'], code + '\nif(typeof onCollision==="function") onCollision(other, Engine);', 'onCollision-' + name);
+                    // Cache key includes code so edits during Play still recompile correctly
+                    var collCacheKey = name + '_' + i;
+                    if (_scriptCollisionCacheVer[collCacheKey] !== code) {
+                        _scriptCollisionCache[collCacheKey] = _safeCompileScript(['other', 'Engine'], code + '\nif(typeof onCollision==="function") onCollision(other, Engine);', 'onCollision-' + name);
+                        _scriptCollisionCacheVer[collCacheKey] = code;
+                    }
+                    var collFn = _scriptCollisionCache[collCacheKey];
                     if (collFn) collFn(otherObj, SashaEngineAPI);
                 } catch(collErr) {
                     console.error('[Script onCollision] ' + name + ':', collErr);
@@ -7703,6 +7723,8 @@ var SashaEngineAPI = (function() {
         scriptStarted = {};
         _scriptUpdateCache = {};
         _scriptUpdateCacheVer = {};
+        _scriptCollisionCache = {};
+        _scriptCollisionCacheVer = {};
         savedConstraintPositions = {};
     }
 
@@ -7976,6 +7998,10 @@ var SashaEngineAPI = (function() {
 
 
     // Evaluate a simple condition string against parameters
+    // (legacy fallback path — structured conditions use evalUnityTransition instead,
+    // which does plain comparisons with no per-call compilation)
+    var _conditionRegexCache = {};
+    var _conditionFnCache = {};
     function evalCondition(condition, params) {
         if (!condition) return true;
         try {
@@ -7984,9 +8010,22 @@ var SashaEngineAPI = (function() {
                 if (!params.hasOwnProperty(p)) continue;
                 var v = params[p].value;
                 if (params[p].type === 'trigger') v = v ? 1 : 0;
-                expr = expr.replace(new RegExp('\\b' + p + '\\b', 'g'), v);
+                // Reuse the RegExp per param name instead of compiling a new one every call
+                var re = _conditionRegexCache[p];
+                if (!re) { re = new RegExp('\\b' + p + '\\b', 'g'); _conditionRegexCache[p] = re; }
+                expr = expr.replace(re, v);
             }
-            return Function('"use strict"; return (' + expr + ')')();
+            // Cache the compiled Function per final expression string — condition
+            // expressions are driven by a small, repeating set of param values
+            // (bools/ints/triggers) in practice, so the same `expr` recurs often.
+            var fn = _conditionFnCache[expr];
+            if (!fn) {
+                fn = Function('"use strict"; return (' + expr + ')');
+                // Keep the cache bounded in case of unusual continuous-float param patterns
+                if (Object.keys(_conditionFnCache).length > 500) _conditionFnCache = {};
+                _conditionFnCache[expr] = fn;
+            }
+            return fn();
         } catch(e) { return false; }
     }
 
@@ -8377,6 +8416,7 @@ var SashaEngineAPI = (function() {
     var _selHelperSize = new THREE.Vector3();
     var _selHelperCenter = new THREE.Vector3();
     var _selHelperUpdateCounter = 0;
+    var _inspectorAutoRefreshCounter = 0;
 
     // === PERFORMANCE PROFILER ===
     // Tracks time spent in each section of animate(). Toggle with F8 or
@@ -8458,7 +8498,13 @@ var SashaEngineAPI = (function() {
             stepScripts(delta, collisionPairs);
             stepAnimators(delta);
             if (inspectorAutoRefresh && selectedObject) {
-                EngineApp.refreshInspector();
+                // Inspector rebuilds its DOM (innerHTML) on every refresh, which is expensive
+                // to do 60x/sec. Throttle to every 4 frames (~15x/sec) — still visually
+                // smooth for live-updating numbers, but cuts the DOM rebuild cost by ~4x.
+                _inspectorAutoRefreshCounter++;
+                if (_inspectorAutoRefreshCounter % 4 === 0) {
+                    EngineApp.refreshInspector();
+                }
             }
         }
         _profiler.end('physics');
