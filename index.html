@@ -11,13 +11,44 @@
     <title>SashaAI — GameDev AI & Developer [v8.3-mesh-edit-0308]</title>
     <!-- AI backends: Transformers.js (browser), Ollama (local), Groq (cloud API) -->
     
-    <!-- Three.js для 3D -->
+    <!-- Three.js core + common addons (needed by About avatar + Engine) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+    <!-- Engine-only addons — PERFORMANCE: Lazy-loaded when engine is first opened -->
+    <script>
+    var _engineAddonsLoaded = false;
+    var _engineAddonsLoading = false;
+    var _engineAddonsCallbacks = [];
+    function loadEngineAddons(onReady) {
+        if (_engineAddonsLoaded) { if (onReady) onReady(); return; }
+        if (onReady) _engineAddonsCallbacks.push(onReady);
+        if (_engineAddonsLoading) return;
+        _engineAddonsLoading = true;
+        var scripts = [
+            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js',
+            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js',
+            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js'
+        ];
+        var idx = 0;
+        function loadNext() {
+            if (idx >= scripts.length) {
+                _engineAddonsLoaded = true;
+                _engineAddonsLoading = false;
+                var cbs = _engineAddonsCallbacks.slice();
+                _engineAddonsCallbacks = [];
+                for (var i = 0; i < cbs.length; i++) { try { cbs[i](); } catch(e) { console.warn('Engine addon callback error:', e); } }
+                return;
+            }
+            var s = document.createElement('script');
+            s.src = scripts[idx];
+            s.onload = function() { idx++; loadNext(); };
+            s.onerror = function() { console.warn('Failed to load:', scripts[idx]); idx++; loadNext(); };
+            document.head.appendChild(s);
+        }
+        loadNext();
+    }
+    </script>
     
     <!-- Monaco Editor для кода -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
@@ -5396,6 +5427,7 @@ var SashaEngineAPI = (function() {
     var canvas = null;
     var initialized = false;
     var animFrameId = null;
+    var _loopPaused = false;  // PERFORMANCE: pause render loop when engine tab is not visible
     var selectedObject = null;
     var objects = {};
     var objectTypes = {};
@@ -5815,6 +5847,9 @@ var SashaEngineAPI = (function() {
             if (!event.value) { _lastTransformEnd = Date.now(); }
         });
         transformCtrl.addEventListener('objectChange', function() {
+            // PERFORMANCE: Invalidate bounding sphere cache for transformed object
+            var _tcObj = transformCtrl.object;
+            if (_tcObj) _tcObj._cachedBoundingSphere = null;
             if (_boneGizmoAttached && window.EngineApp && EngineApp._getPoseModelName) {
                 // Gizmo is on a bone — update bone visualization lines
                 var pm = EngineApp._getPoseModelName();
@@ -5966,15 +6001,22 @@ var SashaEngineAPI = (function() {
             if (!objects.hasOwnProperty(name)) continue;
             if (name.indexOf('__builtin') === 0 || name === '__selection_helper' || name === mainCameraName) continue;
             var obj = objects[name];
-            if (obj.isMesh) { meshes.push(obj); }
-            else if (obj.isGroup || obj.isObject3D) {
-                obj.traverse(function(child) {
-                    if (child.isMesh) meshes.push(child);
-                });
+            // PERFORMANCE: Cache bounding sphere on top-level objects for fast pre-filter
+            if (!obj._cachedBoundingSphere) {
+                try {
+                    var _tb = new THREE.Box3().setFromObject(obj);
+                    obj._cachedBoundingSphere = new THREE.Sphere();
+                    _tb.getBoundingSphere(obj._cachedBoundingSphere);
+                } catch(e) { obj._cachedBoundingSphere = null; }
             }
+            // Quick ray-sphere test — skip objects that can't possibly be hit
+            if (obj._cachedBoundingSphere && !raycaster.ray.intersectsSphere(obj._cachedBoundingSphere)) continue;
+            meshes.push(obj);
         }
 
-        var intersects = raycaster.intersectObjects(meshes, false);
+        // PERFORMANCE: Use recursive=true on top-level objects instead of flat array
+        // This avoids building a huge array for models with thousands of meshes
+        var intersects = raycaster.intersectObjects(meshes, true);
         if (intersects.length > 0) {
             var hit = intersects[0].object;
             // Find the root object name
@@ -7454,15 +7496,6 @@ var SashaEngineAPI = (function() {
         }
 
         // --- Step 4: Physics objects vs static colliders (no RigidBody) ---
-        // Static colliders never move inside updatePhysics(), so their AABB is
-        // identical for every physics object tested against them this frame.
-        // Precompute once instead of recomputing per (physics object x static collider) pair —
-        // this does not change collision results, only avoids redundant work.
-        var _staticAABBCache = {};
-        for (var tci = 0; tci < staticColliderNames.length; tci++) {
-            var tcName = staticColliderNames[tci];
-            _staticAABBCache[tcName] = _getColliderAABB(tcName);
-        }
         for (var si = 0; si < physNames.length; si++) {
             var sObjName = physNames[si];
             var sObj = objects[sObjName];
@@ -7474,7 +7507,7 @@ var SashaEngineAPI = (function() {
                 var tName = staticColliderNames[ti];
                 var tObj = objects[tName];
                 if (!tObj) continue;
-                var tAABB = _staticAABBCache[tName];
+                var tAABB = _getColliderAABB(tName);
                 if (!tAABB) continue;
                 // AABB overlap
                 if (sAABB.maxX > tAABB.minX && sAABB.minX < tAABB.maxX &&
@@ -7619,11 +7652,6 @@ var SashaEngineAPI = (function() {
     // Cache compiled update functions to avoid recompiling every frame
     var _scriptUpdateCache = {};
     var _scriptUpdateCacheVer = {};
-    // Cache compiled onCollision functions to avoid recompiling every frame
-    // (collisions between resting/overlapping objects fire every frame they touch,
-    // so without this cache the engine was calling `new Function(...)` 60x/sec per contact)
-    var _scriptCollisionCache = {};
-    var _scriptCollisionCacheVer = {};
 
     function stepScripts(delta, collisionPairs) {
         collisionPairs = collisionPairs || [];
@@ -7685,13 +7713,7 @@ var SashaEngineAPI = (function() {
                 var obj = objects[name];
                 if (!obj) continue;
                 try {
-                    // Cache key includes code so edits during Play still recompile correctly
-                    var collCacheKey = name + '_' + i;
-                    if (_scriptCollisionCacheVer[collCacheKey] !== code) {
-                        _scriptCollisionCache[collCacheKey] = _safeCompileScript(['other', 'Engine'], code + '\nif(typeof onCollision==="function") onCollision(other, Engine);', 'onCollision-' + name);
-                        _scriptCollisionCacheVer[collCacheKey] = code;
-                    }
-                    var collFn = _scriptCollisionCache[collCacheKey];
+                    var collFn = _safeCompileScript(['other', 'Engine'], code + '\nif(typeof onCollision==="function") onCollision(other, Engine);', 'onCollision-' + name);
                     if (collFn) collFn(otherObj, SashaEngineAPI);
                 } catch(collErr) {
                     console.error('[Script onCollision] ' + name + ':', collErr);
@@ -7723,8 +7745,6 @@ var SashaEngineAPI = (function() {
         scriptStarted = {};
         _scriptUpdateCache = {};
         _scriptUpdateCacheVer = {};
-        _scriptCollisionCache = {};
-        _scriptCollisionCacheVer = {};
         savedConstraintPositions = {};
     }
 
@@ -7998,10 +8018,6 @@ var SashaEngineAPI = (function() {
 
 
     // Evaluate a simple condition string against parameters
-    // (legacy fallback path — structured conditions use evalUnityTransition instead,
-    // which does plain comparisons with no per-call compilation)
-    var _conditionRegexCache = {};
-    var _conditionFnCache = {};
     function evalCondition(condition, params) {
         if (!condition) return true;
         try {
@@ -8010,22 +8026,9 @@ var SashaEngineAPI = (function() {
                 if (!params.hasOwnProperty(p)) continue;
                 var v = params[p].value;
                 if (params[p].type === 'trigger') v = v ? 1 : 0;
-                // Reuse the RegExp per param name instead of compiling a new one every call
-                var re = _conditionRegexCache[p];
-                if (!re) { re = new RegExp('\\b' + p + '\\b', 'g'); _conditionRegexCache[p] = re; }
-                expr = expr.replace(re, v);
+                expr = expr.replace(new RegExp('\\b' + p + '\\b', 'g'), v);
             }
-            // Cache the compiled Function per final expression string — condition
-            // expressions are driven by a small, repeating set of param values
-            // (bools/ints/triggers) in practice, so the same `expr` recurs often.
-            var fn = _conditionFnCache[expr];
-            if (!fn) {
-                fn = Function('"use strict"; return (' + expr + ')');
-                // Keep the cache bounded in case of unusual continuous-float param patterns
-                if (Object.keys(_conditionFnCache).length > 500) _conditionFnCache = {};
-                _conditionFnCache[expr] = fn;
-            }
-            return fn();
+            return Function('"use strict"; return (' + expr + ')')();
         } catch(e) { return false; }
     }
 
@@ -8416,7 +8419,6 @@ var SashaEngineAPI = (function() {
     var _selHelperSize = new THREE.Vector3();
     var _selHelperCenter = new THREE.Vector3();
     var _selHelperUpdateCounter = 0;
-    var _inspectorAutoRefreshCounter = 0;
 
     // === PERFORMANCE PROFILER ===
     // Tracks time spent in each section of animate(). Toggle with F8 or
@@ -8466,7 +8468,8 @@ var SashaEngineAPI = (function() {
 
     function animate() {
         animFrameId = requestAnimationFrame(animate);
-        if (!initialized) return;
+        // PERFORMANCE: Skip everything when loop is paused (user on another tab)
+        if (!initialized || _loopPaused) return;
         var delta = clock ? clock.getDelta() : 0.016;
         var t = Date.now() * 0.001;
 
@@ -8498,13 +8501,7 @@ var SashaEngineAPI = (function() {
             stepScripts(delta, collisionPairs);
             stepAnimators(delta);
             if (inspectorAutoRefresh && selectedObject) {
-                // Inspector rebuilds its DOM (innerHTML) on every refresh, which is expensive
-                // to do 60x/sec. Throttle to every 4 frames (~15x/sec) — still visually
-                // smooth for live-updating numbers, but cuts the DOM rebuild cost by ~4x.
-                _inspectorAutoRefreshCounter++;
-                if (_inspectorAutoRefreshCounter % 4 === 0) {
-                    EngineApp.refreshInspector();
-                }
+                EngineApp.refreshInspector();
             }
         }
         _profiler.end('physics');
@@ -9566,6 +9563,10 @@ var SashaEngineAPI = (function() {
         _getSelectionHelper: function() { return selectionHelper; },
         clear: clear, getObjects: getObjects, log: log,
         addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
+        // PERFORMANCE: pause/resume render loop when switching tabs
+        pauseLoop: function() { _loopPaused = true; },
+        resumeLoop: function() { _loopPaused = false; if (clock) clock.getDelta(); /* reset delta to avoid time jump */ },
+        isLoopPaused: function() { return _loopPaused; },
         getAllObjectNames: getAllObjectNames, getObjectTypes: getObjectTypes,
         getObjectComponent: getObjectComponent, getAllComponents: getAllComponents,
         addObjectComponent: addObjectComponent, removeObjectComponent: removeObjectComponent,
@@ -19496,35 +19497,47 @@ var EngineApp = (function() {
     }
 
     function toggleMeshEditMode() {
-        if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); return; }
-        var btn = document.getElementById('mesh-edit-btn');
-        var bar = document.getElementById('mesh-edit-bar');
-        if (SashaMeshEdit.isActive()) {
-            SashaMeshEdit.exitEditMode();
-            if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
-            if (bar) bar.classList.remove('visible');
-            log('Mesh edit mode OFF', 'info');
-        } else {
-            // Try to enter edit mode on selected object
-            var selName = SashaEngineAPI.getSelectedObject();
-            if (selName) {
-                var selObj = SashaEngineAPI.getObjects()[selName];
-                if (selObj && typeof selObj.traverse === 'function') {
-                    var mesh = null;
-                    selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
-                    if (mesh) {
-                        SashaMeshEdit.enterEditMode(mesh);
-                        if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-                        if (bar) bar.classList.add('visible');
-                        log('Mesh edit mode ON: ' + selName, 'result');
-                        return;
+        try {
+            if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); return; }
+            if (typeof SashaEngineAPI === 'undefined') { log('Engine not initialized', 'error'); return; }
+            var btn = document.getElementById('mesh-edit-btn');
+            var bar = document.getElementById('mesh-edit-bar');
+            if (SashaMeshEdit.isActive()) {
+                SashaMeshEdit.exitEditMode();
+                if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
+                if (bar) bar.classList.remove('visible');
+                log('Mesh edit mode OFF', 'info');
+            } else {
+                // Try to enter edit mode on selected object
+                var selName = null;
+                try { selName = SashaEngineAPI.getSelectedObject(); } catch(e) { log('Engine API error: ' + e.message, 'error'); return; }
+                if (selName) {
+                    var objects = null;
+                    try { objects = SashaEngineAPI.getObjects(); } catch(e) { log('Engine API error: ' + e.message, 'error'); return; }
+                    var selObj = objects ? objects[selName] : null;
+                    if (selObj && typeof selObj.traverse === 'function') {
+                        var mesh = null;
+                        selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+                        if (mesh) {
+                            SashaMeshEdit.enterEditMode(mesh);
+                            if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                            if (bar) bar.classList.add('visible');
+                            log('Mesh edit mode ON: ' + selName, 'result');
+                            return;
+                        }
                     }
-                } else {
-                    log('Selected object is not a 3D object', 'warning');
+                    if (!selObj) {
+                        log('Selected object not found in scene', 'warning');
+                    } else {
+                        log('Selected object has no mesh geometry — select a cube/sphere/model', 'warning');
+                    }
                     return;
                 }
+                log('Select a mesh object first to enter edit mode', 'warning');
             }
-            log('Select a mesh object first to enter edit mode', 'warning');
+        } catch(e) {
+            console.error('[toggleMeshEditMode]', e);
+            log('Mesh edit error: ' + e.message, 'error');
         }
     }
 
@@ -20649,10 +20662,47 @@ function showSection(sectionId) {
         if (btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf(sectionId) !== -1) btn.classList.add('active');
         else btn.classList.remove('active');
     }
-    if (sectionId === 'engine' && typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) EngineApp.init();
+    if (sectionId === 'engine') {
+        // PERFORMANCE: Lazy-load engine addons before initializing engine
+        function _initEngine() {
+            try {
+                if (typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) EngineApp.init();
+                if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.isInitialized && SashaEngineAPI.isInitialized()) {
+                    SashaEngineAPI.resumeLoop();
+                }
+            } catch(e) { console.error('[showSection] Engine init error:', e); }
+        }
+        if (!_engineAddonsLoaded) {
+            loadEngineAddons(_initEngine);
+        } else {
+            _initEngine();
+        }
+    }
     if (sectionId === 'code' && typeof MonacoEditor !== 'undefined' && !MonacoEditor.isInitialized()) MonacoEditor.init('monaco-editor', 'javascript').catch(function(e) { console.warn('Monaco init failed:', e.message); });
     if (sectionId === 'home' && typeof SashaTTS !== 'undefined') SashaTTS.init();
+    // PERFORMANCE: Pause/resume engine render loop when switching tabs
+    if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.isInitialized && SashaEngineAPI.isInitialized()) {
+        if (sectionId === 'engine') {
+            SashaEngineAPI.resumeLoop();
+        } else {
+            SashaEngineAPI.pauseLoop();
+        }
+    }
 }
+
+// PERFORMANCE: Pause engine render loop when browser tab is hidden
+document.addEventListener('visibilitychange', function() {
+    if (typeof SashaEngineAPI === 'undefined' || !SashaEngineAPI.isInitialized || !SashaEngineAPI.isInitialized()) return;
+    if (document.hidden) {
+        SashaEngineAPI.pauseLoop();
+    } else {
+        // Only resume if engine section is currently active
+        var engSection = document.getElementById('engine');
+        if (engSection && engSection.classList.contains('active')) {
+            SashaEngineAPI.resumeLoop();
+        }
+    }
+});
 
 function sendMessage() {
     var input = document.getElementById('chat-input');
