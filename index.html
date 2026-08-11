@@ -28,19 +28,27 @@
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<!-- JSZip with fallback — if cdnjs fails, try jsdelivr, then unpkg -->
+<!-- JSZip with async fallback — avoids document.write conflict with RequireJS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-// Fallback: if JSZip didn't load from cdnjs, try jsdelivr
-if (typeof JSZip === 'undefined') {
-    document.write('<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"><\/script>');
-}
-</script>
-<script>
-// Fallback 2: if jsdelivr also failed, try unpkg
-if (typeof JSZip === 'undefined') {
-    document.write('<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"><\/script>');
-}
+(function(){
+    if (typeof JSZip !== 'undefined') return;
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+    s.onload = function(){
+        if (typeof JSZip === 'undefined'){
+            var s2 = document.createElement('script');
+            s2.src = 'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js';
+            document.head.appendChild(s2);
+        }
+    };
+    s.onerror = function(){
+        var s2 = document.createElement('script');
+        s2.src = 'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js';
+        document.head.appendChild(s2);
+    };
+    document.head.appendChild(s);
+})();
 </script>
 
     
@@ -8524,11 +8532,7 @@ var SashaEngineAPI = (function() {
 
     function animate() {
         animFrameId = requestAnimationFrame(animate);
-        if (!initialized || _loopPaused) { return; }
-        // On-demand rendering: in Edit Mesh mode, only render when _needsRender is set
-        var _editActive = (typeof SashaMeshEdit !== "undefined" && SashaMeshEdit.isActive());
-        if (_editActive && !_needsRender) { return; }
-        _needsRender = false;  // consume the flag
+        if (!initialized) return;
         var delta = clock ? clock.getDelta() : 0.016;
         var t = Date.now() * 0.001;
 
@@ -19566,26 +19570,41 @@ var EngineApp = (function() {
             if (bar) bar.classList.remove('visible');
             log('Mesh edit mode OFF', 'info');
         } else {
-            // Try to enter edit mode on selected object
+            var mesh = null;
+            var meshOwnerName = null;
+            // Try selected object first
             var selName = SashaEngineAPI.getSelectedObject();
             if (selName) {
                 var selObj = SashaEngineAPI.getObjects()[selName];
                 if (selObj && typeof selObj.traverse === 'function') {
-                    var mesh = null;
-                    selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
-                    if (mesh) {
-                        SashaMeshEdit.enterEditMode(mesh);
-                        if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-                        if (bar) bar.classList.add('visible');
-                        log('Mesh edit mode ON: ' + selName, 'result');
-                        return;
-                    }
-                } else {
-                    log('Selected object is not a 3D object', 'warning');
-                    return;
+                    selObj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = selName; } });
                 }
             }
-            log('Select a mesh object first to enter edit mode', 'warning');
+            // Fallback: auto-pick first available mesh from scene objects
+            if (!mesh) {
+                var objs = SashaEngineAPI.getObjects();
+                for (var name in objs) {
+                    if (!objs.hasOwnProperty(name)) continue;
+                    if (name.indexOf('__builtin') === 0 || name === '__selection_helper') continue;
+                    var obj = objs[name];
+                    if (obj && typeof obj.traverse === 'function') {
+                        obj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = name; } });
+                    }
+                    if (mesh) break;
+                }
+            }
+            if (mesh) {
+                // Auto-select the object if it wasn't selected
+                if (!selName && meshOwnerName) {
+                    SashaEngineAPI.selectObject(meshOwnerName);
+                }
+                SashaMeshEdit.enterEditMode(mesh);
+                if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                if (bar) bar.classList.add('visible');
+                log('Mesh edit mode ON: ' + (meshOwnerName || 'unknown'), 'result');
+                return;
+            }
+            log('No mesh objects in scene. Add or load a model first.', 'warning');
         }
     }
 
@@ -20713,28 +20732,7 @@ function showSection(sectionId) {
     if (sectionId === 'engine' && typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) EngineApp.init();
     if (sectionId === 'code' && typeof MonacoEditor !== 'undefined' && !MonacoEditor.isInitialized()) MonacoEditor.init('monaco-editor', 'javascript').catch(function(e) { console.warn('Monaco init failed:', e.message); });
     if (sectionId === 'home' && typeof SashaTTS !== 'undefined') SashaTTS.init();
-    // Performance: pause/resume engine render loop when switching sections
-    if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.isInitialized && SashaEngineAPI.isInitialized()) {
-        if (sectionId === 'engine') {
-            SashaEngineAPI.resumeLoop();
-        } else {
-            SashaEngineAPI.pauseLoop();
-        }
-    }
 }
-
-// Performance: pause engine render loop when browser tab is hidden
-document.addEventListener('visibilitychange', function() {
-    if (typeof SashaEngineAPI === 'undefined' || !SashaEngineAPI.isInitialized || !SashaEngineAPI.isInitialized()) return;
-    if (document.hidden) {
-        SashaEngineAPI.pauseLoop();
-    } else {
-        var engSection = document.getElementById('engine');
-        if (engSection && engSection.classList.contains('active')) {
-            SashaEngineAPI.resumeLoop();
-        }
-    }
-});
 
 function sendMessage() {
     var input = document.getElementById('chat-input');
@@ -21768,6 +21766,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
+
 
 
 
