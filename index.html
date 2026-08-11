@@ -4704,6 +4704,15 @@ var SashaMeshEdit = (function() {
                 sh.visible = false;
             }
         }
+        // Hide TransformControls gizmo in edit mode — it moves the whole object,
+        // not individual vertices, and adds unnecessary render overhead on heavy models
+        if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI._getTransformControls) {
+            var tc = SashaEngineAPI._getTransformControls();
+            if (tc) {
+                _savedTransformControlsVisible = tc.visible;
+                tc.visible = false;
+            }
+        }
         _refreshHelpers();
         if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
@@ -4730,7 +4739,15 @@ var SashaMeshEdit = (function() {
                 sh.visible = _savedSelectionHelperVisible;
             }
         }
+        // Restore TransformControls visibility
+        if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI._getTransformControls) {
+            var tc = SashaEngineAPI._getTransformControls();
+            if (tc && _savedTransformControlsVisible !== undefined) {
+                tc.visible = _savedTransformControlsVisible;
+            }
+        }
         _savedSelectionHelperVisible = undefined;
+        _savedTransformControlsVisible = undefined;
         editedMesh = null;
         originalGeometry = null;
         editMode = false;
@@ -5471,6 +5488,7 @@ var SashaEngineAPI = (function() {
     var _lastTransformEnd = 0;
     var _boneGizmoAttached = false;
     var _savedSelectionHelperVisible = undefined;
+    var _savedTransformControlsVisible = undefined;
     var _transformDragging = false;
     var selectionHelper = null;
     var transformCtrl = null;
@@ -5967,6 +5985,11 @@ var SashaEngineAPI = (function() {
     function onClickSelect(e) {
         // === EDIT MESH MODE: vertex/edge/face picking ===
         if (typeof SashaMeshEdit !== 'undefined' && SashaMeshEdit.isActive()) {
+            // Update raycaster with current click coordinates FIRST
+            var rect = canvas.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
             var _editPicked = SashaMeshEdit.pickVertex(raycaster);
             if (_editPicked >= 0) {
                 // Toggle selection
@@ -9597,6 +9620,7 @@ var SashaEngineAPI = (function() {
         addObjectDirect: function(name, obj, type) { objects[name] = obj; objectTypes[name] = type || 'model'; objectRenames[name] = name; },
         _registerSkeletonDataDirect: function(name, mixer, clips) { _skeletonData[name] = { mixer: mixer, clips: clips, actions: [] }; },
         _getSelectionHelper: function() { return selectionHelper; },
+        _getTransformControls: function() { return transformCtrl; },
         clear: clear, getObjects: getObjects, log: log,
         // Performance: pause/resume render loop
         pauseLoop: function() { _loopPaused = true; },
@@ -21744,6 +21768,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
+
 
 
 
