@@ -19483,7 +19483,6 @@ var EngineApp = (function() {
         } else {
             var mesh = null;
             var meshOwnerName = null;
-            // Try selected object first
             var selName = SashaEngineAPI.getSelectedObject();
             if (selName) {
                 var selObj = SashaEngineAPI.getObjects()[selName];
@@ -19491,7 +19490,6 @@ var EngineApp = (function() {
                     selObj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = selName; } });
                 }
             }
-            // Fallback: auto-pick first mesh in scene
             if (!mesh) {
                 var objs = SashaEngineAPI.getObjects();
                 for (var oname in objs) {
@@ -21674,6 +21672,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
+
 
 
 
