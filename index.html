@@ -11,44 +11,13 @@
     <title>SashaAI — GameDev AI & Developer [v8.3-mesh-edit-0308]</title>
     <!-- AI backends: Transformers.js (browser), Ollama (local), Groq (cloud API) -->
     
-    <!-- Three.js core + common addons (needed by About avatar + Engine) -->
+    <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- Engine-only addons — PERFORMANCE: Lazy-loaded when engine is first opened -->
-    <script>
-    var _engineAddonsLoaded = false;
-    var _engineAddonsLoading = false;
-    var _engineAddonsCallbacks = [];
-    function loadEngineAddons(onReady) {
-        if (_engineAddonsLoaded) { if (onReady) onReady(); return; }
-        if (onReady) _engineAddonsCallbacks.push(onReady);
-        if (_engineAddonsLoading) return;
-        _engineAddonsLoading = true;
-        var scripts = [
-            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js',
-            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js',
-            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js'
-        ];
-        var idx = 0;
-        function loadNext() {
-            if (idx >= scripts.length) {
-                _engineAddonsLoaded = true;
-                _engineAddonsLoading = false;
-                var cbs = _engineAddonsCallbacks.slice();
-                _engineAddonsCallbacks = [];
-                for (var i = 0; i < cbs.length; i++) { try { cbs[i](); } catch(e) { console.warn('Engine addon callback error:', e); } }
-                return;
-            }
-            var s = document.createElement('script');
-            s.src = scripts[idx];
-            s.onload = function() { idx++; loadNext(); };
-            s.onerror = function() { console.warn('Failed to load:', scripts[idx]); idx++; loadNext(); };
-            document.head.appendChild(s);
-        }
-        loadNext();
-    }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
     
     <!-- Monaco Editor для кода -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
@@ -4706,6 +4675,7 @@ var SashaMeshEdit = (function() {
         selectionMode = mode;
         selectedIndices = [];
         _refreshHelpers();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         // Update button states
         var btns = { vertex: 'meb-vertex', edge: 'meb-edge', face: 'meb-face' };
@@ -4735,6 +4705,7 @@ var SashaMeshEdit = (function() {
             }
         }
         _refreshHelpers();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         return true;
     }
@@ -4969,6 +4940,7 @@ var SashaMeshEdit = (function() {
         pos.needsUpdate = true;
         geo.computeVertexNormals();
         _refreshHelpers();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -4995,6 +4967,7 @@ var SashaMeshEdit = (function() {
         pos.needsUpdate = true;
         geo.computeVertexNormals();
         _refreshHelpers();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -5055,6 +5028,7 @@ var SashaMeshEdit = (function() {
         }
         geo.computeVertexNormals();
         _refreshHelpers();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -5110,6 +5084,7 @@ var SashaMeshEdit = (function() {
         geo.computeVertexNormals();
         selectedIndices = [];
         _refreshHelpers();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -5138,6 +5113,37 @@ var SashaMeshEdit = (function() {
         return true;
     }
 
+    function moveVertex(index, x, y, z) {
+        if (!editedMesh) return false;
+        var pos = editedMesh.geometry.attributes.position;
+        pos.setXYZ(index, x, y, z);
+        pos.needsUpdate = true;
+        editedMesh.geometry.computeVertexNormals();
+        _refreshHelpers();
+        _updateInfo();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
+        return true;
+    }
+
+    function moveSelectedVertices(dx, dy, dz) {
+        if (!editedMesh || selectedIndices.length === 0) return false;
+        var pos = editedMesh.geometry.attributes.position;
+        for (var i = 0; i < selectedIndices.length; i++) {
+            var idx = selectedIndices[i];
+            pos.setXYZ(idx,
+                pos.getX(idx) + dx,
+                pos.getY(idx) + dy,
+                pos.getZ(idx) + dz
+            );
+        }
+        pos.needsUpdate = true;
+        editedMesh.geometry.computeVertexNormals();
+        _refreshHelpers();
+        _updateInfo();
+        if (typeof renderSingleFrame === 'function') renderSingleFrame();
+        return true;
+    }
+
     return {
         setSelectionMode: setSelectionMode,
         enterEditMode: enterEditMode,
@@ -5158,7 +5164,9 @@ var SashaMeshEdit = (function() {
         loopCut: loopCut,
         deleteSelection: deleteSelection,
         dissolveEdges: dissolveEdges,
-        flipNormals: flipNormals
+        flipNormals: flipNormals,
+        moveVertex: moveVertex,
+        moveSelectedVertices: moveSelectedVertices
     };
 })();
 
@@ -5427,7 +5435,8 @@ var SashaEngineAPI = (function() {
     var canvas = null;
     var initialized = false;
     var animFrameId = null;
-    var _loopPaused = false;  // PERFORMANCE: pause render loop when engine tab is not visible
+    var _loopPaused = false;  // pause render loop when engine tab is not visible
+    var _needsRender = false;  // on-demand render flag for Edit Mesh mode
     var selectedObject = null;
     var objects = {};
     var objectTypes = {};
@@ -5847,9 +5856,6 @@ var SashaEngineAPI = (function() {
             if (!event.value) { _lastTransformEnd = Date.now(); }
         });
         transformCtrl.addEventListener('objectChange', function() {
-            // PERFORMANCE: Invalidate bounding sphere cache for transformed object
-            var _tcObj = transformCtrl.object;
-            if (_tcObj) _tcObj._cachedBoundingSphere = null;
             if (_boneGizmoAttached && window.EngineApp && EngineApp._getPoseModelName) {
                 // Gizmo is on a bone — update bone visualization lines
                 var pm = EngineApp._getPoseModelName();
@@ -5959,6 +5965,34 @@ var SashaEngineAPI = (function() {
     }
 
     function onClickSelect(e) {
+        // === EDIT MESH MODE: vertex/edge/face picking ===
+        if (typeof SashaMeshEdit !== 'undefined' && SashaMeshEdit.isActive()) {
+            var _editPicked = SashaMeshEdit.pickVertex(raycaster);
+            if (_editPicked >= 0) {
+                // Toggle selection
+                var _editSel = SashaMeshEdit.getSelectedIndices();
+                var _editIdx = _editSel.indexOf(_editPicked);
+                if (e.shiftKey) {
+                    // Shift+click: toggle individual vertex
+                    if (_editIdx >= 0) { _editSel.splice(_editIdx, 1); }
+                    else { _editSel.push(_editPicked); }
+                } else if ((e.ctrlKey || e.metaKey)) {
+                    // Ctrl+click: add to selection
+                    if (_editIdx < 0) { _editSel.push(_editPicked); }
+                } else {
+                    // Regular click: replace selection
+                    _editSel = [_editPicked];
+                }
+                SashaMeshEdit.selectVerticesByIndices(_editSel);
+                if (typeof renderSingleFrame === 'function') renderSingleFrame();
+            } else if (!e.shiftKey && !(e.ctrlKey || e.metaKey)) {
+                // Clicked empty space — deselect all
+                SashaMeshEdit.deselectAll();
+                if (typeof renderSingleFrame === 'function') renderSingleFrame();
+            }
+            return;
+        }
+
         var rect = canvas.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -6001,22 +6035,15 @@ var SashaEngineAPI = (function() {
             if (!objects.hasOwnProperty(name)) continue;
             if (name.indexOf('__builtin') === 0 || name === '__selection_helper' || name === mainCameraName) continue;
             var obj = objects[name];
-            // PERFORMANCE: Cache bounding sphere on top-level objects for fast pre-filter
-            if (!obj._cachedBoundingSphere) {
-                try {
-                    var _tb = new THREE.Box3().setFromObject(obj);
-                    obj._cachedBoundingSphere = new THREE.Sphere();
-                    _tb.getBoundingSphere(obj._cachedBoundingSphere);
-                } catch(e) { obj._cachedBoundingSphere = null; }
+            if (obj.isMesh) { meshes.push(obj); }
+            else if (obj.isGroup || obj.isObject3D) {
+                obj.traverse(function(child) {
+                    if (child.isMesh) meshes.push(child);
+                });
             }
-            // Quick ray-sphere test — skip objects that can't possibly be hit
-            if (obj._cachedBoundingSphere && !raycaster.ray.intersectsSphere(obj._cachedBoundingSphere)) continue;
-            meshes.push(obj);
         }
 
-        // PERFORMANCE: Use recursive=true on top-level objects instead of flat array
-        // This avoids building a huge array for models with thousands of meshes
-        var intersects = raycaster.intersectObjects(meshes, true);
+        var intersects = raycaster.intersectObjects(meshes, false);
         if (intersects.length > 0) {
             var hit = intersects[0].object;
             // Find the root object name
@@ -8466,10 +8493,19 @@ var SashaEngineAPI = (function() {
         }
     };
 
+    // Render a single frame on-demand (used by Edit Mesh mode)
+    // Sets _needsRender flag and ensures at least one frame is rendered
+    function renderSingleFrame() {
+        _needsRender = true;
+    }
+
     function animate() {
         animFrameId = requestAnimationFrame(animate);
-        // PERFORMANCE: Skip everything when loop is paused (user on another tab)
-        if (!initialized || _loopPaused) return;
+        if (!initialized || _loopPaused) { return; }
+        // On-demand rendering: in Edit Mesh mode, only render when _needsRender is set
+        var _editActive = (typeof SashaMeshEdit !== "undefined" && SashaMeshEdit.isActive());
+        if (_editActive && !_needsRender) { return; }
+        _needsRender = false;  // consume the flag
         var delta = clock ? clock.getDelta() : 0.016;
         var t = Date.now() * 0.001;
 
@@ -9562,11 +9598,11 @@ var SashaEngineAPI = (function() {
         _registerSkeletonDataDirect: function(name, mixer, clips) { _skeletonData[name] = { mixer: mixer, clips: clips, actions: [] }; },
         _getSelectionHelper: function() { return selectionHelper; },
         clear: clear, getObjects: getObjects, log: log,
-        addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
-        // PERFORMANCE: pause/resume render loop when switching tabs
+        // Performance: pause/resume render loop
         pauseLoop: function() { _loopPaused = true; },
-        resumeLoop: function() { _loopPaused = false; if (clock) clock.getDelta(); /* reset delta to avoid time jump */ },
+        resumeLoop: function() { _loopPaused = false; if (clock) clock.getDelta(); },
         isLoopPaused: function() { return _loopPaused; },
+        addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
         getAllObjectNames: getAllObjectNames, getObjectTypes: getObjectTypes,
         getObjectComponent: getObjectComponent, getAllComponents: getAllComponents,
         addObjectComponent: addObjectComponent, removeObjectComponent: removeObjectComponent,
@@ -19497,47 +19533,35 @@ var EngineApp = (function() {
     }
 
     function toggleMeshEditMode() {
-        try {
-            if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); return; }
-            if (typeof SashaEngineAPI === 'undefined') { log('Engine not initialized', 'error'); return; }
-            var btn = document.getElementById('mesh-edit-btn');
-            var bar = document.getElementById('mesh-edit-bar');
-            if (SashaMeshEdit.isActive()) {
-                SashaMeshEdit.exitEditMode();
-                if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
-                if (bar) bar.classList.remove('visible');
-                log('Mesh edit mode OFF', 'info');
-            } else {
-                // Try to enter edit mode on selected object
-                var selName = null;
-                try { selName = SashaEngineAPI.getSelectedObject(); } catch(e) { log('Engine API error: ' + e.message, 'error'); return; }
-                if (selName) {
-                    var objects = null;
-                    try { objects = SashaEngineAPI.getObjects(); } catch(e) { log('Engine API error: ' + e.message, 'error'); return; }
-                    var selObj = objects ? objects[selName] : null;
-                    if (selObj && typeof selObj.traverse === 'function') {
-                        var mesh = null;
-                        selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
-                        if (mesh) {
-                            SashaMeshEdit.enterEditMode(mesh);
-                            if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-                            if (bar) bar.classList.add('visible');
-                            log('Mesh edit mode ON: ' + selName, 'result');
-                            return;
-                        }
+        if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); return; }
+        var btn = document.getElementById('mesh-edit-btn');
+        var bar = document.getElementById('mesh-edit-bar');
+        if (SashaMeshEdit.isActive()) {
+            SashaMeshEdit.exitEditMode();
+            if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
+            if (bar) bar.classList.remove('visible');
+            log('Mesh edit mode OFF', 'info');
+        } else {
+            // Try to enter edit mode on selected object
+            var selName = SashaEngineAPI.getSelectedObject();
+            if (selName) {
+                var selObj = SashaEngineAPI.getObjects()[selName];
+                if (selObj && typeof selObj.traverse === 'function') {
+                    var mesh = null;
+                    selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+                    if (mesh) {
+                        SashaMeshEdit.enterEditMode(mesh);
+                        if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                        if (bar) bar.classList.add('visible');
+                        log('Mesh edit mode ON: ' + selName, 'result');
+                        return;
                     }
-                    if (!selObj) {
-                        log('Selected object not found in scene', 'warning');
-                    } else {
-                        log('Selected object has no mesh geometry — select a cube/sphere/model', 'warning');
-                    }
+                } else {
+                    log('Selected object is not a 3D object', 'warning');
                     return;
                 }
-                log('Select a mesh object first to enter edit mode', 'warning');
             }
-        } catch(e) {
-            console.error('[toggleMeshEditMode]', e);
-            log('Mesh edit error: ' + e.message, 'error');
+            log('Select a mesh object first to enter edit mode', 'warning');
         }
     }
 
@@ -20662,25 +20686,10 @@ function showSection(sectionId) {
         if (btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf(sectionId) !== -1) btn.classList.add('active');
         else btn.classList.remove('active');
     }
-    if (sectionId === 'engine') {
-        // PERFORMANCE: Lazy-load engine addons before initializing engine
-        function _initEngine() {
-            try {
-                if (typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) EngineApp.init();
-                if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.isInitialized && SashaEngineAPI.isInitialized()) {
-                    SashaEngineAPI.resumeLoop();
-                }
-            } catch(e) { console.error('[showSection] Engine init error:', e); }
-        }
-        if (!_engineAddonsLoaded) {
-            loadEngineAddons(_initEngine);
-        } else {
-            _initEngine();
-        }
-    }
+    if (sectionId === 'engine' && typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) EngineApp.init();
     if (sectionId === 'code' && typeof MonacoEditor !== 'undefined' && !MonacoEditor.isInitialized()) MonacoEditor.init('monaco-editor', 'javascript').catch(function(e) { console.warn('Monaco init failed:', e.message); });
     if (sectionId === 'home' && typeof SashaTTS !== 'undefined') SashaTTS.init();
-    // PERFORMANCE: Pause/resume engine render loop when switching tabs
+    // Performance: pause/resume engine render loop when switching sections
     if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.isInitialized && SashaEngineAPI.isInitialized()) {
         if (sectionId === 'engine') {
             SashaEngineAPI.resumeLoop();
@@ -20690,13 +20699,12 @@ function showSection(sectionId) {
     }
 }
 
-// PERFORMANCE: Pause engine render loop when browser tab is hidden
+// Performance: pause engine render loop when browser tab is hidden
 document.addEventListener('visibilitychange', function() {
     if (typeof SashaEngineAPI === 'undefined' || !SashaEngineAPI.isInitialized || !SashaEngineAPI.isInitialized()) return;
     if (document.hidden) {
         SashaEngineAPI.pauseLoop();
     } else {
-        // Only resume if engine section is currently active
         var engSection = document.getElementById('engine');
         if (engSection && engSection.classList.contains('active')) {
             SashaEngineAPI.resumeLoop();
@@ -21736,7 +21744,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
-
 
 
 
