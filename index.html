@@ -28,27 +28,19 @@
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<!-- JSZip with async fallback — avoids document.write conflict with RequireJS -->
+<!-- JSZip with fallback — if cdnjs fails, try jsdelivr, then unpkg -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-(function(){
-    if (typeof JSZip !== 'undefined') return;
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
-    s.onload = function(){
-        if (typeof JSZip === 'undefined'){
-            var s2 = document.createElement('script');
-            s2.src = 'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js';
-            document.head.appendChild(s2);
-        }
-    };
-    s.onerror = function(){
-        var s2 = document.createElement('script');
-        s2.src = 'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js';
-        document.head.appendChild(s2);
-    };
-    document.head.appendChild(s);
-})();
+// Fallback: if JSZip didn't load from cdnjs, try jsdelivr
+if (typeof JSZip === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"><\/script>');
+}
+</script>
+<script>
+// Fallback 2: if jsdelivr also failed, try unpkg
+if (typeof JSZip === 'undefined') {
+    document.write('<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"><\/script>');
+}
 </script>
 
     
@@ -4683,7 +4675,6 @@ var SashaMeshEdit = (function() {
         selectionMode = mode;
         selectedIndices = [];
         _refreshHelpers();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         // Update button states
         var btns = { vertex: 'meb-vertex', edge: 'meb-edge', face: 'meb-face' };
@@ -4712,17 +4703,7 @@ var SashaMeshEdit = (function() {
                 sh.visible = false;
             }
         }
-        // Hide TransformControls gizmo in edit mode — it moves the whole object,
-        // not individual vertices, and adds unnecessary render overhead on heavy models
-        if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI._getTransformControls) {
-            var tc = SashaEngineAPI._getTransformControls();
-            if (tc) {
-                _savedTransformControlsVisible = tc.visible;
-                tc.visible = false;
-            }
-        }
         _refreshHelpers();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         return true;
     }
@@ -4747,15 +4728,7 @@ var SashaMeshEdit = (function() {
                 sh.visible = _savedSelectionHelperVisible;
             }
         }
-        // Restore TransformControls visibility
-        if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI._getTransformControls) {
-            var tc = SashaEngineAPI._getTransformControls();
-            if (tc && _savedTransformControlsVisible !== undefined) {
-                tc.visible = _savedTransformControlsVisible;
-            }
-        }
         _savedSelectionHelperVisible = undefined;
-        _savedTransformControlsVisible = undefined;
         editedMesh = null;
         originalGeometry = null;
         editMode = false;
@@ -4965,7 +4938,6 @@ var SashaMeshEdit = (function() {
         pos.needsUpdate = true;
         geo.computeVertexNormals();
         _refreshHelpers();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -4992,7 +4964,6 @@ var SashaMeshEdit = (function() {
         pos.needsUpdate = true;
         geo.computeVertexNormals();
         _refreshHelpers();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -5053,7 +5024,6 @@ var SashaMeshEdit = (function() {
         }
         geo.computeVertexNormals();
         _refreshHelpers();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -5109,7 +5079,6 @@ var SashaMeshEdit = (function() {
         geo.computeVertexNormals();
         selectedIndices = [];
         _refreshHelpers();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
         _updateInfo();
         if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
         return true;
@@ -5138,37 +5107,6 @@ var SashaMeshEdit = (function() {
         return true;
     }
 
-    function moveVertex(index, x, y, z) {
-        if (!editedMesh) return false;
-        var pos = editedMesh.geometry.attributes.position;
-        pos.setXYZ(index, x, y, z);
-        pos.needsUpdate = true;
-        editedMesh.geometry.computeVertexNormals();
-        _refreshHelpers();
-        _updateInfo();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
-        return true;
-    }
-
-    function moveSelectedVertices(dx, dy, dz) {
-        if (!editedMesh || selectedIndices.length === 0) return false;
-        var pos = editedMesh.geometry.attributes.position;
-        for (var i = 0; i < selectedIndices.length; i++) {
-            var idx = selectedIndices[i];
-            pos.setXYZ(idx,
-                pos.getX(idx) + dx,
-                pos.getY(idx) + dy,
-                pos.getZ(idx) + dz
-            );
-        }
-        pos.needsUpdate = true;
-        editedMesh.geometry.computeVertexNormals();
-        _refreshHelpers();
-        _updateInfo();
-        if (typeof renderSingleFrame === 'function') renderSingleFrame();
-        return true;
-    }
-
     return {
         setSelectionMode: setSelectionMode,
         enterEditMode: enterEditMode,
@@ -5189,9 +5127,7 @@ var SashaMeshEdit = (function() {
         loopCut: loopCut,
         deleteSelection: deleteSelection,
         dissolveEdges: dissolveEdges,
-        flipNormals: flipNormals,
-        moveVertex: moveVertex,
-        moveSelectedVertices: moveSelectedVertices
+        flipNormals: flipNormals
     };
 })();
 
@@ -5460,8 +5396,7 @@ var SashaEngineAPI = (function() {
     var canvas = null;
     var initialized = false;
     var animFrameId = null;
-    var _loopPaused = false;  // pause render loop when engine tab is not visible
-    var _needsRender = false;  // on-demand render flag for Edit Mesh mode
+    var _loopPaused = false;
     var selectedObject = null;
     var objects = {};
     var objectTypes = {};
@@ -5496,7 +5431,6 @@ var SashaEngineAPI = (function() {
     var _lastTransformEnd = 0;
     var _boneGizmoAttached = false;
     var _savedSelectionHelperVisible = undefined;
-    var _savedTransformControlsVisible = undefined;
     var _transformDragging = false;
     var selectionHelper = null;
     var transformCtrl = null;
@@ -5991,39 +5925,6 @@ var SashaEngineAPI = (function() {
     }
 
     function onClickSelect(e) {
-        // === EDIT MESH MODE: vertex/edge/face picking ===
-        if (typeof SashaMeshEdit !== 'undefined' && SashaMeshEdit.isActive()) {
-            // Update raycaster with current click coordinates FIRST
-            var rect = canvas.getBoundingClientRect();
-            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            var _editPicked = SashaMeshEdit.pickVertex(raycaster);
-            if (_editPicked >= 0) {
-                // Toggle selection
-                var _editSel = SashaMeshEdit.getSelectedIndices();
-                var _editIdx = _editSel.indexOf(_editPicked);
-                if (e.shiftKey) {
-                    // Shift+click: toggle individual vertex
-                    if (_editIdx >= 0) { _editSel.splice(_editIdx, 1); }
-                    else { _editSel.push(_editPicked); }
-                } else if ((e.ctrlKey || e.metaKey)) {
-                    // Ctrl+click: add to selection
-                    if (_editIdx < 0) { _editSel.push(_editPicked); }
-                } else {
-                    // Regular click: replace selection
-                    _editSel = [_editPicked];
-                }
-                SashaMeshEdit.selectVerticesByIndices(_editSel);
-                if (typeof renderSingleFrame === 'function') renderSingleFrame();
-            } else if (!e.shiftKey && !(e.ctrlKey || e.metaKey)) {
-                // Clicked empty space — deselect all
-                SashaMeshEdit.deselectAll();
-                if (typeof renderSingleFrame === 'function') renderSingleFrame();
-            }
-            return;
-        }
-
         var rect = canvas.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -8524,15 +8425,9 @@ var SashaEngineAPI = (function() {
         }
     };
 
-    // Render a single frame on-demand (used by Edit Mesh mode)
-    // Sets _needsRender flag and ensures at least one frame is rendered
-    function renderSingleFrame() {
-        _needsRender = true;
-    }
-
     function animate() {
         animFrameId = requestAnimationFrame(animate);
-        if (!initialized) return;
+        if (!initialized || _loopPaused) return;
         var delta = clock ? clock.getDelta() : 0.016;
         var t = Date.now() * 0.001;
 
@@ -9624,13 +9519,10 @@ var SashaEngineAPI = (function() {
         addObjectDirect: function(name, obj, type) { objects[name] = obj; objectTypes[name] = type || 'model'; objectRenames[name] = name; },
         _registerSkeletonDataDirect: function(name, mixer, clips) { _skeletonData[name] = { mixer: mixer, clips: clips, actions: [] }; },
         _getSelectionHelper: function() { return selectionHelper; },
-        _getTransformControls: function() { return transformCtrl; },
         clear: clear, getObjects: getObjects, log: log,
-        // Performance: pause/resume render loop
+        addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
         pauseLoop: function() { _loopPaused = true; },
         resumeLoop: function() { _loopPaused = false; if (clock) clock.getDelta(); },
-        isLoopPaused: function() { return _loopPaused; },
-        addObject: addObject, selectObject: selectObject, getSelectedObject: getSelectedObject,
         getAllObjectNames: getAllObjectNames, getObjectTypes: getObjectTypes,
         getObjectComponent: getObjectComponent, getAllComponents: getAllComponents,
         addObjectComponent: addObjectComponent, removeObjectComponent: removeObjectComponent,
@@ -19561,50 +19453,78 @@ var EngineApp = (function() {
     }
 
     function toggleMeshEditMode() {
-        if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); return; }
+        console.log('[EditMesh] toggleMeshEditMode called');
         var btn = document.getElementById('mesh-edit-btn');
         var bar = document.getElementById('mesh-edit-bar');
+
+        if (typeof SashaMeshEdit === 'undefined') {
+            console.error('[EditMesh] SashaMeshEdit not found!');
+            alert('MeshEdit module not loaded — check console for errors (F12)');
+            return;
+        }
+        if (typeof SashaEngineAPI === 'undefined' || !SashaEngineAPI.isInitialized || !SashaEngineAPI.isInitialized()) {
+            console.error('[EditMesh] Engine not initialized');
+            alert('Engine not initialized — open Engine tab first and wait for it to load');
+            return;
+        }
+
         if (SashaMeshEdit.isActive()) {
             SashaMeshEdit.exitEditMode();
             if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
             if (bar) bar.classList.remove('visible');
             log('Mesh edit mode OFF', 'info');
-        } else {
-            var mesh = null;
-            var meshOwnerName = null;
-            // Try selected object first
-            var selName = SashaEngineAPI.getSelectedObject();
-            if (selName) {
-                var selObj = SashaEngineAPI.getObjects()[selName];
-                if (selObj && typeof selObj.traverse === 'function') {
-                    selObj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = selName; } });
-                }
+            return;
+        }
+
+        // Try to enter edit mode on selected object
+        var selName = SashaEngineAPI.getSelectedObject();
+        var mesh = null;
+
+        if (selName) {
+            var objs = SashaEngineAPI.getObjects();
+            var selObj = objs ? objs[selName] : null;
+            if (selObj && typeof selObj.traverse === 'function') {
+                selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
             }
-            // Fallback: auto-pick first available mesh from scene objects
-            if (!mesh) {
-                var objs = SashaEngineAPI.getObjects();
-                for (var name in objs) {
-                    if (!objs.hasOwnProperty(name)) continue;
-                    if (name.indexOf('__builtin') === 0 || name === '__selection_helper') continue;
-                    var obj = objs[name];
-                    if (obj && typeof obj.traverse === 'function') {
-                        obj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = name; } });
+        }
+
+        // If no object selected or selected object has no mesh — auto-find first mesh in scene
+        if (!mesh) {
+            console.log('[EditMesh] No mesh on selected object, searching all objects...');
+            var allObjs = SashaEngineAPI.getObjects();
+            var allNames = SashaEngineAPI.getAllObjectNames();
+            for (var i = 0; i < allNames.length; i++) {
+                var obj = allObjs[allNames[i]];
+                if (!obj) continue;
+                // Skip built-in, lights, empty, camera
+                if (allNames[i].indexOf('__builtin') === 0) continue;
+                if (!obj.isObject3D) continue;
+                obj.traverse(function(c) {
+                    if (c.isMesh && c.geometry && c.geometry.attributes && c.geometry.attributes.position && !mesh) {
+                        mesh = c;
+                        // Also auto-select this object
+                        SashaEngineAPI.selectObject(allNames[i]);
+                        if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
                     }
-                    if (mesh) break;
-                }
+                });
+                if (mesh) break;
             }
-            if (mesh) {
-                // Auto-select the object if it wasn't selected
-                if (!selName && meshOwnerName) {
-                    SashaEngineAPI.selectObject(meshOwnerName);
-                }
+        }
+
+        if (mesh) {
+            try {
                 SashaMeshEdit.enterEditMode(mesh);
                 if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
                 if (bar) bar.classList.add('visible');
-                log('Mesh edit mode ON: ' + (meshOwnerName || 'unknown'), 'result');
-                return;
+                log('Mesh edit mode ON', 'result');
+                console.log('[EditMesh] SUCCESS — entered edit mode');
+            } catch(e) {
+                console.error('[EditMesh] enterEditMode error:', e);
+                alert('Mesh edit error: ' + e.message);
             }
-            log('No mesh objects in scene. Add or load a model first.', 'warning');
+        } else {
+            log('No mesh found in scene — add a Cube/Sphere first', 'warning');
+            alert('No mesh in scene. Add an object first (Cube, Sphere, or load a model).');
         }
     }
 
@@ -20732,7 +20652,22 @@ function showSection(sectionId) {
     if (sectionId === 'engine' && typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) EngineApp.init();
     if (sectionId === 'code' && typeof MonacoEditor !== 'undefined' && !MonacoEditor.isInitialized()) MonacoEditor.init('monaco-editor', 'javascript').catch(function(e) { console.warn('Monaco init failed:', e.message); });
     if (sectionId === 'home' && typeof SashaTTS !== 'undefined') SashaTTS.init();
+    // Pause/resume engine render loop when switching tabs
+    if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.isInitialized && SashaEngineAPI.isInitialized()) {
+        if (sectionId === 'engine') { SashaEngineAPI.resumeLoop(); }
+        else { SashaEngineAPI.pauseLoop(); }
+    }
 }
+
+// Pause engine when browser tab hidden
+document.addEventListener('visibilitychange', function() {
+    if (typeof SashaEngineAPI === 'undefined' || !SashaEngineAPI.isInitialized || !SashaEngineAPI.isInitialized()) return;
+    if (document.hidden) { SashaEngineAPI.pauseLoop(); }
+    else {
+        var e = document.getElementById('engine');
+        if (e && e.classList.contains('active')) SashaEngineAPI.resumeLoop();
+    }
+});
 
 function sendMessage() {
     var input = document.getElementById('chat-input');
