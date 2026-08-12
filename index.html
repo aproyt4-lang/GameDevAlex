@@ -19,9 +19,6 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
     
-    <!-- Monaco Editor для кода -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
-    
     <!-- Highlight.js для подсветки синтаксиса -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -1135,7 +1132,7 @@
                         <button class="gizmo-mode-btn" id="gizmo-scale" onclick="EngineApp.setGizmoMode('scale')" title="Scale (R)">R</button>
                     </div>
                     <div class="eng-separator"></div>
-                    <select id="eng-add-obj-select" onchange="EngineApp.addFromDropdown()" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
+                    <select id="eng-add-obj-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">+ Add Object</option>
                         <option value="cube">Cube</option>
                         <option value="sphere">Sphere</option>
@@ -4671,6 +4668,7 @@ var SashaMeshEdit = (function() {
     var originalGeometry = null;
     var vertexHelpers = [];
     var vertexHelperGroup = null;
+    var _savedSelectionHelperVisible = undefined;
 
     function setSelectionMode(mode) {
         selectionMode = mode;
@@ -5435,6 +5433,7 @@ var SashaEngineAPI = (function() {
     var selectionHelper = null;
     var transformCtrl = null;
     var _gridVis = true;
+    var objCounter = 0;
 
     // ===== FPS Mode Variables =====
     var fpsMode = false;
@@ -19480,38 +19479,28 @@ var EngineApp = (function() {
             if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
             if (bar) bar.classList.remove('visible');
             log('Mesh edit mode OFF', 'info');
-            return;
-        }
-        var mesh = null;
-        var meshOwnerName = null;
-        var selName = SashaEngineAPI.getSelectedObject();
-        if (selName) {
-            var selObj = SashaEngineAPI.getObjects()[selName];
-            if (selObj && typeof selObj.traverse === 'function') {
-                selObj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = selName; } });
-            }
-        }
-        if (!mesh) {
-            var objs = SashaEngineAPI.getObjects();
-            for (var oname in objs) {
-                if (!objs.hasOwnProperty(oname)) continue;
-                if (oname.indexOf('__builtin') === 0 || oname === '__selection_helper') continue;
-                var oobj = objs[oname];
-                if (oobj && typeof oobj.traverse === 'function') {
-                    oobj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = oname; } });
+        } else {
+            // Try to enter edit mode on selected object
+            var selName = SashaEngineAPI.getSelectedObject();
+            if (selName) {
+                var selObj = SashaEngineAPI.getObjects()[selName];
+                if (selObj && typeof selObj.traverse === 'function') {
+                    var mesh = null;
+                    selObj.traverse(function(c) { if (c.isMesh && !mesh) mesh = c; });
+                    if (mesh) {
+                        SashaMeshEdit.enterEditMode(mesh);
+                        if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+                        if (bar) bar.classList.add('visible');
+                        log('Mesh edit mode ON: ' + selName, 'result');
+                        return;
+                    }
+                } else {
+                    log('Selected object is not a 3D object', 'warning');
+                    return;
                 }
-                if (mesh) break;
             }
+            log('Select a mesh object first to enter edit mode', 'warning');
         }
-        if (mesh) {
-            if (!selName && meshOwnerName) SashaEngineAPI.selectObject(meshOwnerName);
-            SashaMeshEdit.enterEditMode(mesh);
-            if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-            if (bar) bar.classList.add('visible');
-            log('Mesh edit mode ON: ' + (meshOwnerName || 'unknown'), 'result');
-            return;
-        }
-        log('No mesh in scene. Add or load a model first.', 'warning');
     }
 
     function toggleConsolePanel() {
@@ -21670,9 +21659,10 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
 })();
 </script>
+<!-- Monaco Editor loader — загружается ПОСЛЕ основного скрипта, чтобы RequireJS не перехватывал IIFE -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 </body>
 </html>
-
 
 
 
