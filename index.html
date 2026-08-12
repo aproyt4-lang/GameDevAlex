@@ -10062,29 +10062,13 @@ var EngineApp = (function() {
 
     // --- Add from dropdown ---
 
-    var _addDropdownBusy = false;
     function addFromDropdown() {
-        if (_addDropdownBusy) return;
-        _addDropdownBusy = true;
-        try {
-            var sel = document.getElementById('eng-add-obj-select');
-            if (!sel) { console.error('[addFromDropdown] select not found'); return; }
-            var type = sel.value;
-            if (!type) { console.log('[addFromDropdown] no type selected'); return; }
-            console.log('[addFromDropdown] adding:', type, 'initialized:', SashaEngineAPI.isInitialized());
-            var name = addObject(type);
-            if (name) {
-                console.log('[addFromDropdown] added object:', name);
-            } else {
-                console.error('[addFromDropdown] addObject returned null for type:', type);
-            }
-            sel.value = '';
-            _clearMultiSelection();
-        } catch(e) {
-            console.error('[addFromDropdown] error:', e);
-        } finally {
-            _addDropdownBusy = false;
-        }
+        var sel = document.getElementById('eng-add-obj-select');
+        if (!sel || !sel.value) return;
+        var type = sel.value;
+        addObject(type);
+        sel.value = '';
+        _clearMultiSelection();
     }
 
     // --- Viewport info ---
@@ -19488,72 +19472,46 @@ var EngineApp = (function() {
     }
 
     function toggleMeshEditMode() {
-        try {
-            console.log('[toggleMeshEditMode] called');
-            if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); console.error('[toggleMeshEditMode] SashaMeshEdit undefined'); return; }
-            var btn = document.getElementById('mesh-edit-btn');
-            var bar = document.getElementById('mesh-edit-bar');
-            if (SashaMeshEdit.isActive()) {
-                console.log('[toggleMeshEditMode] exiting edit mode');
-                SashaMeshEdit.exitEditMode();
-                if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
-                if (bar) bar.classList.remove('visible');
-                log('Mesh edit mode OFF', 'info');
-                return;
-            }
-            // --- ENTER edit mode ---
-            var mesh = null;
-            var meshOwnerName = null;
-            // 1) Try selected object
-            var selName = SashaEngineAPI.getSelectedObject();
-            console.log('[toggleMeshEditMode] selected:', selName);
-            if (selName) {
-                var selObj = SashaEngineAPI.getObjects()[selName];
-                if (selObj && typeof selObj.traverse === 'function') {
-                    selObj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = selName; } });
-                }
-            }
-            // 2) Try any object in scene
-            if (!mesh) {
-                var objs = SashaEngineAPI.getObjects();
-                for (var oname in objs) {
-                    if (!objs.hasOwnProperty(oname)) continue;
-                    if (oname.indexOf('__builtin') === 0 || oname === '__selection_helper') continue;
-                    var oobj = objs[oname];
-                    if (oobj && typeof oobj.traverse === 'function') {
-                        oobj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = oname; } });
-                    }
-                    if (mesh) break;
-                }
-            }
-            // 3) If STILL no mesh — auto-create a cube so edit mode always works
-            if (!mesh) {
-                console.log('[toggleMeshEditMode] no mesh found, auto-creating cube');
-                var addedName = SashaEngineAPI.addObject('cube');
-                if (addedName) {
-                    refreshHierarchy();
-                    refreshInspector();
-                    mesh = SashaEngineAPI.getObjects()[addedName];
-                    meshOwnerName = addedName;
-                    log('Auto-created cube for mesh editing: ' + addedName, 'info');
-                }
-            }
-            if (mesh && mesh.isMesh) {
-                console.log('[toggleMeshEditMode] entering edit mode on:', meshOwnerName, 'isMesh:', mesh.isMesh);
-                if (!selName && meshOwnerName) SashaEngineAPI.selectObject(meshOwnerName);
-                var result = SashaMeshEdit.enterEditMode(mesh);
-                console.log('[toggleMeshEditMode] enterEditMode returned:', result);
-                if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
-                if (bar) bar.classList.add('visible');
-                log('Mesh edit mode ON: ' + (meshOwnerName || 'unknown'), 'result');
-            } else {
-                console.error('[toggleMeshEditMode] no valid mesh found');
-                log('No mesh available for editing.', 'warning');
-            }
-        } catch(e) {
-            console.error('[toggleMeshEditMode] error:', e);
-            log('Edit Mesh error: ' + e.message, 'error');
+        if (typeof SashaMeshEdit === 'undefined') { log('MeshEdit module not loaded', 'error'); return; }
+        var btn = document.getElementById('mesh-edit-btn');
+        var bar = document.getElementById('mesh-edit-bar');
+        if (SashaMeshEdit.isActive()) {
+            SashaMeshEdit.exitEditMode();
+            if (btn) { btn.style.background = '#eab308'; btn.style.color = '#000'; }
+            if (bar) bar.classList.remove('visible');
+            log('Mesh edit mode OFF', 'info');
+            return;
         }
+        var mesh = null;
+        var meshOwnerName = null;
+        var selName = SashaEngineAPI.getSelectedObject();
+        if (selName) {
+            var selObj = SashaEngineAPI.getObjects()[selName];
+            if (selObj && typeof selObj.traverse === 'function') {
+                selObj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = selName; } });
+            }
+        }
+        if (!mesh) {
+            var objs = SashaEngineAPI.getObjects();
+            for (var oname in objs) {
+                if (!objs.hasOwnProperty(oname)) continue;
+                if (oname.indexOf('__builtin') === 0 || oname === '__selection_helper') continue;
+                var oobj = objs[oname];
+                if (oobj && typeof oobj.traverse === 'function') {
+                    oobj.traverse(function(c) { if (c.isMesh && !mesh) { mesh = c; meshOwnerName = oname; } });
+                }
+                if (mesh) break;
+            }
+        }
+        if (mesh) {
+            if (!selName && meshOwnerName) SashaEngineAPI.selectObject(meshOwnerName);
+            SashaMeshEdit.enterEditMode(mesh);
+            if (btn) { btn.style.background = '#ca8a04'; btn.style.color = '#fff'; }
+            if (bar) bar.classList.add('visible');
+            log('Mesh edit mode ON: ' + (meshOwnerName || 'unknown'), 'result');
+            return;
+        }
+        log('No mesh in scene. Add or load a model first.', 'warning');
     }
 
     function toggleConsolePanel() {
