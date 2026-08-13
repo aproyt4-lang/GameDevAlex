@@ -20832,10 +20832,7 @@ function openProject(projectId) {
 function closeModal() { var modal = document.getElementById('project-modal'); if (modal) modal.style.display = 'none'; }
 
 // ===== MCP UI Functions =====
-function mcpDownloadServer() {
-    if (typeof mcpBuildZip === 'function') mcpBuildZip();
-    else alert('MCP ZIP builder не загружен. Проверьте скрипт MCP.');
-}
+// (mcpDownloadServer defined in MCP IIFE below)
 
 function mcpCopyPrompt() {
     var prompt = 'У тебя есть доступ к 3D игровому движку SashaAI GameDev Engine через HTTP API.\n\nБазовый URL: http://localhost:3000\n\nENDPOINTS:\n1. GET /tools — список всех инструментов\n2. POST /call — вызвать инструмент: {"tool":"add_cube","params":{"x":1}}\n3. POST /call-batch — несколько вызовов: {"calls":[...]}\n\nСоздавай 3D сцены через эти endpoints.';
