@@ -748,6 +748,7 @@ if (typeof JSZip === 'undefined') {
 .mcp-float-dot.off{background:#ef4444}
 @media(max-width:768px){.mcp-grid{grid-template-columns:1fr}}
     </style>
+    <style>#mesh-edit-box-select{position:absolute;border:1px dashed #f59e0b;background:rgba(245,158,11,0.08);pointer-events:none;z-index:100;display:none;}</style>
 </head>
 <body>
     <!-- AC opener handled by EngineApp.openAnimatorFromTimeline() — no extra scripts needed -->
@@ -1232,6 +1233,7 @@ if (typeof JSZip === 'undefined') {
 
                     <!-- Viewport -->
                     <div class="engine-viewport-pane">
+                        <div id="mesh-edit-box-select"></div>
                         <div class="viewport-split">
                             <!-- Viewport tabs: Scene / Game -->
                             <div class="viewport-tabs">
@@ -5108,6 +5110,78 @@ var SashaMeshEdit = (function() {
         return true;
     }
 
+    function moveVertex(index, x, y, z) {
+        if (!editedMesh || index < 0) return false;
+        var pos = editedMesh.geometry.attributes.position;
+        if (index >= pos.count) return false;
+        pos.setXYZ(index, x, y, z);
+        pos.needsUpdate = true;
+        editedMesh.geometry.computeVertexNormals();
+        _refreshHelpers();
+        _updateInfo();
+        if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
+        return true;
+    }
+
+    function moveSelectedVertices(dx, dy, dz) {
+        if (!editedMesh || selectedIndices.length === 0) return false;
+        var pos = editedMesh.geometry.attributes.position;
+        for (var i = 0; i < selectedIndices.length; i++) {
+            var idx = selectedIndices[i];
+            if (idx < pos.count) {
+                pos.setXYZ(idx, pos.getX(idx) + dx, pos.getY(idx) + dy, pos.getZ(idx) + dz);
+            }
+        }
+        pos.needsUpdate = true;
+        editedMesh.geometry.computeVertexNormals();
+        _refreshHelpers();
+        _updateInfo();
+        if (typeof EngineApp !== 'undefined' && EngineApp._markSceneDirty) EngineApp._markSceneDirty();
+        return true;
+    }
+
+    function pickFace(raycaster) {
+        if (!editMode || !editedMesh) return -1;
+        var hits = raycaster.intersectObject(editedMesh, false);
+        if (hits.length === 0) return -1;
+        var face = hits[0].face;
+        if (!face) return -1;
+        if (editedMesh.geometry.index) {
+            var idx = editedMesh.geometry.index;
+            for (var i = 0; i < idx.count; i += 3) {
+                if (idx.getX(i) === face.a && idx.getX(i+1) === face.b && idx.getX(i+2) === face.c) { return i / 3; }
+            }
+        }
+        return -1;
+    }
+
+    function pickEdge(raycaster) {
+        if (!editMode || !editedMesh) return -1;
+        var hits = raycaster.intersectObject(editedMesh, false);
+        if (hits.length === 0) return -1;
+        var face = hits[0].face;
+        if (!face) return -1;
+        var point = hits[0].point;
+        var pos = editedMesh.geometry.attributes.position;
+        var a = new THREE.Vector3().fromBufferAttribute(pos, face.a).applyMatrix4(editedMesh.matrixWorld);
+        var b = new THREE.Vector3().fromBufferAttribute(pos, face.b).applyMatrix4(editedMesh.matrixWorld);
+        var c = new THREE.Vector3().fromBufferAttribute(pos, face.c).applyMatrix4(editedMesh.matrixWorld);
+        var dab = _distPtSeg(point, a, b);
+        var dbc = _distPtSeg(point, b, c);
+        var dca = _distPtSeg(point, c, a);
+        if (dab <= dbc && dab <= dca) return face.a * 100000 + face.b;
+        if (dbc <= dca) return face.b * 100000 + face.c;
+        return face.c * 100000 + face.a;
+    }
+
+    function _distPtSeg(p, a, b) {
+        var ab = b.clone().sub(a);
+        var lenSq = ab.lengthSq();
+        if (lenSq < 1e-10) return p.distanceTo(a);
+        var t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / lenSq));
+        return p.distanceTo(a.clone().add(ab.multiplyScalar(t)));
+    }
+
     return {
         setSelectionMode: setSelectionMode,
         enterEditMode: enterEditMode,
@@ -5128,7 +5202,12 @@ var SashaMeshEdit = (function() {
         loopCut: loopCut,
         deleteSelection: deleteSelection,
         dissolveEdges: dissolveEdges,
-        flipNormals: flipNormals
+        flipNormals: flipNormals,
+        moveVertex: moveVertex,
+        moveSelectedVertices: moveSelectedVertices,
+        pickFace: pickFace,
+        pickEdge: pickEdge,
+        pickVertexOnMesh: pickVertexOnMesh
     };
 })();
 
@@ -5926,6 +6005,40 @@ var SashaEngineAPI = (function() {
     }
 
     function onClickSelect(e) {
+        // === MESH EDIT MODE: select vertices/edges/faces instead of objects ===
+        if (typeof SashaMeshEdit !== 'undefined' && SashaMeshEdit.isActive()) {
+            var rect2 = canvas.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect2.left) / rect2.width) * 2 - 1;
+            mouse.y = -((e.clientX - rect2.top) / rect2.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            var mode = SashaMeshEdit.getSelectionMode();
+            var pickedIdx = -1;
+            if (mode === 'vertex') {
+                pickedIdx = SashaMeshEdit.pickVertex(raycaster);
+                if (pickedIdx < 0) pickedIdx = SashaMeshEdit.pickVertexOnMesh(raycaster);
+            } else if (mode === 'face') {
+                pickedIdx = SashaMeshEdit.pickFace(raycaster);
+            } else if (mode === 'edge') {
+                pickedIdx = SashaMeshEdit.pickEdge(raycaster);
+            }
+            if (pickedIdx >= 0) {
+                var sel = SashaMeshEdit.getSelectedIndices();
+                if (e.shiftKey) {
+                    var pos2 = sel.indexOf(pickedIdx);
+                    if (pos2 >= 0) sel.splice(pos2, 1); else sel.push(pickedIdx);
+                } else if (e.ctrlKey || e.metaKey) {
+                    if (sel.indexOf(pickedIdx) === -1) sel.push(pickedIdx);
+                } else {
+                    sel = [pickedIdx];
+                }
+                if (mode === 'vertex') SashaMeshEdit.selectVerticesByIndices(sel);
+                else if (mode === 'face') SashaMeshEdit.selectFacesByIndices(sel);
+                else SashaMeshEdit.selectVerticesByIndices(sel);
+                return;
+            }
+            if (!e.shiftKey && !e.ctrlKey && !e.metaKey) { SashaMeshEdit.deselectAll(); }
+            return;
+        }
         var rect = canvas.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -21566,6 +21679,76 @@ var SashaAvatar = (function() {
 })();
 </script>
 
+<script>
+// ============ BOX SELECT for Mesh Edit Mode (Blender-style) ============
+(function(){
+  var _active=false,_sx=0,_sy=0,_el=null;
+  document.addEventListener('pointerdown',function(e){
+    if(typeof SashaMeshEdit==='undefined'||!SashaMeshEdit.isActive())return;
+    if(e.target.tagName!=='CANVAS')return;
+    _sx=e.clientX;_sy=e.clientY;_active=true;
+  });
+  document.addEventListener('pointermove',function(e){
+    if(!_active)return;
+    if(Math.abs(e.clientX-_sx)<5&&Math.abs(e.clientY-_sy)<5)return;
+    if(!_el)_el=document.getElementById('mesh-edit-box-select');
+    if(!_el)return;
+    var pane=_el.parentElement;if(!pane)return;
+    var pr=pane.getBoundingClientRect();
+    var l=Math.min(_sx,e.clientX)-pr.left,t=Math.min(_sy,e.clientY)-pr.top;
+    var w=Math.abs(e.clientX-_sx),h=Math.abs(e.clientY-_sy);
+    _el.style.display='block';_el.style.left=l+'px';_el.style.top=t+'px';
+    _el.style.width=w+'px';_el.style.height=h+'px';
+  });
+  document.addEventListener('pointerup',function(e){
+    if(!_active)return;_active=false;
+    if(_el)_el.style.display='none';
+    if(Math.abs(e.clientX-_sx)<5&&Math.abs(e.clientY-_sy)<5)return;
+    if(typeof SashaMeshEdit==='undefined'||!SashaMeshEdit.isActive())return;
+    if(typeof SashaEngineAPI==='undefined')return;
+    var cam=SashaEngineAPI.getCamera?SashaEngineAPI.getCamera():null;
+    if(!cam)return;
+    var selName=SashaEngineAPI.getSelectedObject();
+    if(!selName)return;
+    var objs=SashaEngineAPI.getObjects();
+    var obj=objs[selName];if(!obj)return;
+    var mesh=null;obj.traverse(function(c){if(c.isMesh&&!mesh)mesh=c;});
+    if(!mesh||!mesh.geometry)return;
+    var geo=mesh.geometry,pos=geo.attributes.position;
+    var mode=SashaMeshEdit.getSelectionMode();
+    var pane2=_el?_el.parentElement:document.querySelector('.engine-viewport-pane');
+    if(!pane2)return;
+    var pr=pane2.getBoundingClientRect();
+    var bx1=(Math.min(_sx,e.clientX)-pr.left)/pr.width;
+    var bx2=(Math.max(_sx,e.clientX)-pr.left)/pr.width;
+    var by1=(Math.min(_sy,e.clientY)-pr.top)/pr.height;
+    var by2=(Math.max(_sy,e.clientY)-pr.top)/pr.height;
+    var tv=new THREE.Vector3(),selected=[];
+    if(mode==='vertex'){
+      for(var vi=0;vi<pos.count;vi++){
+        tv.fromBufferAttribute(pos,vi);mesh.localToWorld(tv);tv.project(cam);
+        var sx2=(tv.x+1)/2,sy2=(1-tv.y)/2;
+        if(sx2>=bx1&&sx2<=bx2&&sy2>=by1&&sy2<=by2)selected.push(vi);
+      }
+      if(e.shiftKey){var ex=SashaMeshEdit.getSelectedIndices();for(var si=0;si<ex.length;si++)if(selected.indexOf(ex[si])===-1)selected.push(ex[si]);}
+      SashaMeshEdit.selectVerticesByIndices(selected);
+    } else if(mode==='face'&&geo.index){
+      var idx=geo.index,fc=idx.count/3;
+      for(var fi=0;fi<fc;fi++){
+        var ia=idx.getX(fi*3),ib=idx.getX(fi*3+1),ic=idx.getX(fi*3+2);
+        var va=new THREE.Vector3().fromBufferAttribute(pos,ia);
+        var vb=new THREE.Vector3().fromBufferAttribute(pos,ib);
+        var vc=new THREE.Vector3().fromBufferAttribute(pos,ic);
+        tv.add(va).add(vb).add(vc).divideScalar(3);mesh.localToWorld(tv);tv.project(cam);
+        var sx3=(tv.x+1)/2,sy3=(1-tv.y)/2;
+        if(sx3>=bx1&&sx3<=bx2&&sy3>=by1&&sy3<=by2)selected.push(fi);
+      }
+      if(e.shiftKey){var ex2=SashaMeshEdit.getSelectedIndices();for(var si2=0;si2<ex2.length;si2++)if(selected.indexOf(ex2[si2])===-1)selected.push(ex2[si2]);}
+      SashaMeshEdit.selectFacesByIndices(selected);
+    }
+  });
+})();
+</script>
 <div class="mcp-float" id="mcpFloat" onclick="showSection('mcp')" title="MCP Server"><div class="mcp-float-dot off" id="mcpFloatDot"></div><span>MCP</span></div>
 <script>
 (function(){
@@ -21622,21 +21805,25 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   };
 
   window.mcpDownloadServer=function(){
-    _l('>> Создаю ZIP архив MCP сервера...','mcp-info');
-    if(typeof JSZip==='undefined'){_l('<< JSZip не загружен! Проверь интернет.','mcp-err');return;}
-    var zip=new JSZip(),folder=zip.folder('sashaai-mcp-server');
-    for(var n in _F){folder.file(n,_F[n]);}
-    zip.generateAsync({type:'blob'}).then(function(blob){
-      var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='sashaai-mcp-server.zip';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
-      _l('<< ZIP скачан! Размер: '+(blob.size/1024).toFixed(1)+' KB','mcp-ok');_l('   Распакуй и запусти START.bat','mcp-info');
-      var s=document.getElementById('mcpStep1');if(s)s.classList.add('done');
-    }).catch(function(e){_l('<< Ошибка ZIP: '+e.message,'mcp-err');});
+    try {
+      _l('>> Создаю ZIP архив MCP сервера...','mcp-info');
+      if(typeof JSZip==='undefined'){_l('<< JSZip не загружен! Проверь интернет.','mcp-err');alert('JSZip не загружен. Проверьте интернет.');return;}
+      var zip=new JSZip(),folder=zip.folder('sashaai-mcp-server');
+      var fc=0;for(var n in _F){folder.file(n,_F[n]);fc++;}
+      _l('>> Файлов: '+fc,'mcp-info');
+      zip.generateAsync({type:'blob'}).then(function(blob){
+        var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='sashaai-mcp-server.zip';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},5000);
+        _l('<< ZIP скачан! Размер: '+(blob.size/1024).toFixed(1)+' KB','mcp-ok');_l('   Распакуй и запусти START.bat','mcp-info');
+        var s=document.getElementById('mcpStep1');if(s)s.classList.add('done');
+      }).catch(function(e){_l('<< Ошибка ZIP: '+e.message,'mcp-err');});
+    } catch(err) { _l('<< Ошибка: '+err.message,'mcp-err'); alert('Ошибка ZIP: '+err.message); }
   };
 
 })();
 </script>
 </body>
 </html>
+
 
 
 
