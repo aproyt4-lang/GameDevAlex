@@ -4670,6 +4670,7 @@ var SashaMeshEdit = (function() {
     var originalGeometry = null;
     var vertexHelpers = [];
     var vertexHelperGroup = null;
+    var _savedSelectionHelperVisible = undefined;
 
     function setSelectionMode(mode) {
         selectionMode = mode;
@@ -5434,6 +5435,7 @@ var SashaEngineAPI = (function() {
     var selectionHelper = null;
     var transformCtrl = null;
     var _gridVis = true;
+    var objCounter = 0;
 
     // ===== FPS Mode Variables =====
     var fpsMode = false;
@@ -21635,8 +21637,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
-
-
 
 
 
