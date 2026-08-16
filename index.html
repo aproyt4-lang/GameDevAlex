@@ -3359,17 +3359,18 @@ var SashaTerminal = (function() {
         },
         scene: function(args) {
             if (typeof SashaEngineAPI === 'undefined') { _output('Engine not initialized', 'error'); return null; }
-            var cmd = args[0];
+            var cmd = (args[0] || '').toLowerCase();
             if (!cmd) {
                 _output('Scene objects:', 'info');
                 var names = SashaEngineAPI.getAllObjectNames ? SashaEngineAPI.getAllObjectNames() : [];
-                for (var i = 0; i < names.length; i++) {
-                    _output('  - ' + names[i], 'log');
-                }
-                return null;
+                for (var i = 0; i < names.length; i++) _output('  - ' + names[i], 'log');
+                _output('Total: ' + names.length + ' objects', 'info'); return null;
             }
-            _output('scene: command "' + cmd + '" not implemented in this build', 'warn');
-            return null;
+            if (cmd === 'clear') { SashaEngineAPI.clearScene(); _output('Scene cleared', 'success'); return null; }
+            if (cmd === 'info') { var n2 = SashaEngineAPI.getAllObjectNames ? SashaEngineAPI.getAllObjectNames() : []; _output('Objects: ' + n2.length, 'info'); return null; }
+            if (cmd === 'remove' && args[1]) { SashaEngineAPI.removeObject(args[1]); _output('Removed: ' + args[1], 'success'); return null; }
+            if (cmd === 'bg' && args[1]) { document.body.style.background = args[1]; _output('BG: ' + args[1], 'success'); return null; }
+            _output('scene sub-commands: (none)|clear|info|remove <name>|bg <color>', 'warn'); return null;
         },
         clear: function() {
             outputCallbacks = outputCallbacks.slice(); // keep callbacks
@@ -4552,26 +4553,34 @@ var SashaAIAgent = (function() {
     }
 
     function _translate(input) {
-        // Simple dictionary-based translation (placeholder for full translation)
         var dict = {
-            'привет': 'hello', 'мир': 'world', 'игра': 'game', 'код': 'code',
-            'движок': 'engine', 'спрайт': 'sprite', 'сцена': 'scene',
-            'объект': 'object', 'функция': 'function', 'класс': 'class',
-            'переменная': 'variable', 'массив': 'array', 'строка': 'string',
-            'число': 'number', 'логическое': 'boolean'
+            'привет':'hello','здравствуйте':'hello','мир':'world','игра':'game','код':'code',
+            'движок':'engine','спрайт':'sprite','сцена':'scene','объект':'object',
+            'функция':'function','класс':'class','переменная':'variable','массив':'array',
+            'строка':'string','число':'number','метод':'method','модуль':'module',
+            'интерфейс':'interface','компонент':'component','событие':'event',
+            'текстура':'texture','материал':'material','свет':'light','камера':'camera',
+            'анимация':'animation','физика':'physics','коллизия':'collision','рендер':'render',
+            'шейдер':'shader','вершина':'vertex','грань':'face','ребро':'edge',
+            'проект':'project','сцрипт':'script','ошибка':'error','консоль':'console',
+            'кнопка':'button','панель':'panel','окно':'window','меню':'menu',
+            'пользователь':'user','настройки':'settings','параметр':'parameter','результат':'result',
+            'добавить':'add','удалить':'delete','изменить':'modify','создать':'create',
+            'загрузить':'load','сохранить':'save','открыть':'open','закрыть':'close',
+            'переместить':'move','вращать':'rotate','масштабировать':'scale','клонировать':'clone',
+            'куб':'cube','сфера':'sphere','плоскость':'plane','цилиндр':'cylinder',
+            'свет':'light','тень':'shadow','зеркало':'mirror','эффект':'effect'
         };
-        var words = input.toLowerCase().split(/\s+/);
-        var translated = [];
-        for (var i = 0; i < words.length; i++) {
-            var clean = words[i].replace(/[.,!?;:]/g, '');
-            if (dict[clean]) translated.push(dict[clean]);
-            else translated.push(words[i]);
-        }
+        var words = input.toLowerCase().split(/\s+/), translated = [];
+        for (var i = 0; i < words.length; i++) { var w = words[i].replace(/[.,!?;:—()]/g, ''); translated.push(dict[w] || words[i]); }
         return '🌐 ' + translated.join(' ');
     }
 
     function _generateDoc(input) {
-        return '📄 **Документация**\n\n```\n/**\n * ' + input + '\n *\n * Описание:\n *   Этот модуль реализует запрошенную функциональность.\n *\n * Использование:\n *   const instance = new Module(params);\n *   instance.run();\n *\n * Параметры:\n *   - params: объект конфигурации\n *\n * Возвращает:\n *   - Promise<Result>\n *\n * Пример:\n *   Module.create({ debug: true })\n *     .then(r => console.log(r));\n */\n```';
+        var title = input || 'Module';
+        var params = title.match(/\(([^)]+)\)/);
+        var paramStr = params ? params[1].split(',').map(function(p){ return '  - ' + p.trim() + ': описание'; }).join('\n') : '  - params: объект конфигурации';
+        return '📄 **Документация: ' + title + '**\n\n### Описание\nМодуль `' + title + '` реализует запрошенную функциональность.\n\n### Использование\n```javascript\nconst instance = new ' + title + '(params);\ninstance.run();\n```\n\n### Параметры\n' + paramStr + '\n\n### Возвращает\n`Promise<Result>`\n\n### Пример\n```javascript\n' + title + '.create({ debug: true })\n  .then(r => console.log(r));\n```';
     }
 
     function _analyze(input) {
@@ -4806,11 +4815,14 @@ var SashaMeshEdit = (function() {
     }
 
     function _buildEdgeList(geo) {
+        if (_cachedEdgeList && _cachedEdgeGeoVersion === geo.attributes.position.version) return _cachedEdgeList;
         var pos = geo.attributes.position, index = geo.index, edgeMap = {};
-        function ae(a, b) { var k = Math.min(a,b)+'_'+Math.max(a,b); if (!edgeMap[k]) edgeMap[k] = [a, b]; }
+        function ae(a, b) { var k = Math.min(a,b)+"_"+Math.max(a,b); if (!edgeMap[k]) edgeMap[k] = [a, b]; }
         if (index) { for (var i = 0; i < index.count; i += 3) { var a=index.getX(i),b=index.getX(i+1),c=index.getX(i+2); ae(a,b);ae(b,c);ae(c,a); } }
         else { for (var j = 0; j < pos.count; j += 3) { ae(j,j+1);ae(j+1,j+2);ae(j+2,j); } }
-        var edges = []; for (var k in edgeMap) edges.push(edgeMap[k]); return edges;
+        _cachedEdgeList = []; for (var k in edgeMap) _cachedEdgeList.push(edgeMap[k]);
+        _cachedEdgeGeoVersion = geo.attributes.position.version;
+        return _cachedEdgeList;
     }
 
     var MAX_HELPER_VERTICES = 5000;
@@ -4819,6 +4831,8 @@ var SashaMeshEdit = (function() {
     var helperColorSelected = new THREE.Color(0xf59e0b);
     var _dummyObj = new THREE.Object3D();
     var _helperVisibleCount = 0;
+    var _cachedEdgeList = null;
+    var _cachedEdgeGeoVersion = -1;
     var _helperStride = 1;
 
     function _refreshHelpers() {
@@ -4830,6 +4844,7 @@ var SashaMeshEdit = (function() {
         if (edgeHighlightLines) { if (edgeHighlightLines.parent) edgeHighlightLines.parent.remove(edgeHighlightLines); edgeHighlightLines.geometry.dispose(); edgeHighlightLines.material.dispose(); edgeHighlightLines = null; }
         if (faceHighlightMesh) { if (faceHighlightMesh.parent) faceHighlightMesh.parent.remove(faceHighlightMesh); faceHighlightMesh.geometry.dispose(); faceHighlightMesh.material.dispose(); faceHighlightMesh = null; }
         if (!editMode) return;
+        _cachedEdgeList = null; _cachedEdgeGeoVersion = -1;
 
         var geo = editedMesh.geometry, pos = geo.attributes.position, totalVerts = pos.count;
         _helperStride = 1;
@@ -4995,10 +5010,8 @@ var SashaMeshEdit = (function() {
         if (hits.length === 0) return -1;
         var face = hits[0].face; if (!face) return -1;
         if (editedMesh.geometry.index) {
-            var idx = editedMesh.geometry.index;
-            for (var i = 0; i < idx.count; i += 3) {
-                if (idx.getX(i) === face.a && idx.getX(i+1) === face.b && idx.getX(i+2) === face.c) return i / 3;
-            }
+            var fi = Math.floor(hits[0].faceIndex);
+            if (fi >= 0 && fi * 3 + 2 < editedMesh.geometry.index.count) return fi;
         } else { return Math.floor(face.a / 3); }
         return -1;
     }
@@ -15151,7 +15164,7 @@ var EngineApp = (function() {
         }
         // Add EngineApp functions for AI code execution (GitHub, animation, etc.)
         if (typeof EngineApp !== 'undefined') {
-            wrappedEngine.loadModelFromURL = function(url) { return EngineApp.loadModelFromURL ? EngineApp.loadModelFromURL() : 'not available'; };
+            wrappedEngine.loadModelFromURL = function(url) { return EngineApp.loadModelFromURL ? EngineApp.loadModelFromURL(url) : 'not available'; };
             wrappedEngine.openPrefabMode = function(name) { if (EngineApp.openPrefabMode) EngineApp.openPrefabMode(name); };
         }
         // Give LLM direct access to loadModel (GLB/GLTF from any URL)
@@ -20232,7 +20245,7 @@ var EngineApp = (function() {
         _inspPreviewRenderer.render(_inspPreviewScene, _inspPreviewCamera);
     }
 
-    // ============ MISSING FUNCTIONS (stubs so no ReferenceError) ============
+    // ============ Asset & Animation Utility Functions ============
     function assetCreateFolderQuick() {
         var name = prompt('Folder name:', 'New Folder');
         if (!name || !name.trim()) return;
@@ -20270,12 +20283,16 @@ var EngineApp = (function() {
     }
 
     function _miConfigureAvatar(objName) {
-        log('Avatar configuration for: ' + objName, 'log');
         var _avObj = SashaEngineAPI.getObject(objName);
-        if (!_avObj) return;
-        var boneCount = 0;
-        _avObj.traverse(function(c) { if (c.isBone) boneCount++; });
-        log('Bones found: ' + boneCount, 'result');
+        if (!_avObj) { log('Object not found: ' + objName, 'error'); return; }
+        var bones = [], morphTargets = [], meshCount = 0;
+        _avObj.traverse(function(c) {
+            if (c.isBone) bones.push(c.name);
+            if (c.isMesh) { meshCount++; if (c.morphTargetDictionary) morphTargets = morphTargets.concat(Object.keys(c.morphTargetDictionary)); }
+        });
+        log('Avatar: ' + objName + ' | Meshes: ' + meshCount + ' | Bones: ' + bones.length + ' | Morphs: ' + morphTargets.length, 'result');
+        if (bones.length > 0) { log('Bones: ' + bones.join(', '), 'log'); }
+        if (morphTargets.length > 0) { log('Morph targets: ' + morphTargets.join(', '), 'log'); }
     }
 
     function _miAttachSkeleton(objName) {
@@ -20952,9 +20969,6 @@ function openProject(projectId) {
 function closeModal() { var modal = document.getElementById('project-modal'); if (modal) modal.style.display = 'none'; }
 
 // ===== MCP UI Functions =====
-// mcpDownloadServer full implementation is in the last <script> IIFE (sets window.mcpDownloadServer)
-var mcpDownloadServer = mcpDownloadServer || function() { /* overridden by IIFE below */ };
-
 function mcpCopyPrompt() {
     var prompt = 'У тебя есть доступ к 3D игровому движку SashaAI GameDev Engine через HTTP API.\n\nБазовый URL: http://localhost:3000\n\nENDPOINTS:\n1. GET /tools — список всех инструментов\n2. POST /call — вызвать инструмент: {"tool":"add_cube","params":{"x":1}}\n3. POST /call-batch — несколько вызовов: {"calls":[...]}\n\nСоздавай 3D сцены через эти endpoints.';
     if (navigator.clipboard) {
@@ -21516,7 +21530,7 @@ var SashaAvatar = (function() {
       catch(e) { console.error('[MCP] Parse error:', e); }
     };
     ws.onclose = function() { console.log('[MCP] Disconnected'); scheduleReconnect(); };
-    ws.onerror = function() {};
+    ws.onerror = function(e) { console.error('[MCP] WebSocket error', e); scheduleReconnect(); };
   }
 
   function scheduleReconnect() {
@@ -21841,6 +21855,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
+
 
 
 
