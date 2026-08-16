@@ -4553,34 +4553,64 @@ var SashaAIAgent = (function() {
     }
 
     function _translate(input) {
+        var isRu = /[\u0400-\u04FF]/.test(input);
+        var pair = isRu ? 'ru|en' : 'en|ru';
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(input.substring(0, 500)) + '&langpair=' + pair, false);
+            xhr.send();
+            if (xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                if (data.responseData && data.responseData.translatedText) return data.responseData.translatedText;
+            }
+        } catch (e) { console.warn('Translate API failed, fallback to dict', e); }
         var dict = {
             'привет':'hello','здравствуйте':'hello','мир':'world','игра':'game','код':'code',
-            'движок':'engine','спрайт':'sprite','сцена':'scene','объект':'object',
-            'функция':'function','класс':'class','переменная':'variable','массив':'array',
-            'строка':'string','число':'number','метод':'method','модуль':'module',
-            'интерфейс':'interface','компонент':'component','событие':'event',
-            'текстура':'texture','материал':'material','свет':'light','камера':'camera',
-            'анимация':'animation','физика':'physics','коллизия':'collision','рендер':'render',
-            'шейдер':'shader','вершина':'vertex','грань':'face','ребро':'edge',
-            'проект':'project','сцрипт':'script','ошибка':'error','консоль':'console',
-            'кнопка':'button','панель':'panel','окно':'window','меню':'menu',
-            'пользователь':'user','настройки':'settings','параметр':'parameter','результат':'result',
-            'добавить':'add','удалить':'delete','изменить':'modify','создать':'create',
-            'загрузить':'load','сохранить':'save','открыть':'open','закрыть':'close',
-            'переместить':'move','вращать':'rotate','масштабировать':'scale','клонировать':'clone',
-            'куб':'cube','сфера':'sphere','плоскость':'plane','цилиндр':'cylinder',
-            'свет':'light','тень':'shadow','зеркало':'mirror','эффект':'effect'
+            'движок':'engine','сцена':'scene','объект':'object','функция':'function','класс':'class',
+            'переменная':'variable','массив':'array','строка':'string','число':'number','метод':'method',
+            'модуль':'module','компонент':'component','событие':'event','текстура':'texture',
+            'материал':'material','свет':'light','камера':'camera','анимация':'animation',
+            'физика':'physics','коллизия':'collision','рендер':'render','шейдер':'shader',
+            'вершина':'vertex','грань':'face','ребро':'edge','проект':'project',
+            'сцрипт':'script','ошибка':'error','консоль':'console','кнопка':'button',
+            'панель':'panel','окно':'window','меню':'menu','добавить':'add',
+            'удалить':'delete','изменить':'modify','создать':'create','загрузить':'load',
+            'сохранить':'save','открыть':'open','закрыть':'close',
+            'переместить':'move','вращать':'rotate','масштабировать':'scale',
+            'куб':'cube','сфера':'sphere','плоскость':'plane','цилиндр':'cylinder'
         };
         var words = input.toLowerCase().split(/\s+/), translated = [];
-        for (var i = 0; i < words.length; i++) { var w = words[i].replace(/[.,!?;:—()]/g, ''); translated.push(dict[w] || words[i]); }
+        for (var i = 0; i < words.length; i++) { var w = words[i].replace(/[^\w\u0400-\u04FF]/g, ''); translated.push(dict[w] || words[i]); }
         return '🌐 ' + translated.join(' ');
     }
 
     function _generateDoc(input) {
-        var title = input || 'Module';
-        var params = title.match(/\(([^)]+)\)/);
-        var paramStr = params ? params[1].split(',').map(function(p){ return '  - ' + p.trim() + ': описание'; }).join('\n') : '  - params: объект конфигурации';
-        return '📄 **Документация: ' + title + '**\n\n### Описание\nМодуль `' + title + '` реализует запрошенную функциональность.\n\n### Использование\n```javascript\nconst instance = new ' + title + '(params);\ninstance.run();\n```\n\n### Параметры\n' + paramStr + '\n\n### Возвращает\n`Promise<Result>`\n\n### Пример\n```javascript\n' + title + '.create({ debug: true })\n  .then(r => console.log(r));\n```';
+        var lines = input.split('\n'), docs = [];
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            var funcMatch = line.match(/function\s+(\w+)\s*\(([^)]*)\)/);
+            var arrowMatch = line.match(/(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*=>/);
+            var classMatch = line.match(/class\s+(\w+)(?:\s+extends\s+(\w+))?/);
+            var m = funcMatch || arrowMatch || classMatch;
+            if (m) {
+                var name = m[1], params = m[2] || '';
+                var prevLines = lines.slice(Math.max(0, i - 10), i).join('\n');
+                var jd = prevLines.match(/\*\*([\s\S]*?)\*\//);
+                var desc = jd ? jd[1].replace(/\*/g, '').replace(/@\w+\s*/g, '').trim() : '';
+                if (classMatch) {
+                    docs.push('### class ' + name + (m[3] ? ' extends ' + m[3] : ''));
+                    docs.push(desc || name);
+                } else {
+                    var pList = params.trim() ? params.split(',').map(function(p){ return p.trim().split('=')[0].trim(); }).filter(Boolean) : [];
+                    docs.push('### ' + name + '(' + pList.join(', ') + ')');
+                    if (desc) docs.push(desc);
+                    if (pList.length) { docs.push('Parameters:'); for (var p = 0; p < pList.length; p++) docs.push('- ' + pList[p]); }
+                }
+                docs.push('');
+            }
+        }
+        if (docs.length === 0) docs.push('### ' + input.split('\n')[0].substring(0, 60), '');
+        return '\U0001f4c4 **Doc**\n\n' + docs.join('\n');
     }
 
     function _analyze(input) {
@@ -20285,14 +20315,45 @@ var EngineApp = (function() {
     function _miConfigureAvatar(objName) {
         var _avObj = SashaEngineAPI.getObject(objName);
         if (!_avObj) { log('Object not found: ' + objName, 'error'); return; }
-        var bones = [], morphTargets = [], meshCount = 0;
+        var bones = [], morphTargets = [], meshes = [];
         _avObj.traverse(function(c) {
             if (c.isBone) bones.push(c.name);
-            if (c.isMesh) { meshCount++; if (c.morphTargetDictionary) morphTargets = morphTargets.concat(Object.keys(c.morphTargetDictionary)); }
+            if (c.isMesh) {
+                var mInfo = { name: c.name, morphs: [] };
+                if (c.morphTargetDictionary && c.morphTargetInfluences) {
+                    var keys = Object.keys(c.morphTargetDictionary);
+                    for (var k = 0; k < keys.length; k++) mInfo.morphs.push({ name: keys[k], index: c.morphTargetDictionary[keys[k]], value: c.morphTargetInfluences[c.morphTargetDictionary[keys[k]]] });
+                }
+                meshes.push(mInfo);
+            }
         });
-        log('Avatar: ' + objName + ' | Meshes: ' + meshCount + ' | Bones: ' + bones.length + ' | Morphs: ' + morphTargets.length, 'result');
-        if (bones.length > 0) { log('Bones: ' + bones.join(', '), 'log'); }
-        if (morphTargets.length > 0) { log('Morph targets: ' + morphTargets.join(', '), 'log'); }
+        log('Avatar: ' + objName + ' | Meshes: ' + meshes.length + ' | Bones: ' + bones.length, 'result');
+        if (bones.length > 0) log('Bones: ' + bones.join(', '), 'log');
+        var logEl = document.getElementById('output-log');
+        if (!logEl) return;
+        var panel = document.createElement('div');
+        panel.style.cssText = 'margin:8px 0;padding:10px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:8px;';
+        var html = '<div style="font-weight:600;margin-bottom:8px;color:#a5b4fc;">⚙ ' + objName + ' Configuration</div>';
+        for (var mi = 0; mi < meshes.length; mi++) {
+            var mesh = meshes[mi];
+            if (mesh.morphs.length > 0) {
+                html += '<div style="font-size:0.75rem;color:#94a3b8;margin:6px 0 3px;">Mesh: ' + mesh.name + '</div>';
+                for (var mj = 0; mj < mesh.morphs.length; mj++) {
+                    var morph = mesh.morphs[mj];
+                    html += '<div style="display:flex;align-items:center;gap:8px;margin:2px 0;font-size:0.72rem;">';
+                    html += '<span style="width:100px;color:#cbd5e1;">' + morph.name + '</span>';
+                    html += '<input type="range" min="0" max="1" step="0.01" value="' + morph.value + '" oninput="SashaEngineAPI.setMorphTarget(\'' + objName + '\',\'' + mesh.name + '\',\'' + morph.name + '\',parseFloat(this.value))" style="flex:1;">';
+                    html += '<span style="width:35px;text-align:right;color:#6366f1;">' + morph.value.toFixed(2) + '</span></div>';
+                }
+            }
+        }
+        if (bones.length > 0) {
+            html += '<div style="font-size:0.75rem;color:#94a3b8;margin:8px 0 3px;">Bones (' + bones.length + '):</div>';
+            html += '<div style="max-height:100px;overflow-y:auto;font-size:0.7rem;color:#64748b;">' + bones.join(', ') + '</div>';
+        }
+        panel.innerHTML = html;
+        logEl.appendChild(panel);
+        logEl.scrollTop = logEl.scrollHeight;
     }
 
     function _miAttachSkeleton(objName) {
