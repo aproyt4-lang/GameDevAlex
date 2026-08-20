@@ -20705,24 +20705,14 @@ function closeModal() { var modal = document.getElementById('project-modal'); if
 // ===== MCP Configuration (single source of truth) =====
 var MCP_CONFIG = (function() {
     var params = new URLSearchParams(location.search);
-    var host = params.get('mcp_host') || location.hostname || 'localhost';
+    // MCP server always runs locally — force localhost unless explicitly overridden via URL params
+    var host = params.get('mcp_host') || 'localhost';
     var httpPort = parseInt(params.get('mcp_port'), 10) || 3000;
     var wsPort = parseInt(params.get('mcp_ws_port'), 10) || 8765;
     var isFile = location.protocol === 'file:';
-    var protocol = location.protocol === 'https:' ? 'https' : 'http';
-    var wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    // If opened from the MCP server itself (same origin on httpPort), use location.origin
-    if (!isFile && (location.port == httpPort || (protocol === 'http' && httpPort === 80) || (protocol === 'https' && httpPort === 443))) {
-        return {
-            apiBase: location.origin,
-            wsUrl: wsProtocol + '://' + location.host,
-            httpPort: httpPort,
-            wsPort: wsPort
-        };
-    }
     return {
-        apiBase: protocol + '://' + host + ':' + httpPort,
-        wsUrl: wsProtocol + '://' + host + ':' + wsPort,
+        apiBase: 'http://' + host + ':' + httpPort,
+        wsUrl: 'ws://' + host + ':' + wsPort,
         httpPort: httpPort,
         wsPort: wsPort
     };
@@ -21681,7 +21671,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
-
 
 
 
