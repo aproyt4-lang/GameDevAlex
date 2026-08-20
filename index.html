@@ -20537,10 +20537,6 @@ function _addChatMessage(role, text) {
     }
 }
 
-        else indicator.style.display = 'none';
-    }
-}
-
 function toggleTTS() {
     if (typeof SashaTTS !== 'undefined') {
         var enabled = SashaTTS.toggle();
@@ -21669,8 +21665,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         if (data.toolLog && data.toolLog.length) {
           var logText = data.toolLog.map(function (t) {
             return '🔧 ' + t.tool + '(' + JSON.stringify(t.params) + ')';
-          }).join('
-');
+          }).join('\n');
           addChat('ai', logText);
         }
         addChat('ai', data.reply || '(пустой ответ)');
@@ -21686,6 +21681,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
+
 
 
 
