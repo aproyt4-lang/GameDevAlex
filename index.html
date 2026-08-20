@@ -21996,6 +21996,136 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   };
 })();
 </script>
+
+<!-- ============================================================ -->
+<!-- SashaAI -> Ollama мост для вкладки "AI Agent"                -->
+<!-- Заменяет WebLLM на локальную Ollama через node src/index.js  -->
+<!-- Плюс: голосовой ввод (микрофон) и озвучка ответов (TTS)      -->
+<!-- ============================================================ -->
+<script>
+(function () {
+  var OLLAMA_CHAT_API = 'http://localhost:3000/ai-chat';
+  var ollamaHistory = [];
+  var ollamaBusy = false;
+
+  function addChat(type, text) {
+    var chat = document.getElementById('eng-ai-chat');
+    if (!chat) return;
+    var div = document.createElement('div');
+    div.className = 'engine-ai-msg ' + type;
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function removeThinking() {
+    var chat = document.getElementById('eng-ai-chat');
+    if (!chat) return;
+    var msgs = chat.querySelectorAll('.engine-ai-msg.ai');
+    if (msgs.length) {
+      var last = msgs[msgs.length - 1];
+      if (last.textContent.indexOf('Думаю...') !== -1) last.remove();
+    }
+  }
+
+  function speakIfEnabled(text) {
+    try {
+      if (typeof SashaTTS !== 'undefined' && SashaTTS.isEnabled && SashaTTS.isEnabled()) {
+        // Не озвучиваем служебные строки с вызовами инструментов (🔧 ...)
+        if (text && text.indexOf('🔧') !== 0) SashaTTS.speak(text);
+      }
+    } catch (e) { /* тихо игнорируем */ }
+  }
+
+  // ---- Основная отправка сообщения (текст) ----
+  EngineApp.sendAI = async function () {
+    var input = document.getElementById('eng-ai-input');
+    if (!input) return;
+    var prompt = input.value.trim();
+    if (!prompt) return;
+    if (ollamaBusy) { addChat('ai', 'Подожди, ещё думаю над предыдущим запросом...'); return; }
+
+    input.value = '';
+    addChat('user', prompt);
+    ollamaBusy = true;
+    addChat('ai', 'Думаю...');
+
+    try {
+      var r = await fetch(OLLAMA_CHAT_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: prompt, history: ollamaHistory })
+      });
+      var data = await r.json();
+      removeThinking();
+
+      if (data.error) {
+        addChat('ai', 'Ошибка: ' + data.error);
+      } else {
+        ollamaHistory = data.history || ollamaHistory;
+        if (data.toolLog && data.toolLog.length) {
+          var logText = data.toolLog.map(function (t) {
+            return '🔧 ' + t.tool + '(' + JSON.stringify(t.params) + ')';
+          }).join('\n');
+          addChat('ai', logText);
+        }
+        var reply = data.reply || '(пустой ответ)';
+        addChat('ai', reply);
+        speakIfEnabled(reply);
+      }
+    } catch (e) {
+      removeThinking();
+      addChat('ai', 'Не удалось связаться с сервером localhost:3000. Проверь что запущен node src/index.js. ' + e.message);
+    } finally {
+      ollamaBusy = false;
+    }
+  };
+
+  // ---- Голосовой ввод для вкладки AI Agent ----
+  function engVoiceInput() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Голосовой ввод не поддерживается в этом браузере. Используй Chrome.');
+      return;
+    }
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var recognition = new SR();
+    recognition.lang = 'ru-RU';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    var input = document.getElementById('eng-ai-input');
+    var micBtn = document.getElementById('eng-ai-mic-btn');
+    if (micBtn) micBtn.style.color = '#ef4444';
+    recognition.onresult = function (event) {
+      var transcript = event.results[0][0].transcript;
+      if (input) { input.value = transcript; input.focus(); }
+      EngineApp.sendAI(); // сразу отправляем распознанный текст
+    };
+    recognition.onerror = function (event) {
+      console.warn('Voice input error:', event.error);
+    };
+    recognition.onend = function () { if (micBtn) micBtn.style.color = ''; };
+    recognition.start();
+  }
+
+  // Добавляем кнопку микрофона рядом с полем ввода (если её ещё нет)
+  function addMicButton() {
+    var sendBtn = document.getElementById('ai-send-btn');
+    if (!sendBtn || document.getElementById('eng-ai-mic-btn')) return;
+    var micBtn = document.createElement('button');
+    micBtn.id = 'eng-ai-mic-btn';
+    micBtn.title = 'Голосовой ввод';
+    micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+    micBtn.style.cssText = sendBtn.style.cssText || '';
+    micBtn.onclick = engVoiceInput;
+    sendBtn.parentNode.insertBefore(micBtn, sendBtn);
+  }
+
+  // Пробуем сразу и по таймеру (на случай если вкладка ещё не отрисована при загрузке)
+  addMicButton();
+  setTimeout(addMicButton, 1000);
+  setTimeout(addMicButton, 3000);
+})();
+</script>
 </body>
 </html>
 
