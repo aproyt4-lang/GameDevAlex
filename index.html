@@ -18,7 +18,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
     <title>SashaAI — GameDev AI & Developer [v8.3-mesh-edit-0308]</title>
-    <!-- AI backends: Transformers.js (browser), Ollama (local), Groq (cloud API) -->
+    <!-- AI: Ollama via MCP server -->
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1157,7 +1157,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                         <button class="gizmo-mode-btn" id="gizmo-scale" onclick="EngineApp.setGizmoMode('scale')" title="Scale (R)">R</button>
                     </div>
                     <div class="eng-separator"></div>
-                    <select id="eng-add-obj-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
+                    <select id="eng-add-obj-select" onchange="EngineApp.addFromDropdown()" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">+ Add Object</option>
                         <option value="cube">Cube</option>
                         <option value="sphere">Sphere</option>
@@ -1183,16 +1183,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     <button class="eng-btn" onclick="EngineApp.loadModelFromURL()" title="Load 3D Model"><i class="fas fa-file-import"></i> Model</button>
                     <button class="eng-btn" onclick="EngineApp.clearScene()" title="Clear"><i class="fas fa-trash"></i></button>
                     <div class="eng-separator"></div>
-                    <button class="eng-btn" onclick="EngineApp.showModelPicker()" title="Load AI"><i class="fas fa-brain"></i> AI</button>
                     <button class="eng-btn" onclick="EngineApp.showTemplatePicker()" title="Шаблоны сцен" style="background:#22c55e;border-color:#22c55e;color:#000;font-weight:600;"><i class="fas fa-puzzle-piece"></i> Templates</button>
-                    <select id="eng-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
-                        <option value="">-- AI --</option>
-                        <option value="onnx-community/Qwen2.5-Coder-0.5B-Instruct">Qwen2.5-Coder 0.5B</option>
-                        <option value="onnx-community/Qwen2.5-Coder-1.5B-Instruct">Qwen2.5-Coder 1.5B</option>
-                        <option value="onnx-community/LFM2-2.6B-ONNX">LFM2 2.6B</option>
-                        <option value="onnx-community/Qwen2.5-Coder-3B-Instruct">Qwen2.5-Coder 3B</option>
-                    </select>
-                    <button class="eng-btn" id="groq-key-btn" onclick="EngineApp.setGroqKey()" title="Set Groq API Key" style="background:#f55036;border-color:#f55036;color:#fff;"><i class="fas fa-key"></i></button>
                     <div class="eng-separator"></div>
                     <button class="eng-btn" onclick="EngineApp.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
                     <button class="eng-btn" onclick="EngineApp.redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
@@ -1410,28 +1401,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                         <div class="eng-tab-content" id="eng-tab-ai" style="display:none;">
                             <div class="engine-ai-panel">
                                 <div class="engine-ai-toolbar">
-                                    <select id="eng-ai-model-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
-                                        <option value="">-- Model --</option>
-                                        <option value="onnx-community/Qwen2.5-Coder-0.5B-Instruct">Qwen2.5-Coder 0.5B</option>
-                                        <option value="onnx-community/Qwen2.5-Coder-1.5B-Instruct">Qwen2.5-Coder 1.5B</option>
-                                        <option value="onnx-community/LFM2-2.6B-ONNX">LFM2 2.6B</option>
-                                        <option value="onnx-community/Qwen2.5-Coder-3B-Instruct">Qwen2.5-Coder 3B</option>
-
-                                    </select>
-                                    <button class="eng-tab" onclick="EngineApp.setGroqKey()" style="font-size:0.72rem;padding:3px 8px;background:#f55036;border-color:#f55036;color:#fff;" title="Groq API Key"><i class="fas fa-key"></i></button>
-                                    <button class="eng-tab" onclick="EngineApp.showModelPicker()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-download"></i> Load</button>
-                                    <button class="eng-tab" onclick="EngineApp.restartModel()" style="font-size:0.72rem;padding:3px 8px;" id="ai-restart-btn" title="Перезагрузить модель"><i class="fas fa-redo"></i> Restart</button>
-                                    <button class="eng-tab" onclick="EngineApp.unloadModel()" style="font-size:0.72rem;padding:3px 8px;color:#ef4444;" id="ai-unload-btn" title="Выключить модель"><i class="fas fa-power-off"></i> Off</button>
                                     <button class="eng-tab" onclick="EngineApp.clearAIChat()" style="font-size:0.72rem;padding:3px 8px;"><i class="fas fa-trash"></i> Clear</button>
                                     <div style="flex:1"></div>
-                                    <span class="mode-indicator" id="eng-ai-status">offline</span>
+                                    <span class="mode-indicator" id="eng-ai-status" style="color:#3fb950;">ollama</span>
                                 </div>
                                 <div class="engine-ai-chat" id="eng-ai-chat"></div>
                                 <div class="engine-ai-input-row">
-                                    <div class="ai-mode-toggle" id="ai-mode-toggle">
-                                        <button class="ai-mode-btn active" id="ai-mode-chat" onclick="EngineApp.setAIMode('chat')"><i class="fas fa-comments"></i> Chat</button>
-                                        <button class="ai-mode-btn" id="ai-mode-build" onclick="EngineApp.setAIMode('build')"><i class="fas fa-hammer"></i> Build</button>
-                                    </div>
                                     <input type="text" id="eng-ai-input" placeholder="Спроси что-нибудь..." onkeydown="if(event.key==='Enter')EngineApp.sendAI()">
                                     <button id="ai-send-btn" onclick="EngineApp.sendAI()"><i class="fas fa-paper-plane"></i></button>
                                 </div>
@@ -1627,7 +1602,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                 <div class="mcp-steps">
                     <h3><i class="fas fa-list-ol"></i> Инструкция (5 минут)</h3>
                     <div class="mcp-step" id="mcpStep1"><div class="mcp-step-num">1</div><div class="mcp-step-content"><h4>Скачай MCP сервер</h4><p>Нажми кнопку «Скачать MCP Server». Скачается ZIP.</p></div></div>
-                    <div class="mcp-step" id="mcpStep2"><div class="mcp-step-num">2</div><div class="mcp-step-content"><h4>Распакуй архив</h4><p>Внутри — файлы сервера (src/, START.bat, package.json). Распакуй прямо в папку.</p></div></div>
+                    <div class="mcp-step" id="mcpStep2"><div class="mcp-step-num">2</div><div class="mcp-step-content"><h4>Распакуй архив</h4><p>Внутри — папка <code>sashaai-mcp-server</code> со всеми файлами.</p></div></div>
                     <div class="mcp-step" id="mcpStep3"><div class="mcp-step-num">3</div><div class="mcp-step-content"><h4>Запусти <code>START.bat</code></h4><p>Двойной клик. Он сам установит зависимости и запустит сервер. Чёрное окно — не закрывай!</p></div></div>
                     <div class="mcp-step" id="mcpStep4"><div class="mcp-step-num">4</div><div class="mcp-step-content"><h4>Движок подключается сам</h4><p>Эта страница уже имеет MCP-мост. Когда сервер запущен — загорится зелёный индикатор.</p></div></div>
                     <div class="mcp-step" id="mcpStep5"><div class="mcp-step-num">5</div><div class="mcp-step-content"><h4>Скопируй промпт в Claude</h4><p>Нажми «Копировать промпт», вставь в Claude Web. Пиши «создай город» — ИИ вызовет API!</p></div></div>
@@ -15359,81 +15334,9 @@ var EngineApp = (function() {
         }
     }
 
-    var _isLoading = false;
 
-    async function showModelPicker() {
-        if (_isLoading) { log('Already loading a model...', 'warn'); return; }
-        // Try AI tab select first, then toolbar select
-        var aiSelect = document.getElementById('eng-ai-model-select');
-        var toolbarSelect = document.getElementById('eng-model-select');
-        var modelId = aiSelect && aiSelect.value ? aiSelect.value : (toolbarSelect ? toolbarSelect.value : '');
-        if (!modelId) {
-            log('Select a model from dropdown first', 'warn');
-            return;
-        }
-        // Allow switching: if same model is already loaded, skip; if different, reload
-        if (SashaWebLLM.isReady()) {
-            var loadedId = SashaWebLLM.getLoadedModelId();
-            if (loadedId === modelId) {
-                log('Model already loaded: ' + modelId, 'info');
-                addAIChat('ai', 'Модель уже загружена. Привет! Чем могу помочь?');
-                return;
-            }
-            log('Switching model: ' + loadedId + ' -> ' + modelId, 'info');
-            addAIChat('ai', 'Переключаю модель на ' + modelId.split('-Instruct')[0] + '...');
-        }
 
-        _isLoading = true;
-        var overlay = document.getElementById('eng-overlay');
-        var overlayText = document.getElementById('eng-overlay-text');
-        var progressBar = document.getElementById('eng-progress-bar');
-        if (overlay) overlay.classList.add('show');
-        if (progressBar) progressBar.style.width = '0%';
 
-        try {
-            await SashaWebLLM.loadModel(modelId, function(report) {
-                var pct = Math.round((report.progress || 0) * 100);
-                if (overlayText) overlayText.textContent = report.text || ('Loading ' + modelId + '...');
-                if (progressBar) progressBar.style.width = pct + '%';
-            });
-            if (overlay) overlay.classList.remove('show');
-            log('Model loaded: ' + modelId, 'result');
-            addAIChat('ai', 'Модель загружена! Привет, я Sasha. Чем могу помочь? Спроси что умею или расскажи что хочешь создать.');
-        } catch(e) {
-            if (overlay) overlay.classList.remove('show');
-            log('Failed to load model: ' + e.message, 'error');
-            addAIChat('ai', 'Error loading model: ' + e.message);
-        } finally {
-            _isLoading = false;
-        }
-    }
-
-    var _aiBusy = false;
-    var _aiMode = 'chat'; // 'chat' or 'build'
-
-    // Auto-detect build intent from keywords
-    var _buildKeywords = ['создай','построй','сделай','добавь','поставь','нарисуй','построить','добавить','сделать','create','build','make','add','spawn','generate','помести','размести','поместить','разместить','персонажа','куб','сферу','плоскость','свет','сцену','модель','дом','комнату','мир','игру','здание','дерево','машин','трасс','текстур','texture','материал','material','забор','fence','лестниц','stair','арка','arch','колонн','column','стен','wall','скал','rock','скелет','skeleton','риг','rig','анимац','anim','загрузи с гитхаб','github','импортируй','import','собери игру','сборк','assemble'];
-
-    function isBuildIntent(text) {
-        var low = text.toLowerCase();
-        for (var i = 0; i < _buildKeywords.length; i++) {
-            if (low.indexOf(_buildKeywords[i]) !== -1) return true;
-        }
-        return false;
-    }
-
-    function setAIMode(mode) {
-        _aiMode = mode;
-        var chatBtn = document.getElementById('ai-mode-chat');
-        var buildBtn = document.getElementById('ai-mode-build');
-        var sendBtn = document.getElementById('ai-send-btn');
-        var input = document.getElementById('eng-ai-input');
-        if (chatBtn) chatBtn.className = 'ai-mode-btn' + (mode === 'chat' ? ' active' : '');
-        if (buildBtn) buildBtn.className = 'ai-mode-btn' + (mode === 'build' ? ' active' : '');
-        if (sendBtn) sendBtn.className = mode === 'build' ? 'build-active' : '';
-        if (input) input.placeholder = mode === 'build' ? 'Опиши что создать...' : 'Спроси что-нибудь...';
-        if (SashaWebLLM && SashaWebLLM.setCodeMode) SashaWebLLM.setCodeMode(mode === 'build');
-    }
 
     // === CODE VALIDATION ===
     function validateCode(code) {
@@ -15641,175 +15544,7 @@ var EngineApp = (function() {
         } catch(e) {}
     }
 
-    async function sendAI() {
-        var input = document.getElementById('eng-ai-input');
-        if (!input) return;
-        var prompt = input.value.trim();
-        if (!prompt) return;
-        if (_aiBusy) { addAIChat('ai', 'Подожди, я ещё думаю...'); return; }
-        input.value = '';
-        addAIChat('user', prompt);
-        if (!SashaWebLLM.isReady()) {
-            addAIChat('ai', 'Сначала загрузи модель (кнопка Load).');
-            return;
-        }
-        // Auto-detect: if in chat mode but user wants to build something, auto-switch
-        var forceBuild = _aiMode !== 'build' && isBuildIntent(prompt);
-        if (forceBuild) {
-            setAIMode('build');
-            addAIChat('ai', 'Определил что хочешь что-то создать — переключаюсь в Build режим.');
-        }
-        _aiBusy = true;
-        var isBuild = _aiMode === 'build';
-        var _streamStartTime = Date.now();
-        // JARVIS narration for build mode
-        if (isBuild) { _jarvisSay('Анализирую запрос... Подготавливаю генерацию кода.'); }
-        addAIChat('ai', isBuild ? 'Генерирую код...' : 'Думаю...');
-        log('AI: ' + (isBuild ? 'generating code...' : 'chatting...'), 'info');
-
-        // Auto-reconnect: retry with GPU recovery on failure
-        var maxRetries = 2;
-        var lastError = null;
-        for (var retry = 0; retry <= maxRetries; retry++) {
-            if (retry > 0) {
-                addAIChat('ai', 'Попытка авто-восстановления GPU (' + retry + '/' + maxRetries + ')...');
-                _jarvisSay('Обнаружен сбой графического процессора. Пытаюсь восстановить...');
-                try {
-                    var recoverResult = await SashaWebLLM.recoverModel();
-                    if (recoverResult === 'ok') {
-                        addAIChat('ai', 'GPU восстановлен! Повторяю запрос...');
-                        _jarvisSay('Графический процессор успешно восстановлен. Продолжаю работу.');
-                    } else {
-                        addAIChat('ai', 'Восстановление не удалось: ' + recoverResult);
-                        break;
-                    }
-                } catch(recoverErr) {
-                    addAIChat('ai', 'Ошибка восстановления: ' + String(recoverErr.message || recoverErr));
-                    break;
-                }
-            }
-        try {
-            var text;
-            if (isBuild) {
-                // === SCHEME: LLM -> validateCode -> runCode / template fallback ===
-                var currentCode = editor ? editor.getValue() : '';
-
-                // === STEP 1: Try LLM generation (non-streaming, reliable) ===
-                log('LLM generating...', 'info');
-                _jarvisSay('Генерирую код для сцены...');
-                text = await SashaWebLLM.generateCode(prompt, currentCode);
-                console.log('[SashaAI] LLM raw output (' + (text ? text.length : 0) + ' chars):', text);
-
-                // Clean markdown wrappers
-                if (text && text.length > 5) {
-                    text = text.replace(/^```(?:javascript|js|html)?\n?/gm, '').replace(/\n?```$/gm, '').trim();
-                }
-
-                // === STEP 2: Validate code ===
-                var llmSuccess = false;
-                if (text && text.indexOf('Error:') !== 0 && !isPythonCode(text)) {
-                    if (validateCode(text)) {
-                        console.log('[SashaAI] Code validated OK:', text.length, 'chars');
-                        llmSuccess = true;
-                    } else {
-                        // Code has dangerous patterns but is not garbage — still try to run it
-                        console.log('[SashaAI] Code has issues but trying anyway. Has Engine.:', /Engine\./.test(text), 'Length:', text.length);
-                        llmSuccess = true;
-                    }
-                } else {
-                    if (text && text.indexOf('Error:') === 0) {
-                        log('LLM returned error: ' + text, 'warn');
-                    } else if (text && isPythonCode(text)) {
-                        log('LLM output Python, trying template...', 'warn');
-                    }
-                    llmSuccess = false;
-                }
-
-                // === STEP 3: If LLM failed -> template fallback ===
-                if (!llmSuccess) {
-                    var tmplKey = _detectTemplate(prompt);
-                    if (tmplKey && _templates[tmplKey]) {
-                        text = _templates[tmplKey]();
-                        console.log('[SashaAI] Using template:', tmplKey);
-                        var fbNames = {character:'Персонаж',robot:'Робот',house:'Дом',car:'Машина',tree:'Дерево',city:'Город',ball:'Мяч с физикой'};
-                        addAIChat('ai', 'Использую шаблон: ' + (fbNames[tmplKey]||tmplKey));
-                        _jarvisSay('Применяю базовый шаблон: ' + (fbNames[tmplKey]||tmplKey));
-                    } else if (!text || text.length < 10) {
-                        addAIChat('ai', 'Не получилось сгенерировать. Попробуй другую модель.');
-                        _aiBusy = false;
-                        return;
-                    } else {
-                        console.log('[SashaAI] No template match, running LLM code as-is');
-                        addAIChat('ai', 'Код сгенерирован (без шаблона).');
-                    }
-                }
-
-                // === STEP 4: Run code on scene ===
-                _jarvisSay('Выполняю код на сцене...');
-                if (editor) editor.setValue(text);
-                stopLiveGeneration();
-                runCode();
-
-                // GPU cooldown
-                await new Promise(function(r) { setTimeout(r, 3000); });
-
-                refreshHierarchy();
-                refreshInspector();
-                var elapsed = ((Date.now() - _streamStartTime) / 1000).toFixed(1);
-                if (llmSuccess) {
-                    addAIChat('ai', 'Готово! Сгенерировано за ' + elapsed + 's. Объекты добавлены на сцену.');
-                    _jarvisSay('Готово, сэр. Операция выполнена за ' + elapsed + ' секунд.');
-                }
-                log('Done: ' + text.length + ' chars in ' + elapsed + 's', 'result');
-                break; // success, exit retry loop
-
-            } else {
-                _jarvisSay('Обрабатываю ваш запрос...');
-                text = await SashaWebLLM.chat(prompt);
-                if (!text || text.indexOf('Error:') === 0) {
-                    addAIChat('ai', text || 'Пустой ответ. Попробуй снова.');
-                    break;
-                }
-                addAIChat('ai', text);
-                log('AI chat response', 'info');
-                break; // success, exit retry loop
-            }
-        } catch(e) {
-            lastError = e;
-            var errMsg = String(e.message || e);
-            log('AI error: ' + errMsg, 'error');
-            // Check if GPU error — retry
-            if (errMsg.indexOf('DXGI_ERROR') !== -1 || errMsg.indexOf('DEVICE_REMOVED') !== -1 ||
-                errMsg.indexOf('disposed') !== -1 || errMsg.indexOf('requestDevice') !== -1 ||
-                errMsg.indexOf('mapAsync') !== -1 || errMsg.indexOf('Buffer was unmapped') !== -1) {
-                console.log('[SashaAI] GPU error detected, will retry:', errMsg);
-                continue; // retry loop
-            }
-            // Non-GPU error — don't retry
-            addAIChat('ai', 'Ошибка: ' + errMsg);
-            break;
-        }
-        } // end retry loop
-
-        // Final error if all retries failed
-        if (lastError && !SashaWebLLM.isReady()) {
-            var finalErr = String(lastError.message || lastError);
-            addAIChat('ai', 'Все попытки провалились. Перезагружаю модель автоматически...');
-            _jarvisSay('Критический сбой. Запускаю процедуру восстановления...');
-            try {
-                var finalRecover = await SashaWebLLM.recoverModel();
-                if (finalRecover === 'ok') {
-                    addAIChat('ai', 'Модель восстановлена! Попробуй отправить запрос снова.');
-                    _jarvisSay('Система восстановлена. Готов к работе, сэр.');
-                } else {
-                    addAIChat('ai', 'Не удалось восстановить: ' + finalRecover + '. Нажми F5.');
-                }
-            } catch(finalE) {
-                addAIChat('ai', 'Критический сбой GPU. Перезагрузи страницу (F5).');
-            }
-        }
-        _aiBusy = false;
-    }
+    async function sendAI() { /* Overridden by Ollama script before </body> */ }
 
     function _extractCode(raw) {
         if (!raw) return '';
@@ -15853,81 +15588,21 @@ var EngineApp = (function() {
         div.textContent = text;
         chat.appendChild(div);
         chat.scrollTop = chat.scrollHeight;
-        // Update status indicator
-        var status = document.getElementById('eng-ai-status');
-        if (status) {
-            if (SashaWebLLM && SashaWebLLM.isReady && SashaWebLLM.isReady()) status.textContent = 'ready';
-            else status.textContent = 'offline';
-        }
+        // Status is managed by Ollama override script
     }
 
     function clearAIChat() {
         var chat = document.getElementById('eng-ai-chat');
         if (chat) chat.innerHTML = '';
-        if (SashaWebLLM && SashaWebLLM.clearHistory) SashaWebLLM.clearHistory();
         log('AI chat cleared', 'info');
     }
 
-    function setGroqKey() {
-        var existing = localStorage.getItem('sasha_groq_api_key') || '';
-        var key = prompt('Groq API Key (free at console.groq.com):', existing);
-        if (key && key.trim()) {
-            localStorage.setItem('sasha_groq_api_key', key.trim());
-            log('Groq API key saved', 'result');
-        } else if (key === '') {
-            localStorage.removeItem('sasha_groq_api_key');
-            log('Groq API key removed', 'info');
-        }
-    }
 
-    // Manually restart LLM model after GPU crash (scene stays intact)
-    async function restartModel() {
-        if (_aiBusy) { log('Model busy...', 'warn'); return; }
-        var loadedId = SashaWebLLM.getLoadedModelId();
-        if (!loadedId) { log('No model loaded', 'warn'); return; }
-        log('Restarting model (scene preserved)...', 'info');
-        var chat = document.getElementById('eng-ai-chat');
-        if (chat) {
-            var div = document.createElement('div');
-            div.className = 'engine-ai-msg ai';
-            div.textContent = 'Перезагружаю модель... Это может занять до 30 сек (3 попытки).';
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-        }
-        try {
-            var result = await SashaWebLLM.recoverModel();
-            if (result === 'ok') {
-                log('Model restarted OK', 'result');
-                addAIChat('ai', 'Модель перезагружена! Сцена сохранена.');
-            } else if (result.indexOf('F5') !== -1 || result.indexOf('перезагрузи страницу') !== -1) {
-                // Hard GPU crash — page reload needed
-                log('GPU hard crash, F5 required', 'error');
-                addAIChat('ai', result);
-                addAIChat('ai', '⚠️ Нажми F5 чтобы перезагрузить страницу. GPU устройство полностью потеряно, восстановления из JS невозможно.');
-            } else {
-                log('Model restart failed: ' + result, 'error');
-                addAIChat('ai', 'Ошибка перезагрузки: ' + result);
-            }
-        } catch(e) {
-            log('Restart error: ' + e.message, 'error');
-            addAIChat('ai', 'Ошибка: ' + e.message);
-        }
-    }
+
+
 
     // Manually unload model to free VRAM
-    async function unloadModel() {
-        if (_aiBusy) { log('Model busy...', 'warn'); return; }
-        SashaWebLLM.unload();
-        log('Model unloaded', 'info');
-        var chat = document.getElementById('eng-ai-chat');
-        if (chat) {
-            var div = document.createElement('div');
-            div.className = 'engine-ai-msg ai';
-            div.textContent = 'Модель выключена. Нажми Load чтобы загрузить снова.';
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-        }
-    }
+
 
     function log(text, type) {
         var con = document.getElementById('eng-console');
@@ -20681,7 +20356,7 @@ var EngineApp = (function() {
     return {
         init: init, runCode: runCode, toggleLive: toggleLive,
         clearScene: clearScene, loadModelFromURL: loadModelFromURL,
-        showModelPicker: showModelPicker, showTemplatePicker: showTemplatePicker, applyTemplate: applyTemplate, sendAI: sendAI, setAIMode: setAIMode,
+        showTemplatePicker: showTemplatePicker, applyTemplate: applyTemplate, sendAI: sendAI,
         log: log, saveProject: saveProject, _toolbarSave: _toolbarSave, exportGame: exportGame, exportModel: exportModel, exportScene: exportScene,
         play: play, pause: pause, stop: stop,
         addObject: addObject, deleteSelected: deleteSelected, duplicateSelected: duplicateSelected,
@@ -20718,9 +20393,7 @@ var EngineApp = (function() {
         updateUIProp: updateUIProp, removeUIElement: removeUIElement,
         startUIDrag: startUIDrag, startUIResize: startUIResize,
         toggleUICanvas: toggleUICanvas, clearUICanvas: clearUICanvas,
-        clearAIChat: clearAIChat, setAIMode: setAIMode, sendAI: sendAI,
-        restartModel: restartModel, unloadModel: unloadModel,
-        setGroqKey: setGroqKey,
+        clearAIChat: clearAIChat, sendAI: sendAI,
         toggleFPS: toggleFPS,
         toggleMeshEditMode: toggleMeshEditMode,
 
@@ -20864,11 +20537,6 @@ function _addChatMessage(role, text) {
     }
 }
 
-function setAIMode(mode) {
-    if (typeof SashaAIAgent !== 'undefined') SashaAIAgent.setMode(mode);
-    var indicator = document.getElementById('mode-indicator');
-    if (indicator) {
-        if (mode && mode !== 'auto') { indicator.style.display = 'inline-block'; indicator.textContent = mode; }
         else indicator.style.display = 'none';
     }
 }
@@ -21041,20 +20709,21 @@ function closeModal() { var modal = document.getElementById('project-modal'); if
 // ===== MCP Configuration (single source of truth) =====
 var MCP_CONFIG = (function() {
     var params = new URLSearchParams(location.search);
+    var host = params.get('mcp_host') || location.hostname || 'localhost';
     var httpPort = parseInt(params.get('mcp_port'), 10) || 3000;
     var wsPort = parseInt(params.get('mcp_ws_port'), 10) || 8765;
-    var host = params.get('mcp_host') || null;
-    // MCP server always runs LOCALLY on the user machine.
-    // Only use non-localhost when explicitly set via URL param or when
-    // the page is served directly from the MCP server (same host + port).
-    var isFromMcpServer = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') && (location.port == httpPort || location.port === '');
-    if (!host) host = isFromMcpServer ? location.hostname : 'localhost';
-    var protocol = 'http';
-    var wsProtocol = 'ws';
-    // If page is served from MCP server via HTTPS, match that
-    if (location.protocol === 'https:' && isFromMcpServer) { protocol = 'https'; wsProtocol = 'wss'; }
-    // If explicit host is set, detect protocol
-    if (params.get('mcp_host') && location.protocol === 'https:') { protocol = 'https'; wsProtocol = 'wss'; }
+    var isFile = location.protocol === 'file:';
+    var protocol = location.protocol === 'https:' ? 'https' : 'http';
+    var wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    // If opened from the MCP server itself (same origin on httpPort), use location.origin
+    if (!isFile && (location.port == httpPort || (protocol === 'http' && httpPort === 80) || (protocol === 'https' && httpPort === 443))) {
+        return {
+            apiBase: location.origin,
+            wsUrl: wsProtocol + '://' + location.host,
+            httpPort: httpPort,
+            wsPort: wsPort
+        };
+    }
     return {
         apiBase: protocol + '://' + host + ':' + httpPort,
         wsUrl: wsProtocol + '://' + host + ':' + wsPort,
@@ -21658,23 +21327,10 @@ var SashaAvatar = (function() {
   }
 
   function dispatchCall(fn, args) {
-    var api = (typeof SashaEngineAPI !== 'undefined') ? SashaEngineAPI : null;
-    if (!api) throw new Error('SashaEngineAPI not loaded');
-    args = args || {};
-    // Scene
-    if (fn === 'clear' || fn === 'scene_clear') { api.clear(); return 'Scene cleared'; }
-    if (fn === 'setBgColor' || fn === 'scene_set_background') {
-      if (typeof args.color === 'string' && args.color.charAt(0) === '#') {
-        var hex = args.color.replace('#','');
-        var rr = parseInt(hex.substring(0,2),16)/255;
-        var gg = parseInt(hex.substring(2,4),16)/255;
-        var bb = parseInt(hex.substring(4,6),16)/255;
-        api.setBgColor(rr, gg, bb);
-      } else { api.setBgColor(args.r||0, args.g||0, args.b||0); }
-      return 'ok';
-    }
-    if (fn === 'getSceneInfo' || fn === 'scene_get_info') {
-      var objs = api.getObjects(), types = api.getObjectTypes(), info = [];
+    if (fn === 'clear') { SashaEngineAPI.clear(); return 'cleared'; }
+    if (fn === 'setBgColor') { SashaEngineAPI.setBgColor(args.r||0, args.g||0, args.b||0); return 'ok'; }
+    if (fn === 'getSceneInfo') {
+      var objs = SashaEngineAPI.getObjects(), types = SashaEngineAPI.getObjectTypes(), info = [];
       for (var n in objs) {
         if (!objs.hasOwnProperty(n)) continue;
         var o = objs[n];
@@ -21686,133 +21342,116 @@ var SashaAvatar = (function() {
       }
       return { objectCount: info.length, objects: info };
     }
-    if (fn === 'exportScene' || fn === 'scene_export') { return api.exportScene(); }
-    // Camera
-    if (fn === 'setCameraPos' || fn === 'camera_set_position') { api.setCameraPos(args.x||0, args.y||5, args.z||5); return 'ok'; }
-    if (fn === 'setCameraTarget' || fn === 'camera_set_target') { api.setCameraTarget(args.x||0, args.y||0, args.z||0); return 'ok'; }
-    // Primitives
-    if (fn === 'addCube' || fn === 'add_cube') return apiCall(api, 'addCube', [args.x||0, args.y||0.5, args.z||0, args.width||args.w||1, args.height||args.h||1, args.depth||args.d||1, args.color||0x6366f1]);
-    if (fn === 'addSphere' || fn === 'add_sphere') return apiCall(api, 'addSphere', [args.x||0, args.y||0.5, args.z||0, args.radius||0.5, args.color||0xec4899]);
-    if (fn === 'addCylinder' || fn === 'add_cylinder') return apiCall(api, 'addCylinder', [args.x||0, args.y||0.5, args.z||0, args.radiusTop||args.rTop||0.3, args.radiusBottom||args.rBot||0.3, args.height||1, args.color||0x06b6d4]);
-    if (fn === 'addCone' || fn === 'add_cone') return apiCall(api, 'addCone', [args.x||0, args.y||0.5, args.z||0, args.radius||0.5, args.height||1, args.color||0xf59e0b]);
-    if (fn === 'addTorus' || fn === 'add_torus') return apiCall(api, 'addTorus', [args.x||0, args.y||0.5, args.z||0, args.radius||0.5, args.tube||0.15, args.color||0x8b5cf6]);
-    if (fn === 'addPlane' || fn === 'add_plane') return apiCall(api, 'addPlane', [args.width||10, args.height||10, args.color||0x252542]);
-    if (fn === 'addCapsule' || fn === 'add_capsule') return apiCall(api, 'addCapsule', [args.x||0, args.y||0.5, args.z||0, args.radius||0.25, args.height||1, args.color||0x10b981]);
-    if (fn === 'addTorusKnot' || fn === 'add_torus_knot') return apiCall(api, 'addTorusKnot', [args.x||0, args.y||0.5, args.z||0, args.radius||0.5, args.tube||0.15, args.color||0xe879f9]);
-    if (fn === 'addIcosahedron' || fn === 'add_icosahedron') return apiCall(api, 'addIcosahedron', [args.x||0, args.y||0.5, args.z||0, args.radius||0.5, args.color||0x34d399]);
-    if (fn === 'addDodecahedron' || fn === 'add_dodecahedron') return apiCall(api, 'addDodecahedron', [args.x||0, args.y||0.5, args.z||0, args.radius||0.5, args.color||0xfbbf24]);
-    if (fn === 'addOctahedron' || fn === 'add_octahedron') return apiCall(api, 'addOctahedron', [args.x||0, args.y||0.5, args.z||0, args.radius||0.5, args.color||0x60a5fa]);
-    // Lights
-    if (fn === 'addLight' || fn === 'add_light') return apiCall(api, 'addLight', [args.type||'point', args.x||0, args.y||5, args.z||0, args.color||0xffffff, args.intensity||1]);
-    if (fn === 'addPointLight' || fn === 'add_point_light') return apiCall(api, 'addPointLight', [args.x||0, args.y||5, args.z||0, args.intensity||1, args.color||0xffffff, args.distance||0]);
-    if (fn === 'addDirectionalLight' || fn === 'add_directional_light') return apiCall(api, 'addDirectionalLight', [args.x||5, args.y||10, args.z||5, args.color||0xffffff, args.intensity||0.8]);
-    if (fn === 'addSpotLight' || fn === 'add_spot_light') return apiCall(api, 'addSpotLight', [args.x||0, args.y||8, args.z||0, args.color||0xffffff, args.intensity||1]);
-    if (fn === 'addAmbientLight' || fn === 'add_ambient_light') return apiCall(api, 'addAmbientLight', [args.color||0xffffff, args.intensity||0.4]);
-    // Models & procedural
-    if (fn === 'loadModel' || fn === 'load_model') { var n = api.loadModel(args.url, args.x, args.y, args.z, args.scale); return n || 'loading'; }
-    if (fn === 'aiComposeModel' || fn === 'compose_model') {
-      return api.aiComposeModel(args.description, { position: args.position, rotation: args.rotation, scale: args.scale });
-    }
-    if (fn === 'createTerrain' || fn === 'create_terrain') {
+    if (fn === 'exportScene') { return EngineApp.exportScene(); }
+    if (fn === 'setCameraPos') { SashaEngineAPI.setCameraPos(args.x, args.y, args.z); return 'ok'; }
+    if (fn === 'setCameraTarget') { SashaEngineAPI.setCameraTarget(args.x, args.y, args.z); return 'ok'; }
+    if (fn === 'addCube') return safeCall('addCube', args.x, args.y, args.z, args.w, args.h, args.d, args.color);
+    if (fn === 'addSphere') return safeCall('addSphere', args.x, args.y, args.z, args.radius, args.color);
+    if (fn === 'addCylinder') return safeCall('addCylinder', args.x, args.y, args.z, args.rTop, args.rBot, args.height, args.color);
+    if (fn === 'addCone') return safeCall('addCone', args.x, args.y, args.z, args.radius, args.height, args.color);
+    if (fn === 'addTorus') return safeCall('addTorus', args.x, args.y, args.z, args.radius, args.tube, args.color);
+    if (fn === 'addPlane') return safeCall('addPlane', args.width, args.height, args.color);
+    if (fn === 'addCapsule') return safeCall('addCapsule', args.x, args.y, args.z, args.radius, args.height, args.color);
+    if (fn === 'addTorusKnot') return safeCall('addTorusKnot', args.x, args.y, args.z, args.radius, args.tube, args.color);
+    if (fn === 'addIcosahedron') return safeCall('addIcosahedron', args.x, args.y, args.z, args.radius, args.color);
+    if (fn === 'addLight') return safeCall('addLight', args.type, args.x, args.y, args.z, args.color, args.intensity);
+    if (fn === 'addPointLight') return safeCall('addPointLight', args.x, args.y, args.z, args.intensity, args.color, args.distance);
+    if (fn === 'addDirectionalLight') return safeCall('addDirectionalLight', args.x, args.y, args.z, args.color, args.intensity);
+    if (fn === 'addSpotLight') return safeCall('addSpotLight', args.x, args.y, args.z, args.color, args.intensity);
+    if (fn === 'addAmbientLight') return safeCall('addAmbientLight', args.color, args.intensity);
+    if (fn === 'loadModel') { var n = SashaEngineAPI.loadModel(args.url, args.x, args.y, args.z, args.scale); return n || 'loading'; }
+    if (fn === 'aiGithubImportModel') { var n = SashaEngineAPI.aiGithubImportModel(args.repo, args.path, args.x, args.y, args.z, args.scale); return n || 'importing'; }
+    if (fn === 'createTerrain') {
       var hf;
-      if (typeof args.heightExpression === 'string') { try { hf = new Function('x','z','return '+args.heightExpression+';'); } catch(e) { hf = 0; } }
-      else if (typeof args.heightFn === 'string') { try { hf = new Function('x','z','return '+args.heightFn+';'); } catch(e) { hf = 0; } }
-      else { hf = args.heightFn || args.heightExpression || 0; }
+      if (typeof args.heightFn === 'string') { try { hf = new Function('x','z','return '+args.heightFn+';'); } catch(e) { hf = parseFloat(args.heightFn)||0; } } else { hf = args.heightFn||0; }
       var p = {}; if (args.color) p.color = args.color; if (args.wireframe) p.wireframe = true;
-      return api.createTerrain(args.name, args.width, args.depth, hf, args.resolution, p);
+      return SashaEngineAPI.createTerrain(args.name, args.width, args.depth, hf, args.resolution, p);
     }
     if (fn === 'createCustomMesh') {
       var p = {}; if (args.color) p.color = args.color; if (args.position) p.position = args.position;
-      return api.createCustomMesh(args.name, args.vertices, args.indices, p);
+      return SashaEngineAPI.createCustomMesh(args.name, args.vertices, args.indices, p);
     }
     if (fn === 'createTube') {
       var p = {}; if (args.color) p.color = args.color; if (args.closed) p.closed = true;
-      return api.createTube(args.name, args.pathPoints, args.radius, args.segments, p);
+      return SashaEngineAPI.createTube(args.name, args.pathPoints, args.radius, args.segments, p);
     }
     if (fn === 'createLathe') {
       var p = {}; if (args.color) p.color = args.color;
-      return api.createLathe(args.name, args.profilePoints, args.segments, p);
+      return SashaEngineAPI.createLathe(args.name, args.profilePoints, args.segments, p);
     }
-    // Object manipulation
-    if (fn === 'setPosition' || fn === 'set_position') return apiCall(api, 'setPosition', [args.name, args.x, args.y, args.z]);
-    if (fn === 'setRotation' || fn === 'set_rotation') return apiCall(api, 'setRotation', [args.name, args.x, args.y, args.z]);
-    if (fn === 'setScale' || fn === 'set_scale') return apiCall(api, 'setScale', [args.name, args.x, args.y, args.z]);
-    if (fn === 'setObjectColor' || fn === 'set_object_color') return apiCall(api, 'setObjectColor', [args.name, args.color]);
-    if (fn === 'removeObject' || fn === 'remove_object') return apiCall(api, 'removeObject', [args.name]);
-    if (fn === 'animateObj') return apiCall(api, 'animateObj', [args.objName, args.prop, args.from, args.to, args.duration]);
-    if (fn === 'generateTexture') { var r = api.generateTexture(args.type, args.params||{}); return r ? r.name : null; }
-    if (fn === 'executeCode') { var r = (new Function(args.code))(); return r !== undefined ? String(r) : 'executed'; }
+    if (fn === 'setPosition') return safeCall('setPosition', args.name, args.x, args.y, args.z);
+    if (fn === 'setRotation') return safeCall('setRotation', args.name, args.x, args.y, args.z);
+    if (fn === 'setScale') return safeCall('setScale', args.name, args.x, args.y, args.z);
+    if (fn === 'setObjectColor') return safeCall('setObjectColor', args.name, args.color);
+    if (fn === 'removeObject') return safeCall('removeObject', args.name);
+    if (fn === 'animateObj') return safeCall('animateObj', args.objName, args.prop, args.from, args.to, args.duration);
+    if (fn === 'generateTexture') { var r = SashaAIGraphics.generateTexture(args.type, args.params||{}); return r ? r.name : null; }
+    if (fn === 'aiComposeModel') {
+      return SashaEngineAPI.aiComposeModel(args.description, { position: args.position, rotation: args.rotation, scale: args.scale });
+    }
+    if (fn === 'executeCode') { var r = (new Function(args.code))(); return r !== undefined ? r : 'executed'; }
     if (fn === 'applySceneTemplate') return applyMCPTemplate(args.template);
-    // Snake_case fallback: try to convert to camelCase and call on API
-    var camelName = fn.replace(/_([a-z])/g, function(m, c) { return c.toUpperCase(); });
-    if (typeof api[camelName] === 'function') {
-      return apiCall(api, camelName, []);
-    }
-    throw new Error('Unknown MCP function: ' + fn);
+    throw new Error('Unknown function: ' + fn);
   }
 
-  function apiCall(api, methodName, posArgs) {
-    if (typeof api[methodName] !== 'function') throw new Error('Engine method not found: ' + methodName);
-    var r = api[methodName].apply(api, posArgs);
-    return (r !== undefined && r !== null) ? String(r) : 'ok';
+  function safeCall(fnName) {
+    if (typeof SashaEngineAPI[fnName] === 'function') {
+      var a = Array.prototype.slice.call(arguments, 1);
+      var r = SashaEngineAPI[fnName].apply(window, a);
+      return r !== undefined ? String(r) : 'ok';
+    }
+    throw new Error('Engine function not found: ' + fnName);
   }
 
   // Scene templates for MCP
-  var api = (typeof SashaEngineAPI !== 'undefined') ? SashaEngineAPI : null;
   var TEMPLATES = {
     city: function() {
-      if(!api) throw new Error('Engine not loaded');
-      api.clear(); api.setBgColor(0.53,0.81,0.92); api.addPlane(50,50,0x555555);
-      api.addCube(-5,3,-3,3,6,3,0x888888); api.addCube(0,4,-5,4,8,4,0x777777); api.addCube(5,2.5,-2,3,5,3,0x999999);
-      api.addCube(-8,5,2,5,10,3,0x666666); api.addCube(8,3.5,3,4,7,4,0x888888);
-      api.addPointLight(-5,4,-3,0.8,0xFFD700); api.addPointLight(0,5,-5,0.8,0xFFD700); api.addPointLight(5,3.5,-2,0.8,0xFFD700);
-      api.addDirectionalLight(10,20,10,0xFFFACD,1.0); api.addAmbientLight(0xB0C4DE,0.4);
-      api.setCameraPos(12,8,12); api.setCameraTarget(0,2,0); return 'City scene applied';
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.53,0.81,0.92); SashaEngineAPI.addPlane(50,50,0x555555);
+      SashaEngineAPI.addCube(-5,3,-3,3,6,3,0x888888); SashaEngineAPI.addCube(0,4,-5,4,8,4,0x777777); SashaEngineAPI.addCube(5,2.5,-2,3,5,3,0x999999);
+      SashaEngineAPI.addCube(-8,5,2,5,10,3,0x666666); SashaEngineAPI.addCube(8,3.5,3,4,7,4,0x888888);
+      SashaEngineAPI.addPointLight(-5,4,-3,0.8,0xFFD700); SashaEngineAPI.addPointLight(0,5,-5,0.8,0xFFD700); SashaEngineAPI.addPointLight(5,3.5,-2,0.8,0xFFD700);
+      SashaEngineAPI.addDirectionalLight(10,20,10,0xFFFACD,1.0); SashaEngineAPI.addAmbientLight(0xB0C4DE,0.4);
+      SashaEngineAPI.setCameraPos(12,8,12); SashaEngineAPI.setCameraTarget(0,2,0); return 'City scene applied';
     },
     forest: function() {
-      if(!api) throw new Error('Engine not loaded');
-      api.clear(); api.setBgColor(0.13,0.55,0.13); api.addPlane(60,60,0x3B5323);
-      api.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); api.aiComposeModel('tree',{position:{x:2,y:0,z:-4}});
-      api.aiComposeModel('tree',{position:{x:-6,y:0,z:1}}); api.aiComposeModel('tree',{position:{x:4,y:0,z:3}});
-      api.aiComposeModel('tree',{position:{x:-1,y:0,z:5}}); api.aiComposeModel('tree',{position:{x:7,y:0,z:-1}});
-      api.aiComposeModel('rock',{position:{x:1,y:0,z:1},scale:{x:0.8,y:0.6,z:0.8}});
-      api.aiComposeModel('rock',{position:{x:-4,y:0,z:-5},scale:{x:1.2,y:0.8,z:1}});
-      api.addDirectionalLight(5,15,8,0xFFFACD,0.7); api.addAmbientLight(0x90EE90,0.5); api.addPointLight(0,2,0,0.3,0xFFD700);
-      api.setCameraPos(8,6,10); api.setCameraTarget(0,1,0); return 'Forest scene applied';
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.13,0.55,0.13); SashaEngineAPI.addPlane(60,60,0x3B5323);
+      SashaEngineAPI.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); SashaEngineAPI.aiComposeModel('tree',{position:{x:2,y:0,z:-4}});
+      SashaEngineAPI.aiComposeModel('tree',{position:{x:-6,y:0,z:1}}); SashaEngineAPI.aiComposeModel('tree',{position:{x:4,y:0,z:3}});
+      SashaEngineAPI.aiComposeModel('tree',{position:{x:-1,y:0,z:5}}); SashaEngineAPI.aiComposeModel('tree',{position:{x:7,y:0,z:-1}});
+      SashaEngineAPI.aiComposeModel('rock',{position:{x:1,y:0,z:1},scale:{x:0.8,y:0.6,z:0.8}});
+      SashaEngineAPI.aiComposeModel('rock',{position:{x:-4,y:0,z:-5},scale:{x:1.2,y:0.8,z:1}});
+      SashaEngineAPI.addDirectionalLight(5,15,8,0xFFFACD,0.7); SashaEngineAPI.addAmbientLight(0x90EE90,0.5); SashaEngineAPI.addPointLight(0,2,0,0.3,0xFFD700);
+      SashaEngineAPI.setCameraPos(8,6,10); SashaEngineAPI.setCameraTarget(0,1,0); return 'Forest scene applied';
     },
     space: function() {
-      if(!api) throw new Error('Engine not loaded');
-      api.clear(); api.setBgColor(0,0,0.07);
-      api.addSphere(0,0,-8,3,0x4169E1); api.addSphere(6,2,-12,1,0xFF6347); api.addSphere(-5,-1,-15,2,0xDAA520);
-      api.addTorus(-5,-1,-15,3,0.08,0xDAA520);
-      api.addPointLight(0,3,-5,2,0xFFFFFF); api.addPointLight(-8,-2,-10,0.5,0xFF4500); api.addAmbientLight(0x191970,0.2);
-      api.setCameraPos(0,2,5); api.setCameraTarget(0,0,-8); return 'Space scene applied';
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0,0,0.07);
+      SashaEngineAPI.addSphere(0,0,-8,3,0x4169E1); SashaEngineAPI.addSphere(6,2,-12,1,0xFF6347); SashaEngineAPI.addSphere(-5,-1,-15,2,0xDAA520);
+      SashaEngineAPI.addTorus(-5,-1,-15,3,0.08,0xDAA520);
+      SashaEngineAPI.addPointLight(0,3,-5,2,0xFFFFFF); SashaEngineAPI.addPointLight(-8,-2,-10,0.5,0xFF4500); SashaEngineAPI.addAmbientLight(0x191970,0.2);
+      SashaEngineAPI.setCameraPos(0,2,5); SashaEngineAPI.setCameraTarget(0,0,-8); return 'Space scene applied';
     },
     room: function() {
-      if(!api) throw new Error('Engine not loaded');
-      api.clear(); api.setBgColor(0.17,0.17,0.17); api.addPlane(10,10,0x8B7355);
-      api.addCube(0,2.5,-5,10,5,0.2,0xD2B48C); api.addCube(-5,2.5,0,0.2,5,10,0xC4A882); api.addCube(5,2.5,0,0.2,5,10,0xC4A882);
-      api.aiComposeModel('table',{position:{x:0,y:0,z:0}}); api.aiComposeModel('chair',{position:{x:0,y:0,z:2}});
-      api.addPointLight(0,4.5,0,1.5,0xFFF8DC); api.addAmbientLight(0xFFF8DC,0.3);
-      api.setCameraPos(0,3,6); api.setCameraTarget(0,1,0); return 'Room scene applied';
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.17,0.17,0.17); SashaEngineAPI.addPlane(10,10,0x8B7355);
+      SashaEngineAPI.addCube(0,2.5,-5,10,5,0.2,0xD2B48C); SashaEngineAPI.addCube(-5,2.5,0,0.2,5,10,0xC4A882); SashaEngineAPI.addCube(5,2.5,0,0.2,5,10,0xC4A882);
+      SashaEngineAPI.aiComposeModel('table',{position:{x:0,y:0,z:0}}); SashaEngineAPI.aiComposeModel('chair',{position:{x:0,y:0,z:2}});
+      SashaEngineAPI.addPointLight(0,4.5,0,1.5,0xFFF8DC); SashaEngineAPI.addAmbientLight(0xFFF8DC,0.3);
+      SashaEngineAPI.setCameraPos(0,3,6); SashaEngineAPI.setCameraTarget(0,1,0); return 'Room scene applied';
     },
     desert: function() {
-      if(!api) throw new Error('Engine not loaded');
-      api.clear(); api.setBgColor(0.96,0.64,0.38);
-      api.createTerrain('sand',40,40,function(x,z){return Math.sin(x*0.3)*Math.cos(z*0.2)*1.5;},48,{color:0xEDC9AF});
-      api.addCylinder(-3,1.5,2,0.15,0.2,3,0x2E8B57); api.addSphere(-2.5,3.2,2,0.5,0x2E8B57); api.addSphere(-3.5,3.5,1.8,0.4,0x2E8B57);
-      api.addCylinder(4,1.25,-3,0.12,0.18,2.5,0x2E8B57); api.addSphere(4.3,2.7,-3,0.4,0x2E8B57);
-      api.addDirectionalLight(5,20,3,0xFFD700,1.5); api.addAmbientLight(0xFFA500,0.6);
-      api.setCameraPos(10,5,10); api.setCameraTarget(0,0,0); return 'Desert scene applied';
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.96,0.64,0.38);
+      SashaEngineAPI.createTerrain('sand',40,40,function(x,z){return Math.sin(x*0.3)*Math.cos(z*0.2)*1.5;},48,{color:0xEDC9AF});
+      SashaEngineAPI.addCylinder(-3,1.5,2,0.15,0.2,3,0x2E8B57); SashaEngineAPI.addSphere(-2.5,3.2,2,0.5,0x2E8B57); SashaEngineAPI.addSphere(-3.5,3.5,1.8,0.4,0x2E8B57);
+      SashaEngineAPI.addCylinder(4,1.25,-3,0.12,0.18,2.5,0x2E8B57); SashaEngineAPI.addSphere(4.3,2.7,-3,0.4,0x2E8B57);
+      SashaEngineAPI.addDirectionalLight(5,20,3,0xFFD700,1.5); SashaEngineAPI.addAmbientLight(0xFFA500,0.6);
+      SashaEngineAPI.setCameraPos(10,5,10); SashaEngineAPI.setCameraTarget(0,0,0); return 'Desert scene applied';
     },
     underwater: function() {
-      if(!api) throw new Error('Engine not loaded');
-      api.clear(); api.setBgColor(0,0.07,0.2); api.addPlane(40,40,0x1B3F5C);
-      api.createTerrain('seabed',40,40,function(x,z){return Math.sin(x*0.5)*Math.cos(z*0.3)*0.8;},40,{color:0x1B3F5C});
-      api.addSphere(-2,1,-3,0.8,0xFF6B6B); api.addSphere(-1.5,1.8,-2.5,0.5,0xFF8E8E);
-      api.addCylinder(3,1.5,2,0.1,0.15,3,0x20B2AA); api.addTorus(0,0.5,0,1,0.2,0xFF69B4);
-      api.addPointLight(0,8,0,1.2,0x87CEEB); api.addPointLight(-5,3,-5,0.5,0x00CED1); api.addAmbientLight(0x006994,0.4);
-      api.setCameraPos(5,3,8); api.setCameraTarget(0,1,0); return 'Underwater scene applied';
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0,0.07,0.2); SashaEngineAPI.addPlane(40,40,0x1B3F5C);
+      SashaEngineAPI.createTerrain('seabed',40,40,function(x,z){return Math.sin(x*0.5)*Math.cos(z*0.3)*0.8;},40,{color:0x1B3F5C});
+      SashaEngineAPI.addSphere(-2,1,-3,0.8,0xFF6B6B); SashaEngineAPI.addSphere(-1.5,1.8,-2.5,0.5,0xFF8E8E);
+      SashaEngineAPI.addCylinder(3,1.5,2,0.1,0.15,3,0x20B2AA); SashaEngineAPI.addTorus(0,0.5,0,1,0.2,0xFF69B4);
+      SashaEngineAPI.addPointLight(0,8,0,1.2,0x87CEEB); SashaEngineAPI.addPointLight(-5,3,-5,0.5,0x00CED1); SashaEngineAPI.addAmbientLight(0x006994,0.4);
+      SashaEngineAPI.setCameraPos(5,3,8); SashaEngineAPI.setCameraTarget(0,1,0); return 'Underwater scene applied';
     }
   };
 
@@ -21915,14 +21554,12 @@ var SashaAvatar = (function() {
   'use strict';
   var API = (typeof MCP_CONFIG !== 'undefined' && MCP_CONFIG) ? MCP_CONFIG.apiBase : location.origin;
   var _F={};
-_F['package.json']='{\n  "name": "sashaai-gamedev-mcp",\n  "version": "1.0.0",\n  "description": "MCP Server for SashaAI GameDev Engine — allows AI (Claude, ChatGPT, Google) to control the browser 3D engine",\n  "type": "module",\n  "main": "src/index.js",\n  "scripts": {\n    "start": "node src/index.js",\n    "dev": "node --watch src/index.js"\n  },\n  "dependencies": {\n    "@modelcontextprotocol/sdk": "^1.12.1",\n    "ws": "^8.18.0",    "zod": "^3.23.0"\n  },\n  "engines": {\n    "node": ">=18"\n  }\n}\n';
+_F['package.json']='{\n  "name": "sashaai-gamedev-mcp",\n  "version": "1.0.0",\n  "description": "MCP Server for SashaAI GameDev Engine — allows AI (Claude, ChatGPT, Google) to control the browser 3D engine",\n  "type": "module",\n  "main": "src/index.js",\n  "scripts": {\n    "start": "node src/index.js",\n    "dev": "node --watch src/index.js"\n  },\n  "dependencies": {\n    "@modelcontextprotocol/sdk": "^1.12.1",\n    "ws": "^8.18.0"\n  },\n  "engines": {\n    "node": ">=18"\n  }\n}\n';
 _F['claude_desktop_config.json']='{\n  "mcpServers": {\n    "sashaai-gamedev": {\n      "command": "node",\n      "args": ["/absolute/path/to/sashaai-mcp-server/src/index.js"],\n      "env": {\n        "WS_PORT": "8765"\n      }\n    }\n  }\n}';
 _F['src/ws-bridge.js']='// WebSocket bridge — connects MCP server to the browser engine\nimport { WebSocketServer } from \'ws\';\n\nconst CLIENTS = new Map(); // clientId -> { ws, lastPing }\nlet wss = null;\nlet pendingCalls = new Map(); // callId -> { resolve, reject, timer }\nlet callIdCounter = 0;\n\nexport function startWSServer(port = 8765) {\n  return new Promise((resolve, reject) => {\n    wss = new WebSocketServer({ port });\n    wss.on(\'listening\', () => {\n      console.error(`[MCP-Bridge] WebSocket server listening on ws://localhost:${port}`);\n      resolve(wss);\n    });\n    wss.on(\'error\', (err) => {\n      console.error(\'[MCP-Bridge] Server error:\', err.message);\n      reject(err);\n    });\n    wss.on(\'connection\', (ws, req) => {\n      const id = \'browser_\' + Date.now() + \'_\' + Math.random().toString(36).slice(2, 6);\n      console.error(`[MCP-Bridge] Browser connected: ${id}`);\n      CLIENTS.set(id, { ws, lastPing: Date.now() });\n      ws.on(\'message\', (raw) => {\n        try {\n          const msg = JSON.parse(raw.toString());\n          if (msg.type === \'call_result\' && pendingCalls.has(msg.callId)) {\n            const pc = pendingCalls.get(msg.callId);\n            clearTimeout(pc.timer);\n            pendingCalls.delete(msg.callId);\n            if (msg.error) pc.reject(new Error(msg.error));\n            else pc.resolve(msg.result);\n          } else if (msg.type === \'ping\') {\n            CLIENTS.get(id).lastPing = Date.now();\n            ws.send(JSON.stringify({ type: \'pong\' }));\n          } else if (msg.type === \'log\') {\n            console.error(`[Engine] ${msg.level || \'info\'}: ${msg.message}`);\n          }\n        } catch (e) {\n          console.error(\'[MCP-Bridge] Invalid message:\', raw.toString().slice(0, 200));\n        }\n      });\n      ws.on(\'close\', () => {\n        console.error(`[MCP-Bridge] Browser disconnected: ${id}`);\n        CLIENTS.delete(id);\n      });\n      ws.on(\'error\', (err) => {\n        console.error(`[MCP-Bridge] WebSocket error for ${id}:`, err.message);\n      });\n      // Send welcome\n      ws.send(JSON.stringify({ type: \'welcome\', serverVersion: \'1.0.0\' }));\n    });\n  });\n}\n\nexport function getConnectedClients() {\n  return Array.from(CLIENTS.keys());\n}\n\nexport function callEngine(fnName, args = {}, timeoutMs = 30000) {\n  const clients = getConnectedClients();\n  if (clients.length === 0) {\n    return Promise.reject(new Error(\n      \'No browser connected to MCP bridge. \' +\n      \'Open your SashaAI GameDev Engine in a browser with the MCP client script active. \' +\n      \'The WebSocket server is running on ws://localhost:8765\'\n    ));\n  }\n  const clientId = clients[0];\n  const ws = CLIENTS.get(clientId).ws;\n  const callId = \'mcp_\' + (++callIdCounter);\n\n  return new Promise((resolve, reject) => {\n    const timer = setTimeout(() => {\n      pendingCalls.delete(callId);\n      reject(new Error(`Engine call \'${fnName}\' timed out after ${timeoutMs}ms`));\n    }, timeoutMs);\n    pendingCalls.set(callId, { resolve, reject, timer });\n    ws.send(JSON.stringify({ type: \'call\', callId, fn: fnName, args }));\n  });\n}\n\nexport function broadcastToEngines(message) {\n  for (const [, client] of CLIENTS) {\n    if (client.ws.readyState === 1) {\n      client.ws.send(JSON.stringify(message));\n    }\n  }\n}\n';
 _F['src/tools.js']='import { callEngine } from \'./ws-bridge.js\';\nimport { z } from \'zod\';\n\n// ============================================================\n// SashaAI GameDev Engine — MCP Tools Definition\n// Each tool maps 1:1 to an engine API function\n// Uses Zod raw shapes for MCP SDK compatibility\n// ============================================================\n\nexport const TOOLS = [\n  // ---- SCENE MANAGEMENT ----\n  {\n    name: \'scene_clear\',\n    description: \'Clear all objects from the scene (keeps camera). Use before building a new scene.\',\n    schema: {},\n    handler: async () => {\n      const r = await callEngine(\'clear\', {});\n      return \'Scene cleared.\';\n    }\n  },\n  {\n    name: \'scene_set_background\',\n    description: \'Set scene background color by hex string.\',\n    schema: { color: z.string().describe(\'Hex color like "#1a1a2e"\') },\n    handler: async ({ color }) => {\n      let r = 0, g = 0, b = 0;\n      const hex = color.replace(\'#\', \'\').replace(\'0x\', \'\');\n      if (hex.length === 6) {\n        r = parseInt(hex.substring(0, 2), 16) / 255;\n        g = parseInt(hex.substring(2, 4), 16) / 255;\n        b = parseInt(hex.substring(4, 6), 16) / 255;\n      }\n      await callEngine(\'setBgColor\', { r, g, b });\n      return `Background set to ${color}`;\n    }\n  },\n  {\n    name: \'scene_get_info\',\n    description: \'Get current scene info: list of all objects with types, positions, names.\',\n    schema: {},\n    handler: async () => {\n      const r = await callEngine(\'getSceneInfo\', {});\n      return JSON.stringify(r, null, 2);\n    }\n  },\n  {\n    name: \'scene_export\',\n    description: \'Export the entire scene as JSON.\',\n    schema: {},\n    handler: async () => {\n      const r = await callEngine(\'exportScene\', {});\n      return typeof r === \'string\' ? r : JSON.stringify(r, null, 2);\n    }\n  },\n\n  // ---- CAMERA ----\n  {\n    name: \'camera_set_position\',\n    description: \'Set camera position.\',\n    schema: {\n      x: z.number().optional().describe(\'X position\'),\n      y: z.number().optional().describe(\'Y position (height)\'),\n      z: z.number().optional().describe(\'Z position\')\n    },\n    handler: async ({ x, y, z: zz }) => {\n      await callEngine(\'setCameraPos\', { x: x || 0, y: y || 5, z: zz || 5 });\n      return `Camera moved to (${x||0}, ${y||5}, ${zz||5})`;\n    }\n  },\n  {\n    name: \'camera_set_target\',\n    description: \'Set camera look-at target.\',\n    schema: {\n      x: z.number().optional(),\n      y: z.number().optional(),\n      z: z.number().optional()\n    },\n    handler: async ({ x, y, z: zz }) => {\n      await callEngine(\'setCameraTarget\', { x: x || 0, y: y || 0, z: zz || 0 });\n      return `Camera target set to (${x||0}, ${y||0}, ${zz||0})`;\n    }\n  },\n\n  // ---- PRIMITIVES ----\n  {\n    name: \'add_cube\',\n    description: \'Add a cube/box. Returns object name.\',\n    schema: {\n      x: z.number().optional().describe(\'X position\'),\n      y: z.number().optional().describe(\'Y position\'),\n      z: z.number().optional().describe(\'Z position\'),\n      width: z.number().optional().describe(\'Width (default 1)\'),\n      height: z.number().optional().describe(\'Height (default 1)\'),\n      depth: z.number().optional().describe(\'Depth (default 1)\'),\n      color: z.string().optional().describe(\'Hex color like "#ff0000"\')\n    },\n    handler: async (a) => {\n      const color = parseColor(a.color);\n      const r = await callEngine(\'addCube\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        w: a.width || 1, h: a.height || 1, d: a.depth || 1, color\n      });\n      return `Created cube "${r}" at (${a.x||0}, ${a.y !== undefined ? a.y : 0.5}, ${a.z||0})`;\n    }\n  },\n  {\n    name: \'add_sphere\',\n    description: \'Add a sphere. Returns object name.\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      radius: z.number().optional().describe(\'Radius (default 0.5)\'),\n      color: z.string().optional().describe(\'Hex color\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addSphere\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        radius: a.radius || 0.5, color: parseColor(a.color)\n      });\n      return `Created sphere "${r}" with radius ${a.radius || 0.5}`;\n    }\n  },\n  {\n    name: \'add_cylinder\',\n    description: \'Add a cylinder.\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      radiusTop: z.number().optional().describe(\'Top radius (default 0.5)\'),\n      radiusBottom: z.number().optional().describe(\'Bottom radius (default 0.5)\'),\n      height: z.number().optional().describe(\'Height (default 1)\'),\n      color: z.string().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addCylinder\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        rTop: a.radiusTop || 0.5, rBot: a.radiusBottom || 0.5,\n        height: a.height || 1, color: parseColor(a.color)\n      });\n      return `Created cylinder "${r}"`;\n    }\n  },\n  {\n    name: \'add_cone\',\n    description: \'Add a cone.\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      radius: z.number().optional().describe(\'Base radius (default 0.5)\'),\n      height: z.number().optional().describe(\'Height (default 1)\'),\n      color: z.string().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addCone\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        radius: a.radius || 0.5, height: a.height || 1, color: parseColor(a.color)\n      });\n      return `Created cone "${r}"`;\n    }\n  },\n  {\n    name: \'add_torus\',\n    description: \'Add a torus (donut shape).\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      radius: z.number().optional().describe(\'Main radius (default 0.5)\'),\n      tube: z.number().optional().describe(\'Tube thickness (default 0.15)\'),\n      color: z.string().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addTorus\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        radius: a.radius || 0.5, tube: a.tube || 0.15, color: parseColor(a.color)\n      });\n      return `Created torus "${r}"`;\n    }\n  },\n  {\n    name: \'add_plane\',\n    description: \'Add a ground plane (horizontal floor).\',\n    schema: {\n      width: z.number().optional().describe(\'Width (default 10)\'),\n      height: z.number().optional().describe(\'Depth (default 10)\'),\n      color: z.string().optional().describe(\'Hex color\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addPlane\', {\n        width: a.width || 10, height: a.height || 10, color: parseColor(a.color)\n      });\n      return `Created plane "${r}" ${a.width||10}x${a.height||10}`;\n    }\n  },\n  {\n    name: \'add_capsule\',\n    description: \'Add a capsule shape.\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      radius: z.number().optional(), height: z.number().optional(), color: z.string().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addCapsule\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        radius: a.radius || 0.25, height: a.height || 1, color: parseColor(a.color)\n      });\n      return `Created capsule "${r}"`;\n    }\n  },\n  {\n    name: \'add_torus_knot\',\n    description: \'Add a torus knot (decorative shape).\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      radius: z.number().optional(), tube: z.number().optional(), color: z.string().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addTorusKnot\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        radius: a.radius || 0.5, tube: a.tube || 0.15, color: parseColor(a.color)\n      });\n      return `Created torus knot "${r}"`;\n    }\n  },\n  {\n    name: \'add_icosahedron\',\n    description: \'Add an icosahedron (20-face polyhedron).\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      radius: z.number().optional(), color: z.string().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addIcosahedron\', {\n        x: a.x || 0, y: a.y, z: a.z || 0,\n        radius: a.radius || 0.5, color: parseColor(a.color)\n      });\n      return `Created icosahedron "${r}"`;\n    }\n  },\n\n  // ---- LIGHTS ----\n  {\n    name: \'add_light\',\n    description: \'Add a light. Types: point, directional, spot, ambient.\',\n    schema: {\n      type: z.enum([\'point\', \'directional\', \'spot\', \'ambient\']).describe(\'Light type\'),\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      color: z.string().optional().describe(\'Hex color\'),\n      intensity: z.number().optional().describe(\'Brightness (default 1)\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addLight\', {\n        type: a.type, x: a.x || 0, y: a.y || 5, z: a.z || 0,\n        color: parseColor(a.color), intensity: a.intensity || 1\n      });\n      return `Created ${a.type} light "${r}" at (${a.x||0}, ${a.y||5}, ${a.z||0})`;\n    }\n  },\n  {\n    name: \'add_point_light\',\n    description: \'Add a point light (shines in all directions from a point).\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      intensity: z.number().optional(), color: z.string().optional(), distance: z.number().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addPointLight\', {\n        x: a.x || 0, y: a.y || 5, z: a.z || 0,\n        intensity: a.intensity || 1, color: parseColor(a.color), distance: a.distance\n      });\n      return `Created point light "${r}"`;\n    }\n  },\n  {\n    name: \'add_directional_light\',\n    description: \'Add a directional light (sun-like, parallel rays).\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      color: z.string().optional(), intensity: z.number().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addDirectionalLight\', {\n        x: a.x || 5, y: a.y || 10, z: a.z || 5,\n        color: parseColor(a.color), intensity: a.intensity || 0.8\n      });\n      return `Created directional light "${r}"`;\n    }\n  },\n  {\n    name: \'add_spot_light\',\n    description: \'Add a spotlight (cone of light).\',\n    schema: {\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      color: z.string().optional(), intensity: z.number().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addSpotLight\', {\n        x: a.x || 0, y: a.y || 8, z: a.z || 0,\n        color: parseColor(a.color), intensity: a.intensity || 1\n      });\n      return `Created spot light "${r}"`;\n    }\n  },\n  {\n    name: \'add_ambient_light\',\n    description: \'Add ambient light (uniform illumination).\',\n    schema: {\n      color: z.string().optional(),\n      intensity: z.number().optional().describe(\'Default 0.5\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'addAmbientLight\', {\n        color: parseColor(a.color), intensity: a.intensity || 0.5\n      });\n      return `Created ambient light "${r}"`;\n    }\n  },\n\n  // ---- MODEL LOADING ----\n  {\n    name: \'load_model\',\n    description: \'Load a 3D model (GLB/GLTF) from URL. Supports GitHub and CDN URLs.\',\n    schema: {\n      url: z.string().describe(\'URL to .glb or .gltf file\'),\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      scale: z.number().optional().describe(\'Uniform scale factor\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'loadModel\', {\n        url: a.url, x: a.x || 0, y: a.y || 0, z: a.z || 0, scale: a.scale\n      }, 45000);\n      return `Loading model from ${a.url} -> "${r}"`;\n    }\n  },\n  {\n    name: \'import_github_model\',\n    description: \'Import a 3D model from GitHub. Uses jsdelivr CDN with raw.githubusercontent.com fallback.\',\n    schema: {\n      repo: z.string().describe(\'GitHub repo: "owner/repo"\'),\n      path: z.string().describe(\'File path in repo, e.g. "models/character.glb"\'),\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional(),\n      scale: z.number().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'aiGithubImportModel\', {\n        repo: a.repo, path: a.path,\n        x: a.x || 0, y: a.y || 0, z: a.z || 0, scale: a.scale\n      }, 45000);\n      return `Importing ${a.repo}/${a.path} -> "${r}"`;\n    }\n  },\n\n  // ---- MESH GENERATION ----\n  {\n    name: \'create_terrain\',\n    description: \'Generate a terrain mesh. heightExpression is a JS expression with x,z variables, e.g. "Math.sin(x)*2".\',\n    schema: {\n      name: z.string().optional().describe(\'Object name\'),\n      width: z.number().optional().describe(\'Width (default 10)\'),\n      depth: z.number().optional().describe(\'Depth (default 10)\'),\n      heightExpression: z.string().optional().describe(\'JS expression for height, e.g. "Math.sin(x)*2"\'),\n      resolution: z.number().optional().describe(\'Grid subdivisions (default 32, max 128)\'),\n      color: z.string().optional().describe(\'Hex color\'),\n      wireframe: z.boolean().optional().describe(\'Show wireframe\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'createTerrain\', {\n        name: a.name, width: a.width || 10, depth: a.depth || 10,\n        heightFn: a.heightExpression || \'0\',\n        resolution: Math.min(a.resolution || 32, 128),\n        color: parseColor(a.color), wireframe: !!a.wireframe\n      });\n      return `Created terrain "${r}" (${a.width||10}x${a.depth||10}, res ${Math.min(a.resolution||32,128)})`;\n    }\n  },\n  {\n    name: \'create_custom_mesh\',\n    description: \'Create a custom mesh from vertex/index arrays. Vertices: flat [x0,y0,z0,...] or [[x,y,z],...].\',\n    schema: {\n      name: z.string().optional(),\n      vertices: z.array(z.union([z.number(), z.array(z.number())])).describe(\'Flat [x,y,z,...] or [[x,y,z],...]\'),\n      indices: z.array(z.number()).optional().describe(\'Triangle indices\'),\n      color: z.string().optional(),\n      posX: z.number().optional(), posY: z.number().optional(), posZ: z.number().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'createCustomMesh\', {\n        name: a.name, vertices: a.vertices, indices: a.indices,\n        color: parseColor(a.color),\n        position: { x: a.posX || 0, y: a.posY || 0, z: a.posZ || 0 }\n      });\n      return `Created custom mesh "${r}"`;\n    }\n  },\n  {\n    name: \'create_tube\',\n    description: \'Create a tube along a path. pathPoints is array of [x,y,z] waypoints.\',\n    schema: {\n      name: z.string().optional(),\n      pathPoints: z.array(z.array(z.number())).describe(\'Array of [x,y,z] waypoints\'),\n      radius: z.number().optional().describe(\'Tube radius (default 0.1)\'),\n      segments: z.number().optional().describe(\'Tubular segments (default 32)\'),\n      color: z.string().optional(),\n      closed: z.boolean().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'createTube\', {\n        name: a.name, pathPoints: a.pathPoints,\n        radius: a.radius || 0.1, segments: a.segments || 32,\n        color: parseColor(a.color), closed: !!a.closed\n      });\n      return `Created tube "${r}" with ${a.pathPoints.length} waypoints`;\n    }\n  },\n  {\n    name: \'create_lathe\',\n    description: \'Create a lathe/revolution geometry. Profile: [[radius, height],...] rotated around Y axis.\',\n    schema: {\n      name: z.string().optional(),\n      profilePoints: z.array(z.array(z.number())).describe(\'Array of [radius, height] pairs\'),\n      segments: z.number().optional().describe(\'Radial segments (default 32)\'),\n      color: z.string().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'createLathe\', {\n        name: a.name, profilePoints: a.profilePoints,\n        segments: a.segments || 32, color: parseColor(a.color)\n      });\n      return `Created lathe "${r}" with ${a.profilePoints.length} profile points`;\n    }\n  },\n\n  // ---- OBJECT MANIPULATION ----\n  {\n    name: \'set_object_position\',\n    description: \'Move an existing object to new position by name.\',\n    schema: {\n      name: z.string().describe(\'Object name (returned from add_* tools)\'),\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional()\n    },\n    handler: async (a) => {\n      await callEngine(\'setPosition\', { name: a.name, x: a.x || 0, y: a.y || 0, z: a.z || 0 });\n      return `Moved "${a.name}" to (${a.x||0}, ${a.y||0}, ${a.z||0})`;\n    }\n  },\n  {\n    name: \'set_object_rotation\',\n    description: \'Set rotation of an existing object (radians).\',\n    schema: {\n      name: z.string().describe(\'Object name\'),\n      x: z.number().optional().describe(\'Rotation X in radians\'),\n      y: z.number().optional(), z: z.number().optional()\n    },\n    handler: async (a) => {\n      await callEngine(\'setRotation\', { name: a.name, x: a.x || 0, y: a.y || 0, z: a.z || 0 });\n      return `Rotated "${a.name}" to (${a.x||0}, ${a.y||0}, ${a.z||0}) rad`;\n    }\n  },\n  {\n    name: \'set_object_scale\',\n    description: \'Set scale of an existing object.\',\n    schema: {\n      name: z.string().describe(\'Object name\'),\n      x: z.number().optional(), y: z.number().optional(), z: z.number().optional()\n    },\n    handler: async (a) => {\n      await callEngine(\'setScale\', { name: a.name, x: a.x || 1, y: a.y, z: a.z });\n      return `Scaled "${a.name}"`;\n    }\n  },\n  {\n    name: \'set_object_color\',\n    description: \'Change color of an existing object.\',\n    schema: {\n      name: z.string().describe(\'Object name\'),\n      color: z.string().describe(\'Hex color like "#ff0000"\')\n    },\n    handler: async (a) => {\n      await callEngine(\'setObjectColor\', { name: a.name, color: parseColor(a.color) });\n      return `Changed "${a.name}" color to ${a.color}`;\n    }\n  },\n  {\n    name: \'remove_object\',\n    description: \'Remove an object from the scene by name.\',\n    schema: {\n      name: z.string().describe(\'Object name to remove\')\n    },\n    handler: async (a) => {\n      await callEngine(\'removeObject\', { name: a.name });\n      return `Removed "${a.name}"`;\n    }\n  },\n\n  // ---- ANIMATION ----\n  {\n    name: \'animate_object\',\n    description: \'Animate an object property from one value to another.\',\n    schema: {\n      name: z.string().describe(\'Object name\'),\n      property: z.string().describe(\'Property e.g. "position.x", "rotation.y", "scale.x"\'),\n      from: z.number().describe(\'Start value\'),\n      to: z.number().describe(\'End value\'),\n      duration: z.number().optional().describe(\'Seconds (default 1)\')\n    },\n    handler: async (a) => {\n      await callEngine(\'animateObj\', {\n        objName: a.name, prop: a.property,\n        from: a.from, to: a.to, duration: a.duration || 1\n      });\n      return `Animating "${a.name}".${a.property} from ${a.from} to ${a.to} over ${a.duration||1}s`;\n    }\n  },\n\n  // ---- TEXTURES ----\n  {\n    name: \'generate_texture\',\n    description: \'Generate a procedural texture. Types: brick, wood, marble, grass, metal, noise, checker, gradient, sky, lava, fabric, tiles, normalMap, roughness.\',\n    schema: {\n      type: z.enum([\'brick\',\'wood\',\'marble\',\'grass\',\'metal\',\'noise\',\'checker\',\'gradient\',\'sky\',\'lava\',\'fabric\',\'tiles\',\'normalMap\',\'roughness\']).describe(\'Texture type\'),\n      width: z.number().optional().describe(\'Width (default 512)\'),\n      height: z.number().optional().describe(\'Height (default 512)\'),\n      seed: z.number().optional(),\n      params: z.record(z.any()).optional().describe(\'Type-specific params\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'generateTexture\', {\n        type: a.type, width: a.width || 512, height: a.height || 512,\n        seed: a.seed, params: a.params || {}\n      });\n      return `Generated ${a.type} texture: ${typeof r === \'string\' ? r : JSON.stringify(r)}`;\n    }\n  },\n\n  // ---- PROCEDURAL MODELS ----\n  {\n    name: \'compose_model\',\n    description: \'Create a procedural model from text. Supports: house, castle, tower, bridge, car, sword, axe, shield, campfire, torch, crystal, platform, ruins, barrel, chest, well, table, chair, ladder, gate, sign.\',\n    schema: {\n      description: z.string().describe(\'What to create, e.g. "house", "castle", "wooden table"\'),\n      posX: z.number().optional(), posY: z.number().optional(), posZ: z.number().optional(),\n      rotX: z.number().optional(), rotY: z.number().optional(), rotZ: z.number().optional(),\n      scaleX: z.number().optional(), scaleY: z.number().optional(), scaleZ: z.number().optional()\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'aiComposeModel\', {\n        description: a.description,\n        position: { x: a.posX || 0, y: a.posY || 0, z: a.posZ || 0 },\n        rotation: { x: a.rotX || 0, y: a.rotY || 0, z: a.rotZ || 0 },\n        scale: { x: a.scaleX || 1, y: a.scaleY || 1, z: a.scaleZ || 1 }\n      });\n      return r ? `Composed model "${r}": ${a.description}` : `Failed to compose: ${a.description}`;\n    }\n  },\n\n  // ---- EXECUTE RAW CODE ----\n  {\n    name: \'execute_engine_code\',\n    description: \'Execute arbitrary JavaScript in the engine. Has access to all engine functions and THREE.js. Use for complex operations not covered by other tools.\',\n    schema: {\n      code: z.string().describe(\'JavaScript code. Engine API functions are available globally.\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'executeCode\', { code: a.code }, 30000);\n      return typeof r === \'string\' ? r : JSON.stringify(r);\n    }\n  },\n\n  // ---- SCENE TEMPLATES ----\n  {\n    name: \'apply_scene_template\',\n    description: \'Apply a pre-built scene template. Templates include objects, lights, terrain, camera.\',\n    schema: {\n      template: z.enum([\'city\', \'forest\', \'space\', \'room\', \'desert\', \'underwater\']).describe(\'Scene template name\')\n    },\n    handler: async (a) => {\n      const r = await callEngine(\'applySceneTemplate\', { template: a.template }, 60000);\n      return `Applied "${a.template}" template. ${typeof r === \'string\' ? r : JSON.stringify(r)}`;\n    }\n  }\n];\n\n// ---- HELPERS ----\nfunction parseColor(c) {\n  if (!c) return undefined;\n  if (typeof c === \'number\') return c;\n  const hex = c.replace(\'#\', \'\');\n  if (/^[0-9a-fA-F]{6}$/.test(hex)) return parseInt(hex, 16);\n  if (c.startsWith(\'0x\')) return parseInt(c, 16);\n  return undefined;\n}\n';
-_F['src/index.js']='#!/usr/bin/env node\n// SashaAI GameDev Engine — MCP + HTTP REST Server\n//\n// Два режима:\n//   MCP stdio — Claude Desktop / Claude Code (авто-детект по TTY)\n//   HTTP REST — Claude Web, ChatGPT, любой ИИ через браузер\n//\n// Запуск:\n//   node src/index.js\n//   HTTP_PORT=4000 node src/index.js\n//   WS_PORT=9999 node src/index.js\n//   MCP_ONLY=1 node src/index.js  (только MCP, без HTTP)\n\nimport { createServer } from \'http\';\nimport { McpServer } from \'@modelcontextprotocol/sdk/server/mcp.js\';\nimport { StdioServerTransport } from \'@modelcontextprotocol/sdk/server/stdio.js\';\nimport { startWSServer, getConnectedClients } from \'./ws-bridge.js\';\nimport { TOOLS } from \'./tools.js\';\n\nconst WS_PORT = parseInt(process.env.WS_PORT || \'8765\', 10);\nconst HTTP_PORT = parseInt(process.env.HTTP_PORT || \'3000\', 10);\nconst MCP_ONLY = process.env.MCP_ONLY === \'1\';\nconst isMcpMode = !process.stdin.isTTY || MCP_ONLY;\n\nasync function main() {\n  try { await startWSServer(WS_PORT); } catch (e) { console.error(\'[MCP] WebSocket fail:\', e.message); process.exit(1); }\n\n  async function executeTool(name, params) {\n    const tool = TOOLS.find(t => t.name === name);\n    if (!tool) throw new Error(\'Unknown tool: \' + name);\n    if (getConnectedClients().length === 0) throw new Error(\'No browser connected. Open engine at ws://localhost:\' + WS_PORT);\n    return await tool.handler(params);\n  }\n\n  // MCP server\n  const mcpServer = new McpServer({ name: \'sashaai-gamedev-engine\', version: \'1.0.0\' });\n  for (const tool of TOOLS) {\n    mcpServer.tool(tool.name, tool.description, tool.schema, async (params) => {\n      try { return { content: [{ type: \'text\', text: await executeTool(tool.name, params) }] }; }\n      catch (e) { return { content: [{ type: \'text\', text: \'Error: \' + e.message }], isError: true }; }\n    });\n  }\n\n  if (isMcpMode) {\n    await mcpServer.connect(new StdioServerTransport());\n    console.error(\'[MCP] Stdio transport active\');\n  }\n\n  if (!MCP_ONLY) startHttpServer(executeTool);\n\n  console.error(\'[MCP] Server running. WS: ws://localhost:\' + WS_PORT + (MCP_ONLY ? \'\' : \' | HTTP: http://localhost:\' + HTTP_PORT));\n  console.error(\'[MCP] Tools: \' + TOOLS.length + \' | Mode: \' + (isMcpMode ? \'MCP+HTTP\' : \'HTTP only\'));\n}\n\nfunction startHttpServer(executeTool) {\n  const srv = createServer(async (req, res) => {\n    res.setHeader(\'Access-Control-Allow-Origin\', \'*\');\n    res.setHeader(\'Access-Control-Allow-Methods\', \'GET, POST, OPTIONS\');\n    res.setHeader(\'Access-Control-Allow-Headers\', \'Content-Type\');\n    if (req.method === \'OPTIONS\') { res.writeHead(204); res.end(); return; }\n\n    const url = new URL(req.url, \'http://localhost:\' + HTTP_PORT);\n    const path = url.pathname;\n\n    // Web panel\n    if (path === \'/panel\') { res.writeHead(200, { \'Content-Type\': \'text/html; charset=utf-8\' }); res.end(PANEL_HTML); return; }\n\n    // API info\n    if (path === \'/\' || path === \'/api\') {\n      res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n      res.end(JSON.stringify({\n        name: \'SashaAI GameDev Engine API\',\n        description: \'HTTP REST API для управления 3D движком. Claude Web, ChatGPT, любой ИИ может вызывать эти endpoints.\',\n        base_url: \'http://localhost:\' + HTTP_PORT,\n        websocket: \'ws://localhost:\' + WS_PORT,\n        browser_connected: getConnectedClients().length > 0,\n        tools_count: TOOLS.length,\n        endpoints: {\n          \'GET /\': \'This info\',\n          \'GET /tools\': \'List all tools with parameters\',\n          \'GET /tools/{name}\': \'Info about one tool\',\n          \'POST /call\': \'Call a tool: {"tool":"add_cube", "params":{...}}\',\n          \'POST /call-batch\': \'Call multiple tools in sequence: {"calls":[{"tool":"...","params":{}}]}\'\n        },\n        claude_prompt: CLAUDE_SYSTEM_PROMPT\n      }, null, 2));\n      return;\n    }\n\n    // List tools\n    if (path === \'/tools\') {\n      const list = TOOLS.map(t => ({ name: t.name, description: t.description }));\n      res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n      res.end(JSON.stringify(list, null, 2));\n      return;\n    }\n\n    // Tool details\n    if (path.startsWith(\'/tools/\')) {\n      const name = path.slice(7);\n      const tool = TOOLS.find(t => t.name === name);\n      if (!tool) { res.writeHead(404); res.end(JSON.stringify({ error: \'Tool not found: \' + name })); return; }\n      res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n      res.end(JSON.stringify({ name: tool.name, description: tool.description, parameters: tool.schema }, null, 2));\n      return;\n    }\n\n    // Call single tool\n    if (path === \'/call\' && req.method === \'POST\') {\n      const body = await readBody(req);\n      try {\n        const { tool, params } = JSON.parse(body);\n        if (!tool) { res.writeHead(400); res.end(JSON.stringify({ error: \'Missing "tool" field\' })); return; }\n        const result = await executeTool(tool, params || {});\n        res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n        res.end(JSON.stringify({ success: true, tool, result }));\n      } catch (e) {\n        res.writeHead(500, { \'Content-Type\': \'application/json; charset=utf-8\' });\n        res.end(JSON.stringify({ success: false, error: e.message }));\n      }\n      return;\n    }\n\n    // Call batch\n    if (path === \'/call-batch\' && req.method === \'POST\') {\n      const body = await readBody(req);\n      try {\n        const { calls } = JSON.parse(body);\n        if (!Array.isArray(calls)) { res.writeHead(400); res.end(JSON.stringify({ error: \'"calls" must be array\' })); return; }\n        const results = [];\n        for (const c of calls) {\n          try {\n            const r = await executeTool(c.tool, c.params || {});\n            results.push({ tool: c.tool, success: true, result: r });\n          } catch (e) {\n            results.push({ tool: c.tool, success: false, error: e.message });\n          }\n        }\n        res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n        res.end(JSON.stringify({ results }));\n      } catch (e) {\n        res.writeHead(500, { \'Content-Type\': \'application/json; charset=utf-8\' });\n        res.end(JSON.stringify({ success: false, error: e.message }));\n      }\n      return;\n    }\n\n    // Get system prompt for Claude\n    if (path === \'/claude-prompt\') {\n      res.writeHead(200, { \'Content-Type\': \'text/plain; charset=utf-8\' });\n      res.end(CLAUDE_SYSTEM_PROMPT);\n      return;\n    }\n\n    res.writeHead(404);\n    res.end(JSON.stringify({ error: \'Not found. Try GET / or GET /tools\' }));\n  });\n\n  srv.listen(HTTP_PORT, () => {\n    console.error(\'[HTTP] REST API: http://localhost:\' + HTTP_PORT);\n    console.error(\'[HTTP] Panel:    http://localhost:\' + HTTP_PORT + \'/panel\');\n  });\n}\n\nfunction readBody(req) {\n  return new Promise((resolve) => {\n    let data = \'\';\n    req.on(\'data\', chunk => data += chunk);\n    req.on(\'end\', () => resolve(data));\n  });\n}\n\n// ============================================================\n// Промпт для вставки в Claude Web / ChatGPT\n// ============================================================\nconst CLAUDE_SYSTEM_PROMPT = `У тебя есть доступ к 3D игровому движку SashaAI GameDev Engine через HTTP API.\n\nБазовый URL: http://localhost:${HTTP_PORT}\n\nENDPOINTS:\n1. GET http://localhost:3000/tools — список всех инструментов\n2. GET http://localhost:3000/tools/{имя} — параметры конкретного инструмента\n3. POST http://localhost:3000/call — вызвать один инструмент\n   Body: {"tool": "add_cube", "params": {"x": 1, "y": 2, "z": 3, "color": "#ff0000"}}\n4. POST http://localhost:3000/call-batch — вызвать несколько инструментов подряд\n   Body: {"calls": [{"tool": "scene_clear", "params": {}}, {"tool": "add_cube", "params": {"x": 0}}]}\n\nКогда пользователь просит создать 3D сцену, ты формируешь JSON для POST /call-batch с нужными инструментами.\nНе выдумывай инструменты — сначала проверь список через GET /tools.\n\nПример: пользователь пишет "создай город"\nТы отправляешь:\nPOST http://localhost:3000/call-batch\n{"calls": [\n  {"tool": "scene_clear", "params": {}},\n  {"tool": "add_plane", "params": {"width": 50, "height": 50, "color": "#555555"}},\n  {"tool": "add_cube", "params": {"x": -5, "width": 3, "height": 6, "depth": 3, "color": "#888888"}},\n  {"tool": "add_point_light", "params": {"x": 0, "y": 10, "intensity": 1}},\n  {"tool": "add_ambient_light", "params": {"intensity": 0.4}}\n]}`;\n\n// ============================================================\n// Web Panel HTML\n// ============================================================\nconst PANEL_HTML = `<!DOCTYPE html>\n<html lang="ru"><head><meta charset="utf-8"><title>SashaAI Engine — Control Panel</title>\n<style>\n* { margin:0; padding:0; box-sizing:border-box; }\nbody { font-family: \'Segoe UI\',system-ui,sans-serif; background:#0d1117; color:#e6edf3; }\n.header { background:#161b22; border-bottom:1px solid #30363d; padding:16px 24px; display:flex; align-items:center; gap:16px; }\n.header h1 { font-size:18px; font-weight:600; }\n.status { display:inline-flex; align-items:center; gap:6px; font-size:13px; padding:4px 12px; border-radius:20px; }\n.status.on { background:#0f5323; color:#3fb950; }\n.status.off { background:#3d1f1f; color:#f85149; }\n.dot { width:8px; height:8px; border-radius:50%; }\n.dot.on { background:#3fb950; box-shadow:0 0 6px #3fb950; }\n.dot.off { background:#f85149; }\n.grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px 24px; max-width:1400px; margin:0 auto; }\n.panel { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:16px; }\n.panel h2 { font-size:14px; color:#8b949e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }\ninput,textarea,select,button { font-family:inherit; font-size:14px; border:1px solid #30363d; border-radius:8px; padding:8px 12px; background:#0d1117; color:#e6edf3; outline:none; }\ninput:focus,textarea:focus { border-color:#58a6ff; }\nbutton { background:#238636; color:#fff; border:none; cursor:pointer; font-weight:600; padding:8px 16px; border-radius:8px; }\nbutton:hover { background:#2ea043; }\nbutton.secondary { background:#21262d; color:#e6edf3; }\nbutton.secondary:hover { background:#30363d; }\nbutton.danger { background:#da3633; }\nbutton.danger:hover { background:#f85149; }\n.row { display:flex; gap:8px; margin-bottom:8px; align-items:center; }\n.row label { font-size:13px; color:#8b949e; min-width:70px; }\n.row input, .row select { flex:1; }\n.row input.sm { width:80px; flex:none; }\n.log { background:#010409; border:1px solid #30363d; border-radius:8px; padding:12px; font-family:\'Cascadia Code\',monospace; font-size:13px; max-height:400px; overflow-y:auto; margin-top:8px; line-height:1.6; }\n.log .ok { color:#3fb950; } .log .err { color:#f85149; } .log .info { color:#58a6ff; }\n.tools-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:6px; max-height:300px; overflow-y:auto; }\n.tool-btn { text-align:left; font-size:12px; padding:6px 10px; background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; cursor:pointer; transition:all 0.15s; }\n.tool-btn:hover { border-color:#58a6ff; background:#1f2937; }\n.tool-btn span { display:block; color:#8b949e; font-size:11px; margin-top:2px; }\n.full { grid-column:1/-1; }\ntextarea { width:100%; min-height:100px; resize:vertical; font-family:monospace; }\n#response { white-space:pre-wrap; word-break:break-all; }\n</style></head><body>\n<div class="header">\n  <h1>SashaAI GameDev Engine</h1>\n  <div class="status" id="status"><div class="dot" id="dot"></div><span id="statusText">checking...</span></div>\n</div>\n<div class="grid">\n  <!-- Quick Templates -->\n  <div class="panel">\n    <h2>Шаблоны сцен</h2>\n    <div class="row"><button onclick="callBatch(templateCity)">Город</button><button onclick="callBatch(templateForest)">Лес</button></div>\n    <div class="row"><button onclick="callBatch(templateSpace)">Космос</button><button onclick="callBatch(templateRoom)">Комната</button></div>\n    <div class="row"><button onclick="callBatch(templateDesert)">Пустыня</button><button onclick="callBatch(templateUnderwater)">Подводный</button></div>\n    <div class="row" style="margin-top:12px"><button class="danger" onclick="call(\'scene_clear\',{})">Очистить сцену</button></div>\n  </div>\n\n  <!-- Tools -->\n  <div class="panel">\n    <h2>Инструменты</h2>\n    <div class="tools-grid" id="toolsGrid"></div>\n  </div>\n\n  <!-- Manual Call -->\n  <div class="panel">\n    <h2>Вызов инструмента</h2>\n    <div class="row"><label>Tool:</label><select id="toolSelect"></select></div>\n    <div class="row"><label>JSON:</label><input id="paramsInput" placeholder=\'{"x":1,"y":2}\'></div>\n    <div class="row"><button onclick="manualCall()">Выполнить</button></div>\n  </div>\n\n  <!-- Batch -->\n  <div class="panel">\n    <h2>Пакетный вызов</h2>\n    <textarea id="batchInput" placeholder=\'[{"tool":"scene_clear","params":{}},{"tool":"add_cube","params":{"x":1}}]\'></textarea>\n    <div class="row" style="margin-top:8px"><button onclick="batchCall()">Выполнить все</button></div>\n  </div>\n\n  <!-- Response -->\n  <div class="panel full">\n    <h2>Ответ / Лог</h2>\n    <div class="log" id="log"></div>\n  </div>\n</div>\n<script>\nconst API = location.origin;\nlet allTools = [];\n\nasync function init() {\n  try {\n    const r = await fetch(API + \'/api\');\n    const info = await r.json();\n    updateStatus(info.browser_connected);\n    allTools = await (await fetch(API + \'/tools\')).json();\n    renderTools();\n    log(\'Server ready. Tools: \' + allTools.length, \'ok\');\n  } catch(e) { log(\'Cannot connect to server: \' + e.message, \'err\'); }\n  setInterval(checkStatus, 5000);\n}\n\nfunction updateStatus(connected) {\n  document.getElementById(\'dot\').className = \'dot \' + (connected ? \'on\' : \'off\');\n  document.getElementById(\'status\').className = \'status \' + (connected ? \'on\' : \'off\');\n  document.getElementById(\'statusText\').textContent = connected ? \'Browser connected\' : \'No browser\';\n}\n\nasync function checkStatus() {\n  try { const r = await fetch(API + \'/api\'); updateStatus((await r.json()).browser_connected); } catch(e) {}\n}\n\nfunction renderTools() {\n  const grid = document.getElementById(\'toolsGrid\');\n  const sel = document.getElementById(\'toolSelect\');\n grid.innerHTML = \'\'; sel.innerHTML = \'\';\n  for (const t of allTools) {\n    const btn = document.createElement(\'button\');\n    btn.className = \'tool-btn\'; btn.textContent = t.name;\n    btn.innerHTML = t.name + \'<span>\' + t.description.slice(0,40) + \'</span>\';\n    btn.onclick = () => { sel.value = t.name; document.getElementById(\'paramsInput\').value = \'{}\'; };\n    grid.appendChild(btn);\n    const opt = document.createElement(\'option\'); opt.value = t.name; opt.textContent = t.name;\n    sel.appendChild(opt);\n  }\n}\n\nasync function call(tool, params) {\n  log(\'>> \' + tool + \' \' + JSON.stringify(params), \'info\');\n  try {\n    const r = await fetch(API + \'/call\', { method:\'POST\', headers:{\'Content-Type\':\'application/json\'}, body:JSON.stringify({tool,params}) });\n    const d = await r.json();\n    log(d.success ? \'<< \' + d.result : \'<< ERROR: \' + d.error, d.success ? \'ok\' : \'err\');\n    return d;\n  } catch(e) { log(\'<< Network error: \' + e.message, \'err\'); }\n}\n\nasync function callBatch(calls) {\n  log(\'>> BATCH: \' + calls.length + \' calls\', \'info\');\n  try {\n    const r = await fetch(API + \'/call-batch\', { method:\'POST\', headers:{\'Content-Type\':\'application/json\'}, body:JSON.stringify({calls}) });\n    const d = await r.json();\n    for (const r of d.results) log(r.success ? \'<< \' + r.tool + \': \' + r.result : \'<< \' + r.tool + \' ERROR: \' + r.error, r.success ? \'ok\' : \'err\');\n  } catch(e) { log(\'<< Network error: \' + e.message, \'err\'); }\n}\n\nasync function manualCall() {\n  const tool = document.getElementById(\'toolSelect\').value;\n  const p = document.getElementById(\'paramsInput\').value;\n  try { await call(tool, JSON.parse(p)); } catch(e) { log(\'Invalid JSON: \' + e.message, \'err\'); }\n}\n\nasync function batchCall() {\n  const p = document.getElementById(\'batchInput\').value;\n  try { await callBatch(JSON.parse(p)); } catch(e) { log(\'Invalid JSON: \' + e.message, \'err\'); }\n}\n\nfunction log(msg, cls) {\n  const el = document.getElementById(\'log\');\n  const line = document.createElement(\'div\');\n  line.className = cls || \'\'; line.textContent = msg;\n  el.appendChild(line); el.scrollTop = el.scrollHeight;\n}\n\nconst templateCity = [\n  {tool:\'scene_clear\',params:{}},\n  {tool:\'scene_set_background\',params:{color:\'#87CEEB\'}},\n  {tool:\'add_plane\',params:{width:50,height:50,color:\'#555555\'}},\n  {tool:\'add_cube\',params:{x:-5,width:3,height:6,depth:3,color:\'#888888\'}},\n  {tool:\'add_cube\',params:{x:0,z:-5,width:4,height:8,depth:4,color:\'#777777\'}},\n  {tool:\'add_cube\',params:{x:5,z:-2,width:3,height:5,depth:3,color:\'#999999\'}},\n  {tool:\'add_cube\',params:{x:-8,z:2,width:5,height:10,depth:3,color:\'#666666\'}},\n  {tool:\'add_point_light\',params:{x:-5,y:4,z:-3,intensity:0.8,color:\'#FFD700\'}},\n  {tool:\'add_directional_light\',params:{x:10,y:20,z:10,color:\'#FFFACD\',intensity:1}},\n  {tool:\'add_ambient_light\',params:{color:\'#B0C4DE\',intensity:0.4}},\n  {tool:\'camera_set_position\',params:{x:12,y:8,z:12}},\n  {tool:\'camera_set_target\',params:{x:0,y:2,z:0}}\n];\nconst templateForest = [\n  {tool:\'scene_clear\',params:{}},\n  {tool:\'scene_set_background\',params:{color:\'#228B22\'}},\n  {tool:\'add_plane\',params:{width:60,height:60,color:\'#3B5323\'}},\n  {tool:\'compose_model\',params:{description:\'tree\',posX:-3,posZ:-2}},\n  {tool:\'compose_model\',params:{description:\'tree\',posX:2,posZ:-4}},\n  {tool:\'compose_model\',params:{description:\'tree\',posX:-6,posZ:1}},\n  {tool:\'compose_model\',params:{description:\'tree\',posX:4,posZ:3}},\n  {tool:\'compose_model\',params:{description:\'tree\',posX:-1,posZ:5}},\n  {tool:\'compose_model\',params:{description:\'rock\',posX:1,posZ:1}},\n  {tool:\'add_directional_light\',params:{x:5,y:15,z:8,intensity:0.7}},\n  {tool:\'add_ambient_light\',params:{color:\'#90EE90\',intensity:0.5}},\n  {tool:\'camera_set_position\',params:{x:8,y:6,z:10}}\n];\nconst templateSpace = [\n  {tool:\'scene_clear\',params:{}},\n  {tool:\'scene_set_background\',params:{color:\'#000011\'}},\n  {tool:\'add_sphere\',params:{z:-8,radius:3,color:\'#4169E1\'}},\n  {tool:\'add_sphere\',params:{x:6,y:2,z:-12,radius:1,color:\'#FF6347\'}},\n  {tool:\'add_sphere\',params:{x:-5,z:-15,radius:2,color:\'#DAA520\'}},\n  {tool:\'add_torus\',params:{x:-5,z:-15,radius:3,tube:0.08,color:\'#DAA520\'}},\n  {tool:\'add_point_light\',params:{y:3,z:-5,intensity:2}},\n  {tool:\'add_ambient_light\',params:{color:\'#191970\',intensity:0.2}},\n  {tool:\'camera_set_position\',params:{y:2,z:5}}\n];\nconst templateRoom = [\n  {tool:\'scene_clear\',params:{}},\n  {tool:\'scene_set_background\',params:{color:\'#2C2C2C\'}},\n  {tool:\'add_plane\',params:{width:10,height:10,color:\'#8B7355\'}},\n  {tool:\'add_cube\',params:{y:2.5,z:-5,width:10,height:5,depth:0.2,color:\'#D2B48C\'}},\n  {tool:\'add_cube\',params:{x:-5,y:2.5,width:0.2,height:5,depth:10,color:\'#C4A882\'}},\n  {tool:\'add_cube\',params:{x:5,y:2.5,width:0.2,height:5,depth:10,color:\'#C4A882\'}},\n  {tool:\'compose_model\',params:{description:\'table\'}},\n  {tool:\'compose_model\',params:{description:\'chair\',posZ:2}},\n  {tool:\'add_point_light\',params:{y:4.5,intensity:1.5,color:\'#FFF8DC\'}},\n  {tool:\'add_ambient_light\',params:{color:\'#FFF8DC\',intensity:0.3}},\n  {tool:\'camera_set_position\',params:{y:3,z:6}}\n];\nconst templateDesert = [\n  {tool:\'scene_clear\',params:{}},\n  {tool:\'scene_set_background\',params:{color:\'#F4A460\'}},\n  {tool:\'create_terrain\',params:{width:40,depth:40,heightExpression:\'Math.sin(x*0.3)*Math.cos(z*0.2)*1.5\',resolution:48,color:\'#EDC9AF\'}},\n  {tool:\'add_cylinder\',params:{x:-3,y:1.5,z:2,radiusTop:0.15,radiusBottom:0.2,height:3,color:\'#2E8B57\'}},\n  {tool:\'add_sphere\',params:{x:-2.5,y:3.2,z:2,radius:0.5,color:\'#2E8B57\'}},\n  {tool:\'add_directional_light\',params:{x:5,y:20,z:3,color:\'#FFD700\',intensity:1.5}},\n  {tool:\'add_ambient_light\',params:{color:\'#FFA500\',intensity:0.6}},\n  {tool:\'camera_set_position\',params:{x:10,y:5,z:10}}\n];\nconst templateUnderwater = [\n  {tool:\'scene_clear\',params:{}},\n  {tool:\'scene_set_background\',params:{color:\'#001133\'}},\n  {tool:\'add_plane\',params:{width:40,height:40,color:\'#1B3F5C\'}},\n  {tool:\'create_terrain\',params:{name:\'seabed\',width:40,depth:40,heightExpression:\'Math.sin(x*0.5)*Math.cos(z*0.3)*0.8\',resolution:40,color:\'#1B3F5C\'}},\n  {tool:\'add_sphere\',params:{x:-2,y:1,z:-3,radius:0.8,color:\'#FF6B6B\'}},\n  {tool:\'add_cylinder\',params:{x:3,y:1.5,z:2,radiusTop:0.1,radiusBottom:0.15,height:3,color:\'#20B2AA\'}},\n  {tool:\'add_torus\',params:{y:0.5,radius:1,tube:0.2,color:\'#FF69B4\'}},\n  {tool:\'add_point_light\',params:{y:8,intensity:1.2,color:\'#87CEEB\'}},\n  {tool:\'add_ambient_light\',params:{color:\'#006994\',intensity:0.4}},\n  {tool:\'camera_set_position\',params:{x:5,y:3,z:8}}\n];\n\ninit();\n<\/script></body></html>`;\n\nmain().catch(e => { console.error(\'[MCP] Fatal:\', e); process.exit(1); });\n';
-
-_F['START.bat']='@echo off\ntitle SashaAI MCP Server\nchcp 65001 >nul 2>nul\ncd /d "%~dp0"\n\necho.\necho   SashaAI GameDev Engine - MCP Server\necho.\n\nwhere node >nul 2>&1\nif %errorlevel% neq 0 (\n    echo [ERROR] Node.js not found! Install from https://nodejs.org\n    pause\n    exit /b 1\n)\n\nif not exist "%~dp0node_modules" (\n    echo Installing dependencies...\n    call npm install\n    if %errorlevel% neq 0 (\n        echo [ERROR] npm install failed\n        pause\n        exit /b 1\n    )\n)\n\necho.\necho   Starting server...\necho   Panel: http://localhost:3000/panel\necho   Press Ctrl+C to stop\necho.\n\nnode src/index.js\npause\n';
-;
+_F['src/index.js']='#!/usr/bin/env node\n// SashaAI GameDev Engine - MCP + HTTP REST Server\nimport { createServer } from \'http\';\nimport { McpServer } from \'@modelcontextprotocol/sdk/server/mcp.js\';\nimport { StdioServerTransport } from \'@modelcontextprotocol/sdk/server/stdio.js\';\nimport { startWSServer, getConnectedClients } from \'./ws-bridge.js\';\nimport { TOOLS } from \'./tools.js\';\n\nconst WS_PORT = parseInt(process.env.WS_PORT || \'8765\', 10);\nconst HTTP_PORT = parseInt(process.env.HTTP_PORT || \'3000\', 10);\nconst MCP_ONLY = process.env.MCP_ONLY === \'1\';\nconst isMcpMode = !process.stdin.isTTY || MCP_ONLY;\n\nasync function main() {\n  try { await startWSServer(WS_PORT); } catch (e) { console.error(\'[MCP] WebSocket fail:\', e.message); process.exit(1); }\n  async function executeTool(name, params) {\n    const tool = TOOLS.find(t => t.name === name);\n    if (!tool) throw new Error(\'Unknown tool: \' + name);\n    if (getConnectedClients().length === 0) throw new Error(\'No browser connected. Open engine at ws://localhost:\' + WS_PORT);\n    return await tool.handler(params);\n  }\n  const mcpServer = new McpServer({ name: \'sashaai-gamedev-engine\', version: \'1.0.0\' });\n  for (const tool of TOOLS) {\n    mcpServer.tool(tool.name, tool.description, tool.schema, async (params) => {\n      try { return { content: [{ type: \'text\', text: await executeTool(tool.name, params) }] }; }\n      catch (e) { return { content: [{ type: \'text\', text: \'Error: \' + e.message }], isError: true }; }\n    });\n  }\n  if (isMcpMode) { await mcpServer.connect(new StdioServerTransport()); console.error(\'[MCP] Stdio transport active\'); }\n  if (!MCP_ONLY) startHttpServer(executeTool);\n  console.error(\'[MCP] Server running. WS: ws://localhost:\' + WS_PORT + (MCP_ONLY ? \'\' : \' | HTTP: http://localhost:\' + HTTP_PORT));\n  console.error(\'[MCP] Tools: \' + TOOLS.length + \' | Mode: \' + (isMcpMode ? \'MCP+HTTP\' : \'HTTP only\'));\n}\n\n// Convert TOOLS to Ollama native tool format\nfunction toolsToOllama() {\n  return TOOLS.map(t => {\n    const props = {};\n    const required = [];\n    if (t.schema && typeof t.schema === \'object\') {\n      for (const [k, v] of Object.entries(t.schema)) {\n        const desc = v._def || v.description || {};\n        props[k] = { type: ollamaType(v), description: v.description || \'\' };\n        if (!v.isOptional) required.push(k);\n      }\n    }\n    return {\n      type: \'function\',\n      function: {\n        name: t.name,\n        description: t.description,\n        parameters: { type: \'object\', properties: props, required }\n      }\n    };\n  });\n}\n\nfunction ollamaType(zodSchema) {\n  const d = zodSchema._def;\n  if (!d) return \'string\';\n  if (d.typeName === \'ZodNumber\' || d.typeName === \'ZodFloat\' || d.typeName === \'ZodInt\') return \'number\';\n  if (d.typeName === \'ZodBoolean\') return \'boolean\';\n  if (d.typeName === \'ZodArray\') return \'array\';\n  if (d.typeName === \'ZodEnum\') return \'string\';\n  if (d.typeName === \'ZodOptional\') return ollamaType(d.innerType);\n  if (d.typeName === \'ZodRecord\') return \'object\';\n  return \'string\';\n}\n\nfunction startHttpServer(executeTool) {\n  const ollamaTools = toolsToOllama();\n  const srv = createServer(async (req, res) => {\n    res.setHeader(\'Access-Control-Allow-Origin\', \'*\');\n    res.setHeader(\'Access-Control-Allow-Methods\', \'GET, POST, OPTIONS\');\n    res.setHeader(\'Access-Control-Allow-Headers\', \'Content-Type\');\n    if (req.method === \'OPTIONS\') { res.writeHead(204); res.end(); return; }\n    const url = new URL(req.url, \'http://localhost:\' + HTTP_PORT);\n    const path = url.pathname;\n    if (path === \'/\') {\n      res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n      res.end(JSON.stringify({ name: \'SashaAI API\', ws: \'ws://localhost:\' + WS_PORT, browser_connected: getConnectedClients().length > 0, tools_count: TOOLS.length })); return;\n    }\n    if (path === \'/tools\') {\n      res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n      res.end(JSON.stringify(TOOLS.map(t => ({ name: t.name, description: t.description })), null, 2)); return;\n    }\n    if (path.startsWith(\'/tools/\')) {\n      const name = path.slice(7);\n      const tool = TOOLS.find(t => t.name === name);\n      if (!tool) { res.writeHead(404); res.end(JSON.stringify({ error: \'Tool not found: \' + name })); return; }\n      res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n      res.end(JSON.stringify({ name: tool.name, description: tool.description, parameters: tool.schema }, null, 2)); return;\n    }\n    if (path === \'/call\' && req.method === \'POST\') {\n      const body = await readBody(req);\n      try {\n        const { tool, params } = JSON.parse(body);\n        if (!tool) { res.writeHead(400); res.end(JSON.stringify({ error: \'Missing tool\' })); return; }\n        const result = await executeTool(tool, params || {});\n        res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n        res.end(JSON.stringify({ success: true, tool, result }));\n      } catch (e) { res.writeHead(500, { \'Content-Type\': \'application/json; charset=utf-8\' }); res.end(JSON.stringify({ success: false, error: e.message })); }\n      return;\n    }\n    if (path === \'/call-batch\' && req.method === \'POST\') {\n      const body = await readBody(req);\n      try {\n        const { calls } = JSON.parse(body);\n        if (!Array.isArray(calls)) { res.writeHead(400); res.end(JSON.stringify({ error: \'calls must be array\' })); return; }\n        const results = [];\n        for (const c of calls) {\n          try { const r = await executeTool(c.tool, c.params || {}); results.push({ tool: c.tool, success: true, result: r }); }\n          catch (e) { results.push({ tool: c.tool, success: false, error: e.message }); }\n        }\n        res.writeHead(200, { \'Content-Type\': \'application/json; charset=utf-8\' });\n        res.end(JSON.stringify({ results }));\n      } catch (e) { res.writeHead(500, { \'Content-Type\': \'application/json; charset=utf-8\' }); res.end(JSON.stringify({ success: false, error: e.message })); }\n      return;\n    }\n    if (path === \'/claude-prompt\') { res.writeHead(200, { \'Content-Type\': \'text/plain; charset=utf-8\' }); res.end(CLAUDE_SYSTEM_PROMPT); return; }\n\n    // AI Chat - native Ollama tool calling\n    if (path === \'/ai-chat\' && req.method === \'POST\') {\n      const body = await readBody(req);\n      try {\n        const { message, history = [], model = \'qwen2.5-coder:7b\' } = JSON.parse(body);\n        if (!message) { res.writeHead(400); res.end(JSON.stringify({ error: \'Missing message\' })); return; }\n        const sys = \'Ты AI в 3D движке SashaAI. Отвечай кратко на русском. Когда нужно создать/изменить 3D сцену — используй инструменты. Если просто болтают - отвечай обычным текстом.\';\n        const msgs = [\n          { role: \'system\', content: sys },\n          ...history.map(h => ({ role: h.role, content: h.content })),\n          { role: \'user\', content: message }\n        ];\n        const toolLog = [];\n        let reply = \'\';\n        for (let round = 0; round < 10; round++) {\n          const reqBody = { model, messages: msgs, stream: false };\n          if (toolLog.length === 0) reqBody.tools = ollamaTools;\n          const r2 = await fetch(\'http://localhost:11434/api/chat\', {\n            method: \'POST\', headers: { \'Content-Type\': \'application/json\' },\n            body: JSON.stringify(reqBody)\n          });\n          if (!r2.ok) { res.writeHead(502); res.end(JSON.stringify({ error: \'Ollama: \' + r2.status })); return; }\n          const od = await r2.json();\n          const msg = od.message || {};\n          // Check for native tool_calls\n          if (msg.tool_calls && msg.tool_calls.length > 0) {\n            msgs.push(msg);\n            for (const tc of msg.tool_calls) {\n              const tName = tc.function.name;\n              const tArgs = typeof tc.function.arguments === \'string\' ? JSON.parse(tc.function.arguments) : (tc.function.arguments || {});\n              toolLog.push({ tool: tName, params: tArgs });\n              try {\n                const result = await executeTool(tName, tArgs);\n                msgs.push({ role: \'tool\', content: String(result) });\n                toolLog[toolLog.length - 1].status = \'OK\';\n              } catch (e) {\n                msgs.push({ role: \'tool\', content: \'Error: \' + e.message });\n                toolLog[toolLog.length - 1].error = e.message;\n              }\n            }\n            continue;\n          }\n          // No tool calls - final reply\n          reply = (msg.content || \'\').trim();\n          break;\n        }\n        if (!reply) reply = \'Готово. \' + toolLog.length + \' действий.\';\n        const nh = [...history, { role: \'user\', content: message }, { role: \'assistant\', content: reply }];\n        res.writeHead(200, { \'Content-Type\': \'application/json\' });\n        res.end(JSON.stringify({ reply, history: nh, toolLog }));\n      } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }\n      return;\n    }\n\n    res.writeHead(404);\n    res.end(JSON.stringify({ error: \'Not found\' }));\n  });\n  srv.listen(HTTP_PORT, () => { console.error(\'[HTTP] http://localhost:\' + HTTP_PORT); });\n}\n\nfunction readBody(req) {\n  return new Promise((resolve) => { let data = \'\'; req.on(\'data\', chunk => data += chunk); req.on(\'end\', () => resolve(data)); });\n}\n\nconst CLAUDE_SYSTEM_PROMPT = \'SashaAI 3D Engine API at http://localhost:\' + HTTP_PORT + \'. Use POST /call or /call-batch with tools to control the 3D scene.\';\n\nmain().catch(e => { console.error(\'[MCP] Fatal:\', e); process.exit(1); });\n';
+_F['START.bat']='@echo off\ntitle SashaAI GameDev Engine — MCP Server\nchcp 65001 >nul\n\necho.\necho  ╔══════════════════════════════════════════════════════╗\necho  ║     SashaAI GameDev Engine — One-Click Launcher     ║\necho  ╠══════════════════════════════════════════════════════╣\necho  ║                                                      ║\necho  ║  1. WebSocket мост  →  ws://localhost:8765         ║\necho  ║  2. HTTP REST API   →  http://localhost:3000        ║\necho  ║  3. Панель управл.  →  http://localhost:3000/panel ║\necho  ║  4. Промпт для ИИ  →  http://localhost:3000/claude-prompt ║\necho  ║                                                      ║\necho  ╚══════════════════════════════════════════════════════╝\necho.\n\n:: Check Node.js\nwhere node >nul 2>&1\nif %errorlevel% neq 0 (\n    echo [ERROR] Node.js not installed!\n    echo Download from: https://nodejs.org  ^(LTS version^)\n    echo Install it, restart PC, then run this file again.\n    echo.\n    pause\n    exit /b 1\n)\n\necho [OK] Node.js found\n\n:: Install dependencies if needed\nif not exist "node_modules" (\n    echo [..] Installing dependencies...\n    call npm install\n    if %errorlevel% neq 0 (\n        echo [ERROR] npm install failed\n        pause\n        exit /b 1\n    )\n)\necho [OK] Dependencies ready\n\n:: Open browser tabs after 3 seconds\nstart "" cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:3000/panel"\nstart "" cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:3000/claude-prompt"\n\necho.\necho ══════════════════════════════════════════════════════\necho  SERVER STARTED\necho ══════════════════════════════════════════════════════\necho.\necho  Панель:         http://localhost:3000/panel\necho  Промпт для ИИ:  http://localhost:3000/claude-prompt\necho.\necho  ЧТО ДЕЛАТЬ:\necho  1. Открой index_23.html в браузере ^(движок^)\necho  2. В панели нажми любой шаблон для теста\necho  3. Скопируй промпт из /claude-prompt и вставь в Claude Web\necho  4. Пиши Клоду: "создай город" — он сам вызовет API\necho.\necho  Нажми Ctrl+C чтобы остановить сервер.\necho ══════════════════════════════════════════════════════\necho.\n\n:: Start server\nnode src/index.js\n\nif %errorlevel% neq 0 (\n    echo.\n    echo [ERROR] Server crashed. Check error above.\n    pause\n)\n';
 _F['start.sh']='#!/bin/bash\ncd "$(dirname "$0")"\n\n# Colors\nR=\'\\033[0;31m\'; G=\'\\033[0;32m\'; Y=\'\\033[1;33m\'; B=\'\\033[0;34m\'; C=\'\\033[0;36m\'; W=\'\\033[0m\'\n\necho -e ""\necho -e "$C ╔══════════════════════════════════════════════════════╗$W"\necho -e "$C ║     SashaAI GameDev Engine — One-Click Launcher     ║$W"\necho -e "$C ╠══════════════════════════════════════════════════════╣$W"\necho -e "$C ║                                                      ║$W"\necho -e "$C ║  1. WebSocket мост  →  ws://localhost:8765         ║$W"\necho -e "$C ║  2. HTTP REST API   →  http://localhost:3000        ║$W"\necho -e "$C ║  3. Панель управл.  →  http://localhost:3000/panel ║$W"\necho -e "$C ║  4. Промпт для ИИ  →  /claude-prompt             ║$W"\necho -e "$C ║                                                      ║$W"\necho -e "$C ╚══════════════════════════════════════════════════════╝$W"\necho -e ""\n\n# Check Node.js\nif ! command -v node &> /dev/null; then\n    echo -e "$R [ERROR] Node.js не установлен!$W"\n    echo -e "  Скачай: https://nodejs.org (LTS версию)"\n    echo -e "  Установи, перезапусти терминал, запусти этот файл снова."\n    exit 1\nfi\necho -e "$G [OK]$W Node.js: $(node -v)"\n\n# Install deps\nif [ ! -d "node_modules" ]; then\n    echo -e "$Y [..] Установка зависимостей...$W"\n    npm install --silent\n    echo -e "$G [OK]$W Зависимости установлены"\nelse\n    echo -e "$G [OK]$W Зависимости на месте"\nfi\n\n# Open browser tabs in background\n(sleep 3 && xdg-open http://localhost:3000/panel 2>/dev/null &)\n(sleep 4 && xdg-open http://localhost:3000/claude-prompt 2>/dev/null &)\n\necho -e ""\necho -e "$B══════════════════════════════════════════════════════$W"\necho -e "$G  СЕРВЕР ЗАПУЩЕН$W"\necho -e "$B══════════════════════════════════════════════════════$W"\necho -e ""\necho -e "  Панель:        $C http://localhost:3000/panel $W"\necho -e "  Промпт для ИИ: $C http://localhost:3000/claude-prompt $W"\necho -e ""\necho -e "  ЧТО ДЕЛАТЬ:$Y"\necho -e "  1.$W Открой $Y index_23.html$W в браузере (твой движок)"\necho -e "  2.$W В панели нажми любой шаблон — проверь что работает"\necho -e "  3.$W Скопируй промпт с /claude-prompt и вставь в Claude Web"\necho -e "  4.$W Пиши Клоду: $Y\\"создай город\\"$W — он сам вызовет API"\necho -e ""\necho -e "  Ctrl+C — остановить сервер"\necho -e "$B══════════════════════════════════════════════════════$W"\necho -e ""\n\nnode src/index.js\n';
 _F['.gitignore']='node_modules/\npackage-lock.json\n';
   var _P='У тебя есть доступ к 3D игровому движку SashaAI GameDev Engine через HTTP API.\n\nБазовый URL: ' + MCP_CONFIG.apiBase + '\n\nENDPOINTS:\n1. GET ' + MCP_CONFIG.apiBase + '/tools — список всех инструментов\n2. GET ' + MCP_CONFIG.apiBase + '/tools/{имя} — параметры конкретного инструмента\n3. POST ' + MCP_CONFIG.apiBase + '/call — вызвать один инструмент\n   Body: {"tool": "add_cube", "params": {"x": 1, "y": 2, "z": 3, "color": "#ff0000"}}\n4. POST ' + MCP_CONFIG.apiBase + '/call-batch — вызвать несколько инструментов подряд\n   Body: {"calls": [{"tool": "scene_clear", "params": {}}, {"tool": "add_cube", "params": {"x": 0}}]}\n\nКогда пользователь просит создать 3D сцену, ты формируешь JSON для POST /call-batch с нужными инструментами.\nНе выдумывай инструменты — сначала проверь список через GET /tools.\n\nПример: пользователь пишет "создай город"\nТы отправляешь:\nPOST ' + MCP_CONFIG.apiBase + '/call-batch\n{"calls": [\n  {"tool": "scene_clear", "params": {}},\n  {"tool": "add_plane", "params": {"width": 50, "height": 50, "color": "#555555"}},\n  {"tool": "add_cube", "params": {"x": -5, "width": 3, "height": 6, "depth": 3, "color": "#888888"}},\n  {"tool": "add_point_light", "params": {"x": 0, "y": 10, "intensity": 1}},\n  {"tool": "add_ambient_light", "params": {"intensity": 0.4}}\n]}';
@@ -21967,47 +21604,25 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   };
 
   window.mcpDownloadServer=function(){
-    try {
-      _l('>> Создаю ZIP архив MCP сервера...','mcp-info');
-      if(typeof JSZip==='undefined'){_l('<< JSZip не загружен! Обнови страницу (Ctrl+Shift+R).','mcp-err');return;}
-      var zip=new JSZip();
-      var fileCount=0;
-      for(var n in _F){
-        if(_F.hasOwnProperty(n)){zip.file(n,_F[n]);fileCount++;}
-      }
-      _l('>> Файлов в архиве: '+fileCount,'mcp-info');
-      zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}}).then(function(blob){
-        _l('>> ZIP готов, размер: '+(blob.size/1024).toFixed(1)+' KB','mcp-info');
-        try {
-          var u=URL.createObjectURL(blob),a=document.createElement('a');
-          a.href=u;a.download='sashaai-mcp-server.zip';
-          a.style.display='none';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(u);},1000);
-          _l('<< ZIP скачан!','mcp-ok');
-          _l('   1. Распакуй sashaai-mcp-server.zip','mcp-info');
-          _l('   2. Двойной клик на START.bat','mcp-info');
-          _l('   3. Готово! Открой http://localhost:3000/panel','mcp-info');
-          var s=document.getElementById('mcpStep1');if(s)s.classList.add('done');
-        }catch(e2){_l('<< Ошибка скачивания: '+e2.message,'mcp-err');}
-      }).catch(function(e){_l('<< Ошибка создания ZIP: '+e.message,'mcp-err');console.error(e);});
-    }catch(e){_l('<< Ошибка: '+e.message,'mcp-err');console.error(e);}
+    _l('>> Создаю ZIP архив MCP сервера...','mcp-info');
+    if(typeof JSZip==='undefined'){_l('<< JSZip не загружен! Проверь интернет.','mcp-err');return;}
+    var zip=new JSZip(),folder=zip.folder('sashaai-mcp-server');
+    for(var n in _F){folder.file(n,_F[n]);}
+    zip.generateAsync({type:'blob'}).then(function(blob){
+      var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='sashaai-mcp-server.zip';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+      _l('<< ZIP скачан! Размер: '+(blob.size/1024).toFixed(1)+' KB','mcp-ok');_l('   Распакуй и запусти START.bat','mcp-info');
+      var s=document.getElementById('mcpStep1');if(s)s.classList.add('done');
+    }).catch(function(e){_l('<< Ошибка ZIP: '+e.message,'mcp-err');});
   };
+
 })();
 </script>
 
-<!-- ============================================================ -->
-<!-- SashaAI -> Ollama мост для вкладки "AI Agent"                -->
-<!-- Заменяет WebLLM на локальную Ollama через node src/index.js  -->
-<!-- Плюс: голосовой ввод (микрофон) и озвучка ответов (TTS)      -->
-<!-- ============================================================ -->
 <script>
 (function () {
   var OLLAMA_CHAT_API = 'http://localhost:3000/ai-chat';
   var ollamaHistory = [];
   var ollamaBusy = false;
-
   function addChat(type, text) {
     var chat = document.getElementById('eng-ai-chat');
     if (!chat) return;
@@ -22017,7 +21632,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
   }
-
   function removeThinking() {
     var chat = document.getElementById('eng-ai-chat');
     if (!chat) return;
@@ -22027,17 +21641,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       if (last.textContent.indexOf('Думаю...') !== -1) last.remove();
     }
   }
-
-  function speakIfEnabled(text) {
-    try {
-      if (typeof SashaTTS !== 'undefined' && SashaTTS.isEnabled && SashaTTS.isEnabled()) {
-        // Не озвучиваем служебные строки с вызовами инструментов (🔧 ...)
-        if (text && text.indexOf('🔧') !== 0) SashaTTS.speak(text);
-      }
-    } catch (e) { /* тихо игнорируем */ }
-  }
-
-  // ---- Основная отправка сообщения (текст) ----
   EngineApp.sendAI = async function () {
     var input = document.getElementById('eng-ai-input');
     if (!input) return;
@@ -22066,12 +21669,11 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         if (data.toolLog && data.toolLog.length) {
           var logText = data.toolLog.map(function (t) {
             return '🔧 ' + t.tool + '(' + JSON.stringify(t.params) + ')';
-          }).join('\n');
+          }).join('
+');
           addChat('ai', logText);
         }
-        var reply = data.reply || '(пустой ответ)';
-        addChat('ai', reply);
-        speakIfEnabled(reply);
+        addChat('ai', data.reply || '(пустой ответ)');
       }
     } catch (e) {
       removeThinking();
@@ -22080,56 +21682,10 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       ollamaBusy = false;
     }
   };
-
-  // ---- Голосовой ввод для вкладки AI Agent ----
-  function engVoiceInput() {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Голосовой ввод не поддерживается в этом браузере. Используй Chrome.');
-      return;
-    }
-    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var recognition = new SR();
-    recognition.lang = 'ru-RU';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    var input = document.getElementById('eng-ai-input');
-    var micBtn = document.getElementById('eng-ai-mic-btn');
-    if (micBtn) micBtn.style.color = '#ef4444';
-    recognition.onresult = function (event) {
-      var transcript = event.results[0][0].transcript;
-      if (input) { input.value = transcript; input.focus(); }
-      EngineApp.sendAI(); // сразу отправляем распознанный текст
-    };
-    recognition.onerror = function (event) {
-      console.warn('Voice input error:', event.error);
-    };
-    recognition.onend = function () { if (micBtn) micBtn.style.color = ''; };
-    recognition.start();
-  }
-
-  // Добавляем кнопку микрофона рядом с полем ввода (если её ещё нет)
-  function addMicButton() {
-    var sendBtn = document.getElementById('ai-send-btn');
-    if (!sendBtn || document.getElementById('eng-ai-mic-btn')) return;
-    var micBtn = document.createElement('button');
-    micBtn.id = 'eng-ai-mic-btn';
-    micBtn.title = 'Голосовой ввод';
-    micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-    micBtn.style.cssText = sendBtn.style.cssText || '';
-    micBtn.onclick = engVoiceInput;
-    sendBtn.parentNode.insertBefore(micBtn, sendBtn);
-  }
-
-  // Пробуем сразу и по таймеру (на случай если вкладка ещё не отрисована при загрузке)
-  addMicButton();
-  setTimeout(addMicButton, 1000);
-  setTimeout(addMicButton, 3000);
 })();
 </script>
 </body>
 </html>
-
-
 
 
 
