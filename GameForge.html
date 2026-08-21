@@ -14,6 +14,8 @@
 
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>GameForge — Игровая платформа</title>
+<!-- Chart.js for professional analytics charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{--bg:#09090b;--bg2:#18181b;--bg3:#27272a;--text:#fafafa;--text2:#a1a1aa;--accent:#10b981;--accent2:#059669;--border:#27272a;--shadow:rgba(0,0,0,.5);--card:#18181b;--overlay:rgba(0,0,0,.85);--toast:#18181b;--danger:#ef4444}
 [data-theme="light"]{--bg:#fafafa;--bg2:#fff;--bg3:#f4f4f5;--text:#09090b;--text2:#71717a;--accent:#059669;--accent2:#047857;--border:#e4e4e7;--shadow:rgba(0,0,0,.08);--card:#fff;--overlay:rgba(0,0,0,.6);--toast:#fff;--danger:#ef4444}
@@ -128,6 +130,108 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 .toast.success{border-left:3px solid var(--accent)}.toast.error{border-left:3px solid var(--danger)}.toast.info{border-left:3px solid #3b82f6}
 @keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
 @media(max-width:640px){header{padding:12px 16px}.search-box{min-width:100%;order:5}.filters{width:100%;order:6}.stats-bar{padding:10px 16px;gap:16px}main{padding:16px}.grid{grid-template-columns:1fr}.sheet{padding:20px}.player-wrap{width:100vw;height:100vh;border-radius:0}.analytics-cards{grid-template-columns:1fr 1fr}.analytics-panel{padding:16px;width:100%;max-width:100%;border-radius:16px 16px 0 0}}
+
+/* === STARS RATING === */
+.stars{display:inline-flex;flex-direction:row-reverse;gap:2px;cursor:pointer}
+.stars input{display:none}
+.stars label{font-size:18px;color:var(--bg3);cursor:pointer;transition:color .15s}
+.stars label:before{content:'★'}
+.stars input:checked ~ label,
+.stars label:hover,
+.stars label:hover ~ label{color:#fbbf24}
+.stars-readonly{display:inline-flex;gap:2px;font-size:14px}
+.stars-readonly .star{color:var(--bg3)}
+.stars-readonly .star.filled{color:#fbbf24}
+.rating-text{font-size:11px;color:var(--text2);margin-left:6px}
+
+/* === COMMENTS === */
+.comments-section{margin-top:20px;border-top:1px solid var(--border);padding-top:16px}
+.comments-list{max-height:240px;overflow-y:auto;margin-bottom:12px}
+.comment-item{padding:10px 12px;border-radius:10px;background:var(--bg3);margin-bottom:8px;border:1px solid var(--border)}
+.comment-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.comment-author{font-size:13px;font-weight:700;color:var(--accent)}
+.comment-date{font-size:11px;color:var(--text2)}
+.comment-text{font-size:13px;color:var(--text);line-height:1.4;word-break:break-word}
+.comment-empty{color:var(--text2);font-size:13px;padding:12px;text-align:center}
+.comment-input{display:flex;gap:8px;margin-top:8px}
+.comment-input input{flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none}
+.comment-input input:focus{border-color:var(--accent)}
+.comment-input button{padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-weight:600}
+.comment-input button:hover{background:var(--accent2)}
+
+/* === GAME DETAIL MODAL === */
+.detail-overlay{position:fixed;inset:0;z-index:200;background:var(--overlay);display:none;align-items:center;justify-content:center;animation:fadeIn .2s;padding:20px}
+.detail-overlay.open{display:flex}
+.detail-panel{background:var(--bg2);border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;padding:24px;animation:slideUp .3s}
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px}
+.detail-header h2{font-size:22px;font-weight:800;flex:1;line-height:1.2}
+.detail-cover{width:100%;height:200px;border-radius:12px;overflow:hidden;margin-bottom:16px;background:var(--bg3)}
+.detail-cover img{width:100%;height:100%;object-fit:cover}
+.detail-meta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;font-size:13px;color:var(--text2)}
+.detail-meta strong{color:var(--text)}
+.detail-actions{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.btn-primary{padding:10px 20px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-primary:hover{background:var(--accent2)}
+.btn-secondary{padding:10px 16px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-secondary.liked{color:#ef4444;border-color:#ef4444}
+
+/* === ANALYTICS TAB (full-page) === */
+.analytics-page{display:none;padding:24px;max-width:1200px;margin:0 auto}
+.analytics-page.active{display:block}
+.analytics-page h1{font-size:28px;font-weight:800;margin-bottom:8px}
+.analytics-page .subtitle{color:var(--text2);font-size:14px;margin-bottom:24px}
+.analytics-tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0}
+.analytics-tab{padding:10px 18px;border:none;background:transparent;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.analytics-tab:hover{color:var(--text)}
+.analytics-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.metric-card{background:var(--card);border-radius:14px;padding:20px;border:1px solid var(--border);transition:transform .2s}
+.metric-card:hover{transform:translateY(-2px)}
+.metric-card .m-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.metric-card .m-icon.green{background:rgba(16,185,129,.15);color:var(--accent)}
+.metric-card .m-icon.blue{background:rgba(59,130,246,.15);color:#3b82f6}
+.metric-card .m-icon.red{background:rgba(239,68,68,.15);color:var(--danger)}
+.metric-card .m-icon.yellow{background:rgba(251,191,36,.15);color:#fbbf24}
+.metric-card .m-icon.purple{background:rgba(168,85,247,.15);color:#a855f7}
+.metric-card .m-value{font-size:32px;font-weight:800;line-height:1.1;margin-bottom:4px}
+.metric-card .m-label{font-size:13px;color:var(--text2)}
+.metric-card .m-delta{font-size:12px;margin-top:6px;display:inline-flex;align-items:center;gap:4px}
+.metric-card .m-delta.up{color:var(--accent)}
+.metric-card .m-delta.down{color:var(--danger)}
+.chart-card{background:var(--card);border-radius:14px;padding:20px;border:1px solid var(--border);margin-bottom:20px}
+.chart-card h3{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.chart-card h3 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.chart-canvas-wrap{position:relative;height:280px}
+.chart-canvas-wrap.tall{height:340px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12px;color:var(--text2)}
+.chart-legend .leg{display:inline-flex;align-items:center;gap:6px}
+.chart-legend .leg .swatch{width:12px;height:12px;border-radius:3px;display:inline-block}
+.section-title{font-size:18px;font-weight:700;margin:24px 0 16px;display:flex;align-items:center;justify-content:space-between}
+.section-title .filter{display:flex;gap:6px}
+.section-title .filter button{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer}
+.section-title .filter button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.games-table{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.games-table table{width:100%;border-collapse:collapse}
+.games-table th{padding:12px 16px;text-align:left;font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.games-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+.games-table tr:last-child td{border-bottom:none}
+.games-table tr:hover{background:var(--bg3)}
+.games-table .game-name{font-weight:600;color:var(--text)}
+.games-table .game-stats{display:flex;gap:12px;color:var(--text2);font-size:12px}
+.games-table .game-stats span{display:inline-flex;align-items:center;gap:3px}
+.games-table .rating-cell{display:inline-flex;align-items:center;gap:6px}
+.games-table .rating-cell .mini-stars{color:#fbbf24;font-size:12px}
+.games-table .rating-cell .rating-num{font-weight:700;color:var(--text)}
+.leaves-list{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.leave-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px}
+.leave-item:last-child{border-bottom:none}
+.leave-item .l-icon{width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,.15);color:var(--danger);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.leave-item .l-info{flex:1;min-width:0}
+.leave-item .l-game{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leave-item .l-time{color:var(--text2);font-size:11px;margin-top:2px}
+.leave-item .l-duration{color:var(--accent);font-weight:700;font-size:12px;flex-shrink:0}
+@media(max-width:640px){.analytics-page{padding:16px}.analytics-grid{grid-template-columns:1fr 1fr}.chart-canvas-wrap{height:220px}.games-table{overflow-x:auto}.games-table table{min-width:600px}}
 </style>
 </head>
 <body data-theme="dark">
@@ -153,6 +257,9 @@ main{padding:24px;max-width:1200px;margin:0 auto}
     <button class="icon-btn" id="analyticsBtn" title="Аналитика">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
     </button>
+    <button class="icon-btn" id="analyticsPageBtn" title="Полная аналитика">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+    </button>
     <button class="icon-btn" id="themeBtn" title="Сменить тему">
       <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
@@ -175,6 +282,27 @@ main{padding:24px;max-width:1200px;margin:0 auto}
     <p>Игры скоро появятся...</p>
   </div>
 </main>
+
+<!-- ============ FULL ANALYTICS PAGE ============ -->
+<section class="analytics-page" id="analyticsPage">
+  <h1>Аналитика</h1>
+  <p class="subtitle">Полная статистика посещений, запусков и отвалов игроков</p>
+
+  <div class="analytics-tabs">
+    <button class="analytics-tab active" data-atab="overview">Обзор</button>
+    <button class="analytics-tab" data-atab="visits">Посещения</button>
+    <button class="analytics-tab" data-atab="games">Игры</button>
+    <button class="analytics-tab" data-atab="leaves">Отвалы</button>
+    <button class="analytics-tab" data-atab="ratings">Оценки</button>
+  </div>
+
+  <div id="atabContent"></div>
+</section>
+
+<!-- ============ GAME DETAIL MODAL ============ -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel" id="detailPanel"></div>
+</div>
 
 <div class="overlay" id="playerOverlay">
   <div class="player-wrap">
@@ -526,9 +654,19 @@ function renderCatalog(){
       +'<div class="info">'
       +(isHTML?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Играть':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Скачать')
       +'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +(function(){
+        var rt=getRating(g.id);
+        if(rt.count===0)return '';
+        var full=Math.round(rt.avg);
+        var sh='';
+        for(var s=1;s<=5;s++){sh+='<span style="color:'+(s<=full?'#fbbf24':'var(--bg3)')+';font-size:11px">★</span>'}
+        return '<span class="card-rating" style="display:inline-flex;align-items:center;gap:2px">'+sh+'</span><span style="font-size:11px;color:var(--text2);margin-right:4px">'+rt.avg+'</span>';
+      })()
       +'<button class="like-btn'+(isLiked?" liked":"")+'" data-like="'+esc(g.id)+'">'
       +'<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(isLiked?"#ef4444":"none")+'" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
       +'</button>'
+      +'</div>'
       +'</div></div>';
   }
   catalog.innerHTML=html;
@@ -727,23 +865,105 @@ function onCoverSelect(f){
   document.getElementById("coverZone").classList.add("has-file");
 }
 
-/* ── Analytics ── */
+/* ── Analytics (extended: visits, plays, leaves, ratings) ── */
 function loadAnalytics(){
-  try{var d=localStorage.getItem("gf_analytics");analytics=d?JSON.parse(d):{visits:[],dailyPlays:{}};if(!analytics.visits)analytics.visits=[];if(!analytics.dailyPlays)analytics.dailyPlays={}}
-  catch(e){analytics={visits:[],dailyPlays:{}}}
+  try{
+    var d=localStorage.getItem("gf_analytics");
+    analytics=d?JSON.parse(d):{};
+    if(!analytics.visits)analytics.visits=[];
+    if(!analytics.dailyPlays)analytics.dailyPlays={};
+    if(!analytics.dailyLeaves)analytics.dailyLeaves={};      // NEW: {date: {gameName: count}}
+    if(!analytics.sessionLeaves)analytics.sessionLeaves=[];  // NEW: [{game, startedAt, leftAt, durationSec}]
+    if(!analytics.ratings)analytics.ratings={};              // NEW: {gameId: {sum, count, voters:{}}}
+    if(!analytics.comments)analytics.comments={};            // NEW: {gameId: [{author,text,date}]}
+  }catch(e){analytics={visits:[],dailyPlays:{},dailyLeaves:{},sessionLeaves:[],ratings:{},comments:{}}}
 }
 function saveAnalytics(){try{localStorage.setItem("gf_analytics",JSON.stringify(analytics))}catch(e){}}
+
 function trackVisit(){
-  var t=dk(new Date());var last=analytics.visits.length>0?analytics.visits[analytics.visits.length-1]:"";
-  if(last===t)return;analytics.visits.push(t);if(analytics.visits.length>365)analytics.visits=analytics.visits.slice(-365);saveAnalytics();
+  var t=dk(new Date());
+  var last=analytics.visits.length>0?analytics.visits[analytics.visits.length-1]:"";
+  if(last===t)return;
+  analytics.visits.push(t);
+  if(analytics.visits.length>365)analytics.visits=analytics.visits.slice(-365);
+  saveAnalytics();
 }
+
+var currentSession=null;  // {gameName, startedAt}
+
 function trackPlay(name){
-  var t=dk(new Date());if(!analytics.dailyPlays[t])analytics.dailyPlays[t]={};
-  analytics.dailyPlays[t][name]=(analytics.dailyPlays[t][name]||0)+1;saveAnalytics();
+  var t=dk(new Date());
+  if(!analytics.dailyPlays[t])analytics.dailyPlays[t]={};
+  analytics.dailyPlays[t][name]=(analytics.dailyPlays[t][name]||0)+1;
+  // Start session for leave-tracking
+  currentSession={gameName:name,startedAt:Date.now()};
+  saveAnalytics();
 }
+
+function trackLeave(reason){
+  if(!currentSession)return;
+  var game=currentSession.gameName;
+  var dur=Math.round((Date.now()-currentSession.startedAt)/1000);
+  var t=dk(new Date());
+  if(!analytics.dailyLeaves[t])analytics.dailyLeaves[t]={};
+  analytics.dailyLeaves[t][game]=(analytics.dailyLeaves[t][game]||0)+1;
+  // Keep last 200 leave events
+  analytics.sessionLeaves.push({game:game,startedAt:currentSession.startedAt,leftAt:Date.now(),durationSec:dur,reason:reason||"close"});
+  if(analytics.sessionLeaves.length>200)analytics.sessionLeaves=analytics.sessionLeaves.slice(-200);
+  currentSession=null;
+  saveAnalytics();
+}
+
 function dk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function sd(s){var days=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];return days[new Date(s+"T12:00:00").getDay()]}
+function dd(s){return new Date(s+"T12:00:00").getDate()+"."+String(new Date(s+"T12:00:00").getMonth()+1).padStart(2,"0")}
 function get14(){var d=[];var n=new Date();for(var i=13;i>=0;i--){var x=new Date(n);x.setDate(x.getDate()-i);d.push(dk(x))}return d}
+function get30(){var d=[];var n=new Date();for(var i=29;i>=0;i--){var x=new Date(n);x.setDate(x.getDate()-i);d.push(dk(x))}return d}
+function fmtDuration(sec){
+  if(sec<60)return sec+"с";
+  if(sec<3600)return Math.round(sec/60)+"м";
+  return (sec/3600).toFixed(1)+"ч";
+}
+function fmtTimeAgo(ts){
+  var diff=Math.round((Date.now()-ts)/1000);
+  if(diff<60)return "только что";
+  if(diff<3600)return Math.round(diff/60)+" мин назад";
+  if(diff<86400)return Math.round(diff/3600)+" ч назад";
+  return Math.round(diff/86400)+" дн назад";
+}
+
+/* === Ratings === */
+function getRating(gameId){
+  if(!analytics.ratings[gameId])return{sum:0,count:0,avg:0};
+  var r=analytics.ratings[gameId];
+  return{sum:r.sum||0,count:r.count||0,avg:r.count>0?Math.round((r.sum/r.count)*10)/10:0};
+}
+function getUserRating(gameId){
+  var v=localStorage.getItem("gf_rating_"+gameId);
+  return v?parseInt(v):0;
+}
+function setUserRating(gameId,stars){
+  var prev=getUserRating(gameId);
+  if(!analytics.ratings[gameId])analytics.ratings[gameId]={sum:0,count:0,voters:{}};
+  var r=analytics.ratings[gameId];
+  if(prev>0){r.sum-=prev;r.count--}
+  if(stars>0){r.sum+=stars;r.count++}
+  if(r.count<0)r.count=0;
+  if(r.sum<0)r.sum=0;
+  localStorage.setItem("gf_rating_"+gameId,String(stars));
+  saveAnalytics();
+}
+
+/* === Comments === */
+function getComments(gameId){
+  return analytics.comments[gameId]||[];
+}
+function addComment(gameId,author,text){
+  if(!analytics.comments[gameId])analytics.comments[gameId]=[];
+  analytics.comments[gameId].push({author:author||"Гость",text:text,date:Date.now()});
+  if(analytics.comments[gameId].length>50)analytics.comments[gameId]=analytics.comments[gameId].slice(-50);
+  saveAnalytics();
+}
 
 function openAnalytics(){renderAnalyticsPanel();document.getElementById("analyticsOverlay").classList.add("open");document.body.style.overflow="hidden"}
 function closeAnalytics(){document.getElementById("analyticsOverlay").classList.remove("open");document.body.style.overflow=""}
@@ -779,12 +999,386 @@ function renderAnalyticsPanel(){
   document.getElementById("topGames").innerHTML=th}
 }
 
+/* ============ FULL ANALYTICS PAGE (pro) ============ */
+var activeATab="overview";
+var aCharts={};  // Chart.js instances for cleanup
+
+function openAnalyticsPage(){
+  document.querySelector("main").style.display="none";
+  document.querySelector(".stats-bar").style.display="none";
+  document.getElementById("analyticsPage").classList.add("active");
+  renderATab(activeATab);
+  window.scrollTo(0,0);
+}
+function closeAnalyticsPage(){
+  document.querySelector("main").style.display="";
+  document.querySelector(".stats-bar").style.display="";
+  document.getElementById("analyticsPage").classList.remove("active");
+  // Destroy charts to free memory
+  for(var k in aCharts){if(aCharts[k]){aCharts[k].destroy();delete aCharts[k]}}
+}
+
+function renderATab(tab){
+  activeATab=tab;
+  // Update tab buttons
+  var btns=document.querySelectorAll(".analytics-tab");
+  for(var i=0;i<btns.length;i++){btns[i].classList.toggle("active",btns[i].getAttribute("data-atab")===tab)}
+  // Destroy old charts before re-render
+  for(var k in aCharts){if(aCharts[k]){aCharts[k].destroy();delete aCharts[k]}}
+  var c=document.getElementById("atabContent");
+  if(tab==="overview")c.innerHTML=renderOverview();
+  else if(tab==="visits")c.innerHTML=renderVisitsTab();
+  else if(tab==="games")c.innerHTML=renderGamesTab();
+  else if(tab==="leaves")c.innerHTML=renderLeavesTab();
+  else if(tab==="ratings")c.innerHTML=renderRatingsTab();
+  // After HTML is in DOM, init charts
+  setTimeout(initATabCharts,30);
+}
+
+function getMetricCards(){
+  var today=dk(new Date());
+  var totalVisits=analytics.visits.length;
+  var visitsToday=0;for(var i=0;i<analytics.visits.length;i++){if(analytics.visits[i]===today)visitsToday++}
+  var playsToday=0;if(analytics.dailyPlays[today]){for(var k in analytics.dailyPlays[today])playsToday+=analytics.dailyPlays[today][k]}
+  var playsTotal=0;for(var day in analytics.dailyPlays){for(var k in analytics.dailyPlays[day])playsTotal+=analytics.dailyPlays[day][k]}
+  var leavesToday=0;if(analytics.dailyLeaves[today]){for(var k in analytics.dailyLeaves[today])leavesToday+=analytics.dailyLeaves[today][k]}
+  var leavesTotal=analytics.sessionLeaves.length;
+  var avgDur=0;
+  if(analytics.sessionLeaves.length>0){var s=0;for(var i=0;i<analytics.sessionLeaves.length;i++)s+=analytics.sessionLeaves[i].durationSec;avgDur=Math.round(s/analytics.sessionLeaves.length)}
+  var ratingsCount=0;for(var gid in analytics.ratings)ratingsCount+=analytics.ratings[gid].count||0;
+  var commentsCount=0;for(var gid in analytics.comments)commentsCount+=(analytics.comments[gid]||[]).length;
+  return{totalVisits:totalVisits,visitsToday:visitsToday,playsToday:playsToday,playsTotal:playsTotal,leavesToday:leavesToday,leavesTotal:leavesTotal,avgDur:avgDur,ratingsCount:ratingsCount,commentsCount:commentsCount};
+}
+
+function metricCard(icon,color,val,label,delta){
+  var deltaHtml=delta?'<div class="m-delta '+(delta>0?'up':'down')+'">'+(delta>0?'▲':'▼')+' '+Math.abs(delta)+'</div>':'';
+  return '<div class="metric-card"><div class="m-icon '+color+'">'+icon+'</div><div class="m-value">'+val+'</div><div class="m-label">'+label+'</div>'+deltaHtml+'</div>';
+}
+
+function renderOverview(){
+  var m=getMetricCards();
+  var cards=metricCard(svgEye(),"green",m.totalVisits,"Всего посещений")+
+            metricCard(svgPlay(),"blue",m.playsTotal,"Всего запусков")+
+            metricCard(svgLeave(),"red",m.leavesTotal,"Отвалов игроков")+
+            metricCard(svgStar(),"yellow",m.ratingsCount,"Оценок")+
+            metricCard(svgComment(),"purple",m.commentsCount,"Комментариев")+
+            metricCard(svgClock(),"green",fmtDuration(m.avgDur),"Средняя сессия");
+  return '<div class="analytics-grid">'+cards+'</div>'+
+    '<div class="chart-card"><h3><span class="dot" style="background:#10b981"></span>Посещения и запуски (30 дней)</h3><div class="chart-canvas-wrap tall"><canvas id="ovChart1"></canvas></div>'+
+      '<div class="chart-legend"><span class="leg"><span class="swatch" style="background:#10b981"></span>Посещения</span><span class="leg"><span class="swatch" style="background:#3b82f6"></span>Запуски</span><span class="leg"><span class="swatch" style="background:#ef4444"></span>Отвалы</span></div></div>'+
+    '<div class="chart-card"><h3><span class="dot" style="background:#fbbf24"></span>Активность по часам (когда играют)</h3><div class="chart-canvas-wrap"><canvas id="ovChart2"></canvas></div></div>';
+}
+
+function renderVisitsTab(){
+  var m=getMetricCards();
+  var cards=metricCard(svgEye(),"green",m.totalVisits,"Всего посещений")+
+            metricCard(svgEye(),"green",m.visitsToday,"Сегодня")+
+            metricCard(svgPlay(),"blue",m.playsToday,"Запусков сегодня")+
+            metricCard(svgLeave(),"red",m.leavesToday,"Отвалов сегодня");
+  return '<div class="analytics-grid">'+cards+'</div>'+
+    '<div class="chart-card"><h3><span class="dot" style="background:#10b981"></span>Посещения по дням (30 дней)</h3><div class="chart-canvas-wrap tall"><canvas id="visChart1"></canvas></div></div>'+
+    '<div class="chart-card"><h3><span class="dot" style="background:#3b82f6"></span>Запуски игр по дням (30 дней)</h3><div class="chart-canvas-wrap tall"><canvas id="visChart2"></canvas></div></div>'+
+    '<div class="chart-card"><h3><span class="dot" style="background:#ef4444"></span>Отвалы игроков (30 дней)</h3><div class="chart-canvas-wrap"><canvas id="visChart3"></canvas></div></div>';
+}
+
+function renderGamesTab(){
+  // Build totals per game
+  var totals={};for(var day in analytics.dailyPlays){for(var k in analytics.dailyPlays[day]){totals[k]=totals[k]||{plays:0,leaves:0};totals[k].plays+=analytics.dailyPlays[day][k]}}
+  for(var day in analytics.dailyLeaves){for(var k in analytics.dailyLeaves[day]){totals[k]=totals[k]||{plays:0,leaves:0};totals[k].leaves+=analytics.dailyLeaves[day][k]}}
+  // Add ratings
+  for(var gid in analytics.ratings){var g=findGame(gid);if(g){var nm=g.title;totals[nm]=totals[nm]||{plays:0,leaves:0};totals[nm].rating=getRating(gid).avg;totals[nm].ratingsCount=analytics.ratings[gid].count||0}}
+  var arr=[];for(var nm in totals){totals[nm].name=nm;arr.push(totals[nm])}
+  arr.sort(function(a,b){return b.plays-a.plays});
+  var rows="";
+  for(var i=0;i<arr.length;i++){
+    var t=arr[i];
+    var starsHtml="";
+    if(t.rating){var full=Math.round(t.rating);for(var s=1;s<=5;s++){starsHtml+='<span style="color:'+(s<=full?'#fbbf24':'var(--bg3)')+'">★</span>'}}
+    rows+='<tr><td class="game-name">'+esc(t.name)+'</td><td><div class="game-stats"><span>'+svgPlay(12)+' '+t.plays+'</span><span>'+svgLeave(12)+' '+t.leaves+'</span></div></td><td>'+(t.rating?'<div class="rating-cell"><span class="mini-stars">'+starsHtml+'</span><span class="rating-num">'+t.rating+'</span></div>':'—')+'</td></tr>';
+  }
+  if(!rows)rows='<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text2)">Пока нет данных</td></tr>';
+  return '<div class="chart-card"><h3><span class="dot" style="background:#3b82f6"></span>Запуски по играм (за 30 дней)</h3><div class="chart-canvas-wrap tall"><canvas id="gamesChart1"></canvas></div></div>'+
+    '<div class="section-title">Топ игр по запускам</div>'+
+    '<div class="games-table"><table><thead><tr><th>Игра</th><th>Статистика</th><th>Рейтинг</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+function renderLeavesTab(){
+  var m=getMetricCards();
+  var cards=metricCard(svgLeave(),"red",m.leavesTotal,"Всего отвалов")+
+            metricCard(svgLeave(),"red",m.leavesToday,"Сегодня")+
+            metricCard(svgClock(),"green",fmtDuration(m.avgDur),"Средняя сессия")+
+            metricCard(svgPlay(),"blue",m.playsTotal,"Всего запусков");
+  // Recent leaves list
+  var leaves=analytics.sessionLeaves.slice().reverse().slice(0,20);
+  var listHtml="";
+  for(var i=0;i<leaves.length;i++){
+    var l=leaves[i];
+    listHtml+='<div class="leave-item"><div class="l-icon">'+svgLeave(16)+'</div><div class="l-info"><div class="l-game">'+esc(l.game)+'</div><div class="l-time">'+fmtTimeAgo(l.leftAt)+'</div></div><div class="l-duration">'+fmtDuration(l.durationSec)+'</div></div>';
+  }
+  if(!listHtml)listHtml='<div class="leave-item" style="justify-content:center;color:var(--text2)">Пока нет отвалов — все ещё играют!</div>';
+  return '<div class="analytics-grid">'+cards+'</div>'+
+    '<div class="chart-card"><h3><span class="dot" style="background:#ef4444"></span>Отвалы по дням (30 дней)</h3><div class="chart-canvas-wrap"><canvas id="leavesChart1"></canvas></div></div>'+
+    '<div class="section-title">Последние отвалы <span style="font-weight:400;color:var(--text2);font-size:13px">(когда кто-то вышел из игры)</span></div>'+
+    '<div class="leaves-list">'+listHtml+'</div>';
+}
+
+function renderRatingsTab(){
+  var m=getMetricCards();
+  var cards=metricCard(svgStar(),"yellow",m.ratingsCount,"Всего оценок")+
+            metricCard(svgComment(),"purple",m.commentsCount,"Всего комментариев");
+  // Distribution: count of each star value
+  var dist={1:0,2:0,3:0,4:0,5:0};
+  for(var gid in analytics.ratings){
+    var r=analytics.ratings[gid];
+    // Approximate: distribute count evenly across avg rounded
+    var avg=Math.round(r.sum/Math.max(1,r.count));
+    if(avg>=1&&avg<=5)dist[avg]+=r.count;
+  }
+  // Top rated games
+  var rated=[];
+  for(var gid in analytics.ratings){
+    var g=findGame(gid);
+    if(g){var rt=getRating(gid);if(rt.count>0)rated.push({title:g.title,avg:rt.avg,count:rt.count,comments:(analytics.comments[gid]||[]).length})}
+  }
+  rated.sort(function(a,b){return b.avg-a.avg});
+  var topHtml="";
+  for(var i=0;i<rated.length;i++){
+    var r=rated[i];
+    var starsHtml="";var full=Math.round(r.avg);for(var s=1;s<=5;s++){starsHtml+='<span style="color:'+(s<=full?'#fbbf24':'var(--bg3)')+'">★</span>'}
+    topHtml+='<tr><td class="game-name">'+esc(r.title)+'</td><td><div class="rating-cell"><span class="mini-stars">'+starsHtml+'</span><span class="rating-num">'+r.avg+'</span></div></td><td>'+r.count+'</td><td>'+r.comments+'</td></tr>';
+  }
+  if(!topHtml)topHtml='<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text2)">Пока нет оценок</td></tr>';
+  return '<div class="analytics-grid">'+cards+'</div>'+
+    '<div class="chart-card"><h3><span class="dot" style="background:#fbbf24"></span>Распределение оценок</h3><div class="chart-canvas-wrap"><canvas id="ratingsChart1"></canvas></div></div>'+
+    '<div class="section-title">Лучшие игры по оценкам</div>'+
+    '<div class="games-table"><table><thead><tr><th>Игра</th><th>Рейтинг</th><th>Голосов</th><th>Комментариев</th></tr></thead><tbody>'+topHtml+'</tbody></table></div>';
+}
+
+/* === Chart.js initialization === */
+function initATabCharts(){
+  if(typeof Chart==="undefined"){console.warn("Chart.js not loaded");return}
+  var days30=get30();
+  var labels30=days30.map(dd);
+  var theme=document.body.getAttribute("data-theme")||"dark";
+  var gridColor=theme==="dark"?"rgba(255,255,255,.06)":"rgba(0,0,0,.06)";
+  var textColor=theme==="dark"?"#a1a1aa":"#71717a";
+  Chart.defaults.color=textColor;
+  Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
+
+  // === Overview charts ===
+  if(document.getElementById("ovChart1")){
+    var visData=days30.map(function(d){var c=0;for(var i=0;i<analytics.visits.length;i++){if(analytics.visits[i]===d)c++}return c});
+    var playsData=days30.map(function(d){var c=0;if(analytics.dailyPlays[d]){for(var k in analytics.dailyPlays[d])c+=analytics.dailyPlays[d][k]}return c});
+    var leavesData=days30.map(function(d){var c=0;if(analytics.dailyLeaves[d]){for(var k in analytics.dailyLeaves[d])c+=analytics.dailyLeaves[d][k]}return c});
+    aCharts.ov1=new Chart(document.getElementById("ovChart1"),{
+      type:"line",
+      data:{labels:labels30,datasets:[
+        {label:"Посещения",data:visData,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.15)",fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:5},
+        {label:"Запуски",data:playsData,borderColor:"#3b82f6",backgroundColor:"rgba(59,130,246,.15)",fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:5},
+        {label:"Отвалы",data:leavesData,borderColor:"#ef4444",backgroundColor:"rgba(239,68,68,.15)",fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:5}
+      ]},
+      options:chartOpts(gridColor,textColor)
+    });
+  }
+  if(document.getElementById("ovChart2")){
+    // Hourly activity (last 30 days)
+    var hourly=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    for(var i=0;i<analytics.sessionLeaves.length;i++){var h=new Date(analytics.sessionLeaves[i].leftAt).getHours();hourly[h]++}
+    aCharts.ov2=new Chart(document.getElementById("ovChart2"),{
+      type:"bar",
+      data:{labels:hourly.map(function(_,i){return i+":00"}),datasets:[{label:"Отвалы по часам",data:hourly,backgroundColor:"#fbbf24",borderRadius:4}]},
+      options:chartOpts(gridColor,textColor)
+    });
+  }
+
+  // === Visits charts ===
+  if(document.getElementById("visChart1")){
+    var vd=days30.map(function(d){var c=0;for(var i=0;i<analytics.visits.length;i++){if(analytics.visits[i]===d)c++}return c});
+    aCharts.vis1=new Chart(document.getElementById("visChart1"),{
+      type:"line",
+      data:{labels:labels30,datasets:[{label:"Посещения",data:vd,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.2)",fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:6}]},
+      options:chartOpts(gridColor,textColor)
+    });
+  }
+  if(document.getElementById("visChart2")){
+    var pd=days30.map(function(d){var c=0;if(analytics.dailyPlays[d]){for(var k in analytics.dailyPlays[d])c+=analytics.dailyPlays[d][k]}return c});
+    aCharts.vis2=new Chart(document.getElementById("visChart2"),{
+      type:"line",
+      data:{labels:labels30,datasets:[{label:"Запуски",data:pd,borderColor:"#3b82f6",backgroundColor:"rgba(59,130,246,.2)",fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:6}]},
+      options:chartOpts(gridColor,textColor)
+    });
+  }
+  if(document.getElementById("visChart3")){
+    var ld=days30.map(function(d){var c=0;if(analytics.dailyLeaves[d]){for(var k in analytics.dailyLeaves[d])c+=analytics.dailyLeaves[d][k]}return c});
+    aCharts.vis3=new Chart(document.getElementById("visChart3"),{
+      type:"bar",
+      data:{labels:labels30,datasets:[{label:"Отвалы",data:ld,backgroundColor:"#ef4444",borderRadius:4}]},
+      options:chartOpts(gridColor,textColor)
+    });
+  }
+
+  // === Games chart (top 10) ===
+  if(document.getElementById("gamesChart1")){
+    var totals={};for(var day in analytics.dailyPlays){for(var k in analytics.dailyPlays[day]){totals[k]=(totals[k]||0)+analytics.dailyPlays[day][k]}}
+    var arr=[];for(var k in totals)arr.push({name:k,plays:totals[k]});
+    arr.sort(function(a,b){return b.plays-a.plays});
+    var top10=arr.slice(0,10);
+    aCharts.games1=new Chart(document.getElementById("gamesChart1"),{
+      type:"bar",
+      data:{labels:top10.map(function(g){return g.name}),datasets:[{label:"Запуски",data:top10.map(function(g){return g.plays}),backgroundColor:"#3b82f6",borderRadius:4}]},
+      options:Object.assign({},chartOpts(gridColor,textColor),{indexAxis:"y",scales:{x:{grid:{color:gridColor}},y:{grid:{display:false}}}})
+    });
+  }
+
+  // === Leaves chart ===
+  if(document.getElementById("leavesChart1")){
+    var ld2=days30.map(function(d){var c=0;if(analytics.dailyLeaves[d]){for(var k in analytics.dailyLeaves[d])c+=analytics.dailyLeaves[d][k]}return c});
+    aCharts.leaves1=new Chart(document.getElementById("leavesChart1"),{
+      type:"line",
+      data:{labels:labels30,datasets:[{label:"Отвалы",data:ld2,borderColor:"#ef4444",backgroundColor:"rgba(239,68,68,.2)",fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:6}]},
+      options:chartOpts(gridColor,textColor)
+    });
+  }
+
+  // === Ratings distribution ===
+  if(document.getElementById("ratingsChart1")){
+    var dist=[0,0,0,0,0];
+    for(var gid in analytics.ratings){
+      var r=analytics.ratings[gid];
+      var avg=Math.round(r.sum/Math.max(1,r.count));
+      if(avg>=1&&avg<=5)dist[avg-1]+=r.count;
+    }
+    aCharts.ratings1=new Chart(document.getElementById("ratingsChart1"),{
+      type:"bar",
+      data:{labels:["1★","2★","3★","4★","5★"],datasets:[{label:"Голосов",data:dist,backgroundColor:["#ef4444","#f97316","#fbbf24","#84cc16","#10b981"],borderRadius:6}]},
+      options:chartOpts(gridColor,textColor)
+    });
+  }
+}
+
+function chartOpts(gridColor,textColor){
+  return{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:true,position:"top",labels:{color:textColor,font:{size:12}}},tooltip:{backgroundColor:"rgba(0,0,0,.85)",titleColor:"#fff",bodyColor:"#fff",borderColor:"rgba(255,255,255,.1)",borderWidth:1,padding:10}},
+    scales:{
+      x:{grid:{color:gridColor,drawBorder:false},ticks:{color:textColor,font:{size:11},maxRotation:45,minRotation:0}},
+      y:{grid:{color:gridColor,drawBorder:false},ticks:{color:textColor,font:{size:11}},beginAtZero:true}
+    }
+  };
+}
+
+/* === SVG icons for metric cards === */
+function svgEye(s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>'}
+function svgPlay(s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'}
+function svgLeave(s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'}
+function svgStar(s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'}
+function svgComment(s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'}
+function svgClock(s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'}
+
+function findGame(id){for(var i=0;i<games.length;i++){if(games[i].id===id)return games[i]}return null}
+
+/* === Game detail modal (with ratings + comments) === */
+function openGameDetail(id){
+  var g=findGame(id);if(!g)return;
+  var isLiked=liked.indexOf(g.id)!==-1;
+  var rt=getRating(g.id);
+  var userStars=getUserRating(g.id);
+  var comments=getComments(g.id);
+
+  var coverHtml="";
+  if(g.cover){coverHtml='<img src="'+esc(g.cover)+'" alt="">'}
+  else{var h=0;for(var ci=0;ci<(g.title||"").length;ci++){h=((h<<5)-h)+(g.title||"").charCodeAt(ci);h|=0}var h1=Math.abs(h)%360;var h2=(h1+40+(Math.abs(h>>8)%60))%360;coverHtml='<div style="width:100%;height:100%;background:linear-gradient(135deg,hsl('+h1+',70%,40%),hsl('+h2+',60%,30%))"></div>'}
+
+  var tagsHtml="";if(g.tags){var ta=g.tags.split(",");for(var j=0;j<ta.length;j++){if(ta[j].trim())tagsHtml+='<span style="padding:3px 8px;border-radius:6px;font-size:11px;background:var(--bg3);color:var(--text2)">'+esc(ta[j].trim())+'</span> '}}
+  var isHTML=(g.type||"").toLowerCase()==="html"||(g.path||"").toLowerCase().endsWith(".html");
+
+  // Stars input (5 radio buttons, reversed)
+  var starsInputHtml='<div class="stars">';
+  for(var s=5;s>=1;s--){starsInputHtml+='<input type="radio" name="stars-'+g.id+'" id="star-'+g.id+'-'+s+'" value="'+s+'" '+(userStars===s?'checked':'')+'><label for="star-'+g.id+'-'+s+'"></label>'}
+  starsInputHtml+='</div><span class="rating-text" id="ratingText-'+g.id+'">'+(rt.count>0?'Средняя: '+rt.avg+' ('+rt.count+' голосов)':'Пока без оценок')+'</span>';
+
+  // Comments list
+  var commentsHtml="";
+  if(comments.length===0){commentsHtml='<div class="comment-empty">Пока нет комментариев. Будь первым!</div>'}
+  else{for(var i=0;i<comments.length;i++){var c=comments[i];commentsHtml+='<div class="comment-item"><div class="comment-head"><span class="comment-author">'+esc(c.author)+'</span><span class="comment-date">'+fmtTimeAgo(c.date)+'</span></div><div class="comment-text">'+esc(c.text)+'</div></div>'}}
+
+  var playBtn=isHTML?'<button class="btn-primary" id="detailPlayBtn">'+svgPlay(16)+' Играть</button>':'<button class="btn-primary" id="detailPlayBtn">⬇ Скачать</button>';
+
+  document.getElementById("detailPanel").innerHTML=
+    '<div class="detail-header"><h2>'+esc(g.title||"Без названия")+'</h2><button class="sheet-close" id="detailClose">&times;</button></div>'+
+    '<div class="detail-cover">'+coverHtml+'</div>'+
+    '<div class="detail-meta"><div>Автор: <strong>'+esc(g.author||"—")+'</strong></div><div>Тип: <strong>'+esc(g.type||"HTML")+'</strong></div><div>Запусков: <strong id="detailPlays">'+countPlays(g.title)+'</strong></div></div>'+
+    (g.description?'<div style="font-size:14px;color:var(--text);line-height:1.5;margin-bottom:16px">'+esc(g.description)+'</div>':'')+
+    (tagsHtml?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px">'+tagsHtml+'</div>':'')+
+    '<div class="detail-actions">'+playBtn+'<button class="btn-secondary'+(isLiked?' liked':'')+'" id="detailLikeBtn">'+svgHeart(16)+' '+(isLiked?'В избранном':'В избранное')+'</button></div>'+
+    '<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text2)">Оцени игру:</div>'+starsInputHtml+'</div>'+
+    '<div class="comments-section"><div style="font-size:14px;font-weight:700;margin-bottom:12px">Комментарии ('+comments.length+')</div><div class="comments-list" id="commentsList">'+commentsHtml+'</div>'+
+      '<div class="comment-input"><input type="text" id="commentAuthor" placeholder="Ваше имя" maxlength="30"><input type="text" id="commentText" placeholder="Ваш комментарий..." maxlength="500"><button id="commentSend">Отправить</button></div></div>';
+
+  document.getElementById("detailOverlay").classList.add("open");
+  document.body.style.overflow="hidden";
+
+  // Wire up events
+  document.getElementById("detailClose").addEventListener("click",closeGameDetail);
+  document.getElementById("detailPlayBtn").addEventListener("click",function(){
+    trackPlay(g.title||"game");
+    if(isHTML){document.getElementById("playerFrame").src=g.path;document.getElementById("playerOverlay").classList.add("open")}
+    else{var a=document.createElement("a");a.href=g.path;a.download="";document.body.appendChild(a);a.click();a.remove()}
+    document.getElementById("detailPlays").textContent=countPlays(g.title);
+  });
+  document.getElementById("detailLikeBtn").addEventListener("click",function(){
+    toggleLike(g.id);
+    var btn=document.getElementById("detailLikeBtn");
+    var isL=liked.indexOf(g.id)!==-1;
+    btn.classList.toggle("liked",isL);
+    btn.innerHTML=svgHeart(16)+' '+(isL?'В избранном':'В избранное');
+  });
+
+  // Stars events
+  for(var s=1;s<=5;s++){
+    (function(stars){
+      var el=document.getElementById("star-"+g.id+"-"+stars);
+      if(el)el.addEventListener("change",function(){
+        setUserRating(g.id,stars);
+        var newRt=getRating(g.id);
+        document.getElementById("ratingText-"+g.id).textContent='Средняя: '+newRt.avg+' ('+newRt.count+' голосов)';
+        showToast("Спасибо за оценку! ⭐","success");
+      });
+    })(s);
+  }
+
+  // Comment send
+  document.getElementById("commentSend").addEventListener("click",function(){
+    var author=document.getElementById("commentAuthor").value.trim();
+    var text=document.getElementById("commentText").value.trim();
+    if(!text){showToast("Введите текст комментария","error");return}
+    addComment(g.id,author||"Гость",text);
+    openGameDetail(id);  // re-render
+  });
+  document.getElementById("commentText").addEventListener("keydown",function(e){if(e.key==="Enter"){document.getElementById("commentSend").click()}});
+  document.getElementById("commentAuthor").addEventListener("keydown",function(e){if(e.key==="Enter"){document.getElementById("commentText").focus()}});
+}
+
+function closeGameDetail(){
+  document.getElementById("detailOverlay").classList.remove("open");
+  document.body.style.overflow="";
+}
+
+function countPlays(name){
+  var c=0;
+  for(var day in analytics.dailyPlays){for(var k in analytics.dailyPlays[day]){if(k===name)c+=analytics.dailyPlays[day][k]}}
+  return c;
+}
+
+function svgHeart(s){s=s||16;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'}
+
 /* ── Events ── */
 function setupEvents(){
   document.getElementById("themeBtn").addEventListener("click",toggleTheme);
   document.getElementById("analyticsBtn").addEventListener("click",openAnalytics);
   document.getElementById("analyticsClose").addEventListener("click",closeAnalytics);
-  document.getElementById("playerClose").addEventListener("click",closePlayer);
+  document.getElementById("analyticsPageBtn").addEventListener("click",openAnalyticsPage);
+  document.getElementById("playerClose").addEventListener("click",function(){trackLeave("close");closePlayer()});
   document.getElementById("uploadBtn").addEventListener("click",openUpload);
   document.getElementById("uploadClose").addEventListener("click",closeUpload);
   document.getElementById("submitBtn").addEventListener("click",submitUpload);
@@ -815,6 +1409,10 @@ function setupEvents(){
     });
   }
 
+  // Analytics page tabs
+  var atabs=document.querySelectorAll(".analytics-tab");
+  for(var i=0;i<atabs.length;i++){atabs[i].addEventListener("click",function(){renderATab(this.getAttribute("data-atab"))})}
+
   setupDrop("dropZone","fFile","fileInfo",onFileSelect);
   setupDrop("coverZone","fCover","coverInfo",onCoverSelect);
 
@@ -825,26 +1423,34 @@ function setupEvents(){
     if(edit){e.stopPropagation();openEditUpload(edit.getAttribute("data-edit"));return}
     var like=e.target.closest(".like-btn");
     if(like){e.stopPropagation();toggleLike(like.getAttribute("data-like"));return}
-    var card=e.target.closest("[data-play]");
-    if(card&&!e.target.closest("[data-del]")&&!e.target.closest("[data-edit]")){openPlayer(card.getAttribute("data-gid"));return}
-    var dlc=e.target.closest("[data-dl]");
-    if(dlc&&!e.target.closest("[data-del]")&&!e.target.closest("[data-edit]")){downloadGame(dlc.getAttribute("data-gid"));return}
+    var card=e.target.closest("[data-play],[data-dl]");
+    if(card&&!e.target.closest("[data-del]")&&!e.target.closest("[data-edit]")&&!e.target.closest(".like-btn")){
+      e.stopPropagation();
+      openGameDetail(card.getAttribute("data-gid"));
+      return;
+    }
   });
 
   document.addEventListener("keydown",function(e){
     if(e.ctrlKey&&e.shiftKey&&(e.key==="U"||e.key==="u"||e.key==="Ц"||e.key==="ц")){e.preventDefault();openSettings();return}
     if(e.key==="Escape"){
-      if(document.getElementById("playerOverlay").classList.contains("open"))closePlayer();
+      if(document.getElementById("playerOverlay").classList.contains("open")){trackLeave("escape");closePlayer()}
+      else if(document.getElementById("detailOverlay").classList.contains("open"))closeGameDetail();
       else if(document.getElementById("uploadSheet").classList.contains("open"))closeUpload();
       else if(document.getElementById("settingsSheet").classList.contains("open"))closeSettings();
       else if(document.getElementById("analyticsOverlay").classList.contains("open"))closeAnalytics();
+      else if(document.getElementById("analyticsPage").classList.contains("active"))closeAnalyticsPage();
     }
   });
 
-  document.getElementById("playerOverlay").addEventListener("click",function(e){if(e.target===this)closePlayer()});
+  document.getElementById("playerOverlay").addEventListener("click",function(e){if(e.target===this){trackLeave("overlay-click");closePlayer()}});
+  document.getElementById("detailOverlay").addEventListener("click",function(e){if(e.target===this)closeGameDetail()});
   document.getElementById("analyticsOverlay").addEventListener("click",function(e){if(e.target===this)closeAnalytics()});
   document.getElementById("uploadSheet").addEventListener("click",function(e){if(e.target===this)closeUpload()});
   document.getElementById("settingsSheet").addEventListener("click",function(e){if(e.target===this)closeSettings()});
+
+  // Track leave when user leaves the page while playing
+  window.addEventListener("beforeunload",function(){if(currentSession)trackLeave("page-unload")});
 
   window.addEventListener("scroll",function(){document.getElementById("header").classList.toggle("scrolled",window.scrollY>10)});
 }
