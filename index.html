@@ -22,6 +22,8 @@
     
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
@@ -586,6 +588,42 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         .engine-model-overlay .model-text { color: var(--text-secondary); font-size: 0.85rem; }
 
         .viewport-stats { position: absolute; top: 8px; left: 8px; font-size: 0.68rem; color: #22c55e; font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 4px; pointer-events: none; z-index: 10; }
+
+        /* === Engine Analytics Overlay === */
+        .eng-analytics-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s; }
+        .eng-analytics-overlay.open { display: flex; }
+        .eng-analytics-panel { background: var(--bg-secondary, #18181b); border-radius: 16px; width: 100%; max-width: 1100px; max-height: 90vh; overflow-y: auto; padding: 24px; border: 1px solid var(--border, #27272a); }
+        .eng-analytics-panel h2 { font-size: 22px; font-weight: 800; margin: 0 0 8px 0; }
+        .eng-analytics-panel .subtitle { color: var(--text-muted, #a1a1aa); font-size: 13px; margin: 0 0 24px 0; }
+        .eng-analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px; margin-bottom: 24px; }
+        .eng-metric { background: var(--bg-hover, #27272a); border-radius: 12px; padding: 16px; border: 1px solid var(--border, #27272a); }
+        .eng-metric .em-val { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+        .eng-metric .em-label { font-size: 12px; color: var(--text-muted, #a1a1aa); }
+        .eng-metric .em-val.green { color: #10b981; }
+        .eng-metric .em-val.blue { color: #3b82f6; }
+        .eng-metric .em-val.red { color: #ef4444; }
+        .eng-metric .em-val.yellow { color: #fbbf24; }
+        .eng-chart-card { background: var(--bg-hover, #27272a); border-radius: 12px; padding: 16px; border: 1px solid var(--border, #27272a); margin-bottom: 16px; }
+        .eng-chart-card h3 { font-size: 14px; font-weight: 700; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; }
+        .eng-chart-card h3 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .eng-chart-wrap { position: relative; height: 240px; }
+        .eng-leave-list { background: var(--bg-hover, #27272a); border-radius: 12px; border: 1px solid var(--border, #27272a); overflow: hidden; }
+        .eng-leave-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border, #27272a); font-size: 13px; }
+        .eng-leave-item:last-child { border-bottom: none; }
+        .eng-leave-item .l-icon { width: 28px; height: 28px; border-radius: 6px; background: rgba(239,68,68,.15); color: #ef4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .eng-leave-item .l-info { flex: 1; min-width: 0; }
+        .eng-leave-item .l-action { font-weight: 600; color: var(--text-primary, #fafafa); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .eng-leave-item .l-meta { color: var(--text-muted, #a1a1aa); font-size: 11px; margin-top: 2px; }
+        .eng-leave-item .l-dur { color: #10b981; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+        .eng-stars-row { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border, #27272a); }
+        .eng-stars-row:last-child { border-bottom: none; }
+        .eng-stars-row .es-label { flex: 1; font-size: 13px; color: var(--text-primary, #fafafa); }
+        .eng-stars-row .es-bar { flex: 2; height: 8px; background: var(--bg-secondary, #18181b); border-radius: 4px; overflow: hidden; }
+        .eng-stars-row .es-bar-fill { height: 100%; background: #fbbf24; transition: width 0.3s; }
+        .eng-stars-row .es-count { font-size: 12px; color: var(--text-muted, #a1a1aa); min-width: 30px; text-align: right; }
+        .eng-close-btn { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border, #27272a); background: transparent; color: var(--text-primary, #fafafa); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+        .eng-close-btn:hover { background: var(--bg-hover, #27272a); border-color: #ef4444; color: #ef4444; }
+        @media(max-width: 768px) { .eng-analytics-panel { padding: 16px; } .eng-chart-wrap { height: 180px; } }
         .eng-btn.snap-active { background: var(--primary) !important; color: #fff !important; border-color: var(--primary) !important; }
         .engine-ctx-menu { position: fixed; z-index: 9999; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); font-size: 0.78rem; color: var(--text-secondary); }
         .engine-ctx-menu .ctx-item { display: flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: pointer; transition: all 0.1s; }
@@ -1150,6 +1188,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     <div class="eng-separator"></div>
                     <button class="eng-btn" id="fps-mode-btn" onclick="EngineApp.toggleFPS()" title="FPS Mode (WASD + Mouse)"><i class="fas fa-crosshairs"></i> FPS</button>
                     <button class="eng-btn" onclick="EngineApp.toggleConsolePanel()" title="Console (F12)"><i class="fas fa-terminal"></i></button>
+                    <button class="eng-btn" onclick="openEngineAnalytics()" title="Analytics"><i class="fas fa-chart-line"></i></button>
                     <div class="eng-separator"></div>
                     <div class="gizmo-group">
                         <button class="gizmo-mode-btn active" id="gizmo-translate" onclick="EngineApp.setGizmoMode('translate')" title="Move (W)">W</button>
@@ -22544,8 +22583,276 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   console.log('[SashaAI Chat] Real AI generation pipeline ready. Primary: ' + LOCAL_LLM_API + ' | Fallback: ' + CLOUD_LLM_API);
 })();
 </script>
+
+<!-- ============ ENGINE ANALYTICS OVERLAY ============ -->
+<div class="eng-analytics-overlay" id="engAnalyticsOverlay">
+  <div class="eng-analytics-panel" style="position:relative">
+    <button class="eng-close-btn" onclick="closeEngineAnalytics()">&times;</button>
+    <h2>📊 Аналитика движка</h2>
+    <p class="subtitle">Посещения, действия, отвалы и оценки — кто, когда, зачем</p>
+    <div class="eng-analytics-grid" id="engMetricsGrid"></div>
+    <div class="eng-chart-card">
+      <h3><span class="dot" style="background:#10b981"></span>Посещения и действия (14 дней)</h3>
+      <div class="eng-chart-wrap"><canvas id="engChart1"></canvas></div>
+    </div>
+    <div class="eng-chart-card">
+      <h3><span class="dot" style="background:#ef4444"></span>Отвалы (когда вышли из движка)</h3>
+      <div class="eng-chart-wrap"><canvas id="engChart2"></canvas></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <h3 style="font-size:14px;font-weight:700;margin:0 0 12px 0">⏱ Последние отвалы</h3>
+        <div class="eng-leave-list" id="engLeavesList"></div>
+      </div>
+      <div>
+        <h3 style="font-size:14px;font-weight:700;margin:0 0 12px 0">⭐ Оценки движка</h3>
+        <div class="eng-leave-list" id="engRatingsList"></div>
+      </div>
+    </div>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border,#27272a)">
+      <h3 style="font-size:14px;font-weight:700;margin:0 0 12px 0">💬 Отзывы пользователей</h3>
+      <div id="engFeedbackList" style="max-height:200px;overflow-y:auto"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input type="text" id="engFeedbackName" placeholder="Ваше имя" maxlength="30" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+        <input type="text" id="engFeedbackText" placeholder="Ваш отзыв о движке..." maxlength="500" style="flex:2;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+        <button onclick="submitEngFeedback()" style="padding:8px 16px;border-radius:8px;border:none;background:#10b981;color:#fff;font-size:13px;font-weight:600;cursor:pointer">Отправить</button>
+      </div>
+      <div style="margin-top:16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;color:var(--text-muted,#a1a1aa)">Оцени движок:</span>
+        <div id="engStarInput" style="display:inline-flex;flex-direction:row-reverse;gap:4px"></div>
+        <span id="engRatingText" style="font-size:12px;color:var(--text-muted,#a1a1aa)"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === Engine Analytics (visits, leaves, ratings, feedback) ===
+(function(){
+  'use strict';
+  var STORE_KEY = 'sasha_eng_analytics';
+  var data = { visits: [], dailyActions: {}, dailyLeaves: {}, sessionLeaves: [], ratings: {sum:0,count:0}, feedback: [] };
+  var currentSession = null;
+  var engCharts = {};
+
+  function load() {
+    try {
+      var d = localStorage.getItem(STORE_KEY);
+      if (d) {
+        var parsed = JSON.parse(d);
+        data = Object.assign(data, parsed);
+        if (!data.visits) data.visits = [];
+        if (!data.dailyActions) data.dailyActions = {};
+        if (!data.dailyLeaves) data.dailyLeaves = {};
+        if (!data.sessionLeaves) data.sessionLeaves = [];
+        if (!data.ratings) data.ratings = {sum:0, count:0};
+        if (!data.feedback) data.feedback = [];
+      }
+    } catch(e) { console.warn('[EngAnalytics] load failed:', e); }
+  }
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e) {} }
+
+  function dk(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function dd(s) { var d = new Date(s+'T12:00:00'); return d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0'); }
+  function get14() { var r=[]; var n=new Date(); for (var i=13;i>=0;i--) { var x=new Date(n); x.setDate(x.getDate()-i); r.push(dk(x)); } return r; }
+  function fmtDur(s) { if(s<60)return s+'с'; if(s<3600)return Math.round(s/60)+'м'; return (s/3600).toFixed(1)+'ч'; }
+  function fmtAgo(ts) { var d=Math.round((Date.now()-ts)/1000); if(d<60)return 'только что'; if(d<3600)return Math.round(d/60)+' мин назад'; if(d<86400)return Math.round(d/3600)+' ч назад'; return Math.round(d/86400)+' дн назад'; }
+
+  function trackVisit() {
+    var t = dk(new Date());
+    var last = data.visits.length > 0 ? data.visits[data.visits.length-1] : '';
+    if (last === t) return;
+    data.visits.push(t);
+    if (data.visits.length > 365) data.visits = data.visits.slice(-365);
+    save();
+  }
+
+  function trackAction(name) {
+    var t = dk(new Date());
+    if (!data.dailyActions[t]) data.dailyActions[t] = {};
+    data.dailyActions[t][name] = (data.dailyActions[t][name] || 0) + 1;
+    save();
+  }
+
+  function startSession(action) {
+    currentSession = { action: action || 'engine', startedAt: Date.now() };
+  }
+
+  function trackLeave(reason) {
+    if (!currentSession) return;
+    var dur = Math.round((Date.now() - currentSession.startedAt) / 1000);
+    var t = dk(new Date());
+    if (!data.dailyLeaves[t]) data.dailyLeaves[t] = {};
+    data.dailyLeaves[t][reason || 'unknown'] = (data.dailyLeaves[t][reason || 'unknown'] || 0) + 1;
+    data.sessionLeaves.push({ action: currentSession.action, startedAt: currentSession.startedAt, leftAt: Date.now(), durationSec: dur, reason: reason || 'close' });
+    if (data.sessionLeaves.length > 200) data.sessionLeaves = data.sessionLeaves.slice(-200);
+    currentSession = null;
+    save();
+  }
+
+  function setRating(stars) {
+    var prev = parseInt(localStorage.getItem('sasha_eng_user_rating') || '0');
+    if (prev > 0) { data.ratings.sum -= prev; data.ratings.count--; }
+    if (stars > 0) { data.ratings.sum += stars; data.ratings.count++; }
+    if (data.ratings.count < 0) data.ratings.count = 0;
+    if (data.ratings.sum < 0) data.ratings.sum = 0;
+    localStorage.setItem('sasha_eng_user_rating', String(stars));
+    save();
+  }
+
+  function getUserRating() { return parseInt(localStorage.getItem('sasha_eng_user_rating') || '0'); }
+
+  function getRating() { return data.ratings.count > 0 ? Math.round((data.ratings.sum / data.ratings.count) * 10) / 10 : 0; }
+
+  function addFeedback(author, text) {
+    data.feedback.push({ author: author || 'Гость', text: text, date: Date.now() });
+    if (data.feedback.length > 100) data.feedback = data.feedback.slice(-100);
+    save();
+  }
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  window.openEngineAnalytics = function() {
+    document.getElementById('engAnalyticsOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    renderEngAnalytics();
+  };
+  window.closeEngineAnalytics = function() {
+    document.getElementById('engAnalyticsOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    for (var k in engCharts) { if (engCharts[k]) { engCharts[k].destroy(); delete engCharts[k]; } }
+  };
+  window.submitEngFeedback = function() {
+    var name = document.getElementById('engFeedbackName').value.trim();
+    var text = document.getElementById('engFeedbackText').value.trim();
+    if (!text) { alert('Введите текст отзыва'); return; }
+    addFeedback(name, text);
+    document.getElementById('engFeedbackText').value = '';
+    renderEngAnalytics();
+  };
+  window.setEngRating = function(stars) {
+    setRating(stars);
+    renderEngAnalytics();
+  };
+
+  function renderEngAnalytics() {
+    // Metrics
+    var today = dk(new Date());
+    var visitsToday = 0; for (var i=0;i<data.visits.length;i++) { if (data.visits[i]===today) visitsToday++; }
+    var actionsToday = 0; if (data.dailyActions[today]) { for (var k in data.dailyActions[today]) actionsToday += data.dailyActions[today][k]; }
+    var actionsTotal = 0; for (var d in data.dailyActions) { for (var k in data.dailyActions[d]) actionsTotal += data.dailyActions[d][k]; }
+    var leavesTotal = data.sessionLeaves.length;
+    var avgRating = getRating();
+    var feedbackCount = data.feedback.length;
+
+    document.getElementById('engMetricsGrid').innerHTML =
+      '<div class="eng-metric"><div class="em-val green">'+data.visits.length+'</div><div class="em-label">Всего посещений</div></div>'+
+      '<div class="eng-metric"><div class="em-val green">'+visitsToday+'</div><div class="em-label">Сегодня</div></div>'+
+      '<div class="eng-metric"><div class="em-val blue">'+actionsTotal+'</div><div class="em-label">Всего действий</div></div>'+
+      '<div class="eng-metric"><div class="em-val blue">'+actionsToday+'</div><div class="em-label">Действий сегодня</div></div>'+
+      '<div class="eng-metric"><div class="em-val red">'+leavesTotal+'</div><div class="em-label">Отвалов</div></div>'+
+      '<div class="eng-metric"><div class="em-val yellow">'+avgRating+'</div><div class="em-label">Средний рейтинг</div></div>'+
+      '<div class="eng-metric"><div class="em-val yellow">'+feedbackCount+'</div><div class="em-label">Отзывов</div></div>';
+
+    // Charts
+    if (typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
+    for (var k in engCharts) { if (engCharts[k]) { engCharts[k].destroy(); delete engCharts[k]; } }
+
+    var days = get14();
+    var labels = days.map(dd);
+    var visData = days.map(function(d) { var c=0; for (var i=0;i<data.visits.length;i++) { if (data.visits[i]===d) c++; } return c; });
+    var actData = days.map(function(d) { var c=0; if (data.dailyActions[d]) { for (var k in data.dailyActions[d]) c += data.dailyActions[d][k]; } return c; });
+    var leaveData = days.map(function(d) { var c=0; if (data.dailyLeaves[d]) { for (var k in data.dailyLeaves[d]) c += data.dailyLeaves[d][k]; } return c; });
+
+    engCharts.c1 = new Chart(document.getElementById('engChart1'), {
+      type: 'line',
+      data: { labels: labels, datasets: [
+        { label: 'Посещения', data: visData, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.2)', fill: true, tension: .4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5 },
+        { label: 'Действия', data: actData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.2)', fill: true, tension: .4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', labels: { color: '#a1a1aa', font: { size: 12 } } } }, scales: { x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#a1a1aa', font: { size: 11 } } }, y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#a1a1aa', font: { size: 11 } }, beginAtZero: true } } }
+    });
+
+    engCharts.c2 = new Chart(document.getElementById('engChart2'), {
+      type: 'line',
+      data: { labels: labels, datasets: [
+        { label: 'Отвалы', data: leaveData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.2)', fill: true, tension: .4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', labels: { color: '#a1a1aa', font: { size: 12 } } } }, scales: { x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#a1a1aa', font: { size: 11 } } }, y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#a1a1aa', font: { size: 11 } }, beginAtZero: true } } }
+    });
+
+    // Leaves list
+    var leaves = data.sessionLeaves.slice().reverse().slice(0, 8);
+    var lhtml = '';
+    if (leaves.length === 0) {
+      lhtml = '<div class="eng-leave-item" style="justify-content:center;color:#a1a1aa">Пока никто не отвалился</div>';
+    } else {
+      for (var i=0;i<leaves.length;i++) {
+        var l = leaves[i];
+        var reasonText = { close: 'закрыл', escape: 'нажал Escape', 'page-unload': 'закрыл вкладку', 'overlay-click': 'кликнул мимо' }[l.reason] || l.reason;
+        lhtml += '<div class="eng-leave-item"><div class="l-icon">✕</div><div class="l-info"><div class="l-action">'+esc(l.action)+'</div><div class="l-meta">'+fmtAgo(l.leftAt)+' · '+reasonText+'</div></div><div class="l-dur">'+fmtDur(l.durationSec)+'</div></div>';
+      }
+    }
+    document.getElementById('engLeavesList').innerHTML = lhtml;
+
+    // Ratings distribution
+    var rhtml = '';
+    var avg = getRating();
+    var userR = getUserRating();
+    rhtml += '<div class="eng-stars-row"><div class="es-label">Средний рейтинг</div><div class="es-bar"><div class="es-bar-fill" style="width:'+(avg/5*100)+'%"></div></div><div class="es-count">'+avg+' / 5</div></div>';
+    rhtml += '<div class="eng-stars-row"><div class="es-label">Всего голосов</div><div class="es-bar"><div class="es-bar-fill" style="width:'+Math.min(100, data.ratings.count*10)+'%"></div></div><div class="es-count">'+data.ratings.count+'</div></div>';
+    rhtml += '<div class="eng-stars-row"><div class="es-label">Твоя оценка</div><div class="es-bar"><div class="es-bar-fill" style="width:'+(userR/5*100)+'%"></div></div><div class="es-count">'+userR+'★</div></div>';
+    document.getElementById('engRatingsList').innerHTML = rhtml;
+
+    // Star input
+    var si = document.getElementById('engStarInput');
+    var sihtml = '';
+    for (var s=5;s>=1;s--) {
+      sihtml += '<span data-stars="'+s+'" onclick="setEngRating('+s+')" style="font-size:28px;cursor:pointer;color:'+(s<=userR?'#fbbf24':'#27272a')+';transition:color .15s" onmouseover="this.style.color=\'#fbbf24\'" onmouseout="this.style.color='+(s<=userR?'\'#fbbf24\'':'\'#27272a\'')+'">★</span>';
+    }
+    si.innerHTML = sihtml;
+    document.getElementById('engRatingText').textContent = userR > 0 ? 'Ты оценил на '+userR+'★' : 'Поставь оценку';
+
+    // Feedback list
+    var fhtml = '';
+    if (data.feedback.length === 0) {
+      fhtml = '<div style="color:#a1a1aa;font-size:13px;padding:12px;text-align:center">Пока нет отзывов. Будь первым!</div>';
+    } else {
+      var fb = data.feedback.slice().reverse();
+      for (var i=0;i<fb.length;i++) {
+        var f = fb[i];
+        fhtml += '<div class="eng-leave-item"><div class="l-icon" style="background:rgba(168,85,247,.15);color:#a855f7">💬</div><div class="l-info"><div class="l-action">'+esc(f.author)+'</div><div class="l-meta">'+fmtAgo(f.date)+'</div><div style="font-size:13px;color:var(--text-primary,#fafafa);margin-top:4px;word-break:break-word">'+esc(f.text)+'</div></div></div>';
+      }
+    }
+    document.getElementById('engFeedbackList').innerHTML = fhtml;
+  }
+
+  // Init
+  load();
+  trackVisit();
+  startSession('engine');
+
+  // Track leave on page unload
+  window.addEventListener('beforeunload', function() { trackLeave('page-unload'); });
+
+  // Expose for external use
+  window._sashaEngAnalytics = {
+    trackAction: trackAction,
+    trackLeave: trackLeave,
+    startSession: startSession,
+    trackVisit: trackVisit,
+    setRating: setRating,
+    getRating: getRating,
+    addFeedback: addFeedback,
+    getData: function() { return data; }
+  };
+
+  console.log('[Engine Analytics] Loaded:', data.visits.length, 'visits,', data.sessionLeaves.length, 'leaves,', data.ratings.count, 'ratings');
+})();
+</script>
 </body>
 </html>
+
 
 
 
