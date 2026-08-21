@@ -4523,6 +4523,67 @@ var SashaAIAgent = (function() {
             }
         }
 
+        // === Real AI pipeline hook (added by patch) ===
+        if (typeof window._sashaAIChat !== 'undefined') {
+            var aiChat = window._sashaAIChat;
+            var intent2 = aiChat.detectIntent(input);
+
+            if (intent2 === 'chat') {
+                // Conversational: try LLM, fallback to localChat
+                (async function() {
+                    var reply = null;
+                    try { var d = await aiChat.callLocalLLM(input, true); reply = d.reply || d.text; } catch(e) {}
+                    if (!reply) { try { var c = await aiChat.callCloudLLM(input, true); reply = c.reply; } catch(e2) {} }
+                    if (!reply) reply = aiChat.localChat(input);
+                    _addToContext('ai', reply);
+                    _addChatMessage('ai', reply);
+                    _speakIfNeeded(reply);
+                })();
+                var pending = '💬 Отвечаю...';
+                _addToContext('ai', pending);
+                return _formatResponse(pending, 'chat');
+            }
+
+            // Generation intent: try fast template, then LLM, then local heuristic
+            var fast = aiChat.fastExec(input);
+            if (fast) {
+                _addToContext('ai', fast.reply);
+                _addChatMessage('ai', fast.reply);
+                _speakIfNeeded(fast.reply);
+                return _formatResponse(fast.reply, 'engine');
+            }
+
+            // Run async pipeline — placeholder for now, result goes to chat
+            (async function() {
+                var toolCalls = null;
+                try {
+                    var d = await aiChat.callLocalLLM(input, false);
+                    if (d.toolLog && d.toolLog.length) {
+                        toolCalls = d.toolLog.map(function(t){return {tool:t.tool, params:t.params||{}};});
+                    } else {
+                        toolCalls = aiChat.parseToolCallsFromText(d.reply || d.text || '');
+                    }
+                } catch(e) {}
+                if (!toolCalls) {
+                    try {
+                        var c = await aiChat.callCloudLLM(input, false);
+                        toolCalls = aiChat.parseToolCallsFromText(c.reply || '');
+                    } catch(e2) {}
+                }
+                var calls = toolCalls || aiChat.localGenerate(input);
+                var result = aiChat.execToolCalls(calls);
+                var summary = aiChat.buildSummary(result.toolCounts, result.okCount);
+                var msg = (toolCalls ? '✨ Готово! Создал: ' : '🎨 Создал локально: ') + summary + '.';
+                _addToContext('ai', msg);
+                _addChatMessage('ai', msg);
+                _speakIfNeeded(msg);
+            })();
+            var pending2 = '🔄 Генерирую сцену через AI... результат появится в Engine.';
+            _addToContext('ai', pending2);
+            _speakIfNeeded(pending2);
+            return _formatResponse(pending2, 'engine');
+        }
+
         var defaultResp = _generateDefault(input, intent, entities);
         _addToContext('ai', defaultResp);
         _speakIfNeeded(defaultResp);
@@ -21382,7 +21443,7 @@ var SashaAvatar = (function() {
     if (fn === 'aiGithubImportModel') { var n = SashaEngineAPI.aiGithubImportModel(args.repo, args.path, args.x, args.y, args.z, args.scale); return n || 'importing'; }
     if (fn === 'createTerrain') {
       var hf;
-      if (typeof args.heightFn === 'string') { try { hf = new Function('x','z','return '+args.heightFn+';'); } catch(e) { hf = parseFloat(args.heightFn)||0; } } else { hf = args.heightFn||0; }
+      if (typeof args.heightFn === 'string' && args.heightFn.trim()) { try { hf = new Function('x','z','return ('+args.heightFn+');'); } catch(e) { console.warn('[createTerrain] bad heightFn:', args.heightFn, e.message); hf = 0; } } else { hf = args.heightFn||0; }
       var p = {}; if (args.color) p.color = args.color; if (args.wireframe) p.wireframe = true;
       return SashaEngineAPI.createTerrain(args.name, args.width, args.depth, hf, args.resolution, p);
     }
@@ -21408,7 +21469,11 @@ var SashaAvatar = (function() {
     if (fn === 'aiComposeModel') {
       return SashaEngineAPI.aiComposeModel(args.description, { position: args.position, rotation: args.rotation, scale: args.scale });
     }
-    if (fn === 'executeCode') { var r = (new Function(args.code))(); return r !== undefined ? r : 'executed'; }
+    if (fn === 'executeCode') {
+      if (!args || !args.code || typeof args.code !== 'string' || !args.code.trim()) return 'no code';
+      try { var r = (new Function(args.code))(); return r !== undefined ? r : 'executed'; }
+      catch(e) { console.warn('[executeCode] error:', e.message, '| code snippet:', String(args.code).slice(0,300)); throw new Error('Code error: ' + e.message); }
+    }
     if (fn === 'applySceneTemplate') { var _r = applyMCPTemplate(args.template); _doRefreshUI(); return _r; }
     throw new Error('Unknown function: ' + fn);
   }
@@ -21708,53 +21773,277 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 
 <script>
+// ============================================================
+// SashaAI — Real AI Generation Pipeline
+// Primary:   Local LLM (Qwen Coder 2.5 7B) via MCP server @ localhost:3000
+// Secondary: Cloud LLM (Pollinations) — optional, used if local is down
+// Fallback:  Local heuristic generator (offline)
+//
+// Modes:
+//   1. Conversation: "привет", "что ты умеешь", "объясни X" → real dialogue
+//   2. Generation:   "создай Y", "построй Z" → JSON tool calls → scene builds
+//   3. Templates:    "город", "лес", "космос" → instant apply (kept as-is)
+// ============================================================
 (function () {
-  var OLLAMA_CHAT_API = 'http://localhost:3000/ai-chat';
-  var ollamaHistory = [];
-  var ollamaBusy = false;
+  'use strict';
+
+  // === PRIMARY: Local LLM (Qwen Coder 2.5 7B via MCP) ===
+  var LOCAL_LLM_API = 'http://localhost:3000/ai-chat';
+
+  // === SECONDARY: Cloud LLM (Pollinations — free tier, anonymous) ===
+  var CLOUD_LLM_API = 'https://text.pollinations.ai/openai';
+  var CLOUD_MODEL = 'openai';
+
+  var chatHistory = [];   // [{role:'user'|'assistant', content:'...'}]
+  var busy = false;
+
   function addChat(type, text) {
     var chat = document.getElementById('eng-ai-chat');
     if (!chat) return;
     var div = document.createElement('div');
     div.className = 'engine-ai-msg ' + type;
-    div.textContent = text;
+    if (typeof text === 'string') {
+      var html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function(m,lang,code){return '<pre style="background:#0a0a14;padding:8px;border-radius:4px;overflow-x:auto;margin:4px 0;border:1px solid #2a2a3a;"><code>'+code+'</code></pre>';});
+      html = html.replace(/`([^`]+)`/g, '<code style="background:#1a1a2a;padding:1px 5px;border-radius:3px;color:#a5b4fc;">$1</code>');
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#fff;">$1</strong>');
+      html = html.replace(/\n/g, '<br>');
+      div.innerHTML = html;
+    } else {
+      div.textContent = String(text);
+    }
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
   }
+
   function removeThinking() {
     var chat = document.getElementById('eng-ai-chat');
     if (!chat) return;
     var msgs = chat.querySelectorAll('.engine-ai-msg.ai');
-    if (msgs.length) {
-      var last = msgs[msgs.length - 1];
-      if (last.textContent.indexOf('Думаю...') !== -1) last.remove();
+    for (var i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].textContent.indexOf('Думаю') !== -1 || msgs[i].textContent.indexOf('⏳') !== -1) {
+        msgs[i].remove(); break;
+      }
     }
   }
-  var TOOL_LABELS = {
-    'clear_scene':'Сцена очищена','add_cube':'Куб добавлен','add_sphere':'Сфера добавлена',
-    'add_cylinder':'Цилиндр добавлен','add_plane':'Плоскость добавлена','add_light':'Свет добавлен',
-    'set_bg_color':'Цвет фона изменён','set_camera':'Камера настроена',
-    'apply_scene_template':'Шаблон сцены применён','add_text':'Текст добавлен',
-    'generate_texture':'Текстура сгенерирована','export_scene':'Сцена экспортирована',
-    'remove_object':'Объект удалён','set_object_transform':'Позиция/вращение изменены',
-    'set_object_color':'Цвет объекта изменён','set_object_material':'Материал изменён',
-    'duplicate_object':'Объект дублирован','group_objects':'Объекты сгруппированы',
-    'add_point_cloud':'Облако точек добавлено','add_model':'Модель добавлена',
-    'animate_object':'Анимация задана','set_ambient_light':'Фоновый свет настроен',
-    'add_directional_light':'Направленный свет добавлен','add_spot_light':'Прожектор добавлен',
-    'set_fog':'Туман настроен','set_skybox':'Скайбокс установлен','add_water':'Вода добавлена',
-    'add_particle_system':'Система частиц добавлена','set_shadow':'Тени настроены',
-    'set_post_processing':'Пост-обработка настроена','save_scene':'Сцена сохранена',
-    'load_scene':'Сцена загружена'
-  };
-  function toolLabel(name, args) {
-    var l = TOOL_LABELS[name] || name;
-    var d = '';
-    if (args && args.template) d = ' (' + args.template + ')';
-    else if (args && args.color) d = ' (' + args.color + ')';
-    else if (args && args.filename) d = ' (' + args.filename + ')';
-    return l + d + '.';
+
+  // === Intent Detection ===
+  // Distinguish conversational prompts from 3D-generation prompts.
+  function detectIntent(text) {
+    var t = text.toLowerCase().trim();
+    // Pure greetings / short chat (no 3D intent)
+    var chatPatterns = [
+      /^(привет|здравствуй|здравствуйте|hi|hello|hey|yo|йо|ку|qq)(?:\s|$|[^a-zа-яё])/,
+      /^(пока|bye|до свидан|увидимся|удачи)/,
+      /^(спасибо|спс|thanks|thank you|благодарю)/,
+      /^(что ты умеешь|что умеешь|твои возможности|что можешь|help|помощь|справка)/,
+      /^(кто ты|как тебя зовут|твоё имя|имя)/,
+      /^(как дела|как ты|how are you|как настроен)/,
+      /^(расскажи о себе|о тебе|about you)/,
+      /^(что нового|news)/
+    ];
+    for (var i = 0; i < chatPatterns.length; i++) {
+      if (chatPatterns[i].test(t)) return 'chat';
+    }
+    // Question words → chat (unless combined with 3D verb)
+    var isQuestion = /^(что |как |почему |зачем |где |когда |кто |какой |какая |расскажи |объясни |что такое|explain|why|how|what|where|when|who)(?:\s|$|[^a-zа-яё])/.test(t);
+    var has3DVerb = /(создай|сделай|построй|сгенерир|добавь|удали|очисти|create|make|build|generate|add|remove|clear|delete)(?:\s|$|[^a-zа-яё])/.test(t);
+    var has3DNoun = /(сцен|объект|куб|сфер|цилиндр|конус|торус|плоскост|свет|камер|модел|дерев|дом|машир|меч|башн|замок|лес|город|космос|снег|остров|комнат|арен|платформ|рельеф|terrain|scene|object|cube|sphere|light|model|tree|house|car)/.test(t);
+
+    if (isQuestion && !has3DVerb) return 'chat';
+    if (isQuestion && has3DVerb && has3DNoun) return 'generate';
+    if (has3DVerb && has3DNoun) return 'generate';
+    if (has3DVerb) return 'generate';
+    // Default: treat as chat (don't pollute the scene with random generations)
+    return 'chat';
   }
+
+  // === Tool dispatcher ===
+  var TOOL_LABELS = {
+    'clear_scene':'очистил сцену','scene_clear':'очистил сцену',
+    'add_cube':'добавил куб','add_sphere':'добавил сферу',
+    'add_cylinder':'добавил цилиндр','add_cone':'добавил конус',
+    'add_torus':'добавил торус','add_plane':'добавил плоскость',
+    'add_point_light':'добавил точечный свет','add_directional_light':'добавил направленный свет',
+    'add_ambient_light':'добавил фоновый свет','add_spot_light':'добавил прожектор',
+    'set_bg_color':'сменил фон','camera_set_position':'настроил камеру',
+    'camera_set_target':'настроил прицел камеры','apply_scene_template':'применил шаблон',
+    'compose_model':'собрал модель','create_terrain':'создал рельеф',
+    'remove_object':'удалил объект','set_object_color':'перекрасил объект',
+    'set_object_position':'сдвинул объект','set_object_rotation':'повернул объект',
+    'set_object_scale':'масштабировал объект','animate_object':'запустил анимацию',
+    'export_scene':'экспортировал сцену'
+  };
+
+  function _parseColor(c) {
+    if (c === undefined || c === null) return undefined;
+    if (typeof c === 'number') return c;
+    if (typeof c !== 'string') return undefined;
+    var s = c.replace('#','').replace('0x','').trim();
+    if (/^[0-9a-fA-F]{6}$/.test(s)) return parseInt(s, 16);
+    if (/^[0-9a-fA-F]{3}$/.test(s)) return parseInt(s[0]+s[0]+s[1]+s[1]+s[2]+s[2], 16);
+    return undefined;
+  }
+
+  function execTool(name, params) {
+    var dc = window._mcpDispatchCall;
+    if (!dc) throw new Error('Engine bridge not ready');
+    params = params || {};
+    switch (name) {
+      case 'clear_scene':
+      case 'scene_clear':
+        return dc('clear', {});
+      case 'set_bg_color':
+      case 'scene_set_background': {
+        var c = params.color || params.hex || '#1a1a2e';
+        if (typeof c === 'string') {
+          var h = c.replace('#','').replace('0x','');
+          if (h.length === 6) {
+            var r = parseInt(h.substring(0,2),16)/255;
+            var g = parseInt(h.substring(2,4),16)/255;
+            var b = parseInt(h.substring(4,6),16)/255;
+            return dc('setBgColor', {r:r, g:g, b:b});
+          }
+        } else if (typeof c === 'number') {
+          var rr = ((c>>16)&0xff)/255, gg = ((c>>8)&0xff)/255, bb = (c&0xff)/255;
+          return dc('setBgColor', {r:rr, g:gg, b:bb});
+        }
+        return dc('setBgColor', {r:0.1, g:0.1, b:0.18});
+      }
+      case 'add_cube': {
+        var col = _parseColor(params.color);
+        return dc('addCube', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, w:params.width||params.w||1, h:params.height||params.h||1, d:params.depth||params.d||1, color:col});
+      }
+      case 'add_sphere': {
+        var col = _parseColor(params.color);
+        return dc('addSphere', {x:params.x||0, y:params.y!==undefined?params.y:(params.radius||0.5), z:params.z||0, radius:params.radius||0.5, color:col});
+      }
+      case 'add_cylinder': {
+        var col = _parseColor(params.color);
+        return dc('addCylinder', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, rTop:params.radiusTop||params.rTop||0.5, rBot:params.radiusBottom||params.rBot||0.5, height:params.height||1, color:col});
+      }
+      case 'add_cone': {
+        var col = _parseColor(params.color);
+        return dc('addCone', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, radius:params.radius||0.5, height:params.height||1, color:col});
+      }
+      case 'add_torus': {
+        var col = _parseColor(params.color);
+        return dc('addTorus', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, radius:params.radius||0.5, tube:params.tube||0.15, color:col});
+      }
+      case 'add_plane': {
+        var col = _parseColor(params.color);
+        return dc('addPlane', {width:params.width||10, height:params.height||10, color:col});
+      }
+      case 'add_point_light':
+        return dc('addPointLight', {x:params.x||0, y:params.y||5, z:params.z||0, intensity:params.intensity||1, color:_parseColor(params.color)});
+      case 'add_directional_light':
+        return dc('addDirectionalLight', {x:params.x||5, y:params.y||10, z:params.z||5, color:_parseColor(params.color), intensity:params.intensity||0.8});
+      case 'add_ambient_light':
+        return dc('addAmbientLight', {color:_parseColor(params.color), intensity:params.intensity||0.5});
+      case 'add_spot_light':
+        return dc('addSpotLight', {x:params.x||0, y:params.y||8, z:params.z||0, color:_parseColor(params.color), intensity:params.intensity||1});
+      case 'compose_model':
+        return dc('aiComposeModel', {
+          description: params.description || params.type || 'cube',
+          position: {x:params.posX||params.x||0, y:params.posY||params.y||0, z:params.posZ||params.z||0},
+          rotation: {x:params.rotX||0, y:params.rotY||0, z:params.rotZ||0},
+          scale: {x:params.scaleX||1, y:params.scaleY||1, z:params.scaleZ||1}
+        });
+      case 'create_terrain': {
+        var col = _parseColor(params.color);
+        return dc('createTerrain', {
+          name: params.name || 'terrain',
+          width: params.width || 20,
+          depth: params.depth || 20,
+          heightFn: params.heightExpression || params.heightFn || '0',
+          resolution: Math.min(params.resolution||32, 96),
+          color: col,
+          wireframe: !!params.wireframe
+        });
+      }
+      case 'set_camera_pos':
+      case 'camera_set_position':
+        return dc('setCameraPos', {x:params.x, y:params.y, z:params.z});
+      case 'set_camera_target':
+      case 'camera_set_target':
+        return dc('setCameraTarget', {x:params.x, y:params.y, z:params.z});
+      case 'remove_object':
+        return dc('removeObject', {name:params.name});
+      case 'set_object_color':
+        return dc('setObjectColor', {name:params.name, color:_parseColor(params.color)});
+      case 'set_object_position':
+        return dc('setPosition', {name:params.name, x:params.x, y:params.y, z:params.z});
+      case 'set_object_rotation':
+        return dc('setRotation', {name:params.name, x:params.x, y:params.y, z:params.z});
+      case 'set_object_scale':
+        return dc('setScale', {name:params.name, x:params.x, y:params.y, z:params.z});
+      case 'animate_object':
+        return dc('animateObj', {objName:params.name, prop:params.property||'position.y', from:params.from||0, to:params.to||1, duration:params.duration||1});
+      case 'apply_scene_template':
+        return dc('applySceneTemplate', {template:params.template});
+      case 'export_scene':
+        return dc('exportScene', {});
+      default:
+        throw new Error('Unknown tool: ' + name);
+    }
+  }
+
+  // === Execute list of tool calls; produce concise summary ===
+  function execToolCalls(calls) {
+    var okCount = 0, errCount = 0;
+    var toolCounts = {};  // tool name → count
+    for (var i = 0; i < calls.length; i++) {
+      var c = calls[i];
+      if (!c || !c.tool) continue;
+      try {
+        execTool(c.tool, c.params || {});
+        okCount++;
+        toolCounts[c.tool] = (toolCounts[c.tool] || 0) + 1;
+      } catch(e) {
+        console.warn('[aiExec] tool failed:', c.tool, e.message);
+        errCount++;
+      }
+    }
+    return {okCount: okCount, errCount: errCount, toolCounts: toolCounts};
+  }
+
+  // Build a short human-readable summary like:
+  // "Готово: 5 кубов, 3 сферы, свет и камера (всего 11 объектов)"
+  function buildSummary(toolCounts, okCount) {
+    if (!okCount) return 'ничего не создал 😕';
+    var parts = [];
+    for (var name in toolCounts) {
+      if (!toolCounts.hasOwnProperty(name)) continue;
+      var n = toolCounts[name];
+      var label = TOOL_LABELS[name] || name;
+      // Try to pluralize roughly
+      if (n > 1) {
+        // crude Russian pluralization for the most common words
+        if (/куб/.test(label)) label = 'кубов';
+        else if (/сфер/.test(label)) label = 'сфер';
+        else if (/цилиндр/.test(label)) label = 'цилиндров';
+        else if (/конус/.test(label)) label = 'конусов';
+        else if (/торус/.test(label)) label = 'торусов';
+        else if (/точечн/.test(label)) label = 'точечных света';
+        else if (/направлен/.test(label)) label = 'направленных света';
+        else if (/фонов/.test(label)) label = 'фоновых света';
+        else if (/модел/.test(label)) label = 'моделей';
+        else if (/рельеф/.test(label)) label = 'рельефов';
+        else label = label;
+        parts.push(n + ' ' + label);
+      } else {
+        parts.push(label);
+      }
+    }
+    if (parts.length === 0) return 'создал ' + okCount + ' объектов';
+    if (parts.length <= 3) return parts.join(', ') + ' (всего ' + okCount + ')';
+    // Compress: show first 2 + "и ещё N"
+    var head = parts.slice(0, 2).join(', ');
+    var tail = parts.length - 2;
+    return head + ' и ещё ' + tail + ' (всего ' + okCount + ' объектов)';
+  }
+
+  // === Quick keyword match (offline, instant) — for known templates ===
   function quickMatch(text) {
     var t = text.toLowerCase().trim();
     function tmpl(kws, tpl) { for (var i = 0; i < kws.length; i++) if (t.indexOf(kws[i]) !== -1) return {tool:'apply_scene_template',params:{template:tpl}}; return null; }
@@ -21762,7 +22051,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     if ((r = tmpl(['город','city'],'city'))) return r;
     if ((r = tmpl(['лес','forest'],'forest'))) return r;
     if ((r = tmpl(['пустын','desert'],'desert'))) return r;
-    if ((r = tmpl(['космос','space'],'space'))) return r;
+    if ((r = tmpl(['космос','space','звезд','планет','галакт'],'space'))) return r;
     if ((r = tmpl(['подвод','underwater','океан','море'],'underwater'))) return r;
     if ((r = tmpl(['гор','mountain','скал'],'mountain'))) return r;
     if ((r = tmpl(['замок','castle'],'castle'))) return r;
@@ -21770,85 +22059,489 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     if ((r = tmpl(['остров','island'],'island'))) return r;
     if ((r = tmpl(['зим','winter','снег'],'winter'))) return r;
     if ((r = tmpl(['тропик','tropical','джунгл'],'tropical'))) return r;
-    if ((r = tmpl(['шаблон','template'],'default'))) return r;
     if (/очист|удал.*вс[её]|clear|reset|новая\s*сцен/.test(t)) return {tool:'clear_scene',params:{}};
-    if (/куб|cube/.test(t) && /добав|созд|новы|put|add/.test(t)) return {tool:'add_cube',params:{}};
-    if (/сфер|sphere|шар/.test(t) && /добав|созд|новы|put|add/.test(t)) return {tool:'add_sphere',params:{}};
-    if (/цилиндр|cylinder/.test(t) && /добав|созд|новы|put|add/.test(t)) return {tool:'add_cylinder',params:{}};
-    if (/свет|light|освещ/.test(t) && /добав|включ|put|add/.test(t)) return {tool:'add_light',params:{}};
-    if (/экспорт|export|сохран|save/.test(t)) return {tool:'export_scene',params:{}};
     return null;
   }
-  async function fastExec(prompt) {
+
+  function fastExec(prompt) {
     var m = quickMatch(prompt);
     if (!m) return null;
     try {
-      // Execute locally — no MCP server round-trip needed
-      var dc = window._mcpDispatchCall;
-      if (!dc) return null;
-      var toolToFn = {
-        'apply_scene_template': function(p) { return dc('applySceneTemplate', {template: p.template}); },
-        'clear_scene': function() { return dc('clear', {}); },
-        'add_cube': function() { return dc('addCube', {x:0, y:0.5, z:0, w:1, h:1, d:1}); },
-        'add_sphere': function() { return dc('addSphere', {x:0, y:0.5, z:0, radius:0.5}); },
-        'add_cylinder': function() { return dc('addCylinder', {x:0, y:0.5, z:0}); },
-        'add_light': function() { return dc('addPointLight', {x:0, y:5, z:0, intensity:1, color:0xffffff}); },
-        'export_scene': function() { return dc('exportScene', {}); },
-        'set_bg_color': function(p) { var c = p.color || '#333333'; var h = c.replace('#',''); var r = parseInt(h.substring(0,2),16)/255, g = parseInt(h.substring(2,4),16)/255, b = parseInt(h.substring(4,6),16)/255; return dc('setBgColor', {r:r, g:g, b:b}); }
-      };
-      var fn = toolToFn[m.tool];
-      if (!fn) return null;
-      fn(m.params);
-      return {reply: toolLabel(m.tool, m.params), toolLog:[{tool:m.tool, params:m.params, status:'OK'}]};
+      execTool(m.tool, m.params);
+      var labels = {city:'Город',forest:'Лес',desert:'Пустыня',space:'Космос',underwater:'Подводный мир',
+        mountain:'Горы',castle:'Замок',room:'Комната',island:'Остров',winter:'Зима',tropical:'Тропики',default:'Сцена'};
+      var tplName = labels[m.params.template] || 'Сцена';
+      return {reply: '✅ Применил шаблон «' + tplName + '». Открой вкладку Engine, чтобы увидеть результат.'};
     } catch(e) {
-      console.error('[fastExec] Local error:', e);
-      return {reply: 'Ошибка: ' + e.message, toolLog:[{tool:m.tool, params:m.params, status:'FAIL', error:e.message}]};
+      return {reply: '⚠️ ' + e.message};
     }
   }
+
+  // === Build LLM system prompt for 3D generation ===
+  function buildGenPrompt(userPrompt) {
+    return [
+      'Ты — SashaAI, 3D GameDev ассистент. Запрос: "' + userPrompt + '".',
+      'Сгенерируй JSON-массив вызовов инструментов для построения сцены в 3D движке.',
+      'Выведи ТОЛЬКО JSON-массив, без markdown, без объяснений, без комментариев.',
+      '',
+      'Доступные инструменты (name -> params):',
+      '- scene_clear: {}',
+      '- set_bg_color: {color: "#rrggbb"}',
+      '- add_plane: {width, height, color}',
+      '- add_cube: {x, y, z, width, height, depth, color}',
+      '- add_sphere: {x, y, z, radius, color}',
+      '- add_cylinder: {x, y, z, radiusTop, radiusBottom, height, color}',
+      '- add_cone: {x, y, z, radius, height, color}',
+      '- add_torus: {x, y, z, radius, tube, color}',
+      '- add_point_light: {x, y, z, intensity, color}',
+      '- add_directional_light: {x, y, z, intensity, color}',
+      '- add_ambient_light: {intensity, color}',
+      '- compose_model: {description: "house|tree|car|sword|axe|shield|campfire|torch|crystal|platform|ruins|barrel|chest|well|table|chair|ladder|gate|sign|tower|bridge|castle|rock", posX, posY, posZ, scaleX, scaleY, scaleZ}',
+      '- create_terrain: {name, width, depth, heightExpression: "Math.sin(x*0.3)*1.5", resolution, color}',
+      '- camera_set_position: {x, y, z}',
+      '- camera_set_target: {x, y, z}',
+      '',
+      'Цвета — hex-строки вида "#aabbcc". Координаты — числа.',
+      'Правила: 5-30 вызовов. Начни с scene_clear, потом set_bg_color, add_plane, потом объекты, потом свет, потом камера.',
+      'Только валидный JSON.',
+      '',
+      'Пример ответа:',
+      '[{"tool":"scene_clear","params":{}},{"tool":"set_bg_color","params":{"color":"#1a1a2e"}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_cube","params":{"x":0,"y":0.5,"z":0,"width":2,"height":1,"depth":2,"color":"#ff8800"}},{"tool":"add_point_light","params":{"x":5,"y":8,"z":5,"intensity":1,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":8,"y":6,"z":8}},{"tool":"camera_set_target","params":{"x":0,"y":1,"z":0}}]',
+      '',
+      'Теперь сгенерируй JSON для запроса: "' + userPrompt + '"'
+    ].join('\n');
+  }
+
+  // === Build LLM system prompt for conversation ===
+  function buildChatPrompt(userPrompt) {
+    return [
+      'Ты — SashaAI, дружелюбный ассистент для 3D GameDev. Ты работаешь в веб-редакторе SashaAI GameDev Engine.',
+      'Отвечай кратко (1-3 предложения), на русском, без markdown-блоков с кодом, если не просят код.',
+      'Ты умеешь:',
+      '  • Создавать 3D-сцены по описанию (кубы, сферы, цилиндры, процедурные модели: дом, дерево, машина, меч и др.)',
+      '  • Применять готовые шаблоны: город, лес, космос, пустыня, подводный мир, замок, остров, зима, тропики, комната',
+      '  • Генерировать рельеф (terrain) с любой математической формулой высоты',
+      '  • Анимировать объекты, менять цвета, позиции, масштабы',
+      '  • Экспортировать сцены в GLTF',
+      'Чтобы попросить тебя что-то создать — просто опиши сцену, например: «создай крепость с 4 башнями», «сделай 50 сфер», «построй космос с планетами».',
+      '',
+      'Пользователь: ' + userPrompt
+    ].join('\n');
+  }
+
+  // === Extract JSON tool-call array from arbitrary LLM text ===
+  function parseToolCallsFromText(text) {
+    if (!text) return null;
+    var src = text;
+    // Strip code fences if present
+    var fenced = src.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenced) src = fenced[1];
+    // Find first [...] block
+    var m = src.match(/\[[\s\S]*\]/);
+    if (!m) return null;
+    var arr;
+    try { arr = JSON.parse(m[0]); }
+    catch(e) {
+      var cleaned = m[0]
+        .replace(/,\s*([\]\}])/g, '$1')
+        .replace(/'/g, '"')
+        .replace(/\/\/.*$/gm, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3');  // unquoted keys
+      try { arr = JSON.parse(cleaned); }
+      catch(e2) { return null; }
+    }
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    var valid = [];
+    for (var i = 0; i < arr.length; i++) {
+      var c = arr[i];
+      if (c && typeof c === 'object' && typeof c.tool === 'string') {
+        valid.push({tool: c.tool, params: c.params || {}});
+      }
+    }
+    return valid.length ? valid : null;
+  }
+
+  // === Heuristic local generator (offline fallback for generation intent) ===
+  function localGenerate(prompt) {
+    var t = prompt.toLowerCase();
+    var calls = [{tool:'scene_clear',params:{}}];
+    var theme = null;
+    if (/космос|space|звезд|планет|галакт/.test(t)) theme = 'space';
+    else if (/лес|forest|дерев|tree/.test(t)) theme = 'forest';
+    else if (/пустын|desert|песок|sand/.test(t)) theme = 'desert';
+    else if (/подвод|underwater|океан|море|sea|ocean/.test(t)) theme = 'underwater';
+    else if (/зим|winter|снег|snow/.test(t)) theme = 'winter';
+    else if (/город|city|здани|building/.test(t)) theme = 'city';
+    else if (/замок|castle|крепост/.test(t)) theme = 'castle';
+    else if (/комнат|room|house|дом/.test(t)) theme = 'room';
+    else if (/остров|island/.test(t)) theme = 'island';
+    else if (/арена|arena|колизей/.test(t)) theme = 'arena';
+    else if (/платформ|platform|level/.test(t)) theme = 'platformer';
+
+    if (theme === 'space') {
+      calls.push({tool:'set_bg_color',params:{color:'#000011'}});
+      for (var i = 0; i < 5; i++) {
+        calls.push({tool:'add_sphere',params:{x:(Math.random()-0.5)*20, y:(Math.random()-0.5)*15, z:-5-(Math.random()*15), radius:0.5+Math.random()*2.5, color:['#4169E1','#FF6347','#DAA520','#90EE90','#DDA0DD'][Math.floor(Math.random()*5)]}});
+      }
+      for (var s = 0; s < 40; s++) calls.push({tool:'add_sphere',params:{x:(Math.random()-0.5)*60, y:(Math.random()-0.5)*40, z:-30-Math.random()*30, radius:0.05+Math.random()*0.1, color:'#ffffff'}});
+      calls.push({tool:'add_point_light',params:{x:0,y:5,z:-5,intensity:2,color:'#ffffff'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.2,color:'#191970'}});
+      calls.push({tool:'camera_set_position',params:{x:0,y:2,z:5}});
+    } else if (theme === 'forest') {
+      calls.push({tool:'set_bg_color',params:{color:'#87CEEB'}});
+      calls.push({tool:'add_plane',params:{width:60,height:60,color:'#3B5323'}});
+      for (var i = 0; i < 12; i++) calls.push({tool:'compose_model',params:{description:'tree', posX:(Math.random()-0.5)*40, posZ:(Math.random()-0.5)*40}});
+      for (var i = 0; i < 5; i++) calls.push({tool:'compose_model',params:{description:'rock', posX:(Math.random()-0.5)*30, posZ:(Math.random()-0.5)*30, scaleX:0.5+Math.random()}});
+      calls.push({tool:'add_directional_light',params:{x:5,y:15,z:8,intensity:0.7,color:'#FFFACD'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.5,color:'#90EE90'}});
+      calls.push({tool:'camera_set_position',params:{x:10,y:8,z:12}});
+      calls.push({tool:'camera_set_target',params:{x:0,y:1,z:0}});
+    } else if (theme === 'desert') {
+      calls.push({tool:'set_bg_color',params:{color:'#F4A460'}});
+      calls.push({tool:'create_terrain',params:{name:'sand',width:50,depth:50,heightExpression:'Math.sin(x*0.3)*Math.cos(z*0.2)*1.5',resolution:48,color:'#EDC9AF'}});
+      for (var i = 0; i < 4; i++) calls.push({tool:'compose_model',params:{description:'rock',posX:(Math.random()-0.5)*30,posZ:(Math.random()-0.5)*30}});
+      calls.push({tool:'add_directional_light',params:{x:5,y:20,z:3,intensity:1.5,color:'#FFD700'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.6,color:'#FFA500'}});
+      calls.push({tool:'camera_set_position',params:{x:12,y:6,z:12}});
+    } else if (theme === 'underwater') {
+      calls.push({tool:'set_bg_color',params:{color:'#001133'}});
+      calls.push({tool:'create_terrain',params:{name:'seabed',width:40,depth:40,heightExpression:'Math.sin(x*0.5)*Math.cos(z*0.3)*0.8',resolution:40,color:'#1B3F5C'}});
+      for (var i = 0; i < 6; i++) calls.push({tool:'add_sphere',params:{x:(Math.random()-0.5)*20, y:1+Math.random()*3, z:(Math.random()-0.5)*20, radius:0.3+Math.random()*0.6, color:['#FF6B6B','#FF8E8E','#FFB6C1','#DDA0DD'][Math.floor(Math.random()*4)]}});
+      calls.push({tool:'add_point_light',params:{x:0,y:8,z:0,intensity:1.2,color:'#87CEEB'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.4,color:'#006994'}});
+      calls.push({tool:'camera_set_position',params:{x:5,y:3,z:8}});
+    } else if (theme === 'winter') {
+      calls.push({tool:'set_bg_color',params:{color:'#D9E8F5'}});
+      calls.push({tool:'add_plane',params:{width:50,height:50,color:'#E8E8F0'}});
+      calls.push({tool:'create_terrain',params:{name:'snow',width:40,depth:40,heightExpression:'Math.sin(x*0.2)*Math.cos(z*0.15)*1.5',resolution:32,color:'#FFFFFF'}});
+      for (var i = 0; i < 8; i++) calls.push({tool:'compose_model',params:{description:'tree',posX:(Math.random()-0.5)*30,posZ:(Math.random()-0.5)*30}});
+      calls.push({tool:'add_directional_light',params:{x:5,y:15,z:8,intensity:0.8,color:'#FFF8DC'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.5,color:'#B0C4DE'}});
+      calls.push({tool:'camera_set_position',params:{x:10,y:6,z:10}});
+    } else if (theme === 'castle') {
+      calls.push({tool:'set_bg_color',params:{color:'#33223a'}});
+      calls.push({tool:'add_plane',params:{width:50,height:50,color:'#3d5c3a'}});
+      calls.push({tool:'add_cube',params:{x:0,y:4,z:0,width:8,height:8,depth:8,color:'#808080'}});
+      var towers = [[-8,-8],[8,-8],[-8,8],[8,8]];
+      for (var i = 0; i < towers.length; i++) {
+        calls.push({tool:'add_cube',params:{x:towers[i][0],y:2,z:towers[i][1],width:3,height:4,depth:3,color:'#707070'}});
+        calls.push({tool:'add_cylinder',params:{x:towers[i][0],y:5,z:towers[i][1],radiusTop:0.15,radiusBottom:0.15,height:3,color:'#606060'}});
+        calls.push({tool:'add_sphere',params:{x:towers[i][0],y:6.5,z:towers[i][1],radius:0.3,color:'#CC0000'}});
+      }
+      calls.push({tool:'add_point_light',params:{x:0,y:10,z:0,intensity:1.5,color:'#FFD700'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.3,color:'#4a4a6a'}});
+      calls.push({tool:'camera_set_position',params:{x:18,y:12,z:18}});
+      calls.push({tool:'camera_set_target',params:{x:0,y:3,z:0}});
+    } else if (theme === 'city') {
+      calls.push({tool:'set_bg_color',params:{color:'#87CEEB'}});
+      calls.push({tool:'add_plane',params:{width:50,height:50,color:'#555555'}});
+      for (var i = 0; i < 12; i++) calls.push({tool:'add_cube',params:{x:(Math.random()-0.5)*40, y:2+Math.random()*5, z:(Math.random()-0.5)*40, width:2+Math.random()*3, height:4+Math.random()*10, depth:2+Math.random()*3, color:['#888888','#777777','#999999','#666666','#aaaaaa'][Math.floor(Math.random()*5)]}});
+      calls.push({tool:'add_directional_light',params:{x:10,y:20,z:10,intensity:1,color:'#FFFACD'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.4,color:'#B0C4DE'}});
+      calls.push({tool:'camera_set_position',params:{x:15,y:10,z:15}});
+      calls.push({tool:'camera_set_target',params:{x:0,y:2,z:0}});
+    } else if (theme === 'room') {
+      calls.push({tool:'set_bg_color',params:{color:'#2C2C2C'}});
+      calls.push({tool:'add_plane',params:{width:10,height:10,color:'#8B7355'}});
+      calls.push({tool:'add_cube',params:{x:0,y:2.5,z:-5,width:10,height:5,depth:0.2,color:'#D2B48C'}});
+      calls.push({tool:'add_cube',params:{x:-5,y:2.5,z:0,width:0.2,height:5,depth:10,color:'#C4A882'}});
+      calls.push({tool:'add_cube',params:{x:5,y:2.5,z:0,width:0.2,height:5,depth:10,color:'#C4A882'}});
+      calls.push({tool:'compose_model',params:{description:'table'}});
+      calls.push({tool:'compose_model',params:{description:'chair',posZ:2}});
+      calls.push({tool:'add_point_light',params:{x:0,y:4.5,z:0,intensity:1.5,color:'#FFF8DC'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.3,color:'#FFF8DC'}});
+      calls.push({tool:'camera_set_position',params:{x:0,y:3,z:6}});
+    } else if (theme === 'island') {
+      calls.push({tool:'set_bg_color',params:{color:'#6699CC'}});
+      calls.push({tool:'create_terrain',params:{name:'island',width:30,depth:30,heightExpression:'Math.max(0,(15-Math.sqrt(x*x+z*z))*0.6+Math.sin(x*0.5)*Math.cos(z*0.3))',resolution:48,color:'#F4A460'}});
+      calls.push({tool:'compose_model',params:{description:'tree',posX:-2,posZ:1}});
+      calls.push({tool:'compose_model',params:{description:'tree',posX:3,posZ:-2}});
+      calls.push({tool:'add_sphere',params:{x:0,y:-5,z:-20,radius:15,color:'#1E90FF'}});
+      calls.push({tool:'add_directional_light',params:{x:5,y:15,z:8,intensity:1,color:'#FFFACD'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.5,color:'#87CEEB'}});
+      calls.push({tool:'camera_set_position',params:{x:12,y:8,z:12}});
+    } else if (theme === 'arena') {
+      calls.push({tool:'set_bg_color',params:{color:'#0a0a14'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.3,color:'#202030'}});
+      calls.push({tool:'add_cylinder',params:{x:0,y:0,z:0,radiusTop:15,radiusBottom:15,height:0.3,color:'#333344'}});
+      for (var i = 0; i < 16; i++) {
+        var angle = i * Math.PI * 2 / 16;
+        calls.push({tool:'add_cube',params:{x:Math.cos(angle)*14,y:3,z:Math.sin(angle)*14,width:2,height:6,depth:1,color:'#444455'}});
+      }
+      for (var ti = 0; ti < 4; ti++) {
+        var ta = ti * Math.PI / 2 + Math.PI / 4;
+        var tx = Math.cos(ta)*12, tz = Math.sin(ta)*12;
+        calls.push({tool:'add_cylinder',params:{x:tx,y:3,z:tz,radiusTop:0.5,radiusBottom:0.5,height:6,color:'#666677'}});
+        calls.push({tool:'add_sphere',params:{x:tx,y:6.5,z:tz,radius:0.6,color:'#ff6644'}});
+        calls.push({tool:'add_point_light',params:{x:tx,y:7,z:tz,intensity:0.5,color:'#ff6644'}});
+      }
+      calls.push({tool:'add_point_light',params:{x:0,y:10,z:0,intensity:2,color:'#ff4444'}});
+      calls.push({tool:'camera_set_position',params:{x:20,y:15,z:20}});
+      calls.push({tool:'camera_set_target',params:{x:0,y:2,z:0}});
+    } else if (theme === 'platformer') {
+      calls.push({tool:'set_bg_color',params:{color:'#1a0a1f'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.4,color:'#302040'}});
+      calls.push({tool:'add_directional_light',params:{x:10,y:20,z:5,intensity:0.6,color:'#ffaaff'}});
+      calls.push({tool:'add_cube',params:{x:0,y:-0.5,z:0,width:30,height:1,depth:10,color:'#332244'}});
+      var plats = [{x:-8,y:2,w:3,d:3,c:'#6644aa'},{x:-3,y:4,w:2.5,d:2.5,c:'#7744bb'},{x:2,y:3,w:3,d:2,c:'#5533aa'},{x:6,y:5,w:2,d:3,c:'#8844cc'},{x:-5,y:6.5,w:3,d:2,c:'#7733bb'},{x:0,y:7.5,w:2.5,d:2.5,c:'#9944dd'},{x:5,y:8,w:3,d:2,c:'#aa55ee'},{x:-2,y:9.5,w:2,d:3,c:'#8833cc'},{x:3,y:10.5,w:2.5,d:2,c:'#bb66ff'}];
+      for (var i = 0; i < plats.length; i++) calls.push({tool:'add_cube',params:{x:plats[i].x,y:plats[i].y,z:0,width:plats[i].w,height:0.4,depth:plats[i].d,color:plats[i].c}});
+      for (var c = 0; c < 10; c++) calls.push({tool:'add_torus',params:{x:-8+c*1.8,y:1.5+c*0.8,z:0,radius:0.3,tube:0.1,color:'#ffdd00'}});
+      calls.push({tool:'add_cube',params:{x:0,y:12,z:0,width:3,height:0.4,depth:3,color:'#ff44ff'}});
+      calls.push({tool:'add_sphere',params:{x:0,y:13,z:0,radius:0.5,color:'#ff88ff'}});
+      calls.push({tool:'add_point_light',params:{x:0,y:13.5,z:0,intensity:1,color:'#ff88ff'}});
+      calls.push({tool:'camera_set_position',params:{x:15,y:10,z:15}});
+      calls.push({tool:'camera_set_target',params:{x:0,y:4,z:0}});
+    } else {
+      // Generic — extract primitives by name + count
+      calls.push({tool:'set_bg_color',params:{color:'#1a1a2e'}});
+      calls.push({tool:'add_plane',params:{width:30,height:30,color:'#2e2e4a'}});
+      var primMatches = [
+        {re:/(\d+)\s*(?:сфер|sphere|шар)/i, tool:'add_sphere', color:'#ec4899'},
+        {re:/(\d+)\s*(?:куб|cube|box)/i, tool:'add_cube', color:'#6366f1'},
+        {re:/(\d+)\s*(?:цилиндр|cylinder)/i, tool:'add_cylinder', color:'#22c55e'},
+        {re:/(\d+)\s*(?:конус|cone)/i, tool:'add_cone', color:'#f59e0b'},
+        {re:/(\d+)\s*(?:торус|torus|бублик)/i, tool:'add_torus', color:'#ec4899'}
+      ];
+      var foundPrim = false;
+      for (var p = 0; p < primMatches.length; p++) {
+        var pm = t.match(primMatches[p].re);
+        if (pm) {
+          foundPrim = true;
+          var n = Math.min(parseInt(pm[1])||1, 100);
+          for (var k = 0; k < n; k++) {
+            var radius = 0.3+Math.random()*0.5;
+            var primParams = {x:(Math.random()-0.5)*15, y:0.5+Math.random()*3, z:(Math.random()-0.5)*15, color:primMatches[p].color};
+            if (primMatches[p].tool === 'add_sphere') primParams.radius = radius;
+            else if (primMatches[p].tool === 'add_cube') { primParams.width = 0.5+Math.random()*1.5; primParams.height = 0.5+Math.random()*1.5; primParams.depth = 0.5+Math.random()*1.5; }
+            else if (primMatches[p].tool === 'add_cylinder') { primParams.radiusTop = radius; primParams.radiusBottom = radius; primParams.height = 0.5+Math.random()*2; }
+            else if (primMatches[p].tool === 'add_cone') { primParams.radius = radius; primParams.height = 0.5+Math.random()*2; }
+            else if (primMatches[p].tool === 'add_torus') { primParams.radius = radius; primParams.tube = 0.05+Math.random()*0.1; }
+            calls.push({tool:primMatches[p].tool, params:primParams});
+          }
+        }
+      }
+      // Procedural models by name
+      var objMap = {'дом|house|building':'house','дерев|tree':'tree','машир|car|авто':'car','меч|sword':'sword','топор|axe':'axe','щит|shield':'shield','костр|campfire|fire':'campfire','факел|torch':'torch','кристал|crystal':'crystal','платформ|platform':'platform','руин|ruins':'ruins','бочк|barrel':'barrel','сунду|chest':'chest','колодез|well':'well','стол|table':'table','стул|chair':'chair','лестниц|ladder':'ladder','ворот|gate':'gate','знак|sign':'sign','башн|tower':'tower','мост|bridge':'bridge','камен|rock|stone':'rock'};
+      var foundModel = false;
+      for (var key in objMap) {
+        var re = new RegExp(key, 'i');
+        if (re.test(t)) {
+          foundModel = true;
+          var count = 1;
+          var cntMatch = t.match(/(\d+)\s*(?:штук|раз|pcs|items)?/);
+          if (cntMatch) count = Math.min(parseInt(cntMatch[1]), 20);
+          for (var k = 0; k < count; k++) calls.push({tool:'compose_model', params:{description: objMap[key], posX: (Math.random()-0.5)*15, posZ: (Math.random()-0.5)*15}});
+        }
+      }
+      calls.push({tool:'add_point_light',params:{x:5,y:8,z:5,intensity:1,color:'#ffffff'}});
+      calls.push({tool:'add_ambient_light',params:{intensity:0.4,color:'#404060'}});
+      calls.push({tool:'camera_set_position',params:{x:8,y:6,z:8}});
+      calls.push({tool:'camera_set_target',params:{x:0,y:1,z:0}});
+    }
+    return calls;
+  }
+
+  // === Local fallback for conversational prompts ===
+  function localChat(prompt) {
+    var t = prompt.toLowerCase().trim();
+    if (/^(привет|здравствуй|здравствуйте|hi|hello|hey|yo|йо|ку|qq)(?:\s|$|[^a-zа-яё])/.test(t)) {
+      var greetings = ['Привет! 👋 Я SashaAI — 3D GameDev ассистент. Что создадим сегодня?', 'Приветствую! Готов помочь с 3D-сценой. Опиши, что хочешь построить.', 'Хей! Расскажи, какую сцену собрать — и я её сделаю.'];
+      return greetings[Math.floor(Math.random()*greetings.length)];
+    }
+    if (/^(пока|bye|до свидан|увидимся|удачи)/.test(t)) return 'Пока! Возвращайся, когда будет новая сцена для постройки 👋';
+    if (/^(спасибо|спс|thanks|thank you|благодарю)/.test(t)) return 'Всегда рад помочь! Обращайся, если что-то нужно подправить.';
+    if (/^(что ты умеешь|что умеешь|твои возможности|что можешь|help|помощь|справка)/.test(t)) {
+      return 'Я SashaAI — могу:\n• Создавать 3D-сцены по описанию (кубы, сферы, модели дом/дерево/машина/меч и т.д.)\n• Применять готовые шаблоны: город, лес, космос, пустыня, подводный мир, замок, остров, зима, тропики, комната\n• Генерировать рельеф по формуле\n• Анимировать, красить, двигать объекты\n• Экспортировать в GLTF\n\nПросто опиши, что хочешь — например: «построй крепость с 4 башнями», «сделай 50 сфер», «создай космос с планетами».';
+    }
+    if (/^(кто ты|как тебя зовут|твоё имя|имя)/.test(t)) return 'Я SashaAI — твой 3D GameDev ассистент, работаю на локальной LLM Qwen Coder 2.5 7B через MCP-сервер.';
+    if (/^(как дела|как ты|how are you|как настроен)/.test(t)) return 'Да отлично, готов генерировать сцены! У тебя как?';
+    if (/^(что нового|news)/.test(t)) return 'Сейчас умею генерировать сцены через локальный Qwen Coder, применять 13 шаблонов и общаться диалогом. Что хочешь попробовать?';
+    return 'Я тебя понял. Хочешь создать 3D-сцену? Опиши, что построить — например: «сделай город», «построй замок», «создай 20 сфер».';
+  }
+
+  // === Call local LLM (Qwen via MCP) ===
+  async function callLocalLLM(message, isChat) {
+    var sys = isChat ? buildChatPrompt(message) : buildGenPrompt(message);
+    var resp;
+    try {
+      resp = await fetch(LOCAL_LLM_API, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: sys, history: chatHistory})
+      });
+    } catch(e) {
+      throw new Error('Local LLM unreachable: ' + e.message);
+    }
+    if (!resp.ok) throw new Error('Local LLM HTTP ' + resp.status);
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // === Call cloud LLM (Pollinations) ===
+  async function callCloudLLM(message, isChat) {
+    var sys = isChat ? buildChatPrompt(message) : buildGenPrompt(message);
+    var resp;
+    try {
+      resp = await fetch(CLOUD_LLM_API, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          model: CLOUD_MODEL,
+          messages: [
+            {role: 'system', content: 'You are SashaAI, a 3D GameDev assistant. Respond in Russian.'},
+            {role: 'user', content: sys}
+          ]
+        })
+      });
+    } catch(e) {
+      throw new Error('Cloud LLM unreachable: ' + e.message);
+    }
+    if (!resp.ok) throw new Error('Cloud LLM HTTP ' + resp.status);
+    var data = await resp.json();
+    // OpenAI-style response
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return {reply: data.choices[0].message.content, history: []};
+    }
+    throw new Error('Cloud LLM bad response');
+  }
+
+  // === Main entry: EngineApp.sendAI ===
   EngineApp.sendAI = async function () {
     var input = document.getElementById('eng-ai-input');
     if (!input) return;
     var prompt = input.value.trim();
     if (!prompt) return;
-    if (ollamaBusy) { addChat('ai', 'Подожди, ещё думаю над предыдущим запросом...'); return; }
+    if (busy) { addChat('ai', '⏳ Подожди, ещё думаю над предыдущим...'); return; }
     input.value = '';
     addChat('user', prompt);
-    ollamaBusy = true;
-    var fast = await fastExec(prompt);
-    if (fast) {
-      addChat('ai', fast.reply);
-      ollamaHistory.push({role:'user',content:prompt},{role:'assistant',content:fast.reply});
-      ollamaBusy = false;
-      return;
-    }
-    addChat('ai', 'Думаю...');
+    busy = true;
+    chatHistory.push({role:'user', content: prompt});
+
     try {
-      var r = await fetch(OLLAMA_CHAT_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: prompt, history: ollamaHistory })
-      });
-      var data = await r.json();
-      removeThinking();
-      if (data.error) {
-        addChat('ai', 'Ошибка: ' + data.error);
-      } else {
-        ollamaHistory = data.history || ollamaHistory;
-        if (data.toolLog && data.toolLog.length) {
-          var logText = data.toolLog.map(function (t) {
-            return toolLabel(t.tool, t.params);
-          }).join(' ');
-          addChat('ai', logText);
-        }
-        addChat('ai', data.reply || '(пустой ответ)');
+      // 1) Quick template match (offline, instant)
+      var fast = fastExec(prompt);
+      if (fast) {
+        addChat('ai', fast.reply);
+        chatHistory.push({role:'assistant', content: fast.reply});
+        busy = false;
+        return;
       }
-    } catch (e) {
+
+      // 2) Detect intent
+      var intent = detectIntent(prompt);
+
+      if (intent === 'chat') {
+        // Conversational mode — call LLM as plain chat, no scene generation
+        addChat('ai', '💬 ...');
+        var chatReply = null;
+        // Try local LLM first
+        try {
+          var localData = await callLocalLLM(prompt, true);
+          chatReply = localData.reply || localData.text || null;
+        } catch(e) {
+          console.warn('[sendAI] local LLM failed for chat:', e.message);
+        }
+        // Fallback to cloud
+        if (!chatReply) {
+          try {
+            var cloudData = await callCloudLLM(prompt, true);
+            chatReply = cloudData.reply;
+          } catch(e2) {
+            console.warn('[sendAI] cloud LLM also failed for chat:', e2.message);
+          }
+        }
+        // Ultimate fallback: local heuristic chat
+        if (!chatReply) chatReply = localChat(prompt);
+        removeThinking();
+        addChat('ai', chatReply);
+        chatHistory.push({role:'assistant', content: chatReply});
+        busy = false;
+        return;
+      }
+
+      // 3) Generation intent — try LLM with JSON tool calls
+      addChat('ai', '🤔 Думаю через AI...');
+      var genReply = null;
+      var toolCalls = null;
+
+      // Try local LLM first
+      try {
+        var localGen = await callLocalLLM(prompt, false);
+        genReply = localGen.reply || localGen.text || '';
+        if (localGen.toolLog && localGen.toolLog.length) {
+          // Server already executed tools — convert to local format for summary
+          toolCalls = localGen.toolLog.map(function(t){return {tool:t.tool, params:t.params||{}};});
+        } else {
+          // Parse the LLM text reply for JSON tool-call array
+          toolCalls = parseToolCallsFromText(genReply);
+        }
+      } catch(e) {
+        console.warn('[sendAI] local LLM failed for gen:', e.message);
+      }
+
+      // If local LLM didn't produce usable tool calls, try cloud
+      if (!toolCalls) {
+        try {
+          var cloudGen = await callCloudLLM(prompt, false);
+          var cloudText = cloudGen.reply || '';
+          toolCalls = parseToolCallsFromText(cloudText);
+          if (toolCalls) genReply = cloudText;
+        } catch(e2) {
+          console.warn('[sendAI] cloud LLM also failed for gen:', e2.message);
+        }
+      }
+
       removeThinking();
-      addChat('ai', 'Не удалось связаться с сервером localhost:3000. Проверь что запущен node src/index.js. ' + e.message);
+
+      if (toolCalls && toolCalls.length) {
+        // Execute locally
+        var result = execToolCalls(toolCalls);
+        var summary = buildSummary(result.toolCounts, result.okCount);
+        var prefix = '✨ Готово! Создал: ' + summary + '.';
+        if (result.errCount) prefix += ' (' + result.errCount + ' ошибок пропустил)';
+        addChat('ai', prefix);
+        chatHistory.push({role:'assistant', content: prefix});
+      } else {
+        // Last resort: heuristic local generator
+        var calls2 = localGenerate(prompt);
+        var result2 = execToolCalls(calls2);
+        var summary2 = buildSummary(result2.toolCounts, result2.okCount);
+        var prefix2 = '🎨 Создал локально (LLM недоступен): ' + summary2 + '.';
+        addChat('ai', prefix2);
+        chatHistory.push({role:'assistant', content: prefix2});
+      }
+    } catch(e) {
+      removeThinking();
+      addChat('ai', '❌ Ошибка: ' + e.message);
+      console.error('[sendAI] error:', e);
     } finally {
-      ollamaBusy = false;
+      busy = false;
     }
   };
+
+  // Backward-compat aliases
+  window.ollamaHistory = chatHistory;
+  window.ollamaBusy = function() { return busy; };
+
+  // Expose for debugging and for SashaAIAgent hook (PATCH4)
+  window._sashaAIChat = {
+    detectIntent: detectIntent,
+    fastExec: fastExec,
+    localGenerate: localGenerate,
+    localChat: localChat,
+    execTool: execTool,
+    execToolCalls: execToolCalls,
+    buildSummary: buildSummary,
+    parseToolCallsFromText: parseToolCallsFromText,
+    callLocalLLM: callLocalLLM,
+    callCloudLLM: callCloudLLM,
+    addChat: addChat,
+    chatHistory: chatHistory
+  };
+
+  console.log('[SashaAI Chat] Real AI generation pipeline ready. Primary: ' + LOCAL_LLM_API + ' | Fallback: ' + CLOUD_LLM_API);
 })();
 </script>
 </body>
