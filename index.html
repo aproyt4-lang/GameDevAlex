@@ -1157,7 +1157,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                         <button class="gizmo-mode-btn" id="gizmo-scale" onclick="EngineApp.setGizmoMode('scale')" title="Scale (R)">R</button>
                     </div>
                     <div class="eng-separator"></div>
-                    <select id="eng-add-obj-select" onchange="EngineApp.addFromDropdown()" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
+                    <select id="eng-add-obj-select" style="background:var(--bg-hover);border:1px solid var(--border);color:#fff;padding:4px 8px;border-radius:6px;font-size:0.75rem;outline:none;">
                         <option value="">+ Add Object</option>
                         <option value="cube">Cube</option>
                         <option value="sphere">Sphere</option>
@@ -3985,6 +3985,37 @@ var SashaAIGraphics = (function() {
             var mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = mesh.receiveShadow = true;
             return mesh;
+        },
+        table: function(params) {
+            var group = new THREE.Group();
+            var w = (params && params.width) || 1.5, d = (params && params.depth) || 0.8, h = (params && params.height) || 0.75;
+            var mat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 });
+            var top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, d), mat);
+            top.position.y = h; top.castShadow = true; top.receiveShadow = true; group.add(top);
+            var legR = 0.04, legH = h;
+            var lx = w/2-0.08, lz = d/2-0.08;
+            for (var si = -1; si <= 1; si += 2) for (var sj = -1; sj <= 1; sj += 2) {
+                var leg = new THREE.Mesh(new THREE.CylinderGeometry(legR, legR, legH, 8), mat);
+                leg.position.set(si*lx, legH/2, sj*lz); leg.castShadow = true; group.add(leg);
+            }
+            return group;
+        },
+        chair: function(params) {
+            var group = new THREE.Group();
+            var mat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 });
+            var seatH = 0.45, seatW = 0.45, seatD = 0.4;
+            var seat = new THREE.Mesh(new THREE.BoxGeometry(seatW, 0.05, seatD), mat);
+            seat.position.y = seatH; seat.castShadow = true; seat.receiveShadow = true; group.add(seat);
+            var legR = 0.025, legH = seatH;
+            var lx = seatW/2-0.05, lz = seatD/2-0.05;
+            for (var si = -1; si <= 1; si += 2) for (var sj = -1; sj <= 1; sj += 2) {
+                var leg = new THREE.Mesh(new THREE.CylinderGeometry(legR, legR, legH, 8), mat);
+                leg.position.set(si*lx, legH/2, sj*lz); leg.castShadow = true; group.add(leg);
+            }
+            var backH = 0.45;
+            var back = new THREE.Mesh(new THREE.BoxGeometry(seatW, backH, 0.04), mat);
+            back.position.set(0, seatH + backH/2, -seatD/2 + 0.02); back.castShadow = true; group.add(back);
+            return group;
         }
     };
 
@@ -5523,6 +5554,7 @@ var SashaEngineAPI = (function() {
     var objects = {};
     var objectTypes = {};
     var objectRenames = {};
+    var _persistentObjects = {};
     var gizmoMode = 'translate';
     var raycaster = new THREE.Raycaster();
     var mouse = new THREE.Vector2();
@@ -6142,11 +6174,9 @@ var SashaEngineAPI = (function() {
                         EngineApp._handleViewportMultiSelect(hitName, _ctrlKey, _shiftKey);
                     } else {
                         selectObject(hitName);
-                        if (onSelectionChange) { onSelectionChange(hitName); }
                     }
                 } else {
                     selectObject(hitName);
-                    if (onSelectionChange) { onSelectionChange(hitName); }
                 }
                 return;
             }
@@ -6156,7 +6186,6 @@ var SashaEngineAPI = (function() {
             EngineApp._clearMultiSelection();
         }
         selectObject(null);
-        if (onSelectionChange) { onSelectionChange(null); }
     }
 
     function onResize() {
@@ -6171,6 +6200,7 @@ var SashaEngineAPI = (function() {
         if (typeof _inspPreviewResize === 'function') _inspPreviewResize();
     }
 
+    var objCounter = 0;
     function getUniqueName(prefix) {
         objCounter++;
         return (prefix || 'obj') + '_' + objCounter;
@@ -7002,6 +7032,9 @@ var SashaEngineAPI = (function() {
                 selectionHelper.visible = true;
             }
         }
+
+        // Notify UI to refresh hierarchy, inspector, viewport info
+        if (onSelectionChange) { onSelectionChange(name); }
     }
 
     function getSelectedObject() { return selectedObject; }
@@ -21313,7 +21346,11 @@ var SashaAvatar = (function() {
   }
 
   function dispatchCall(fn, args) {
-    if (fn === 'clear') { SashaEngineAPI.clear(); return 'cleared'; }
+    var _refreshUI = function() {
+      if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+      if (typeof EngineApp !== 'undefined' && EngineApp.updateViewportInfo) EngineApp.updateViewportInfo();
+    };
+    if (fn === 'clear') { SashaEngineAPI.clear(); _refreshUI(); return 'cleared'; }
     if (fn === 'setBgColor') { SashaEngineAPI.setBgColor(args.r||0, args.g||0, args.b||0); return 'ok'; }
     if (fn === 'getSceneInfo') {
       var objs = SashaEngineAPI.getObjects(), types = SashaEngineAPI.getObjectTypes(), info = [];
@@ -21376,7 +21413,7 @@ var SashaAvatar = (function() {
       return SashaEngineAPI.aiComposeModel(args.description, { position: args.position, rotation: args.rotation, scale: args.scale });
     }
     if (fn === 'executeCode') { var r = (new Function(args.code))(); return r !== undefined ? r : 'executed'; }
-    if (fn === 'applySceneTemplate') return applyMCPTemplate(args.template);
+    if (fn === 'applySceneTemplate') { var _r = applyMCPTemplate(args.template); _refreshUI(); return _r; }
     throw new Error('Unknown function: ' + fn);
   }
 
@@ -21384,6 +21421,9 @@ var SashaAvatar = (function() {
     if (typeof SashaEngineAPI[fnName] === 'function') {
       var a = Array.prototype.slice.call(arguments, 1);
       var r = SashaEngineAPI[fnName].apply(window, a);
+      if (fnName.indexOf('add') === 0 || fnName === 'removeObject' || fnName === 'loadModel' || fnName === 'aiComposeModel' || fnName === 'createTerrain') {
+        _refreshUI();
+      }
       return r !== undefined ? String(r) : 'ok';
     }
     throw new Error('Engine function not found: ' + fnName);
@@ -21438,6 +21478,65 @@ var SashaAvatar = (function() {
       SashaEngineAPI.addCylinder(3,1.5,2,0.1,0.15,3,0x20B2AA); SashaEngineAPI.addTorus(0,0.5,0,1,0.2,0xFF69B4);
       SashaEngineAPI.addPointLight(0,8,0,1.2,0x87CEEB); SashaEngineAPI.addPointLight(-5,3,-5,0.5,0x00CED1); SashaEngineAPI.addAmbientLight(0x006994,0.4);
       SashaEngineAPI.setCameraPos(5,3,8); SashaEngineAPI.setCameraTarget(0,1,0); return 'Underwater scene applied';
+    },
+    mountain: function() {
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.53,0.81,0.98);
+      SashaEngineAPI.createTerrain('mountain',60,60,function(x,z){return Math.sin(x*0.15)*Math.cos(z*0.12)*6+Math.sin(x*0.4+z*0.3)*2;},64,{color:0x4a7c59});
+      SashaEngineAPI.addDirectionalLight(10,20,10,0xFFFACD,1.0); SashaEngineAPI.addAmbientLight(0x87CEEB,0.4);
+      SashaEngineAPI.addPointLight(0,8,0,0.5,0xFFFFFF);
+      SashaEngineAPI.setCameraPos(15,12,15); SashaEngineAPI.setCameraTarget(0,3,0); return 'Mountain scene applied';
+    },
+    castle: function() {
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.2,0.15,0.25); SashaEngineAPI.addPlane(50,50,0x3d5c3a);
+      SashaEngineAPI.addCube(0,4,0,8,8,8,0x808080);
+      SashaEngineAPI.addCube(-8,2,-8,3,4,3,0x707070); SashaEngineAPI.addCube(8,2,-8,3,4,3,0x707070);
+      SashaEngineAPI.addCube(-8,2,8,3,4,3,0x707070); SashaEngineAPI.addCube(8,2,8,3,4,3,0x707070);
+      SashaEngineAPI.addCylinder(-6,5,-6,0.15,0.15,3,0x606060); SashaEngineAPI.addSphere(-6,6.5,-6,0.3,0xCC0000);
+      SashaEngineAPI.addCylinder(6,5,-6,0.15,0.15,3,0x606060); SashaEngineAPI.addSphere(6,6.5,-6,0.3,0xCC0000);
+      SashaEngineAPI.addCylinder(-6,5,6,0.15,0.15,3,0x606060); SashaEngineAPI.addSphere(-6,6.5,6,0.3,0xCC0000);
+      SashaEngineAPI.addCylinder(6,5,6,0.15,0.15,3,0x606060); SashaEngineAPI.addSphere(6,6.5,6,0.3,0xCC0000);
+      SashaEngineAPI.addPointLight(0,10,0,1.5,0xFFD700); SashaEngineAPI.addPointLight(-10,6,0,0.5,0xFF8C00);
+      SashaEngineAPI.addPointLight(10,6,0,0.5,0xFF8C00); SashaEngineAPI.addAmbientLight(0x4a4a6a,0.3);
+      SashaEngineAPI.addDirectionalLight(5,15,10,0xFFE4B5,0.6);
+      SashaEngineAPI.setCameraPos(18,12,18); SashaEngineAPI.setCameraTarget(0,3,0); return 'Castle scene applied';
+    },
+    island: function() {
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.4,0.7,0.95);
+      SashaEngineAPI.createTerrain('island',30,30,function(x,z){var d=Math.sqrt(x*x+z*z);return Math.max(0,(15-d)*0.6+Math.sin(x*0.5)*Math.cos(z*0.3));},48,{color:0xF4A460});
+      SashaEngineAPI.aiComposeModel('tree',{position:{x:-2,y:0,z:1}});
+      SashaEngineAPI.aiComposeModel('tree',{position:{x:3,y:0,z:-2}});
+      SashaEngineAPI.addSphere(0,0,-20,15,0x1E90FF);
+      SashaEngineAPI.addDirectionalLight(5,15,8,0xFFFACD,1.0); SashaEngineAPI.addAmbientLight(0x87CEEB,0.5);
+      SashaEngineAPI.setCameraPos(12,8,12); SashaEngineAPI.setCameraTarget(0,1,0); return 'Island scene applied';
+    },
+    winter: function() {
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.85,0.9,0.95);
+      SashaEngineAPI.addPlane(40,40,0xE8E8F0);
+      SashaEngineAPI.createTerrain('snow',40,40,function(x,z){return Math.sin(x*0.2)*Math.cos(z*0.15)*1.5;},32,{color:0xFFFFFF});
+      SashaEngineAPI.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}});
+      SashaEngineAPI.aiComposeModel('tree',{position:{x:4,y:0,z:3}});
+      SashaEngineAPI.addCube(-2,0.75,-3,2,1.5,2,0xCD853F);
+      SashaEngineAPI.addCone(0,3.5,-2,2,0.8,0xA0522D);
+      SashaEngineAPI.addDirectionalLight(5,15,8,0xFFF8DC,0.8); SashaEngineAPI.addAmbientLight(0xB0C4DE,0.5);
+      SashaEngineAPI.addPointLight(0,3,0,0.5,0xFFD700);
+      SashaEngineAPI.setCameraPos(10,6,10); SashaEngineAPI.setCameraTarget(0,1,0); return 'Winter scene applied';
+    },
+    tropical: function() {
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.4,0.75,0.95);
+      SashaEngineAPI.addPlane(50,50,0xF5DEB3);
+      SashaEngineAPI.createTerrain('beach',50,50,function(x,z){return Math.sin(x*0.15)*Math.cos(z*0.1)*0.8;},32,{color:0xFAEBD7});
+      for(var _ti=0;_ti<5;_ti++){SashaEngineAPI.aiComposeModel('tree',{position:{x:(Math.random()-0.5)*20,y:0,z:(Math.random()-0.5)*20}});}
+      SashaEngineAPI.addSphere(0,-0.3,-15,12,0x00CED1);
+      SashaEngineAPI.addDirectionalLight(8,20,5,0xFFD700,1.2); SashaEngineAPI.addAmbientLight(0xFFA07A,0.4);
+      SashaEngineAPI.addPointLight(0,5,0,0.3,0xFFFFFF);
+      SashaEngineAPI.setCameraPos(12,5,12); SashaEngineAPI.setCameraTarget(0,1,-5); return 'Tropical scene applied';
+    },
+    default: function() {
+      SashaEngineAPI.clear(); SashaEngineAPI.setBgColor(0.04,0.04,0.1);
+      SashaEngineAPI.addPlane(20,20,0x222233);
+      SashaEngineAPI.addPointLight(0,5,0,1,0xFFFFFF);
+      SashaEngineAPI.addAmbientLight(0x444466,0.3);
+      SashaEngineAPI.setCameraPos(5,5,5); SashaEngineAPI.setCameraTarget(0,0,0); return 'Default scene applied';
     }
   };
 
@@ -21736,6 +21835,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 </script>
 </body>
 </html>
+
 
 
 
