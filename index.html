@@ -23949,133 +23949,174 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   }
 
   function execTool(name, params) {
-    var dc = window._mcpDispatchCall;
-    if (!dc) throw new Error('Engine bridge not ready');
     params = params || {};
+    // Direct calls — no MCP dispatch needed
+    var E = typeof SashaEngineAPI !== 'undefined' ? SashaEngineAPI : null;
+    var G = typeof SashaAIGraphics !== 'undefined' ? SashaAIGraphics : null;
+    var CC = typeof SashaCharacterController !== 'undefined' ? SashaCharacterController : null;
+    if (!E) throw new Error('SashaEngineAPI not loaded');
+
+    function pcol(c) {
+      if (!c) return undefined;
+      if (typeof c === 'number') return c;
+      if (typeof c === 'string') {
+        var s = c.replace('#','').replace('0x','');
+        if (/^[0-9a-fA-F]{6}$/.test(s)) return parseInt(s, 16);
+      }
+      return undefined;
+    }
+
     switch (name) {
       case 'clear_scene':
       case 'scene_clear':
-        return dc('clear', {});
+        E.clear(); return 'cleared';
       case 'set_bg_color':
       case 'scene_set_background': {
-        var c = params.color || params.hex || '#1a1a2e';
+        var c = params.color || '#1a1a2e';
         if (typeof c === 'string') {
           var h = c.replace('#','').replace('0x','');
           if (h.length === 6) {
-            var r = parseInt(h.substring(0,2),16)/255;
-            var g = parseInt(h.substring(2,4),16)/255;
-            var b = parseInt(h.substring(4,6),16)/255;
-            return dc('setBgColor', {r:r, g:g, b:b});
+            E.setBgColor(parseInt(h.substring(0,2),16)/255, parseInt(h.substring(2,4),16)/255, parseInt(h.substring(4,6),16)/255);
+            return 'bg set';
           }
-        } else if (typeof c === 'number') {
-          var rr = ((c>>16)&0xff)/255, gg = ((c>>8)&0xff)/255, bb = (c&0xff)/255;
-          return dc('setBgColor', {r:rr, g:gg, b:bb});
         }
-        return dc('setBgColor', {r:0.1, g:0.1, b:0.18});
+        E.setBgColor(0.1, 0.1, 0.18); return 'bg set';
       }
-      case 'add_cube': {
-        var col = _parseColor(params.color);
-        return dc('addCube', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, w:params.width||params.w||1, h:params.height||params.h||1, d:params.depth||params.d||1, color:col});
-      }
-      case 'add_sphere': {
-        var col = _parseColor(params.color);
-        return dc('addSphere', {x:params.x||0, y:params.y!==undefined?params.y:(params.radius||0.5), z:params.z||0, radius:params.radius||0.5, color:col});
-      }
-      case 'add_cylinder': {
-        var col = _parseColor(params.color);
-        return dc('addCylinder', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, rTop:params.radiusTop||params.rTop||0.5, rBot:params.radiusBottom||params.rBot||0.5, height:params.height||1, color:col});
-      }
-      case 'add_cone': {
-        var col = _parseColor(params.color);
-        return dc('addCone', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, radius:params.radius||0.5, height:params.height||1, color:col});
-      }
-      case 'add_torus': {
-        var col = _parseColor(params.color);
-        return dc('addTorus', {x:params.x||0, y:params.y!==undefined?params.y:0.5, z:params.z||0, radius:params.radius||0.5, tube:params.tube||0.15, color:col});
-      }
-      case 'add_plane': {
-        var col = _parseColor(params.color);
-        return dc('addPlane', {width:params.width||10, height:params.height||10, color:col});
-      }
+      case 'add_cube':
+        return E.addCube(params.x||0, params.y!==undefined?params.y:0.5, params.z||0, params.width||1, params.height||1, params.depth||1, pcol(params.color));
+      case 'add_sphere':
+        return E.addSphere(params.x||0, params.y!==undefined?params.y:0.5, params.z||0, params.radius||0.5, pcol(params.color));
+      case 'add_cylinder':
+        return E.addCylinder(params.x||0, params.y!==undefined?params.y:0.5, params.z||0, params.radiusTop||0.5, params.radiusBottom||0.5, params.height||1, pcol(params.color));
+      case 'add_cone':
+        return E.addCone(params.x||0, params.y!==undefined?params.y:0.5, params.z||0, params.radius||0.5, params.height||1, pcol(params.color));
+      case 'add_torus':
+        return E.addTorus(params.x||0, params.y!==undefined?params.y:0.5, params.z||0, params.radius||0.5, params.tube||0.15, pcol(params.color));
+      case 'add_plane':
+        return E.addPlane(params.width||10, params.height||10, pcol(params.color));
       case 'add_point_light':
-        return dc('addPointLight', {x:params.x||0, y:params.y||5, z:params.z||0, intensity:params.intensity||1, color:_parseColor(params.color)});
+        return E.addPointLight(params.x||0, params.y||5, params.z||0, params.intensity||1, pcol(params.color));
       case 'add_directional_light':
-        return dc('addDirectionalLight', {x:params.x||5, y:params.y||10, z:params.z||5, color:_parseColor(params.color), intensity:params.intensity||0.8});
+        return E.addDirectionalLight(params.x||5, params.y||10, params.z||5, pcol(params.color), params.intensity||0.8);
       case 'add_ambient_light':
-        return dc('addAmbientLight', {color:_parseColor(params.color), intensity:params.intensity||0.5});
-      case 'add_spot_light':
-        return dc('addSpotLight', {x:params.x||0, y:params.y||8, z:params.z||0, color:_parseColor(params.color), intensity:params.intensity||1});
+        return E.addAmbientLight(pcol(params.color), params.intensity||0.5);
       case 'compose_model':
-        return dc('aiComposeModel', {
-          description: params.description || params.type || 'cube',
-          position: {x:params.posX||params.x||0, y:params.posY||params.y||0, z:params.posZ||params.z||0},
-          rotation: {x:params.rotX||0, y:params.rotY||0, z:params.rotZ||0},
-          scale: {x:params.scaleX||1, y:params.scaleY||1, z:params.scaleZ||1}
-        });
+        return E.aiComposeModel(params.description || 'cube', {position:{x:params.posX||params.x||0, y:params.posY||params.y||0, z:params.posZ||params.z||0}, scale:{x:params.scaleX||1, y:params.scaleY||1, z:params.scaleZ||1}});
       case 'create_terrain': {
-        var col = _parseColor(params.color);
-        return dc('createTerrain', {
-          name: params.name || 'terrain',
-          width: params.width || 20,
-          depth: params.depth || 20,
-          heightFn: params.heightExpression || params.heightFn || '0',
-          resolution: Math.min(params.resolution||32, 96),
-          color: col,
-          wireframe: !!params.wireframe
-        });
+        var hf;
+        var he = params.heightExpression || '0';
+        try { hf = new Function('x','z','return ('+he+');'); } catch(e) { hf = 0; }
+        return E.createTerrain(params.name||'terrain', params.width||20, params.depth||20, hf, Math.min(params.resolution||32, 96), {color: pcol(params.color)});
       }
-      case 'set_camera_pos':
       case 'camera_set_position':
-        return dc('setCameraPos', {x:params.x, y:params.y, z:params.z});
-      case 'set_camera_target':
+      case 'set_camera_pos':
+        E.setCameraPos(params.x, params.y, params.z); return 'camera moved';
       case 'camera_set_target':
-        return dc('setCameraTarget', {x:params.x, y:params.y, z:params.z});
+      case 'set_camera_target':
+        E.setCameraTarget(params.x, params.y, params.z); return 'camera targeted';
       case 'remove_object':
-        return dc('removeObject', {name:params.name});
+        return E.removeObject(params.name);
       case 'set_object_color':
-        return dc('setObjectColor', {name:params.name, color:_parseColor(params.color)});
+        return E.setObjectColor(params.name, pcol(params.color));
       case 'set_object_position':
-        return dc('setPosition', {name:params.name, x:params.x, y:params.y, z:params.z});
+        return E.setPosition(params.name, params.x, params.y, params.z);
       case 'set_object_rotation':
-        return dc('setRotation', {name:params.name, x:params.x, y:params.y, z:params.z});
+        return E.setRotation(params.name, params.x, params.y, params.z);
       case 'set_object_scale':
-        return dc('setScale', {name:params.name, x:params.x, y:params.y, z:params.z});
+        return E.setScale(params.name, params.x, params.y, params.z);
       case 'animate_object':
-        return dc('animateObj', {objName:params.name, prop:params.property||'position.y', from:params.from||0, to:params.to||1, duration:params.duration||1});
-      case 'apply_scene_template':
-        return dc('applySceneTemplate', {template:params.template});
+        return E.animateObj(params.name, params.property||'position.y', params.from||0, params.to||1, params.duration||1);
+      case 'apply_scene_template': {
+        // Use built-in templates
+        if (typeof applyMCPTemplate === 'function') return applyMCPTemplate(params.template);
+        // Fallback: call template directly
+        var templates = {city:tplCity, forest:tplForest, space:tplSpace, room:tplRoom, desert:tplDesert, underwater:tplUnderwater};
+        var t = templates[params.template];
+        if (t) { mcpCallBatch(t); return 'template applied'; }
+        throw new Error('Unknown template: ' + params.template);
+      }
       case 'export_scene':
-        return dc('exportScene', {});
+        return typeof EngineApp !== 'undefined' && EngineApp.exportScene ? EngineApp.exportScene() : 'exported';
       case 'import_city':
-        return dc('importCity', {query: params.query || params.city || params.name, maxBuildings: params.maxBuildings || params.max});
-      case 'add_character':
-        return dc('addCharacter', {type: params.type || params.character, name: params.name, x: params.x, y: params.y, z: params.z, scale: params.scale, skinColor: params.skinColor, shirtColor: params.shirtColor, pantsColor: params.pantsColor, hairColor: params.hairColor});
-      case 'apply_ai_texture':
-        return dc('applyAITexture', {prompt: params.prompt || params.description || params.texture, objectName: params.objectName || params.object, size: params.size, normalMap: params.normalMap, roughness: params.roughness, metalness: params.metalness});
-      // === Character Controller ===
-      case 'attach_player_control':
-        return dc('attachPlayerControl', {objectName: params.objectName || params.name, speed: params.speed, jumpForce: params.jumpForce, gravity: params.gravity, height: params.height, fps: params.fps, thirdPerson: params.thirdPerson, hp: params.hp, ammo: params.ammo, fireRate: params.fireRate, animation: params.animation});
+        if (typeof window.importCity === 'function') {
+          var qEl = document.getElementById('cityQuery');
+          var mEl = document.getElementById('cityMaxBuildings');
+          if (qEl) qEl.value = params.query || params.city || 'Manhattan';
+          if (mEl) mEl.value = params.maxBuildings || params.max || 50;
+          window.importCity();
+          return 'city import started';
+        }
+        throw new Error('importCity not available');
+      case 'add_character': {
+        if (!G || !G.createCharacter) throw new Error('SashaAIGraphics not loaded');
+        var charType = params.type || params.character || 'humanoid';
+        var group = G.createCharacter(charType, {});
+        if (!group) throw new Error('Failed to create character: ' + charType);
+        var charName = params.name || ('char_' + charType + '_' + Date.now());
+        group.name = charName;
+        group.position.set(params.x || (Math.random()-0.5)*10, params.y || 0, params.z || (Math.random()-0.5)*10);
+        var scene = E.getScene();
+        if (scene) scene.add(group);
+        var objs = E.getObjects ? E.getObjects() : null;
+        if (objs) objs[charName] = group;
+        var types = E.getObjectTypes ? E.getObjectTypes() : null;
+        if (types) types[charName] = 'character';
+        if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+        return charName;
+      }
+      case 'apply_ai_texture': {
+        if (!G || !G.applyAITextureToMesh) throw new Error('AI texture not loaded');
+        var selName = params.objectName || (E.getSelectedObject && E.getSelectedObject());
+        var objs2 = E.getObjects ? E.getObjects() : {};
+        var mesh = selName ? objs2[selName] : null;
+        if (!mesh || !mesh.isMesh) throw new Error('No mesh selected for texture');
+        G.applyAITextureToMesh(mesh, params.prompt || 'brick wall', {size: params.size||256, normalMap: params.normalMap !== false});
+        return 'texture applied';
+      }
+      case 'attach_player_control': {
+        if (!CC) throw new Error('CharacterController not loaded');
+        var pName = params.objectName || params.name;
+        if (!pName) throw new Error('No objectName for player control');
+        var result = CC.attachPlayerControl(pName, {speed: params.speed||6, hp: params.hp||100, ammo: params.ammo||30, fps: params.fps !== false});
+        if (!result) throw new Error('Failed to attach control to "' + pName + '"');
+        return 'player control attached to ' + pName;
+      }
       case 'detach_player_control':
-        return dc('detachPlayerControl', {objectName: params.objectName || params.name});
+        if (!CC) throw new Error('CharacterController not loaded');
+        CC.detachPlayerControl(params.objectName || params.name); return 'detached';
       case 'spawn_enemy':
-        return dc('spawnEnemy', {x: params.x, y: params.y, z: params.z, hp: params.hp});
+        if (!CC) throw new Error('CharacterController not loaded');
+        var eName = CC.spawnEnemy(params.x, params.y, params.z, params.hp);
+        return eName || 'enemy spawn failed';
       case 'reload':
-        return dc('reload', {});
-      case 'get_player_stats':
-        return dc('getPlayerStats', {});
+        if (!CC) throw new Error('CharacterController not loaded');
+        CC.reload(); return 'reloaded';
       case 'start_waves':
-        return dc('startWaves', {enemiesPerWave: params.enemiesPerWave, spawnInterval: params.spawnInterval, waveDelay: params.waveDelay});
+        if (!CC) throw new Error('CharacterController not loaded');
+        CC.startWaves({enemiesPerWave: params.enemiesPerWave||3, spawnInterval: params.spawnInterval||2, waveDelay: params.waveDelay||5});
+        return 'waves started';
       case 'stop_waves':
-        return dc('stopWaves', {});
+        if (!CC) throw new Error('CharacterController not loaded');
+        CC.stopWaves(); return 'waves stopped';
       case 'rebuild_colliders':
-        return dc('rebuildColliders', {});
-      // === Build System ===
-      case 'build_html':
-        return dc('buildHTML', {title: params.title || params.name, author: params.author, description: params.description || params.desc});
-      case 'build_exe':
-        return dc('buildEXE', {title: params.title || params.name, author: params.author, description: params.description || params.desc});
-      case 'upload_to_gameforge':
-        return dc('uploadToGameForge', {title: params.title || params.name, author: params.author, description: params.description || params.desc, tags: params.tags});
+        if (!CC) throw new Error('CharacterController not loaded');
+        CC.rebuildColliders(); return 'colliders rebuilt';
+      case 'build_html': {
+        if (typeof SashaGameBuilder === 'undefined') throw new Error('GameBuilder not loaded');
+        var r = SashaGameBuilder.downloadHTML({title: params.title||'My Game', author: params.author||'SashaAI', description: params.description||'Built with SashaAI'});
+        return r.error ? r.error : 'HTML downloaded: ' + r.filename;
+      }
+      case 'build_exe': {
+        if (typeof SashaGameBuilder === 'undefined') throw new Error('GameBuilder not loaded');
+        var r2 = SashaGameBuilder.buildEXE({title: params.title||'My Game', author: params.author||'SashaAI', description: params.description||'Built with SashaAI'});
+        return r2.error ? r2.error : 'EXE ZIP downloaded';
+      }
+      case 'upload_to_gameforge': {
+        if (typeof SashaGameBuilder === 'undefined') throw new Error('GameBuilder not loaded');
+        return SashaGameBuilder.uploadToGameForge({title: params.title||'My Game', author: params.author||'SashaAI', description: params.description||'Built with SashaAI', tags: params.tags})
+          .then(function(r) { return 'Uploaded! URL: ' + r.url; })
+          .catch(function(e) { throw e; });
+      }
       default:
         throw new Error('Unknown tool: ' + name);
     }
