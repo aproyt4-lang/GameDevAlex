@@ -486,6 +486,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         .game-mode .viewport-gizmo-info { display: none; }
         .game-mode .camera-preview { display: none !important; }
         .game-mode .view-label { display: none; }
+        /* Show in-game HUD only during Play mode (game-mode class on engine section) */
+        .game-mode #gameHUD { display: block !important; }
+        .game-mode #fps-crosshair { display: block !important; }
         /* Camera Preview — bottom-right corner when camera selected */
         .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .camera-preview.visible { display: block; }
@@ -1291,64 +1294,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <!-- Engine Section -->
         <section id="engine" class="section">
             <div class="engine-section">
-                <!-- ============ GAME HUD OVERLAY (HP, ammo, waves, crosshair) ============ -->
-                <div id="gameHUD" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:50;font-family:'Segoe UI',system-ui,sans-serif">
-                    <!-- Crosshair -->
-                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;pointer-events:none">
-                        <div style="position:absolute;top:50%;left:0;width:8px;height:2px;background:rgba(255,255,255,.8);transform:translateY(-50%)"></div>
-                        <div style="position:absolute;top:50%;right:0;width:8px;height:2px;background:rgba(255,255,255,.8);transform:translateY(-50%)"></div>
-                        <div style="position:absolute;left:50%;top:0;width:2px;height:8px;background:rgba(255,255,255,.8);transform:translateX(-50%)"></div>
-                        <div style="position:absolute;left:50%;bottom:0;width:2px;height:8px;background:rgba(255,255,255,.8);transform:translateX(-50%)"></div>
-                        <div style="position:absolute;top:50%;left:50%;width:3px;height:3px;background:#ff4444;border-radius:50%;transform:translate(-50%,-50%)"></div>
-                    </div>
-                    <!-- HP bar (bottom-left) -->
-                    <div style="position:absolute;bottom:20px;left:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);min-width:200px">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                            <span style="color:#ff4444;font-size:16px">❤</span>
-                            <span style="color:#fff;font-size:13px;font-weight:600">Health</span>
-                            <span id="hudHPText" style="color:#fff;font-size:14px;font-weight:700;margin-left:auto">100/100</span>
-                        </div>
-                        <div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden">
-                            <div id="hudHPBar" style="height:100%;width:100%;background:linear-gradient(90deg,#ef4444,#f87171);transition:width .2s"></div>
-                        </div>
-                    </div>
-                    <!-- Ammo (bottom-right) -->
-                    <div style="position:absolute;bottom:20px;right:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);text-align:right">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                            <span style="color:#fbbf24;font-size:16px">🔫</span>
-                            <span id="hudAmmoText" style="color:#fff;font-size:18px;font-weight:800">30 / 30</span>
-                        </div>
-                        <div id="hudReloadHint" style="color:#fbbf24;font-size:11px;display:none">Press R to reload</div>
-                    </div>
-                    <!-- Wave/score (top-center) -->
-                    <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.15);text-align:center">
-                        <div style="display:flex;gap:24px;align-items:center">
-                            <div>
-                                <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Wave</div>
-                                <div id="hudWave" style="color:#fff;font-size:20px;font-weight:800">1</div>
-                            </div>
-                            <div style="width:1px;height:30px;background:rgba(255,255,255,.15)"></div>
-                            <div>
-                                <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Enemies</div>
-                                <div id="hudEnemies" style="color:#ef4444;font-size:20px;font-weight:800">0</div>
-                            </div>
-                            <div style="width:1px;height:30px;background:rgba(255,255,255,.15)"></div>
-                            <div>
-                                <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Kills</div>
-                                <div id="hudKills" style="color:#10b981;font-size:20px;font-weight:800">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Damage flash (red overlay when hit) -->
-                    <div id="hudDamageFlash" style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(239,68,68,.5) 100%);opacity:0;transition:opacity .15s;pointer-events:none"></div>
-                    <!-- Hit marker (shows when bullet hits enemy) -->
-                    <div id="hudHitMarker" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#fff;text-shadow:0 0 8px #000;opacity:0;transition:opacity .1s">✕</div>
-                    <!-- Wave announcement -->
-                    <div id="hudWaveAnnounce" style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .5s">
-                        <div id="hudWaveAnnounceText" style="font-size:48px;font-weight:900;color:#fff;text-shadow:0 0 20px rgba(0,0,0,.8);letter-spacing:2px">WAVE 1</div>
-                        <div id="hudWaveAnnounceSub" style="font-size:16px;color:#fbbf24;margin-top:8px;text-shadow:0 0 8px rgba(0,0,0,.8)">Get ready!</div>
-                    </div>
-                </div>
                 <!-- Toolbar -->
                 <div class="engine-toolbar">
                     <button class="eng-btn play-btn" onclick="EngineApp.play()" title="Play"><i class="fas fa-play"></i></button>
@@ -1515,6 +1460,64 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                                         <div style="width:4px;height:4px;background:rgba(255,255,255,0.8);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
                                     </div>
                                     <div id="fps-hint" style="display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.7rem;pointer-events:none;z-index:10;text-align:center;">WASD - move | Q - down | Space - up | Shift - sprint | Mouse - look | ESC - release</div>
+                                    <!-- ============ IN-GAME HUD (only visible in game-mode) ============ -->
+                                    <div id="gameHUD" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:15;font-family:'Segoe UI',system-ui,sans-serif">
+                                        <!-- Crosshair -->
+                                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;pointer-events:none">
+                                            <div style="position:absolute;top:50%;left:0;width:8px;height:2px;background:rgba(255,255,255,.8);transform:translateY(-50%)"></div>
+                                            <div style="position:absolute;top:50%;right:0;width:8px;height:2px;background:rgba(255,255,255,.8);transform:translateY(-50%)"></div>
+                                            <div style="position:absolute;left:50%;top:0;width:2px;height:8px;background:rgba(255,255,255,.8);transform:translateX(-50%)"></div>
+                                            <div style="position:absolute;left:50%;bottom:0;width:2px;height:8px;background:rgba(255,255,255,.8);transform:translateX(-50%)"></div>
+                                            <div style="position:absolute;top:50%;left:50%;width:3px;height:3px;background:#ff4444;border-radius:50%;transform:translate(-50%,-50%)"></div>
+                                        </div>
+                                        <!-- HP bar (bottom-left) -->
+                                        <div style="position:absolute;bottom:20px;left:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);min-width:200px">
+                                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                                                <span style="color:#ff4444;font-size:16px">❤</span>
+                                                <span style="color:#fff;font-size:13px;font-weight:600">Health</span>
+                                                <span id="hudHPText" style="color:#fff;font-size:14px;font-weight:700;margin-left:auto">100/100</span>
+                                            </div>
+                                            <div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden">
+                                                <div id="hudHPBar" style="height:100%;width:100%;background:linear-gradient(90deg,#ef4444,#f87171);transition:width .2s"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Ammo (bottom-right) -->
+                                        <div style="position:absolute;bottom:20px;right:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);text-align:right">
+                                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                                                <span style="color:#fbbf24;font-size:16px">🔫</span>
+                                                <span id="hudAmmoText" style="color:#fff;font-size:18px;font-weight:800">30 / 30</span>
+                                            </div>
+                                            <div id="hudReloadHint" style="color:#fbbf24;font-size:11px;display:none">Press R to reload</div>
+                                        </div>
+                                        <!-- Wave/score (top-center) -->
+                                        <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.15);text-align:center">
+                                            <div style="display:flex;gap:24px;align-items:center">
+                                                <div>
+                                                    <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Wave</div>
+                                                    <div id="hudWave" style="color:#fff;font-size:20px;font-weight:800">1</div>
+                                                </div>
+                                                <div style="width:1px;height:30px;background:rgba(255,255,255,.15)"></div>
+                                                <div>
+                                                    <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Enemies</div>
+                                                    <div id="hudEnemies" style="color:#ef4444;font-size:20px;font-weight:800">0</div>
+                                                </div>
+                                                <div style="width:1px;height:30px;background:rgba(255,255,255,.15)"></div>
+                                                <div>
+                                                    <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Kills</div>
+                                                    <div id="hudKills" style="color:#10b981;font-size:20px;font-weight:800">0</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Damage flash -->
+                                        <div id="hudDamageFlash" style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(239,68,68,.5) 100%);opacity:0;transition:opacity .15s;pointer-events:none"></div>
+                                        <!-- Hit marker -->
+                                        <div id="hudHitMarker" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#fff;text-shadow:0 0 8px #000;opacity:0;transition:opacity .1s">✕</div>
+                                        <!-- Wave announcement -->
+                                        <div id="hudWaveAnnounce" style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .5s">
+                                            <div id="hudWaveAnnounceText" style="font-size:48px;font-weight:900;color:#fff;text-shadow:0 0 20px rgba(0,0,0,.8);letter-spacing:2px">WAVE 1</div>
+                                            <div id="hudWaveAnnounceSub" style="font-size:16px;color:#fbbf24;margin-top:8px;text-shadow:0 0 8px rgba(0,0,0,.8)">Get ready!</div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <!-- Splitter -->
                                 <div class="viewport-splitter" id="viewport-splitter"></div>
@@ -5288,13 +5291,35 @@ var SashaCharacterController = (function() {
         if (typeof SashaEngineAPI === 'undefined') return;
         scene = SashaEngineAPI.getScene ? SashaEngineAPI.getScene() : null;
         camera = SashaEngineAPI.getCamera ? SashaEngineAPI.getCamera() : null;
-        if (!scene || !camera) return;
+        setupInputListeners();
+        if (!scene || !camera) {
+            // Will be set lazily in update()
+            console.warn('[CharacterController] init: scene/camera not ready, will retry in update()');
+        }
+        // Animation loop hook
+        if (SashaEngineAPI && SashaEngineAPI.onFrame) {
+            SashaEngineAPI.onFrame(update);
+        } else {
+            var lastT = performance.now();
+            function loop() {
+                var now = performance.now();
+                var dt = Math.min(0.05, (now - lastT) / 1000);
+                lastT = now;
+                update(dt);
+                requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+        }
+        initialized = true;
+        console.log('[CharacterController] initialized');
+    }
 
+    function setupInputListeners() {
+        if (!canvas) return;
         // Keyboard
         window.addEventListener('keydown', function(e) {
             keys[e.code] = true;
             keys[e.key.toLowerCase()] = true;
-            // R = reload
             if (e.code === 'KeyR' || e.key.toLowerCase() === 'r' || e.key.toLowerCase() === 'к') {
                 if (typeof reload === 'function') reload();
             }
@@ -5303,7 +5328,6 @@ var SashaCharacterController = (function() {
             keys[e.code] = false;
             keys[e.key.toLowerCase()] = false;
         });
-
         // Mouse lock for FPS look
         canvas.addEventListener('click', function() {
             if (Object.keys(players).length > 0 && !mouseLocked) {
@@ -5329,33 +5353,31 @@ var SashaCharacterController = (function() {
             if (!mouseLocked) return;
             if (e.button === 0) shoot();
         });
-
-        // Animation loop hook
-        if (SashaEngineAPI && SashaEngineAPI.onFrame) {
-            SashaEngineAPI.onFrame(update);
-        } else {
-            // Fallback: own RAF loop
-            var lastT = performance.now();
-            function loop() {
-                var now = performance.now();
-                var dt = Math.min(0.05, (now - lastT) / 1000);
-                lastT = now;
-                update(dt);
-                requestAnimationFrame(loop);
-            }
-            requestAnimationFrame(loop);
-        }
-        initialized = true;
-        console.log('[CharacterController] initialized');
     }
 
     function attachPlayerControl(meshName, options) {
-        init();
-        if (!initialized) { console.warn('[CharacterController] not initialized'); return null; }
+        // Try to init, but don't fail if not ready — we can still attach
+        if (!initialized) {
+            init();
+        }
+        // Even if init failed, try to get scene/camera directly
+        if (!scene && typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.getScene) {
+            scene = SashaEngineAPI.getScene();
+        }
+        if (!camera && typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.getCamera) {
+            camera = SashaEngineAPI.getCamera();
+        }
+        if (!scene || !camera) {
+            console.warn('[CharacterController] scene/camera not ready, deferring');
+            // Still register the player — update loop will pick it up later
+        }
         options = options || {};
         var objs = SashaEngineAPI.getObjects();
         var mesh = objs[meshName];
-        if (!mesh) { console.warn('[CharacterController] mesh not found:', meshName); return null; }
+        if (!mesh) {
+            console.warn('[CharacterController] mesh not found:', meshName, '| available:', Object.keys(objs).slice(0, 10));
+            return null;
+        }
 
         var player = {
             mesh: mesh,
@@ -5384,12 +5406,12 @@ var SashaCharacterController = (function() {
             moving: false
         };
         players[meshName] = player;
-        // Show HUD when player is attached
-        showHUD();
+        // DON'T show HUD yet — it will show when user presses Play (game-mode)
+        // Just update HUD values so they're ready
         updateHUD();
         // Rebuild colliders so player collides with existing buildings
         rebuildColliders();
-        console.log('[CharacterController] attached to', meshName);
+        console.log('[CharacterController] attached to', meshName, '— press Play to start');
         return meshName;
     }
 
@@ -5496,7 +5518,22 @@ var SashaCharacterController = (function() {
     }
 
     function update(dt) {
-        if (!initialized) return;
+        if (!scene || !camera) {
+            // Try to get scene/camera if not yet available
+            if (typeof SashaEngineAPI !== 'undefined') {
+                if (!scene && SashaEngineAPI.getScene) scene = SashaEngineAPI.getScene();
+                if (!camera && SashaEngineAPI.getCamera) camera = SashaEngineAPI.getCamera();
+            }
+            if (!scene || !camera) return;
+        }
+        if (!initialized) {
+            // Lazy init input listeners
+            canvas = document.querySelector('#engine-canvas');
+            if (canvas) {
+                setupInputListeners();
+                initialized = true;
+            }
+        }
         // Update players
         for (var name in players) {
             var p = players[name];
@@ -5872,6 +5909,8 @@ var SashaCharacterController = (function() {
 
     // ============ HUD UPDATE ============
     function showHUD() {
+        // HUD is shown via CSS .game-mode #gameHUD — only when Play is pressed
+        // But also force-show if player is attached (for immediate feedback)
         var hud = document.getElementById('gameHUD');
         if (hud) hud.style.display = 'block';
     }
@@ -12205,6 +12244,8 @@ var EngineApp = (function() {
             }, 50);
             console.log('[GameEngine] Play mode activated');
             log('▶ Play mode — Game view active', 'info');
+            // Show in-game HUD (HP, ammo, crosshair) — only during Play
+            if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.showHUD) SashaCharacterController.showHUD();
         } catch(e) { console.error('[GameEngine] play() error:', e); }
     }
 
@@ -12235,6 +12276,10 @@ var EngineApp = (function() {
             refreshInspector();
             console.log('[GameEngine] Stop mode');
             log('⏹ Stopped', 'info');
+            // Hide in-game HUD when leaving Play mode
+            if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.hideHUD) SashaCharacterController.hideHUD();
+            // Exit pointer lock if active
+            if (document.pointerLockElement) document.exitPointerLock();
         } catch(e) { console.error('[GameEngine] stop() error:', e); }
     }
 
@@ -24003,7 +24048,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       case 'import_city':
         return dc('importCity', {query: params.query || params.city || params.name, maxBuildings: params.maxBuildings || params.max});
       case 'add_character':
-        return dc('addCharacter', {type: params.type || params.character, x: params.x, y: params.y, z: params.z, scale: params.scale, skinColor: params.skinColor, shirtColor: params.shirtColor, pantsColor: params.pantsColor, hairColor: params.hairColor});
+        return dc('addCharacter', {type: params.type || params.character, name: params.name, x: params.x, y: params.y, z: params.z, scale: params.scale, skinColor: params.skinColor, shirtColor: params.shirtColor, pantsColor: params.pantsColor, hairColor: params.hairColor});
       case 'apply_ai_texture':
         return dc('applyAITexture', {prompt: params.prompt || params.description || params.texture, objectName: params.objectName || params.object, size: params.size, normalMap: params.normalMap, roughness: params.roughness, metalness: params.metalness});
       // === Character Controller ===
@@ -26243,7 +26288,6 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
-
 
 
 
