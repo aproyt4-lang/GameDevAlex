@@ -273,11 +273,31 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.78rem;
             display: flex; align-items: center; gap: 5px; transition: all 0.2s;
         }
-        .engine-toolbar .eng-btn:hover { border-color: var(--primary); color: #fff; }
+        .engine-toolbar .eng-btn:hover { border-color: var(--primary); color: #fff; transform: translateY(-1px); }
         .engine-toolbar .eng-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
         .engine-toolbar .eng-btn.run-btn { background: #22c55e; color: #fff; border-color: #22c55e; }
         .engine-toolbar .eng-btn.run-btn:hover { background: #16a34a; }
         .engine-toolbar .eng-separator { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+        /* === Big labeled action buttons === */
+        .eng-action-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+            font-size: 0.72rem; font-weight: 600; border: 1px solid var(--border);
+            transition: all 0.2s; min-width: 54px; line-height: 1.2;
+        }
+        .eng-action-btn i { font-size: 1rem; }
+        .eng-action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+        .eng-action-btn.green { background: rgba(16,185,129,.15); color: #10b981; border-color: rgba(16,185,129,.4); }
+        .eng-action-btn.green:hover { background: rgba(16,185,129,.25); border-color: #10b981; }
+        .eng-action-btn.blue { background: rgba(59,130,246,.15); color: #3b82f6; border-color: rgba(59,130,246,.4); }
+        .eng-action-btn.blue:hover { background: rgba(59,130,246,.25); border-color: #3b82f6; }
+        .eng-action-btn.purple { background: rgba(168,85,247,.15); color: #a855f7; border-color: rgba(168,85,247,.4); }
+        .eng-action-btn.purple:hover { background: rgba(168,85,247,.25); border-color: #a855f7; }
+        .eng-action-btn.orange { background: rgba(245,158,11,.15); color: #f59e0b; border-color: rgba(245,158,11,.4); }
+        .eng-action-btn.orange:hover { background: rgba(245,158,11,.25); border-color: #f59e0b; }
+        .eng-action-btn.red { background: rgba(239,68,68,.15); color: #ef4444; border-color: rgba(239,68,68,.4); }
+        .eng-action-btn.red:hover { background: rgba(239,68,68,.25); border-color: #ef4444; }
         .engine-model-status {
             margin-left: auto; font-size: 0.72rem; color: var(--text-muted);
             display: flex; align-items: center; gap: 6px;
@@ -1335,12 +1355,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     <button class="eng-btn pause-btn" onclick="EngineApp.pause()" title="Pause"><i class="fas fa-pause"></i></button>
                     <button class="eng-btn stop-btn" onclick="EngineApp.stop()" title="Stop"><i class="fas fa-stop"></i></button>
                     <div class="eng-separator"></div>
-                    <button class="eng-btn" id="fps-mode-btn" onclick="EngineApp.toggleFPS()" title="FPS Mode (WASD + Mouse)"><i class="fas fa-crosshairs"></i> FPS</button>
                     <button class="eng-btn" onclick="EngineApp.toggleConsolePanel()" title="Console (F12)"><i class="fas fa-terminal"></i></button>
-                    <button class="eng-btn" onclick="openEngineAnalytics()" title="Analytics"><i class="fas fa-chart-line"></i></button>
-                    <button class="eng-btn" onclick="openAITextureDialog()" title="AI Texture — generate texture via AI"><i class="fas fa-image"></i></button>
-                    <button class="eng-btn" onclick="openCharacterDialog()" title="Add Character"><i class="fas fa-user"></i></button>
-                    <button class="eng-btn" onclick="openCityDialog()" title="Import City from OSM"><i class="fas fa-city"></i></button>
+                    <div class="eng-separator"></div>
+                    <!-- === BIG LABELED ACTION BUTTONS === -->
+                    <button class="eng-action-btn green" onclick="openCommandPalette()" title="Все команды">
+                        <i class="fas fa-bolt"></i><span>Команды</span>
+                    </button>
+                    <button class="eng-action-btn blue" onclick="openCharacterDialog()" title="Персонажи">
+                        <i class="fas fa-user"></i><span>Герой</span>
+                    </button>
+                    <button class="eng-action-btn orange" onclick="openCityDialog()" title="Город из OSM">
+                        <i class="fas fa-city"></i><span>Город</span>
+                    </button>
+                    <button class="eng-action-btn purple" onclick="openAITextureDialog()" title="AI текстуры">
+                        <i class="fas fa-image"></i><span>Текстура</span>
+                    </button>
+                    <button class="eng-action-btn red" onclick="openEngineAnalytics()" title="Аналитика">
+                        <i class="fas fa-chart-line"></i><span>Статы</span>
+                    </button>
+                    <button class="eng-action-btn green" onclick="openInputSettings()" title="Настройки управления">
+                        <i class="fas fa-gamepad"></i><span>Управление</span>
+                    </button>
+                    <button class="eng-action-btn green" onclick="openBuildDialog()" title="Собрать игру">
+                        <i class="fas fa-rocket"></i><span>BUILD</span>
+                    </button>
                     <div class="eng-separator"></div>
                     <div class="gizmo-group">
                         <button class="gizmo-mode-btn active" id="gizmo-translate" onclick="EngineApp.setGizmoMode('translate')" title="Move (W)">W</button>
@@ -4746,6 +4784,487 @@ var SashaAIGraphics = (function() {
 })();
 
 // ============================================================
+// ============ SashaGameBuilder — Build System (HTML + EXE) ===
+// ============================================================
+// Exports current scene + player controller + game logic into:
+//   1. Single HTML file (buildHTML) — for GameForge upload
+//   2. ZIP with EXE launcher (buildEXE) — for NW.js standalone
+var SashaGameBuilder = (function() {
+    var GF_REPO_KEY = 'gf_repo_config';  // {token, owner, repo}
+
+    function getGFConfig() {
+        // Try unified config first
+        try {
+            var raw = localStorage.getItem(GF_REPO_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch(e) {}
+        // Fallback: individual keys (same as GameForge.html)
+        var token = localStorage.getItem('gf_token') || '';
+        var owner = localStorage.getItem('gf_owner') || '';
+        var repo = localStorage.getItem('gf_repo') || '';
+        if (token && owner && repo) return { token: token, owner: owner, repo: repo };
+        return null;
+    }
+
+    function setGFConfig(cfg) {
+        try {
+            localStorage.setItem(GF_REPO_KEY, JSON.stringify(cfg));
+            // Also set individual keys for GameForge.html compatibility
+            if (cfg.token) localStorage.setItem('gf_token', cfg.token);
+            if (cfg.owner) localStorage.setItem('gf_owner', cfg.owner);
+            if (cfg.repo) localStorage.setItem('gf_repo', cfg.repo);
+            return true;
+        } catch(e) { return false; }
+    }
+
+    // === Collect current scene state for export ===
+    function collectSceneState() {
+        if (typeof SashaEngineAPI === 'undefined') return null;
+        var objs = SashaEngineAPI.getObjects();
+        var types = SashaEngineAPI.getObjectTypes ? SashaEngineAPI.getObjectTypes() : {};
+        var scene = SashaEngineAPI.getScene();
+        var camera = SashaEngineAPI.getCamera();
+
+        var objects = [];
+        for (var name in objs) {
+            if (!objs.hasOwnProperty(name)) continue;
+            var obj = objs[name];
+            if (!obj) continue;
+            // Skip lights, helpers, internal objects
+            var t = types[name] || '';
+            if (t === 'light' || t === 'ambient' || t === 'mainCamera') continue;
+            if (name === 'mainCamera') continue;
+            // Determine type
+            var objType = 'mesh';
+            if (obj.isMesh) objType = 'mesh';
+            else if (obj.isLight) objType = 'light';
+            else if (obj.isGroup || obj.type === 'Group') objType = 'group';
+
+            var objData = {
+                name: name,
+                type: objType,
+                engineType: t,
+                position: { x: obj.position.x, y: obj.position.y, z: obj.position.z },
+                rotation: { x: obj.rotation.x, y: obj.rotation.y, z: obj.rotation.z },
+                scale: { x: obj.scale.x, y: obj.scale.y, z: obj.scale.z },
+                visible: obj.visible !== false
+            };
+            // For meshes: geometry + material
+            if (obj.isMesh) {
+                objData.geometry = serializeGeometry(obj.geometry);
+                objData.material = serializeMaterial(obj.material);
+                objData.castShadow = !!obj.castShadow;
+                objData.receiveShadow = !!obj.receiveShadow;
+            }
+            // For groups: collect children (recursive)
+            if (objType === 'group' && obj.children) {
+                objData.children = [];
+                for (var i = 0; i < obj.children.length; i++) {
+                    objData.children.push(serializeObject(obj.children[i], i));
+                }
+            }
+            objects.push(objData);
+        }
+
+        // Collect player controllers
+        var players = [];
+        if (typeof SashaCharacterController !== 'undefined') {
+            var playerMap = SashaCharacterController.getPlayers();
+            for (var pname in playerMap) {
+                var p = playerMap[pname];
+                players.push({
+                    name: pname,
+                    speed: p.speed,
+                    jumpForce: p.jumpForce,
+                    gravity: p.gravity,
+                    height: p.height,
+                    fps: p.fps,
+                    thirdPerson: p.thirdPerson,
+                    hp: p.maxHp,
+                    ammo: p.maxAmmo,
+                    fireRate: p.fireRate
+                });
+            }
+        }
+
+        // Camera state
+        var camData = null;
+        if (camera) {
+            camData = {
+                position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+                fov: camera.fov || 60,
+                near: camera.near || 0.1,
+                far: camera.far || 1000
+            };
+        }
+
+        // Background color
+        var bgColor = null;
+        if (scene && scene.background) {
+            if (scene.background.isColor) {
+                bgColor = '#' + scene.background.getHexString();
+            } else {
+                bgColor = '#0a0a1a';
+            }
+        }
+
+        return {
+            objects: objects,
+            players: players,
+            camera: camData,
+            background: bgColor,
+            buildDate: new Date().toISOString(),
+            engineVersion: 'SashaAI-GameDev-v8.3'
+        };
+    }
+
+    function serializeGeometry(geo) {
+        if (!geo) return null;
+        var type = geo.type;
+        var params = {};
+        // Common geometry types
+        if (type === 'BoxGeometry') {
+            params = { width: geo.parameters.width, height: geo.parameters.height, depth: geo.parameters.depth };
+        } else if (type === 'SphereGeometry') {
+            params = { radius: geo.parameters.radius, widthSegments: geo.parameters.widthSegments, heightSegments: geo.parameters.heightSegments };
+        } else if (type === 'CylinderGeometry') {
+            params = { radiusTop: geo.parameters.radiusTop, radiusBottom: geo.parameters.radiusBottom, height: geo.parameters.height, radialSegments: geo.parameters.radialSegments };
+        } else if (type === 'ConeGeometry') {
+            params = { radius: geo.parameters.radius, height: geo.parameters.height, radialSegments: geo.parameters.radialSegments };
+        } else if (type === 'TorusGeometry') {
+            params = { radius: geo.parameters.radius, tube: geo.parameters.tube, radialSegments: geo.parameters.radialSegments, tubularSegments: geo.parameters.tubularSegments };
+        } else if (type === 'PlaneGeometry') {
+            params = { width: geo.parameters.width, height: geo.parameters.height };
+        } else if (type === 'CapsuleGeometry') {
+            params = { radius: geo.parameters.radius, length: geo.parameters.length, capSegments: geo.parameters.capSegments, radialSegments: geo.parameters.radialSegments };
+        } else if (type === 'TorusKnotGeometry') {
+            params = { radius: geo.parameters.radius, tube: geo.parameters.tube, tubularSegments: geo.parameters.tubularSegments, radialSegments: geo.parameters.radialSegments };
+        } else if (type === 'IcosahedronGeometry' || type === 'DodecahedronGeometry' || type === 'OctahedronGeometry') {
+            params = { radius: geo.parameters.radius, detail: geo.parameters.detail };
+        }
+        return { type: type, params: params };
+    }
+
+    function serializeMaterial(mat) {
+        if (!mat) return null;
+        var data = { type: mat.type || 'MeshStandardMaterial' };
+        if (mat.color && mat.color.isColor) data.color = '#' + mat.color.getHexString();
+        if (mat.emissive && mat.emissive.isColor) data.emissive = '#' + mat.emissive.getHexString();
+        if (mat.emissiveIntensity !== undefined) data.emissiveIntensity = mat.emissiveIntensity;
+        if (mat.roughness !== undefined) data.roughness = mat.roughness;
+        if (mat.metalness !== undefined) data.metalness = mat.metalness;
+        if (mat.opacity !== undefined && mat.opacity < 1) {
+            data.opacity = mat.opacity;
+            data.transparent = true;
+        }
+        if (mat.wireframe) data.wireframe = true;
+        return data;
+    }
+
+    function serializeObject(obj, idx) {
+        if (!obj) return null;
+        var data = {
+            name: obj.name || ('child_' + idx),
+            type: obj.isMesh ? 'mesh' : (obj.isLight ? 'light' : 'object'),
+            position: { x: obj.position.x, y: obj.position.y, z: obj.position.z },
+            rotation: { x: obj.rotation.x, y: obj.rotation.y, z: obj.rotation.z },
+            scale: { x: obj.scale.x, y: obj.scale.y, z: obj.scale.z }
+        };
+        if (obj.isMesh) {
+            data.geometry = serializeGeometry(obj.geometry);
+            data.material = serializeMaterial(obj.material);
+        }
+        if (obj.children && obj.children.length > 0) {
+            data.children = [];
+            for (var i = 0; i < obj.children.length; i++) {
+                data.children.push(serializeObject(obj.children[i], i));
+            }
+        }
+        return data;
+    }
+
+    // === Generate self-contained HTML game ===
+    function buildHTML(options) {
+        options = options || {};
+        var state = collectSceneState();
+        if (!state) return { error: 'No scene to export' };
+
+        var gameTitle = options.title || 'My SashaAI Game';
+        var gameAuthor = options.author || 'SashaAI';
+        var gameDesc = options.description || 'Built with SashaAI GameDev Engine';
+
+        var html = generateGameHTML(state, gameTitle, gameAuthor, gameDesc);
+        var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var filename = (gameTitle.replace(/[^a-z0-9а-яё_-]/gi, '_').toLowerCase() || 'game') + '.html';
+
+        return {
+            html: html,
+            blob: blob,
+            url: url,
+            filename: filename,
+            title: gameTitle,
+            author: gameAuthor,
+            description: gameDesc,
+            state: state
+        };
+    }
+
+    function generateGameHTML(state, title, author, desc) {
+        var stateJson = JSON.stringify(state);
+        var template = document.getElementById('game-runtime-template');
+        var templateHTML = template ? template.innerHTML : '';
+        // Replace placeholders
+        templateHTML = templateHTML.replace('__GAME_TITLE__', escapeHTML(title));
+        templateHTML = templateHTML.replace('__GAME_STATE__', stateJson);
+        templateHTML = templateHTML.replace('__GAME_AUTHOR__', escapeHTML(author));
+        templateHTML = templateHTML.replace('__GAME_DESC__', escapeHTML(desc));
+        return templateHTML;
+    }
+
+        function escapeHTML(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c;
+        });
+    }
+
+    // === Download HTML build ===
+    function downloadHTML(options) {
+        var result = buildHTML(options);
+        if (result.error) return result;
+        var a = document.createElement('a');
+        a.href = result.url;
+        a.download = result.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(result.url); }, 1000);
+        return result;
+    }
+
+    // === Upload to GameForge (GitHub) ===
+    function uploadToGameForge(options) {
+        return new Promise(function(resolve, reject) {
+            var cfg = getGFConfig();
+            if (!cfg || !cfg.token || !cfg.owner || !cfg.repo) {
+                reject(new Error('GameForge не настроен. Открой настройки (Ctrl+Shift+U) и введи GitHub токен.'));
+                return;
+            }
+            var result = buildHTML(options);
+            if (result.error) { reject(new Error(result.error)); return; }
+
+            var title = result.title;
+            var author = result.author;
+            var description = result.description;
+            var filename = result.filename;
+            var html = result.html;
+
+            // Generate game entry
+            var gameSlug = slugify(title) + '-' + Math.random().toString(36).substr(2, 6);
+            var gamePath = 'games/' + gameSlug + '/index.html';
+            var coverPath = 'games/' + gameSlug + '/cover.png';
+
+            // First, get current games.json
+            var apiBase = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/';
+            var headers = {
+                'Authorization': 'Bearer ' + cfg.token,
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            };
+
+            // Step 1: upload game HTML
+            var htmlB64 = btoa(unescape(encodeURIComponent(html)));
+            fetch(apiBase + gamePath, {
+                method: 'PUT',
+                headers: Object.assign({'Content-Type': 'application/json'}, headers),
+                body: JSON.stringify({ message: 'GameForge: add ' + title, content: htmlB64 })
+            }).then(function(r) {
+                if (!r.ok) throw new Error('Failed to upload game HTML: HTTP ' + r.status);
+                return r.json();
+            }).then(function() {
+                // Step 2: get games.json
+                return fetch(apiBase + 'games.json', { headers: headers });
+            }).then(function(r) {
+                if (r.status === 404) return { json: function() { return null; } };
+                if (!r.ok) throw new Error('Failed to get games.json: HTTP ' + r.status);
+                return r;
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                var games = [];
+                var sha = null;
+                if (data && data.content) {
+                    sha = data.sha;
+                    try {
+                        games = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))));
+                        if (!Array.isArray(games)) games = [];
+                    } catch(e) { games = []; }
+                }
+                // Add new entry
+                var entry = {
+                    id: 'g' + Date.now().toString(36) + Math.random().toString(36).substr(2, 6),
+                    title: title,
+                    author: author,
+                    description: description,
+                    tags: 'sashaai, ai-generated, ' + (options.tags || 'game'),
+                    platform: 'all',
+                    path: gamePath,
+                    cover: null,
+                    type: 'HTML',
+                    createdAt: new Date().toISOString()
+                };
+                games.push(entry);
+                var jsonB64 = btoa(unescape(encodeURIComponent(JSON.stringify(games, null, 2))));
+                // Step 3: update games.json
+                var body = { message: 'GameForge: add ' + title + ' to catalog', content: jsonB64 };
+                if (sha) body.sha = sha;
+                return fetch(apiBase + 'games.json', {
+                    method: 'PUT',
+                    headers: Object.assign({'Content-Type': 'application/json'}, headers),
+                    body: JSON.stringify(body)
+                });
+            }).then(function(r) {
+                if (!r.ok) throw new Error('Failed to update games.json: HTTP ' + r.status);
+                return r.json();
+            }).then(function() {
+                resolve({
+                    success: true,
+                    url: 'https://' + cfg.owner + '.github.io/' + cfg.repo + '/' + gamePath,
+                    title: title,
+                    slug: gameSlug
+                });
+            }).catch(function(e) {
+                reject(e);
+            });
+        });
+    }
+
+    function slugify(text) {
+        var map = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
+        var r = '';
+        for (var i = 0; i < text.length; i++) {
+            var c = text[i].toLowerCase();
+            r += map[c] || c;
+        }
+        return r.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 40) || 'game';
+    }
+
+    // === Build EXE (NW.js) — generates download script ===
+    function buildEXE(options) {
+        options = options || {};
+        var result = buildHTML(options);
+        if (result.error) return result;
+
+        // Generate a build script + instructions for NW.js
+        // We can't actually compile NW.js in browser, so we provide:
+        // 1. The game HTML
+        // 2. package.json for NW.js
+        // 3. Instructions to download NW.js and run
+
+        var gameTitle = result.title;
+        var packageJson = JSON.stringify({
+            name: slugify(gameTitle),
+            version: '1.0.0',
+            description: result.description,
+            main: 'index.html',
+            window: {
+                title: gameTitle,
+                width: 1280,
+                height: 720,
+                min_width: 800,
+                min_height: 600,
+                icon: 'icon.png',
+                toolbar: false,
+                frame: true,
+                resizable: true,
+                show: true,
+                position: 'center'
+            },
+            'webkit': {
+                'plugin': false
+            },
+            'chromium-args': '--force-disp'
+        }, null, 2);
+
+        var buildScript = '# Build instructions for ' + gameTitle + '\n' +
+            '# =====================================\n\n' +
+            '1. Download NW.js from https://nwjs.io/ (SDK version, Windows x64)\n' +
+            '2. Extract NW.js to a folder (e.g. C:\\\\nwjs\\\\)\n' +
+            '3. Put these files in the same folder as nw.exe:\n' +
+            '   - index.html (the game)\n' +
+            '   - package.json (NW.js config)\n' +
+            '4. Run nw.exe — game will open in a desktop window\n' +
+            '5. To create standalone .exe:\n' +
+            '   - Rename index.html + package.json to package.nw\n' +
+            '   - Use: copy /b nw.exe+package.nw ' + slugify(gameTitle) + '.exe\n' +
+            '   - Or use enigmavirtualbox.org to pack into single .exe\n\n' +
+            'Game: ' + gameTitle + '\n' +
+            'Author: ' + result.author + '\n' +
+            'Built: ' + new Date().toISOString() + '\n';
+
+        // Create ZIP with index.html + package.json + README.txt
+        // We'll use a simple approach — JSZip is loaded in the editor
+        if (typeof JSZip === 'undefined') {
+            // Fallback: just download HTML + package.json separately
+            downloadText(packageJson, 'package.json');
+            downloadText(buildScript, 'BUILD-INSTRUCTIONS.txt');
+            return {
+                title: gameTitle,
+                html: result.html,
+                packageJson: packageJson,
+                instructions: buildScript,
+                note: 'Downloaded package.json and instructions. JSZip not available for full ZIP.'
+            };
+        }
+
+        var zip = new JSZip();
+        zip.file('index.html', result.html);
+        zip.file('package.json', packageJson);
+        zip.file('BUILD-INSTRUCTIONS.txt', buildScript);
+        zip.file('README.md', '# ' + gameTitle + '\n\n' + result.description + '\n\n## Built with SashaAI GameDev Engine\n\nTo run: see BUILD-INSTRUCTIONS.txt');
+
+        var zipBlob = zip.generateAsync({ type: 'blob' }).then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = slugify(gameTitle) + '-exe-build.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        });
+
+        return {
+            title: gameTitle,
+            html: result.html,
+            packageJson: packageJson,
+            instructions: buildScript,
+            zip: true
+        };
+    }
+
+    function downloadText(text, filename) {
+        var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    return {
+        buildHTML: buildHTML,
+        downloadHTML: downloadHTML,
+        buildEXE: buildEXE,
+        uploadToGameForge: uploadToGameForge,
+        collectSceneState: collectSceneState,
+        getGFConfig: getGFConfig,
+        setGFConfig: setGFConfig
+    };
+})();
+
+// ============================================================
 // ============ SashaCharacterController — Player Input, Physics, Animation ===
 // ============================================================
 // Provides: WASD movement, mouse look, jump, gravity, collision,
@@ -4940,15 +5459,24 @@ var SashaCharacterController = (function() {
     }
 
     function spawnEnemy(x, y, z, hp) {
-        init();
-        if (!scene) return null;
+        if (!scene) {
+            // Try to init if not done yet
+            init();
+            if (!scene) {
+                // Fallback: use scene directly from SashaEngineAPI
+                if (typeof SashaEngineAPI !== 'undefined' && SashaEngineAPI.getScene) {
+                    scene = SashaEngineAPI.getScene();
+                }
+                if (!scene) { console.warn('[spawnEnemy] no scene available'); return null; }
+            }
+        }
         var enemyGeo = new THREE.CapsuleGeometry(0.4, 1.0, 4, 8);
         var enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x661111, emissiveIntensity: 0.5 });
         var enemy = new THREE.Mesh(enemyGeo, enemyMat);
         enemy.position.set(x || (Math.random()-0.5)*20, y || 0, z || (Math.random()-0.5)*20);
         enemy.castShadow = true;
         scene.add(enemy);
-        var name = 'enemy_' + Date.now();
+        var name = 'enemy_' + Date.now() + '_' + Math.floor(Math.random()*1000);
         var objs = SashaEngineAPI.getObjects();
         if (objs) objs[name] = enemy;
         var types = SashaEngineAPI.getObjectTypes ? SashaEngineAPI.getObjectTypes() : null;
@@ -22915,6 +23443,41 @@ var SashaAvatar = (function() {
       SashaCharacterController.rebuildColliders();
       return 'Colliders rebuilt';
     }
+    // === Build System tools ===
+    if (fn === 'buildHTML') {
+      if (typeof SashaGameBuilder === 'undefined') throw new Error('GameBuilder not loaded');
+      var result = SashaGameBuilder.downloadHTML({
+        title: args.title || args.name || 'My Game',
+        author: args.author || 'SashaAI',
+        description: args.description || args.desc || 'Built with SashaAI GameDev Engine'
+      });
+      if (result.error) throw new Error(result.error);
+      return 'HTML build downloaded: ' + result.filename + ' (' + Math.round(result.html.length / 1024) + 'KB)';
+    }
+    if (fn === 'buildEXE') {
+      if (typeof SashaGameBuilder === 'undefined') throw new Error('GameBuilder not loaded');
+      var exeResult = SashaGameBuilder.buildEXE({
+        title: args.title || args.name || 'My Game',
+        author: args.author || 'SashaAI',
+        description: args.description || args.desc || 'Built with SashaAI GameDev Engine'
+      });
+      if (exeResult.error) throw new Error(exeResult.error);
+      return 'EXE build ZIP downloaded: ' + exeResult.title + '.zip (includes index.html + package.json + BUILD-INSTRUCTIONS.txt). Download NW.js from nwjs.io and follow instructions.';
+    }
+    if (fn === 'uploadToGameForge') {
+      if (typeof SashaGameBuilder === 'undefined') throw new Error('GameBuilder not loaded');
+      // Async — return promise message
+      return SashaGameBuilder.uploadToGameForge({
+        title: args.title || args.name || 'My Game',
+        author: args.author || 'SashaAI',
+        description: args.description || args.desc || 'Built with SashaAI GameDev Engine',
+        tags: args.tags
+      }).then(function(r) {
+        return 'Game uploaded to GameForge! URL: ' + r.url;
+      }).catch(function(e) {
+        throw e;
+      });
+    }
     throw new Error('Unknown function: ' + fn);
   }
 
@@ -23320,7 +23883,13 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     'detach_player_control':'отключил управление',
     'spawn_enemy':'спавнил врага',
     'reload':'перезарядил оружие',
-    'get_player_stats':'получил статистику игрока'
+    'get_player_stats':'получил статистику игрока',
+    'start_waves':'запустил волны врагов',
+    'stop_waves':'остановил волны',
+    'rebuild_colliders':'пересчитал коллайдеры',
+    'build_html':'собрал HTML билд',
+    'build_exe':'собрал EXE билд',
+    'upload_to_gameforge':'загрузил игру на GameForge'
   };
 
   function _parseColor(c) {
@@ -23454,6 +24023,13 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         return dc('stopWaves', {});
       case 'rebuild_colliders':
         return dc('rebuildColliders', {});
+      // === Build System ===
+      case 'build_html':
+        return dc('buildHTML', {title: params.title || params.name, author: params.author, description: params.description || params.desc});
+      case 'build_exe':
+        return dc('buildEXE', {title: params.title || params.name, author: params.author, description: params.description || params.desc});
+      case 'upload_to_gameforge':
+        return dc('uploadToGameForge', {title: params.title || params.name, author: params.author, description: params.description || params.desc, tags: params.tags});
       default:
         throw new Error('Unknown tool: ' + name);
     }
@@ -23517,40 +24093,44 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   // === Quick keyword match (offline, instant) — for known templates ===
   function quickMatch(text) {
     var t = text.toLowerCase().trim();
-    function tmpl(kws, tpl) { for (var i = 0; i < kws.length; i++) if (t.indexOf(kws[i]) !== -1) return {tool:'apply_scene_template',params:{template:tpl}}; return null; }
-    var r;
-    if ((r = tmpl(['город','city'],'city'))) return r;
-    if ((r = tmpl(['лес','forest'],'forest'))) return r;
-    if ((r = tmpl(['пустын','desert'],'desert'))) return r;
-    if ((r = tmpl(['космос','space','звезд','планет','галакт'],'space'))) return r;
-    if ((r = tmpl(['подвод','underwater','океан','море'],'underwater'))) return r;
-    if ((r = tmpl(['гор','mountain','скал'],'mountain'))) return r;
-    if ((r = tmpl(['замок','castle'],'castle'))) return r;
-    if ((r = tmpl(['комнат','room','interior'],'room'))) return r;
-    if ((r = tmpl(['остров','island'],'island'))) return r;
-    if ((r = tmpl(['зим','winter','снег'],'winter'))) return r;
-    if ((r = tmpl(['тропик','tropical','джунгл'],'tropical'))) return r;
-    // === NEW: AI-powered quick matches ===
-    // Real city import via OSM
-    if (/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё\s,.-]+)/i.test(text)) {
-      var cityMatch = text.match(/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё\s,.-]+)/i);
-      if (cityMatch && cityMatch[1]) {
-        var cityName = cityMatch[1].trim();
-        return {tool:'import_city', params:{query: cityName, maxBuildings: 50}};
-      }
-    }
+    // === PRIORITY 1: Real city names → import_city (before generic "город" template) ===
     if (/(нью.?йорк|manhattan|new york)/i.test(t)) return {tool:'import_city', params:{query:'Manhattan, New York', maxBuildings:50}};
     if (/(париж|paris)/i.test(t)) return {tool:'import_city', params:{query:'Paris, France', maxBuildings:50}};
     if (/(лондон|london)/i.test(t)) return {tool:'import_city', params:{query:'London, UK', maxBuildings:50}};
     if (/(токио|tokyo)/i.test(t)) return {tool:'import_city', params:{query:'Tokyo, Japan', maxBuildings:50}};
     if (/(киев|kyiv|kiev)/i.test(t)) return {tool:'import_city', params:{query:'Kyiv, Ukraine', maxBuildings:50}};
-    // Characters
-    if (/(рыцар|knight)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'knight'}};
-    if (/(маг|wizard|sorcer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'mage'}};
-    if (/(робот|robot)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'robot'}};
-    if (/(лучник|archer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'archer'}};
-    if (/(человек|персонаж|humanoid|character)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'humanoid'}};
-    // === Shooter quick match ===
+    // "город XXX" or "city XXX" → import_city with name
+    var cityMatch = text.match(/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё\s,.-]+)/i);
+    if (cityMatch && cityMatch[1] && cityMatch[1].trim().length > 2) {
+      return {tool:'import_city', params:{query: cityMatch[1].trim(), maxBuildings: 50}};
+    }
+
+    // === PRIORITY 2: Build commands ===
+    if (/сделай\s+билд|build|собери\s+(игру|html|exe)|сделай\s+(html|exe)/i.test(t)) {
+      var titleMatch = text.match(/["«]([^"»]+)["»]/);
+      var title = titleMatch ? titleMatch[1] : 'My Game';
+      var isEXE = /exe|ехе|екзе/i.test(t);
+      var isUpload = /залей|upload|опублику/i.test(t);
+      if (isUpload) return [{tool:'upload_to_gameforge', params:{title: title}}];
+      return [{tool: isEXE ? 'build_exe' : 'build_html', params:{title: title}}];
+    }
+    if (/залей\s+(на\s+)?(гейм.?фордж|gameforge|платформ)/i.test(t)) {
+      var titleMatch2 = text.match(/["«]([^"»]+)["»]/);
+      return [{tool:'upload_to_gameforge', params:{title: titleMatch2 ? titleMatch2[1] : 'My Game'}}];
+    }
+
+    // === PRIORITY 3: Shooter / survival (multi-step) ===
+    if (/(выживан|surviv|волны|волн|horde|орды)/i.test(t)) {
+      return [
+        {tool:'scene_clear', params:{}},
+        {tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}},
+        {tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}},
+        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}},
+        {tool:'start_waves', params:{enemiesPerWave:3, spawnInterval:2, waveDelay:5}},
+        {tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8, color:'#ffffff'}},
+        {tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}}
+      ];
+    }
     if (/(сделай\s+шутер|шутер|shooter|fps|стрелялк)/i.test(t)) {
       return [
         {tool:'scene_clear', params:{}},
@@ -23564,29 +24144,44 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         {tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}}
       ];
     }
+
+    // === PRIORITY 4: Characters ===
+    if (/(рыцар|knight)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'knight'}};
+    if (/(маг|wizard|sorcer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'mage'}};
+    if (/(робот|robot)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'robot'}};
+    if (/(лучник|archer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'archer'}};
+    if (/(человек|персонаж|humanoid|character)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'humanoid'}};
+
+    // === PRIORITY 5: Player control ===
     if (/(сделай\s+игрок|управление\s+персонажем|player\s*control|player\s*controller|игрок)/i.test(t) && /(сделай|добав|включ|make|add|enable|create)/i.test(t)) {
       return [
         {tool:'add_character', params:{type:'humanoid', name:'player1'}},
         {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}}
       ];
     }
+
+    // === PRIORITY 6: Spawn enemy ===
     if (/(добав|создай|постав|spawn).*\s*(враг|зомби|enemy|zombie)/i.test(t)) {
-      return [
-        {tool:'spawn_enemy', params:{x:(Math.random()-0.5)*20, y:0, z:(Math.random()-0.5)*20, hp:100}}
-      ];
+      return [{tool:'spawn_enemy', params:{x:(Math.random()-0.5)*20, y:0, z:(Math.random()-0.5)*20, hp:100}}];
     }
-    // === Survival/waves ===
-    if (/(выживан|surviv|волны|волн|horde|орды)/i.test(t)) {
-      return [
-        {tool:'scene_clear', params:{}},
-        {tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}},
-        {tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}},
-        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}},
-        {tool:'start_waves', params:{enemiesPerWave:3, spawnInterval:2, waveDelay:5}},
-        {tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8, color:'#ffffff'}},
-        {tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}}
-      ];
-    }
+
+    // === PRIORITY 7: Generic templates (lower priority than specific cities) ===
+    function tmpl(kws, tpl) { for (var i = 0; i < kws.length; i++) if (t.indexOf(kws[i]) !== -1) return {tool:'apply_scene_template',params:{template:tpl}}; return null; }
+    var r;
+    if ((r = tmpl(['лес','forest'],'forest'))) return r;
+    if ((r = tmpl(['пустын','desert'],'desert'))) return r;
+    if ((r = tmpl(['космос','space','звезд','планет','галакт'],'space'))) return r;
+    if ((r = tmpl(['подвод','underwater','океан'],'underwater'))) return r;
+    if ((r = tmpl(['mountain','скал'],'mountain'))) return r;
+    if ((r = tmpl(['замок','castle'],'castle'))) return r;
+    if ((r = tmpl(['комнат','room','interior'],'room'))) return r;
+    if ((r = tmpl(['остров','island'],'island'))) return r;
+    if ((r = tmpl(['зим','winter','снег'],'winter'))) return r;
+    if ((r = tmpl(['тропик','tropical','джунгл'],'tropical'))) return r;
+    // "город" alone → template city (without specific name)
+    if ((r = tmpl(['город','city'],'city'))) return r;
+
+    // === PRIORITY 8: Basic commands ===
     if (/очист|удал.*вс[её]|clear|reset|новая\s*сцен/.test(t)) return {tool:'clear_scene',params:{}};
     return null;
   }
@@ -23598,9 +24193,22 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       // m can be a single tool call OR an array of tool calls
       var calls = Array.isArray(m) ? m : [m];
       var okCount = 0;
+      var hasAsyncUpload = false;
       for (var i = 0; i < calls.length; i++) {
         try {
-          execTool(calls[i].tool, calls[i].params || {});
+          var execResult = execTool(calls[i].tool, calls[i].params || {});
+          // Check if result is a Promise (async upload)
+          if (execResult && typeof execResult.then === 'function') {
+            hasAsyncUpload = true;
+            execResult.then(function(msg) {
+              if (typeof addChat === 'function') addChat('ai', msg);
+              else if (typeof _addChatMessage === 'function') _addChatMessage('ai', msg);
+            }).catch(function(e) {
+              var errMsg = '❌ Upload failed: ' + e.message;
+              if (typeof addChat === 'function') addChat('ai', errMsg);
+              else if (typeof _addChatMessage === 'function') _addChatMessage('ai', errMsg);
+            });
+          }
           okCount++;
         } catch(e) { console.warn('[fastExec] tool failed:', calls[i].tool, e.message); }
       }
@@ -23617,6 +24225,12 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         } else if (c.tool === 'add_character') {
           var charNames = {humanoid:'Человек', knight:'Рыцарь', mage:'Маг', robot:'Робот', archer:'Лучник'};
           reply = '👤 Добавил персонажа: ' + (charNames[c.params.type] || c.params.type) + '. Открой Engine.';
+        } else if (c.tool === 'build_html') {
+          reply = '📦 HTML билд скачивается... Файл "' + (c.params.title || 'My Game') + '.html" готов к запуску в браузере.';
+        } else if (c.tool === 'build_exe') {
+          reply = '📦 EXE билд (ZIP) скачивается... Внутри: index.html + package.json + BUILD-INSTRUCTIONS.txt. Скачай NW.js с nwjs.io и следуй инструкции — будет standalone .exe!';
+        } else if (c.tool === 'upload_to_gameforge') {
+          reply = '🚀 Загружаю «' + (c.params.title || 'My Game') + '» на GameForge... Это займёт ~10 секунд. Результат появится здесь.';
         } else {
           reply = '✅ Готово!';
         }
@@ -23643,52 +24257,8 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
   // === Build LLM system prompt for 3D generation ===
   function buildGenPrompt(userPrompt) {
-    return [
-      'Ты — SashaAI, 3D GameDev ассистент. Запрос: "' + userPrompt + '".',
-      'Сгенерируй JSON-массив вызовов инструментов для построения сцены в 3D движке.',
-      'Выведи ТОЛЬКО JSON-массив, без markdown, без объяснений, без комментариев.',
-      '',
-      'Доступные инструменты (name -> params):',
-      '- scene_clear: {}',
-      '- set_bg_color: {color: "#rrggbb"}',
-      '- add_plane: {width, height, color}',
-      '- add_cube: {x, y, z, width, height, depth, color}',
-      '- add_sphere: {x, y, z, radius, color}',
-      '- add_cylinder: {x, y, z, radiusTop, radiusBottom, height, color}',
-      '- add_cone: {x, y, z, radius, height, color}',
-      '- add_torus: {x, y, z, radius, tube, color}',
-      '- add_point_light: {x, y, z, intensity, color}',
-      '- add_directional_light: {x, y, z, intensity, color}',
-      '- add_ambient_light: {intensity, color}',
-      '- compose_model: {description: "house|tree|car|sword|axe|shield|campfire|torch|crystal|platform|ruins|barrel|chest|well|table|chair|ladder|gate|sign|tower|bridge|castle|rock", posX, posY, posZ, scaleX, scaleY, scaleZ}',
-      '- create_terrain: {name, width, depth, heightExpression: "Math.sin(x*0.3)*1.5", resolution, color}',
-      '- camera_set_position: {x, y, z}',
-      '- camera_set_target: {x, y, z}',
-      '',
-      '=== AI POWERED TOOLS (use these for realistic scenes) ===',
-      '- import_city: {query: "Manhattan, New York" или "Paris, France", maxBuildings: 50} — загружает РЕАЛЬНЫЙ город из OpenStreetMap. Используй когда просят "город N", "Нью-Йорк", "Париж", "реальный город". НЕ комбинируй с другими — import_city сам всё сделает.',
-      '- add_character: {type: "humanoid|knight|mage|robot|archer", x, y, z} — добавляет персонажа. Используй когда просят "персонаж", "рыцарь", "маг", "робот", "лучник", "человек".',
-      '- apply_ai_texture: {prompt: "brick wall" или "metal steel" или "wood planks", objectName: "имя объекта"} — генерирует AI-текстуру 256x256 и применяет к объекту. Используй когда просят "текстура кирпича", "металлическая поверхность", "дерево". Сначала создай объект, потом примени текстуру.',
-      '',
-      '=== CHARACTER CONTROLLER & SHOOTER ===',
-      '- attach_player_control: {objectName: "имя персонажа", speed: 5, hp: 100, ammo: 30, fps: true} — привязывает управление WASD+мышь к персонажу. WASD=движение, Space=прыжок, Shift=бег, мышь=осмотр, ЛКМ=стрельба, R=перезарядка. Используй когда просят "сделай игрока", "управление персонажем", "сделай шутер".',
-      '- spawn_enemy: {x, y, z, hp: 100} — спавнит красного врага, который бежит к игроку и атакует. Используй когда просят "враги", "зомби", "противники".',
-      '- start_waves: {enemiesPerWave: 3, spawnInterval: 2, waveDelay: 5} — запускает бесконечные волны врагов. Каждая волна сильнее. Используй когда просят "волны", "выживание", "survival", "horde".',
-      '- rebuild_colliders: {} — пересчитать коллайдеры зданий (чтобы игрок не проходил сквозь стены). Вызови после импорта города.',
-      '- reload: {} — перезарядка оружия.',
-      '',
-      'Цвета — hex-строки вида "#aabbcc". Координаты — числа.',
-      'Правила: 1-30 вызовов. Для города — только import_city. Для персонажа — scene_clear + add_character + свет + камера. Для шутера — scene_clear + add_plane + add_character (запомни имя!) + attach_player_control + spawn_enemy (3-5 шт) + свет + камера.',
-      'Только валидный JSON.',
-      '',
-      'Примеры:',
-      'Запрос "Нью-Йорк": [{"tool":"import_city","params":{"query":"Manhattan, New York","maxBuildings":50}}]',
-      'Запрос "рыцарь": [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_character","params":{"type":"knight","x":0,"y":0,"z":0}},{"tool":"add_directional_light","params":{"x":5,"y":10,"z":5,"intensity":0.8,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":5,"y":3,"z":5}},{"tool":"camera_set_target","params":{"x":0,"y":1,"z":0}}]',
-      'Запрос "кирпичный куб": [{"tool":"add_cube","params":{"x":0,"y":0.5,"z":0,"width":2,"height":1,"depth":2,"color":"#888888"}},{"tool":"apply_ai_texture","params":{"prompt":"old brick wall texture","objectName":"cube_1"}}]',
-      'Запрос "сделай шутер": [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":50,"height":50,"color":"#2a2a3a"}},{"tool":"add_character","params":{"type":"humanoid","x":0,"y":0,"z":0,"name":"player1"}},{"tool":"attach_player_control","params":{"objectName":"player1","speed":6,"hp":100,"ammo":30,"fps":true}},{"tool":"spawn_enemy","params":{"x":-10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":0,"y":0,"z":-15,"hp":100}},{"tool":"add_directional_light","params":{"x":10,"y":20,"z":10,"intensity":0.8}},{"tool":"add_ambient_light","params":{"intensity":0.4}}]',
-      '',
-      'Теперь сгенерируй JSON для запроса: "' + userPrompt + '"'
-    ].join('\n');
+    // MINIMAL prompt for speed — Qwen 7B works best with short instructions
+    return 'Сцена: "' + userPrompt + '". Выведи ТОЛЬКО JSON-массив tool calls. Инструменты: scene_clear, add_plane{width,height,color}, add_cube{x,y,z,width,height,depth,color}, add_sphere{x,y,z,radius,color}, add_cylinder, add_cone, add_torus, add_point_light{x,y,z,intensity,color}, add_directional_light{x,y,z,intensity,color}, add_ambient_light{intensity,color}, compose_model{description:"house|tree|car|sword|tower|rock",posX,posZ}, create_terrain{width,depth,heightExpression}, camera_set_position{x,y,z}, camera_set_target{x,y,z}. Цвета: "#rrggbb". Пример: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_cube","params":{"x":0,"y":0.5,"z":0,"width":2,"height":1,"depth":2,"color":"#ff8800"}},{"tool":"add_point_light","params":{"x":5,"y":8,"z":5,"intensity":1,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":8,"y":6,"z":8}}]';
   }
 
   // === Build LLM system prompt for conversation ===
@@ -23940,50 +24510,61 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   }
 
   // === Call local LLM (Qwen via MCP) ===
+  // === Call local LLM with timeout (15s max) ===
   async function callLocalLLM(message, isChat) {
     var sys = isChat ? buildChatPrompt(message) : buildGenPrompt(message);
-    var resp;
+    // Use AbortController for timeout
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
     try {
-      resp = await fetch(LOCAL_LLM_API, {
+      var resp = await fetch(LOCAL_LLM_API, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({message: sys, history: chatHistory})
+        body: JSON.stringify({message: sys, history: isChat ? chatHistory : []}),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+      if (!resp.ok) throw new Error('Local LLM HTTP ' + resp.status);
+      var data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      return data;
     } catch(e) {
-      throw new Error('Local LLM unreachable: ' + e.message);
+      clearTimeout(timeoutId);
+      if (e.name === 'AbortError') throw new Error('LLM timeout (>15s)');
+      throw new Error('Local LLM: ' + e.message);
     }
-    if (!resp.ok) throw new Error('Local LLM HTTP ' + resp.status);
-    var data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    return data;
   }
 
-  // === Call cloud LLM (Pollinations) ===
+  // === Call cloud LLM with timeout (15s max) ===
   async function callCloudLLM(message, isChat) {
     var sys = isChat ? buildChatPrompt(message) : buildGenPrompt(message);
-    var resp;
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
     try {
-      resp = await fetch(CLOUD_LLM_API, {
+      var resp = await fetch(CLOUD_LLM_API, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           model: CLOUD_MODEL,
           messages: [
-            {role: 'system', content: 'You are SashaAI, a 3D GameDev assistant. Respond in Russian.'},
+            {role: 'system', content: 'You are SashaAI. Respond in Russian. Short answers.'},
             {role: 'user', content: sys}
           ]
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+      if (!resp.ok) throw new Error('Cloud LLM HTTP ' + resp.status);
+      var data = await resp.json();
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        return {reply: data.choices[0].message.content, history: []};
+      }
+      throw new Error('Cloud LLM bad response');
     } catch(e) {
-      throw new Error('Cloud LLM unreachable: ' + e.message);
+      clearTimeout(timeoutId);
+      if (e.name === 'AbortError') throw new Error('Cloud timeout (>15s)');
+      throw new Error('Cloud LLM: ' + e.message);
     }
-    if (!resp.ok) throw new Error('Cloud LLM HTTP ' + resp.status);
-    var data = await resp.json();
-    // OpenAI-style response
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      return {reply: data.choices[0].message.content, history: []};
-    }
-    throw new Error('Cloud LLM bad response');
   }
 
   // === Main entry: EngineApp.sendAI ===
@@ -24012,26 +24593,16 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       var intent = detectIntent(prompt);
 
       if (intent === 'chat') {
-        // Conversational mode — call LLM as plain chat, no scene generation
+        // Conversational mode — try local LLM (15s timeout), fallback to localChat
         addChat('ai', '💬 ...');
         var chatReply = null;
-        // Try local LLM first
         try {
           var localData = await callLocalLLM(prompt, true);
           chatReply = localData.reply || localData.text || null;
         } catch(e) {
-          console.warn('[sendAI] local LLM failed for chat:', e.message);
+          console.warn('[sendAI] chat LLM failed:', e.message);
         }
-        // Fallback to cloud
-        if (!chatReply) {
-          try {
-            var cloudData = await callCloudLLM(prompt, true);
-            chatReply = cloudData.reply;
-          } catch(e2) {
-            console.warn('[sendAI] cloud LLM also failed for chat:', e2.message);
-          }
-        }
-        // Ultimate fallback: local heuristic chat
+        // Fallback: local heuristic chat (instant)
         if (!chatReply) chatReply = localChat(prompt);
         removeThinking();
         addChat('ai', chatReply);
@@ -24040,54 +24611,39 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         return;
       }
 
-      // 3) Generation intent — try LLM with JSON tool calls
-      addChat('ai', '🤔 Думаю через AI...');
-      var genReply = null;
+      // 3) Generation intent — try LLM ONCE (15s timeout), then fallback to localGenerate
+      addChat('ai', '🤔 Генерирую...');
       var toolCalls = null;
 
-      // Try local LLM first
+      // Try local LLM (15s timeout via AbortController in callLocalLLM)
       try {
         var localGen = await callLocalLLM(prompt, false);
-        genReply = localGen.reply || localGen.text || '';
+        var genReply = localGen.reply || localGen.text || '';
         if (localGen.toolLog && localGen.toolLog.length) {
-          // Server already executed tools — convert to local format for summary
           toolCalls = localGen.toolLog.map(function(t){return {tool:t.tool, params:t.params||{}};});
         } else {
-          // Parse the LLM text reply for JSON tool-call array
           toolCalls = parseToolCallsFromText(genReply);
         }
       } catch(e) {
-        console.warn('[sendAI] local LLM failed for gen:', e.message);
-      }
-
-      // If local LLM didn't produce usable tool calls, try cloud
-      if (!toolCalls) {
-        try {
-          var cloudGen = await callCloudLLM(prompt, false);
-          var cloudText = cloudGen.reply || '';
-          toolCalls = parseToolCallsFromText(cloudText);
-          if (toolCalls) genReply = cloudText;
-        } catch(e2) {
-          console.warn('[sendAI] cloud LLM also failed for gen:', e2.message);
-        }
+        console.warn('[sendAI] local LLM failed/timeout:', e.message);
       }
 
       removeThinking();
 
       if (toolCalls && toolCalls.length) {
-        // Execute locally
+        // Execute LLM-generated tool calls
         var result = execToolCalls(toolCalls);
         var summary = buildSummary(result.toolCounts, result.okCount);
         var prefix = '✨ Готово! Создал: ' + summary + '.';
-        if (result.errCount) prefix += ' (' + result.errCount + ' ошибок пропустил)';
+        if (result.errCount) prefix += ' (' + result.errCount + ' ошибок)';
         addChat('ai', prefix);
         chatHistory.push({role:'assistant', content: prefix});
       } else {
-        // Last resort: heuristic local generator
+        // Fallback: local heuristic generator (instant, offline)
         var calls2 = localGenerate(prompt);
         var result2 = execToolCalls(calls2);
         var summary2 = buildSummary(result2.toolCounts, result2.okCount);
-        var prefix2 = '🎨 Создал локально (LLM недоступен): ' + summary2 + '.';
+        var prefix2 = '🎨 Создал: ' + summary2 + '.';
         addChat('ai', prefix2);
         chatHistory.push({role:'assistant', content: prefix2});
       }
@@ -24907,6 +25463,782 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   };
 
   console.log('[AI Tools] AI Texture, Character, City import ready');
+})();
+</script>
+
+<!-- ============ GAME RUNTIME TEMPLATE (used by SashaGameBuilder) ============ -->
+<script type="text/plain" id="game-runtime-template">
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>__GAME_TITLE__</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:system-ui,sans-serif}
+#gameCanvas{display:block;width:100vw;height:100vh}
+#loading{position:fixed;inset:0;background:#0a0a1a;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:100}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.1);border-top-color:#10b981;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#hud{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:10;display:none}
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px}
+#crosshair::before,#crosshair::after{content:"";position:absolute;background:rgba(255,255,255,.8)}
+#crosshair::before{top:50%;left:0;width:100%;height:2px;transform:translateY(-50%)}
+#crosshair::after{left:50%;top:0;width:2px;height:100%;transform:translateX(-50%)}
+#hpBar{position:absolute;bottom:20px;left:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);min-width:200px}
+#hpText{color:#fff;font-size:14px;font-weight:700}
+#hpFill{height:8px;background:rgba(255,255,255,.1);border-radius:4px;margin-top:6px;overflow:hidden}
+#hpFillInner{height:100%;width:100%;background:linear-gradient(90deg,#ef4444,#f87171);transition:width .2s}
+#ammoDisplay{position:absolute;bottom:20px;right:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15)}
+#ammoText{color:#fff;font-size:18px;font-weight:800}
+#waveInfo{position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:600}
+#message{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:48px;font-weight:900;color:#fff;text-shadow:0 0 20px rgba(0,0,0,.8);text-align:center;opacity:0;transition:opacity .5s}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><div>Loading __GAME_TITLE__...</div></div>
+<canvas id="gameCanvas"></canvas>
+<div id="hud">
+<div id="crosshair"></div>
+<div id="hpBar"><div id="hpText">100/100</div><div id="hpFill"><div id="hpFillInner"></div></div></div>
+<div id="ammoDisplay"><div id="ammoText">30 / 30</div></div>
+<div id="waveInfo">Wave 1 | Enemies 0 | Kills 0</div>
+<div id="message"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+var GAME_STATE = __GAME_STATE__;
+var GAME_TITLE = "__GAME_TITLE__";
+var scene, camera, renderer, clock;
+var objects = {};
+var player = null;
+var enemies = [];
+var bullets = [];
+var keys = {};
+var mouseLocked = false;
+var waveSystem = { active: false, currentWave: 0, kills: 0, enemiesPerWave: 3, enemiesSpawned: 0, enemiesToSpawn: 0, lastSpawn: 0, spawnInterval: 2, waveDelay: 5, waveStartTime: 0 };
+var hud = { hp: 100, maxHp: 100, ammo: 30, maxAmmo: 30 };
+var colliders = [];
+
+function init() {
+  scene = new THREE.Scene();
+  if (GAME_STATE.background) scene.background = new THREE.Color(GAME_STATE.background);
+  else scene.background = new THREE.Color(0x0a0a1a);
+  scene.fog = new THREE.Fog(scene.background, 30, 100);
+  var canvas = document.getElementById("gameCanvas");
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  if (GAME_STATE.camera) { camera.position.set(GAME_STATE.camera.position.x, GAME_STATE.camera.position.y, GAME_STATE.camera.position.z); }
+  else { camera.position.set(0, 5, 10); }
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  clock = new THREE.Clock();
+  buildScene();
+  setupPlayer();
+  setupInput();
+  animate();
+  document.getElementById("loading").style.display = "none";
+  if (player) document.getElementById("hud").style.display = "block";
+  if (GAME_STATE.players && GAME_STATE.players.length > 0) { setTimeout(startWaves, 2000); }
+}
+
+function buildScene() {
+  var ambient = new THREE.AmbientLight(0xffffff, 0.4);
+  scene.add(ambient);
+  var dir = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir.position.set(10, 20, 10);
+  dir.castShadow = true;
+  dir.shadow.mapSize.set(1024, 1024);
+  scene.add(dir);
+  if (!GAME_STATE.objects) return;
+  for (var i = 0; i < GAME_STATE.objects.length; i++) {
+    var objData = GAME_STATE.objects[i];
+    var obj = createObjectFromData(objData);
+    if (obj) { obj.name = objData.name; objects[objData.name] = obj; scene.add(obj);
+      if (obj.isMesh && objData.engineType !== "plane") { var box = new THREE.Box3().setFromObject(obj); if (!box.isEmpty()) { var size = new THREE.Vector3(); box.getSize(size); if (size.y > 0.5) colliders.push(box); } } }
+  }
+}
+
+function createObjectFromData(data) {
+  if (!data) return null;
+  var obj;
+  if (data.type === "group" || (data.children && data.children.length > 0)) {
+    obj = new THREE.Group();
+    if (data.children) { for (var i = 0; i < data.children.length; i++) { var child = createObjectFromData(data.children[i]); if (child) { child.position.set(data.children[i].position.x, data.children[i].position.y, data.children[i].position.z); child.rotation.set(data.children[i].rotation.x, data.children[i].rotation.y, data.children[i].rotation.z); child.scale.set(data.children[i].scale.x, data.children[i].scale.y, data.children[i].scale.z); obj.add(child); } } }
+  } else if (data.geometry) {
+    var geo = createGeometry(data.geometry);
+    var mat = createMaterial(data.material);
+    if (!geo) return null;
+    obj = new THREE.Mesh(geo, mat || new THREE.MeshStandardMaterial({color: 0x888888}));
+    obj.castShadow = data.castShadow !== false;
+    obj.receiveShadow = data.receiveShadow !== false;
+  } else { obj = new THREE.Object3D(); }
+  if (obj && data.position) { obj.position.set(data.position.x, data.position.y, data.position.z); obj.rotation.set(data.rotation.x, data.rotation.y, data.rotation.z); obj.scale.set(data.scale.x, data.scale.y, data.scale.z); }
+  return obj;
+}
+
+function createGeometry(data) {
+  if (!data || !data.type) return new THREE.BoxGeometry(1,1,1);
+  var p = data.params || {};
+  switch(data.type) {
+    case "BoxGeometry": return new THREE.BoxGeometry(p.width||1, p.height||1, p.depth||1);
+    case "SphereGeometry": return new THREE.SphereGeometry(p.radius||0.5, p.widthSegments||16, p.heightSegments||12);
+    case "CylinderGeometry": return new THREE.CylinderGeometry(p.radiusTop||0.5, p.radiusBottom||0.5, p.height||1, p.radialSegments||12);
+    case "ConeGeometry": return new THREE.ConeGeometry(p.radius||0.5, p.height||1, p.radialSegments||12);
+    case "TorusGeometry": return new THREE.TorusGeometry(p.radius||0.5, p.tube||0.15, p.radialSegments||8, p.tubularSegments||24);
+    case "PlaneGeometry": return new THREE.PlaneGeometry(p.width||10, p.height||10);
+    case "CapsuleGeometry": return new THREE.CapsuleGeometry(p.radius||0.25, p.length||1, p.capSegments||4, p.radialSegments||8);
+    default: return new THREE.BoxGeometry(1,1,1);
+  }
+}
+
+function createMaterial(data) {
+  if (!data) return new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.7});
+  var opts = {};
+  if (data.color) opts.color = parseInt(data.color.replace("#",""), 16);
+  if (data.emissive) opts.emissive = parseInt(data.emissive.replace("#",""), 16);
+  if (data.roughness !== undefined) opts.roughness = data.roughness;
+  if (data.metalness !== undefined) opts.metalness = data.metalness;
+  return new THREE.MeshStandardMaterial(opts);
+}
+
+function setupPlayer() {
+  if (!GAME_STATE.players || GAME_STATE.players.length === 0) return;
+  var pData = GAME_STATE.players[0];
+  var pMesh = objects[pData.name];
+  if (!pMesh) return;
+  player = { mesh: pMesh, velocity: new THREE.Vector3(), onGround: false, yaw: 0, pitch: 0, speed: pData.speed||5, jumpForce: pData.jumpForce||6, gravity: pData.gravity||12, height: pData.height||1.8, radius: 0.4, fps: pData.fps !== false, hp: pData.hp||100, maxHp: pData.hp||100, ammo: pData.ammo||30, maxAmmo: pData.ammo||30, fireRate: pData.fireRate||0.15, lastShot: 0, walkPhase: 0, moving: false };
+  hud.hp = player.hp; hud.maxHp = player.maxHp; hud.ammo = player.ammo; hud.maxAmmo = player.maxAmmo;
+  updateHUD();
+}
+
+function setupInput() {
+  window.addEventListener("keydown", function(e) { keys[e.code] = true; keys[e.key.toLowerCase()] = true; if (e.code === "KeyR") reload(); });
+  window.addEventListener("keyup", function(e) { keys[e.code] = false; keys[e.key.toLowerCase()] = false; });
+  var canvas = document.getElementById("gameCanvas");
+  canvas.addEventListener("click", function() { if (player && !mouseLocked) canvas.requestPointerLock(); });
+  document.addEventListener("pointerlockchange", function() { mouseLocked = document.pointerLockElement === canvas; });
+  document.addEventListener("mousemove", function(e) { if (!mouseLocked || !player) return; player.yaw -= e.movementX * 0.002; player.pitch -= e.movementY * 0.002; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch)); });
+  canvas.addEventListener("mousedown", function(e) { if (mouseLocked && e.button === 0) shoot(); });
+  window.addEventListener("resize", function() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+}
+
+function shoot() {
+  if (!player) return;
+  var now = performance.now() / 1000;
+  if (now - player.lastShot < player.fireRate) return;
+  if (player.ammo <= 0) return;
+  player.lastShot = now; player.ammo--; updateHUD(); playSound("shoot");
+  var bullet = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), new THREE.MeshBasicMaterial({color: 0xffff00}));
+  bullet.position.copy(camera.position);
+  var dir = new THREE.Vector3(0,0,-1); camera.getWorldDirection(dir);
+  scene.add(bullet);
+  bullets.push({ mesh: bullet, velocity: dir.multiplyScalar(60), life: 2, damage: 25 });
+  var flash = new THREE.PointLight(0xffff00, 2, 5); flash.position.copy(camera.position); scene.add(flash);
+  setTimeout(function(){ scene.remove(flash); }, 80);
+}
+
+function reload() { if (!player || player.ammo >= player.maxAmmo) return; player.ammo = player.maxAmmo; playSound("reload"); updateHUD(); }
+
+function spawnEnemy(x, y, z, hp) {
+  var enemy = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.0, 4, 8), new THREE.MeshStandardMaterial({color: 0xff3333, emissive: 0x661111, emissiveIntensity: 0.5}));
+  enemy.position.set(x||0, y||0, z||0); enemy.castShadow = true; scene.add(enemy);
+  enemies.push({ mesh: enemy, hp: hp||100, maxHp: hp||100, speed: 1.5, attackRange: 1.5, damage: 10, lastAttack: 0 });
+}
+
+function startWaves() { waveSystem.active = true; waveSystem.currentWave = 0; waveSystem.kills = 0; showMessage("WAVE 1", "Get ready!", 2500); playSound("wave"); startNextWave(); }
+function startNextWave() { if (!waveSystem.active) return; waveSystem.currentWave++; waveSystem.enemiesToSpawn = waveSystem.enemiesPerWave + (waveSystem.currentWave - 1) * 2; waveSystem.enemiesSpawned = 0; waveSystem.lastSpawn = performance.now() / 1000; waveSystem.waveStartTime = performance.now() / 1000; showMessage("WAVE " + waveSystem.currentWave, "", 2000); playSound("wave"); }
+function showMessage(text, sub, duration) { var msg = document.getElementById("message"); if (!msg) return; msg.innerHTML = text + (sub ? "<br><span style=\"font-size:18px;color:#fbbf24\">" + sub + "</span>" : ""); msg.style.opacity = "1"; setTimeout(function() { msg.style.opacity = "0"; }, duration || 2000); }
+function updateHUD() { var hpText = document.getElementById("hpText"); var hpFill = document.getElementById("hpFillInner"); var ammoText = document.getElementById("ammoText"); var waveInfo = document.getElementById("waveInfo"); if (hpText) hpText.textContent = Math.max(0, Math.round(hud.hp)) + "/" + hud.maxHp; if (hpFill) hpFill.style.width = Math.max(0, (hud.hp / hud.maxHp) * 100) + "%"; if (ammoText) ammoText.textContent = hud.ammo + " / " + hud.maxAmmo; if (waveInfo) waveInfo.textContent = "Wave " + waveSystem.currentWave + " | Enemies " + enemies.length + " | Kills " + waveSystem.kills; }
+
+var audioCtx = null;
+function playSound(type) {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; } }
+  try { var osc = audioCtx.createOscillator(); var gain = audioCtx.createGain();
+    if (type === "shoot") { osc.type = "square"; osc.frequency.setValueAtTime(180, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.08); gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+    else if (type === "reload") { osc.type = "square"; osc.frequency.value = 400; gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.05); }
+    else if (type === "hit") { osc.type = "sine"; osc.frequency.value = 1200; gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.08); }
+    else if (type === "enemyDie") { osc.type = "sawtooth"; osc.frequency.setValueAtTime(200, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
+    else if (type === "hurt") { osc.type = "sawtooth"; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.2); gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
+    else if (type === "wave") { osc.type = "sine"; osc.frequency.setValueAtTime(220, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(660, audioCtx.currentTime + 0.5); gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.6); }
+  } catch(e) {}
+}
+
+function checkCollision(pos, radius) { for (var i = 0; i < colliders.length; i++) { var c = colliders[i]; if (pos.x + radius > c.min.x && pos.x - radius < c.max.x && pos.y + radius > c.min.y && pos.y - radius < c.max.y && pos.z + radius > c.min.z && pos.z - radius < c.max.z) return c; } return null; }
+
+function updatePlayer(dt) {
+  if (!player) return;
+  var forward = keys["KeyW"] || keys["w"] ? 1 : 0; var back = keys["KeyS"] || keys["s"] ? 1 : 0;
+  var left = keys["KeyA"] || keys["a"] ? 1 : 0; var right = keys["KeyD"] || keys["d"] ? 1 : 0;
+  var jump = keys["Space"]; var sprint = keys["ShiftLeft"] || keys["shift"];
+  var moveZ = forward - back, moveX = right - left;
+  var speed = player.speed * (sprint ? 1.7 : 1);
+  player.moving = (moveZ !== 0 || moveX !== 0);
+  if (player.fps) { var sin = Math.sin(player.yaw), cos = Math.cos(player.yaw); player.velocity.x = (moveX * cos + moveZ * sin) * speed; player.velocity.z = (-moveX * sin + moveZ * cos) * speed; }
+  else { player.velocity.x = moveX * speed; player.velocity.z = moveZ * speed; }
+  if (jump && player.onGround) { player.velocity.y = player.jumpForce; player.onGround = false; }
+  player.velocity.y -= player.gravity * dt;
+  var oldX = player.mesh.position.x; player.mesh.position.x += player.velocity.x * dt;
+  if (checkCollision(player.mesh.position, player.radius)) { player.mesh.position.x = oldX; player.velocity.x = 0; }
+  var oldZ = player.mesh.position.z; player.mesh.position.z += player.velocity.z * dt;
+  if (checkCollision(player.mesh.position, player.radius)) { player.mesh.position.z = oldZ; player.velocity.z = 0; }
+  player.mesh.position.y += player.velocity.y * dt;
+  if (player.mesh.position.y <= 0) { player.mesh.position.y = 0; player.velocity.y = 0; player.onGround = true; }
+  if (player.fps) player.mesh.rotation.y = player.yaw;
+  camera.position.set(player.mesh.position.x, player.mesh.position.y + player.height - 0.2, player.mesh.position.z);
+  var lookDir = new THREE.Vector3(-Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch));
+  camera.lookAt(camera.position.clone().add(lookDir));
+  if (player.moving) { player.walkPhase += dt * 8; var swing = Math.sin(player.walkPhase) * 0.4; player.mesh.traverse(function(child) { if (!child.isMesh) return; var y = child.position.y; if (y > 1.5 && y < 2.0) { if (child.position.x > 0.3) child.rotation.x = swing; else if (child.position.x < -0.3) child.rotation.x = -swing; } else if (y < 1.0) { if (child.position.x > 0) child.rotation.x = -swing; else if (child.position.x < 0) child.rotation.x = swing; } }); }
+}
+
+function updateBullets(dt) {
+  for (var i = bullets.length - 1; i >= 0; i--) { var b = bullets[i]; b.mesh.position.add(b.velocity.clone().multiplyScalar(dt)); b.life -= dt; if (b.life <= 0) { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); bullets.splice(i, 1); continue; }
+    for (var j = enemies.length - 1; j >= 0; j--) { var e = enemies[j]; if (b.mesh.position.distanceTo(e.mesh.position) < 0.7) { e.hp -= b.damage; e.mesh.material.emissive.setHex(0xff8888); setTimeout(function(em){return function(){if(em&&em.material)em.material.emissive.setHex(0x661111)}}(e.mesh), 80); playSound("hit"); scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); bullets.splice(i, 1); if (e.hp <= 0) { scene.remove(e.mesh); e.mesh.geometry.dispose(); e.mesh.material.dispose(); enemies.splice(j, 1); waveSystem.kills++; playSound("enemyDie"); updateHUD(); } break; } } }
+}
+
+function updateEnemies(dt) {
+  if (!player) return;
+  for (var k = enemies.length - 1; k >= 0; k--) { var en = enemies[k]; var dist = en.mesh.position.distanceTo(player.mesh.position); if (dist < 20) { var dir = new THREE.Vector3().subVectors(player.mesh.position, en.mesh.position).normalize(); en.mesh.position.x += dir.x * en.speed * dt; en.mesh.position.z += dir.z * en.speed * dt; en.mesh.rotation.y = Math.atan2(dir.x, dir.z); if (dist < en.attackRange) { var now = performance.now() / 1000; if (now - en.lastAttack > 1.0) { en.lastAttack = now; player.hp -= en.damage; playSound("hurt"); updateHUD(); if (player.hp <= 0) { player.hp = player.maxHp; player.ammo = player.maxAmmo; player.mesh.position.set(0, 0, 0); showMessage("You died!", "Respawning...", 2000); } } } } }
+}
+
+function updateWaves(dt) {
+  if (!waveSystem.active || !player) return;
+  var now = performance.now() / 1000;
+  if (waveSystem.enemiesSpawned < waveSystem.enemiesToSpawn) { if (now - waveSystem.lastSpawn > waveSystem.spawnInterval) { var angle = Math.random() * Math.PI * 2; var dist = 15 + Math.random() * 10; spawnEnemy(player.mesh.position.x + Math.cos(angle) * dist, 0, player.mesh.position.z + Math.sin(angle) * dist, 100 + (waveSystem.currentWave - 1) * 20); waveSystem.enemiesSpawned++; waveSystem.lastSpawn = now; } }
+  if (waveSystem.enemiesSpawned >= waveSystem.enemiesToSpawn && enemies.length === 0) { if (now - waveSystem.waveStartTime > 3) { if (!waveSystem.nextScheduled) { waveSystem.nextScheduled = true; setTimeout(function() { waveSystem.nextScheduled = false; startNextWave(); }, waveSystem.waveDelay * 1000); } } }
+  updateHUD();
+}
+
+function animate() { requestAnimationFrame(animate); var dt = Math.min(0.05, clock.getDelta()); updatePlayer(dt); updateBullets(dt); updateEnemies(dt); updateWaves(dt); renderer.render(scene, camera); }
+window.addEventListener("load", init);
+</script>
+</body>
+</html>
+</script>
+
+
+<!-- ============ BUILD DIALOG ============ -->
+<div class="eng-analytics-overlay" id="buildOverlay">
+  <div class="eng-analytics-panel" style="position:relative;max-width:560px">
+    <button class="eng-close-btn" onclick="closeBuildDialog()">&times;</button>
+    <h2 style="font-size:22px;font-weight:800;margin:0 0 8px 0">🚀 Build Game</h2>
+    <p class="subtitle" style="margin:0 0 24px 0">Собери игру в HTML или EXE, или опубликуй на GameForge</p>
+
+    <!-- Game info -->
+    <div style="margin-bottom:20px;padding:16px;background:var(--bg-hover,#27272a);border-radius:12px;border:1px solid var(--border,#27272a)">
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Game Info</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:4px">Title</label>
+        <input type="text" id="buildTitle" placeholder="My Awesome Game" value="My Game" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:4px">Author</label>
+        <input type="text" id="buildAuthor" placeholder="Your name" value="SashaAI" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:4px">Description</label>
+        <textarea id="buildDesc" placeholder="Short game description" rows="2" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:13px;outline:none;resize:vertical">Built with SashaAI GameDev Engine</textarea>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:4px">Tags (comma separated)</label>
+        <input type="text" id="buildTags" placeholder="shooter, action, 3d" value="game, sashaai" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+      </div>
+    </div>
+
+    <!-- Build options -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+      <button onclick="doBuildHTML()" style="padding:20px 12px;border-radius:12px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;transition:all .2s;text-align:center" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:8px">🌐</div>
+        <div style="font-size:14px;font-weight:700">HTML</div>
+        <div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:4px">Single file, runs in browser</div>
+      </button>
+      <button onclick="doBuildEXE()" style="padding:20px 12px;border-radius:12px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;transition:all .2s;text-align:center" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:8px">📦</div>
+        <div style="font-size:14px;font-weight:700">EXE (ZIP)</div>
+        <div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:4px">NW.js standalone Windows</div>
+      </button>
+      <button onclick="doUploadGameForge()" style="padding:20px 12px;border-radius:12px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;transition:all .2s;text-align:center" onmouseover="this.style.borderColor='#a855f7'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:8px">🚀</div>
+        <div style="font-size:14px;font-weight:700">Upload</div>
+        <div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:4px">Publish to GameForge</div>
+      </button>
+    </div>
+
+    <!-- GameForge config status -->
+    <div id="gfConfigStatus" style="padding:12px;background:var(--bg-hover,#27272a);border-radius:8px;border:1px solid var(--border,#27272a);font-size:12px;color:var(--text-muted,#a1a1aa);text-align:center;margin-bottom:12px"></div>
+
+    <!-- Build log -->
+    <div id="buildLog" style="padding:12px;background:#0a0a14;border-radius:8px;border:1px solid var(--border,#27272a);font-family:monospace;font-size:12px;color:#10b981;max-height:150px;overflow-y:auto;display:none"></div>
+
+    <!-- GameForge config button -->
+    <div style="text-align:center;margin-top:12px">
+      <button onclick="openGFConfig()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-muted,#a1a1aa);font-size:12px;cursor:pointer">⚙ Настройки GameForge (GitHub)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GAMEFORGE CONFIG DIALOG ============ -->
+<div class="eng-analytics-overlay" id="gfConfigOverlay">
+  <div class="eng-analytics-panel" style="position:relative;max-width:460px">
+    <button class="eng-close-btn" onclick="closeGFConfig()">&times;</button>
+    <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0">⚙ GameForge Settings</h2>
+    <p class="subtitle" style="margin:0 0 20px 0">Настройки GitHub для загрузки игр на GameForge</p>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:4px">GitHub Token *</label>
+      <input type="password" id="gfToken" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:4px">Owner (GitHub username)</label>
+      <input type="text" id="gfOwner" placeholder="your-username" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:4px">Repo (GameForge repository)</label>
+      <input type="text" id="gfRepo" placeholder="gameforge" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:13px;outline:none">
+    </div>
+    <button onclick="saveGFConfig()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#10b981;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Save Settings</button>
+    <div id="gfConfigSaveStatus" style="margin-top:8px;font-size:12px;text-align:center;color:var(--text-muted,#a1a1aa)"></div>
+  </div>
+</div>
+
+<script>
+// === Build Dialog & GameForge Config ===
+(function(){
+  'use strict';
+
+  window.openBuildDialog = function() {
+    document.getElementById('buildOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    updateGFStatus();
+  };
+  window.closeBuildDialog = function() {
+    document.getElementById('buildOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    var log = document.getElementById('buildLog');
+    if (log) log.style.display = 'none';
+  };
+
+  function getBuildOptions() {
+    return {
+      title: document.getElementById('buildTitle').value.trim() || 'My Game',
+      author: document.getElementById('buildAuthor').value.trim() || 'SashaAI',
+      description: document.getElementById('buildDesc').value.trim() || 'Built with SashaAI GameDev Engine',
+      tags: document.getElementById('buildTags').value.trim() || 'game'
+    };
+  }
+
+  function logBuild(msg, type) {
+    var log = document.getElementById('buildLog');
+    if (!log) return;
+    log.style.display = 'block';
+    var color = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#fbbf24');
+    log.innerHTML += '<div style="color:' + color + '">[' + new Date().toLocaleTimeString() + '] ' + msg + '</div>';
+    log.scrollTop = log.scrollHeight;
+  }
+
+  window.doBuildHTML = function() {
+    if (typeof SashaGameBuilder === 'undefined') { alert('GameBuilder not loaded'); return; }
+    var opts = getBuildOptions();
+    logBuild('Building HTML: "' + opts.title + '"...');
+    try {
+      var result = SashaGameBuilder.downloadHTML(opts);
+      if (result.error) { logBuild('Error: ' + result.error, 'error'); return; }
+      logBuild('✅ HTML build downloaded: ' + result.filename + ' (' + Math.round(result.html.length / 1024) + 'KB)', 'success');
+      logBuild('Open the file in browser to play your game!', 'success');
+    } catch(e) {
+      logBuild('Error: ' + e.message, 'error');
+    }
+  };
+
+  window.doBuildEXE = function() {
+    if (typeof SashaGameBuilder === 'undefined') { alert('GameBuilder not loaded'); return; }
+    var opts = getBuildOptions();
+    logBuild('Building EXE (NW.js ZIP): "' + opts.title + '"...');
+    try {
+      var result = SashaGameBuilder.buildEXE(opts);
+      if (result.error) { logBuild('Error: ' + result.error, 'error'); return; }
+      logBuild('✅ EXE build ZIP downloaded', 'success');
+      logBuild('Instructions:', 'success');
+      logBuild('1. Download NW.js from https://nwjs.io/', 'success');
+      logBuild('2. Extract NW.js', 'success');
+      logBuild('3. Put index.html + package.json next to nw.exe', 'success');
+      logBuild('4. Run nw.exe — game opens in desktop window!', 'success');
+    } catch(e) {
+      logBuild('Error: ' + e.message, 'error');
+    }
+  };
+
+  window.doUploadGameForge = function() {
+    if (typeof SashaGameBuilder === 'undefined') { alert('GameBuilder not loaded'); return; }
+    var cfg = SashaGameBuilder.getGFConfig();
+    if (!cfg) {
+      logBuild('GameForge not configured. Click "Settings" below.', 'error');
+      openGFConfig();
+      return;
+    }
+    var opts = getBuildOptions();
+    logBuild('Uploading "' + opts.title + '" to GameForge...');
+    logBuild('Repository: ' + cfg.owner + '/' + cfg.repo);
+    SashaGameBuilder.uploadToGameForge(opts).then(function(r) {
+      logBuild('✅ Game published!', 'success');
+      logBuild('URL: ' + r.url, 'success');
+      logBuild('The game will be live in ~1 minute (GitHub Pages cache).', 'success');
+    }).catch(function(e) {
+      logBuild('Upload failed: ' + e.message, 'error');
+    });
+  };
+
+  // === GameForge Config ===
+  window.openGFConfig = function() {
+    document.getElementById('gfConfigOverlay').classList.add('open');
+    var cfg = SashaGameBuilder.getGFConfig();
+    if (cfg) {
+      document.getElementById('gfToken').value = cfg.token || '';
+      document.getElementById('gfOwner').value = cfg.owner || '';
+      document.getElementById('gfRepo').value = cfg.repo || '';
+    }
+    document.getElementById('gfConfigSaveStatus').textContent = '';
+  };
+  window.closeGFConfig = function() {
+    document.getElementById('gfConfigOverlay').classList.remove('open');
+    updateGFStatus();
+  };
+  window.saveGFConfig = function() {
+    var cfg = {
+      token: document.getElementById('gfToken').value.trim(),
+      owner: document.getElementById('gfOwner').value.trim(),
+      repo: document.getElementById('gfRepo').value.trim()
+    };
+    if (!cfg.token || !cfg.owner || !cfg.repo) {
+      document.getElementById('gfConfigSaveStatus').innerHTML = '<span style="color:#ef4444">Fill all fields</span>';
+      return;
+    }
+    SashaGameBuilder.setGFConfig(cfg);
+    document.getElementById('gfConfigSaveStatus').innerHTML = '<span style="color:#10b981">✓ Saved!</span>';
+    setTimeout(closeGFConfig, 800);
+  };
+
+  function updateGFStatus() {
+    var status = document.getElementById('gfConfigStatus');
+    if (!status) return;
+    var cfg = SashaGameBuilder.getGFConfig();
+    if (cfg) {
+      status.innerHTML = '✓ GameForge configured: <span style="color:#10b981">' + cfg.owner + '/' + cfg.repo + '</span>';
+    } else {
+      status.innerHTML = '⚠ GameForge not configured. Click "Settings" below to set up GitHub token.';
+    }
+  }
+
+  console.log('[Build System] Build dialog ready');
+})();
+</script>
+
+<!-- ============ COMMAND PALETTE (quick access to all features) ============ -->
+<div class="eng-analytics-overlay" id="commandPalette">
+  <div class="eng-analytics-panel" style="position:relative;max-width:600px">
+    <button class="eng-close-btn" onclick="closeCommandPalette()">&times;</button>
+    <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0">⚡ Команды</h2>
+    <p class="subtitle" style="margin:0 0 20px 0">Быстрый доступ ко всем функциям движка</p>
+
+    <!-- Сцены -->
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">🎬 Сцены</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px">
+      <button onclick="cpRun('лес')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🌳 Лес</button>
+      <button onclick="cpRun('космос')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🚀 Космос</button>
+      <button onclick="cpRun('пустыня')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🏜️ Пустыня</button>
+      <button onclick="cpRun('замок')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🏰 Замок</button>
+      <button onclick="cpRun('остров')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🏝️ Остров</button>
+      <button onclick="cpRun('зима')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">❄️ Зима</button>
+    </div>
+
+    <!-- Города -->
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">🏙️ Реальные города (OSM)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px">
+      <button onclick="cpRun('Нью-Йорк')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🗽 Manhattan</button>
+      <button onclick="cpRun('Париж')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🗼 Paris</button>
+      <button onclick="cpRun('Лондон')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🎡 London</button>
+      <button onclick="cpRun('Токио')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🏯 Tokyo</button>
+      <button onclick="cpRun('Киев')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🏰 Kyiv</button>
+    </div>
+
+    <!-- Персонажи -->
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">👤 Персонажи</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px">
+      <button onclick="cpRun('создай рыцаря')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">⚔️ Рыцарь</button>
+      <button onclick="cpRun('создай мага')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🧙 Маг</button>
+      <button onclick="cpRun('создай робота')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🤖 Робот</button>
+      <button onclick="cpRun('создай лучника')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🏹 Лучник</button>
+      <button onclick="cpRun('создай человека')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🧍 Человек</button>
+    </div>
+
+    <!-- Игровой процесс -->
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">🎮 Игра</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px">
+      <button onclick="cpRun('сделай шутер')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:rgba(16,185,129,.15);color:#10b981;cursor:pointer;font-size:12px;text-align:center;font-weight:600">🎮 Шутер</button>
+      <button onclick="cpRun('выживание')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:rgba(239,68,68,.15);color:#ef4444;cursor:pointer;font-size:12px;text-align:center;font-weight:600">🌊 Волны</button>
+      <button onclick="cpRun('сделай игрока')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🎯 Игрок</button>
+      <button onclick="cpRun('добавь врага')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">⚔️ Враг</button>
+      <button onclick="cpRun('очисти сцену')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🗑️ Очистить</button>
+    </div>
+
+    <!-- Билд -->
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📦 Билд</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px">
+      <button onclick="closeCommandPalette();openBuildDialog()" style="padding:10px 8px;border-radius:8px;border:1px solid #10b981;background:rgba(16,185,129,.15);color:#10b981;cursor:pointer;font-size:12px;text-align:center;font-weight:600">🚀 BUILD</button>
+      <button onclick="cpRun('сделай билд')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🌐 HTML</button>
+      <button onclick="cpRun('сделай exe')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">📦 EXE</button>
+      <button onclick="cpRun('залей на геймфордж')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🚀 Upload</button>
+    </div>
+
+    <!-- Инструкция -->
+    <div style="padding:14px;background:var(--bg-hover,#27272a);border-radius:10px;border:1px solid var(--border,#27272a);font-size:12px;color:var(--text-muted,#a1a1aa);line-height:1.6">
+      <div style="font-weight:700;color:var(--text-primary,#fafafa);margin-bottom:6px">📖 Как тестировать:</div>
+      1. Нажми кнопку выше → команда выполнится мгновенно<br>
+      2. Или пиши в чат: "лес", "рыцарь", "шутер", "Нью-Йорк"<br>
+      3. Для шутера: кликни на canvas → WASD + мышь + ЛКМ<br>
+      4. Для билда: создай сцену → нажми BUILD → выбери HTML/EXE/Upload
+    </div>
+  </div>
+</div>
+
+<script>
+// === Command Palette ===
+(function(){
+  'use strict';
+  window.openCommandPalette = function() {
+    document.getElementById('commandPalette').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  window.closeCommandPalette = function() {
+    document.getElementById('commandPalette').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  // Run command via chat input
+  window.cpRun = function(text) {
+    closeCommandPalette();
+    var input = document.getElementById('eng-ai-input');
+    if (input) {
+      input.value = text;
+      if (typeof EngineApp !== 'undefined' && EngineApp.sendAI) EngineApp.sendAI();
+    } else {
+      // Fallback: use main chat
+      var chatInput = document.getElementById('chat-input');
+      if (chatInput) {
+        chatInput.value = text;
+        if (typeof sendMessage === 'function') sendMessage();
+      }
+    }
+  };
+  console.log('[Command Palette] ready');
+})();
+</script>
+
+<!-- ============ INPUT SETTINGS DIALOG (Unity-style Input Manager) ============ -->
+<div class="eng-analytics-overlay" id="inputSettingsOverlay">
+  <div class="eng-analytics-panel" style="position:relative;max-width:520px">
+    <button class="eng-close-btn" onclick="closeInputSettings()">&times;</button>
+    <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0">🎮 Управление</h2>
+    <p class="subtitle" style="margin:0 0 20px 0">Настройка клавиш как в Unity Input Manager</p>
+
+    <!-- Action mappings -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Клавиши</div>
+      <div id="inputBindings" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- Sensitivity -->
+    <div style="margin-bottom:20px;padding:14px;background:var(--bg-hover,#27272a);border-radius:10px;border:1px solid var(--border,#27272a)">
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Чувствительность</div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:flex;justify-content:space-between;margin-bottom:4px"><span>Мышь (осмотр)</span><span id="mouseSensVal">2.0</span></label>
+        <input type="range" id="mouseSensSlider" min="0.5" max="5" step="0.1" value="2" oninput="updateInputSetting('mouseSens', this.value); document.getElementById('mouseSensVal').textContent=parseFloat(this.value).toFixed(1)" style="width:100%">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:flex;justify-content:space-between;margin-bottom:4px"><span>Скорость движения</span><span id="moveSpeedVal">5.0</span></label>
+        <input type="range" id="moveSpeedSlider" min="1" max="15" step="0.5" value="5" oninput="updateInputSetting('moveSpeed', this.value); document.getElementById('moveSpeedVal').textContent=parseFloat(this.value).toFixed(1)" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-muted,#a1a1aa);display:flex;justify-content:space-between;margin-bottom:4px"><span>Сила прыжка</span><span id="jumpForceVal">6.0</span></label>
+        <input type="range" id="jumpForceSlider" min="2" max="15" step="0.5" value="6" oninput="updateInputSetting('jumpForce', this.value); document.getElementById('jumpForceVal').textContent=parseFloat(this.value).toFixed(1)" style="width:100%">
+      </div>
+    </div>
+
+    <!-- Toggles -->
+    <div style="margin-bottom:20px;padding:14px;background:var(--bg-hover,#27272a);border-radius:10px;border:1px solid var(--border,#27272a)">
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Опции</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;font-size:13px;color:var(--text-primary,#fafafa)">
+        <input type="checkbox" id="invertYToggle" onchange="updateInputSetting('invertY', this.checked)" style="cursor:pointer">
+        <span>Инвертировать Y (мышь)</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;font-size:13px;color:var(--text-primary,#fafafa)">
+        <input type="checkbox" id="sprintToggle" onchange="updateInputSetting('sprintToggle', this.checked)" style="cursor:pointer">
+        <span>Бег по умолчанию (без Shift)</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-primary,#fafafa)">
+        <input type="checkbox" id="autoReloadToggle" checked onchange="updateInputSetting('autoReload', this.checked)" style="cursor:pointer">
+        <span>Авто-перезарядка (когда 0 патронов)</span>
+      </label>
+    </div>
+
+    <!-- Gamepad info -->
+    <div style="padding:14px;background:var(--bg-hover,#27272a);border-radius:10px;border:1px solid var(--border,#27272a);font-size:12px;color:var(--text-muted,#a1a1aa);line-height:1.6">
+      <div style="font-weight:700;color:var(--text-primary,#fafafa);margin-bottom:6px">🎮 Геймпад</div>
+      <div id="gamepadStatus">Статус: не подключён</div>
+      <div style="margin-top:4px">Поддержка: левый стик = движение, правый стик = осмотр, A = прыжок, RT = стрельба, B = перезарядка</div>
+    </div>
+
+    <button onclick="saveInputSettings()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#10b981;color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px">Сохранить</button>
+  </div>
+</div>
+
+<script>
+// === Input System (Unity-style) ===
+(function(){
+  'use strict';
+  var INPUT_KEY = 'sasha_input_settings';
+  var settings = {
+    keys: {
+      forward: ['KeyW', 'w', 'ц'],
+      back: ['KeyS', 's', 'ы'],
+      left: ['KeyA', 'a', 'ф'],
+      right: ['KeyD', 'd', 'в'],
+      jump: ['Space'],
+      sprint: ['ShiftLeft', 'shift'],
+      shoot: ['Mouse0'],
+      reload: ['KeyR', 'r', 'к'],
+      interact: ['KeyE', 'e', 'у']
+    },
+    mouseSens: 2.0,
+    moveSpeed: 5.0,
+    jumpForce: 6.0,
+    invertY: false,
+    sprintToggle: false,
+    autoReload: true,
+    gamepadEnabled: true
+  };
+
+  function load() {
+    try { var s = localStorage.getItem(INPUT_KEY); if (s) { var p = JSON.parse(s); settings = Object.assign(settings, p); } } catch(e) {}
+  }
+  function save() { try { localStorage.setItem(INPUT_KEY, JSON.stringify(settings)); } catch(e) {} }
+
+  function get(key) { return settings[key]; }
+  function getKeys() { return settings.keys; }
+  function set(key, val) { settings[key] = val; save(); }
+  function setKey(action, keys) { settings.keys[action] = keys; save(); }
+
+  // Check if a key is pressed for an action
+  function isPressed(action, keysState) {
+    var ks = settings.keys[action];
+    if (!ks) return false;
+    for (var i = 0; i < ks.length; i++) {
+      if (keysState[ks[i]]) return true;
+    }
+    return false;
+  }
+
+  // Gamepad support
+  var gamepadConnected = false;
+  var gamepadIndex = -1;
+  window.addEventListener('gamepadconnected', function(e) {
+    gamepadConnected = true; gamepadIndex = e.gamepad.index;
+    console.log('[Input] Gamepad connected:', e.gamepad.id);
+    var st = document.getElementById('gamepadStatus');
+    if (st) st.textContent = 'Статус: подключён ✓ (' + e.gamepad.id.substring(0, 30) + ')';
+  });
+  window.addEventListener('gamepaddisconnected', function(e) {
+    gamepadConnected = false; gamepadIndex = -1;
+    var st = document.getElementById('gamepadStatus');
+    if (st) st.textContent = 'Статус: не подключён';
+  });
+
+  function getGamepadInput() {
+    if (!gamepadConnected || gamepadIndex < 0) return null;
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var pad = pads[gamepadIndex];
+    if (!pad) return null;
+    return {
+      moveX: pad.axes[0] || 0,
+      moveZ: pad.axes[1] || 0,
+      lookX: pad.axes[2] || 0,
+      lookY: pad.axes[3] || 0,
+      jump: pad.buttons[0] && pad.buttons[0].pressed,
+      shoot: pad.buttons[7] && pad.buttons[7].pressed,
+      reload: pad.buttons[1] && pad.buttons[1].pressed,
+      sprint: pad.buttons[10] && pad.buttons[10].pressed
+    };
+  }
+
+  // === Settings Dialog ===
+  window.openInputSettings = function() {
+    document.getElementById('inputSettingsOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    renderBindings();
+    // Load values
+    document.getElementById('mouseSensSlider').value = settings.mouseSens;
+    document.getElementById('mouseSensVal').textContent = settings.mouseSens.toFixed(1);
+    document.getElementById('moveSpeedSlider').value = settings.moveSpeed;
+    document.getElementById('moveSpeedVal').textContent = settings.moveSpeed.toFixed(1);
+    document.getElementById('jumpForceSlider').value = settings.jumpForce;
+    document.getElementById('jumpForceVal').textContent = settings.jumpForce.toFixed(1);
+    document.getElementById('invertYToggle').checked = settings.invertY;
+    document.getElementById('sprintToggle').checked = settings.sprintToggle;
+    document.getElementById('autoReloadToggle').checked = settings.autoReload;
+    // Gamepad status
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var gpStatus = document.getElementById('gamepadStatus');
+    if (gpStatus) {
+      var connected = false;
+      for (var i = 0; i < pads.length; i++) { if (pads[i]) { connected = true; break; } }
+      gpStatus.textContent = connected ? 'Статус: подключён ✓' : 'Статус: не подключён';
+    }
+  };
+  window.closeInputSettings = function() {
+    document.getElementById('inputSettingsOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  window.updateInputSetting = function(key, val) {
+    settings[key] = typeof val === 'string' ? parseFloat(val) : val;
+    save();
+  };
+  window.saveInputSettings = function() {
+    save();
+    closeInputSettings();
+    if (typeof addChat === 'function') addChat('ai', '✅ Настройки управления сохранены!');
+    else if (typeof _addChatMessage === 'function') _addChatMessage('ai', '✅ Настройки управления сохранены!');
+  };
+
+  function renderBindings() {
+    var container = document.getElementById('inputBindings');
+    if (!container) return;
+    var labels = {
+      forward: 'Вперёд', back: 'Назад', left: 'Влево', right: 'Вправо',
+      jump: 'Прыжок', sprint: 'Бег', shoot: 'Стрельба', reload: 'Перезарядка', interact: 'Взаимодействие'
+    };
+    var html = '';
+    for (var action in labels) {
+      var keys = settings.keys[action] || [];
+      var keysStr = keys.map(function(k) { return k.replace('Key', '').replace('Mouse0', 'ЛКМ').replace('ShiftLeft', 'Shift').replace('Space', 'Space'); }).join(', ');
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-hover,#27272a);border-radius:8px;border:1px solid var(--border,#27272a)">';
+      html += '<span style="font-size:13px;color:var(--text-primary,#fafafa);font-weight:600">' + labels[action] + '</span>';
+      html += '<span style="font-size:12px;color:var(--text-muted,#a1a1aa);font-family:monospace;background:var(--bg-card,#18181b);padding:4px 10px;border-radius:6px;border:1px solid var(--border,#27272a)">' + keysStr + '</span>';
+      html += '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  // Expose
+  window._sashaInput = {
+    get: get, set: set, getKeys: getKeys, setKey: setKey,
+    isPressed: isPressed, getGamepadInput: getGamepadInput,
+    settings: settings, load: load, save: save
+  };
+
+  load();
+  console.log('[Input System] ready, settings:', settings);
 })();
 </script>
 </body>
