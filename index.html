@@ -5157,15 +5157,10 @@ var SashaGameBuilder = (function() {
         var result = buildHTML(options);
         if (result.error) return result;
 
-        // Generate a build script + instructions for NW.js
-        // We can't actually compile NW.js in browser, so we provide:
-        // 1. The game HTML
-        // 2. package.json for NW.js
-        // 3. Instructions to download NW.js and run
-
         var gameTitle = result.title;
+        var slug = slugify(gameTitle);
         var packageJson = JSON.stringify({
-            name: slugify(gameTitle),
+            name: slug,
             version: '1.0.0',
             description: result.description,
             main: 'index.html',
@@ -5175,72 +5170,125 @@ var SashaGameBuilder = (function() {
                 height: 720,
                 min_width: 800,
                 min_height: 600,
-                icon: 'icon.png',
                 toolbar: false,
                 frame: true,
                 resizable: true,
                 show: true,
                 position: 'center'
             },
-            'webkit': {
-                'plugin': false
-            },
             'chromium-args': '--force-disp'
         }, null, 2);
 
-        var buildScript = '# Build instructions for ' + gameTitle + '\n' +
-            '# =====================================\n\n' +
-            '1. Download NW.js from https://nwjs.io/ (SDK version, Windows x64)\n' +
-            '2. Extract NW.js to a folder (e.g. C:\\\\nwjs\\\\)\n' +
-            '3. Put these files in the same folder as nw.exe:\n' +
-            '   - index.html (the game)\n' +
-            '   - package.json (NW.js config)\n' +
-            '4. Run nw.exe — game will open in a desktop window\n' +
-            '5. To create standalone .exe:\n' +
-            '   - Rename index.html + package.json to package.nw\n' +
-            '   - Use: copy /b nw.exe+package.nw ' + slugify(gameTitle) + '.exe\n' +
-            '   - Or use enigmavirtualbox.org to pack into single .exe\n\n' +
-            'Game: ' + gameTitle + '\n' +
-            'Author: ' + result.author + '\n' +
-            'Built: ' + new Date().toISOString() + '\n';
+        // Generate .bat script that auto-downloads NW.js and builds .exe
+        var batScript = '@echo off\r\n' +
+            'chcp 65001 >nul\r\n' +
+            'title SashaAI EXE Builder — ' + gameTitle + '\r\n' +
+            'echo ========================================\r\n' +
+            'echo   SashaAI EXE Builder\r\n' +
+            'echo   Game: ' + gameTitle + '\r\n' +
+            'echo ========================================\r\n' +
+            'echo.\r\n' +
+            'echo Step 1: Creating build folder...\r\n' +
+            'if exist build_game rmdir /s /q build_game\r\n' +
+            'mkdir build_game\r\n' +
+            'copy index.html build_game\\index.html >nul\r\n' +
+            'echo {"name":"' + slug + '","version":"1.0.0","main":"index.html","window":{"title":"' + gameTitle + '","width":1280,"height":720,"toolbar":false,"frame":true,"resizable":true,"position":"center"}} > build_game\\package.json\r\n' +
+            'echo Done.\r\n' +
+            'echo.\r\n' +
+            'echo Step 2: Checking for NW.js...\r\n' +
+            'if exist nwjs\\nw.exe (\r\n' +
+            '  echo NW.js found locally.\r\n' +
+            '  goto :build\r\n' +
+            ')\r\n' +
+            'echo NW.js not found. Downloading (~80MB)...\r\n' +
+            'echo URL: https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip\r\n' +
+            'powershell -Command "& { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri \'https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip\' -OutFile \'nwjs.zip\' }"\r\n' +
+            'if not exist nwjs.zip (\r\n' +
+            '  echo Failed to download NW.js.\r\n' +
+            '  echo Please download manually from https://nwjs.io/\r\n' +
+            '  echo Extract to folder named "nwjs" next to this script.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
+            ')\r\n' +
+            'echo Extracting NW.js...\r\n' +
+            'powershell -Command "Expand-Archive -Path nwjs.zip -DestinationPath . -Force"\r\n' +
+            'for /d %%D in (nwjs-v*) do (\r\n' +
+            '  if exist "%%D\\nw.exe" (\r\n' +
+            '    ren "%%D" nwjs\r\n' +
+            '  )\r\n' +
+            ')\r\n' +
+            'del nwjs.zip\r\n' +
+            'if not exist nwjs\\nw.exe (\r\n' +
+            '  echo NW.js extraction failed. Check folder structure.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
+            ')\r\n' +
+            ':build\r\n' +
+            'echo.\r\n' +
+            'echo Step 3: Building ' + slug + '.exe...\r\n' +
+            'cd build_game\r\n' +
+            'powershell -Command "Compress-Archive -Path * -DestinationPath ..\\package.nw -Force"\r\n' +
+            'cd ..\r\n' +
+            'copy /b nwjs\\nw.exe+package.nw ' + slug + '.exe >nul 2>nul\r\n' +
+            'if exist ' + slug + '.exe (\r\n' +
+            '  echo.\r\n' +
+            '  echo ========================================\r\n' +
+            '  echo   SUCCESS! ' + slug + '.exe created!\r\n' +
+            '  echo   Size: \r\n' +
+            '  dir ' + slug + '.exe | findstr /C:"' + slug + '.exe"\r\n' +
+            '  echo ========================================\r\n' +
+            '  echo   You can now run ' + slug + '.exe\r\n' +
+            '  echo   It will open as a native Windows window.\r\n' +
+            '  echo ========================================\r\n' +
+            ') else (\r\n' +
+            '  echo Failed to create .exe. Trying alternative method...\r\n' +
+            '  echo Copying NW.js files to build folder...\r\n' +
+            '  xcopy nwjs\\* build_game\\ /E /I /Y >nul\r\n' +
+            '  ren build_game\\nw.exe ' + slug + '.exe\r\n' +
+            '  echo Game folder: build_game\\\r\n' +
+            '  echo Run: build_game\\' + slug + '.exe\r\n' +
+            ')\r\n' +
+            'echo.\r\n' +
+            'pause\r\n';
 
-        // Create ZIP with index.html + package.json + README.txt
-        // We'll use a simple approach — JSZip is loaded in the editor
-        if (typeof JSZip === 'undefined') {
-            // Fallback: just download HTML + package.json separately
+        // Download the .bat + index.html together
+        if (typeof JSZip !== 'undefined') {
+            var zip = new JSZip();
+            zip.file('index.html', result.html);
+            zip.file('build-exe.bat', batScript);
+            zip.file('package.json', packageJson);
+            zip.file('README.txt', 'SashaAI EXE Build — ' + gameTitle + '\n\n' +
+                'HOW TO BUILD:\n' +
+                '1. Double-click build-exe.bat\n' +
+                '2. It will download NW.js (~80MB) automatically\n' +
+                '3. It will create ' + slug + '.exe\n' +
+                '4. Run ' + slug + '.exe — game opens as native Windows window\n\n' +
+                'OR manually:\n' +
+                '1. Download NW.js from https://nwjs.io/\n' +
+                '2. Extract next to index.html\n' +
+                '3. Run nw.exe');
+
+            zip.generateAsync({ type: 'blob' }).then(function(blob) {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = slug + '-exe-builder.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            });
+        } else {
+            // Fallback: download separately
+            downloadText(batScript, 'build-exe.bat');
+            downloadText(result.html, 'index.html');
             downloadText(packageJson, 'package.json');
-            downloadText(buildScript, 'BUILD-INSTRUCTIONS.txt');
-            return {
-                title: gameTitle,
-                html: result.html,
-                packageJson: packageJson,
-                instructions: buildScript,
-                note: 'Downloaded package.json and instructions. JSZip not available for full ZIP.'
-            };
         }
-
-        var zip = new JSZip();
-        zip.file('index.html', result.html);
-        zip.file('package.json', packageJson);
-        zip.file('BUILD-INSTRUCTIONS.txt', buildScript);
-        zip.file('README.md', '# ' + gameTitle + '\n\n' + result.description + '\n\n## Built with SashaAI GameDev Engine\n\nTo run: see BUILD-INSTRUCTIONS.txt');
-
-        var zipBlob = zip.generateAsync({ type: 'blob' }).then(function(blob) {
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = slugify(gameTitle) + '-exe-build.zip';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-        });
 
         return {
             title: gameTitle,
             html: result.html,
-            packageJson: packageJson,
-            instructions: buildScript,
+            batScript: batScript,
             zip: true
         };
     }
@@ -24180,19 +24228,18 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   // === Quick keyword match (offline, instant) — for known templates ===
   function quickMatch(text) {
     var t = text.toLowerCase().trim();
-    // === PRIORITY 1: Real city names → import_city (before generic "город" template) ===
+    // === PRIORITY 1: Real city names → import_city (instant, no LLM needed) ===
     if (/(нью.?йорк|manhattan|new york)/i.test(t)) return {tool:'import_city', params:{query:'Manhattan, New York', maxBuildings:50}};
     if (/(париж|paris)/i.test(t)) return {tool:'import_city', params:{query:'Paris, France', maxBuildings:50}};
     if (/(лондон|london)/i.test(t)) return {tool:'import_city', params:{query:'London, UK', maxBuildings:50}};
     if (/(токио|tokyo)/i.test(t)) return {tool:'import_city', params:{query:'Tokyo, Japan', maxBuildings:50}};
     if (/(киев|kyiv|kiev)/i.test(t)) return {tool:'import_city', params:{query:'Kyiv, Ukraine', maxBuildings:50}};
-    // "город XXX" or "city XXX" → import_city with name
     var cityMatch = text.match(/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё\s,.-]+)/i);
     if (cityMatch && cityMatch[1] && cityMatch[1].trim().length > 2) {
       return {tool:'import_city', params:{query: cityMatch[1].trim(), maxBuildings: 50}};
     }
 
-    // === PRIORITY 2: Build commands ===
+    // === PRIORITY 2: Build commands (instant, no LLM) ===
     if (/сделай\s+билд|build|собери\s+(игру|html|exe)|сделай\s+(html|exe)/i.test(t)) {
       var titleMatch = text.match(/["«]([^"»]+)["»]/);
       var title = titleMatch ? titleMatch[1] : 'My Game';
@@ -24206,53 +24253,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       return [{tool:'upload_to_gameforge', params:{title: titleMatch2 ? titleMatch2[1] : 'My Game'}}];
     }
 
-    // === PRIORITY 3: Shooter / survival (multi-step) ===
-    if (/(выживан|surviv|волны|волн|horde|орды)/i.test(t)) {
-      return [
-        {tool:'scene_clear', params:{}},
-        {tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}},
-        {tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}},
-        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}},
-        {tool:'start_waves', params:{enemiesPerWave:3, spawnInterval:2, waveDelay:5}},
-        {tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8, color:'#ffffff'}},
-        {tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}}
-      ];
-    }
-    if (/(сделай\s+шутер|шутер|shooter|fps|стрелялк)/i.test(t)) {
-      return [
-        {tool:'scene_clear', params:{}},
-        {tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}},
-        {tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}},
-        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}},
-        {tool:'spawn_enemy', params:{x:-10, y:0, z:-10, hp:100}},
-        {tool:'spawn_enemy', params:{x:10, y:0, z:-10, hp:100}},
-        {tool:'spawn_enemy', params:{x:0, y:0, z:-15, hp:100}},
-        {tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8, color:'#ffffff'}},
-        {tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}}
-      ];
-    }
-
-    // === PRIORITY 4: Characters ===
-    if (/(рыцар|knight)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'knight'}};
-    if (/(маг|wizard|sorcer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'mage'}};
-    if (/(робот|robot)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'robot'}};
-    if (/(лучник|archer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'archer'}};
-    if (/(человек|персонаж|humanoid|character)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'humanoid'}};
-
-    // === PRIORITY 5: Player control ===
-    if (/(сделай\s+игрок|управление\s+персонажем|player\s*control|player\s*controller|игрок)/i.test(t) && /(сделай|добав|включ|make|add|enable|create)/i.test(t)) {
-      return [
-        {tool:'add_character', params:{type:'humanoid', name:'player1'}},
-        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}}
-      ];
-    }
-
-    // === PRIORITY 6: Spawn enemy ===
-    if (/(добав|создай|постав|spawn).*\s*(враг|зомби|enemy|zombie)/i.test(t)) {
-      return [{tool:'spawn_enemy', params:{x:(Math.random()-0.5)*20, y:0, z:(Math.random()-0.5)*20, hp:100}}];
-    }
-
-    // === PRIORITY 7: Generic templates (lower priority than specific cities) ===
+    // === PRIORITY 3: Basic scene templates ONLY (лес, космос, etc — NOT shooter/character) ===
     function tmpl(kws, tpl) { for (var i = 0; i < kws.length; i++) if (t.indexOf(kws[i]) !== -1) return {tool:'apply_scene_template',params:{template:tpl}}; return null; }
     var r;
     if ((r = tmpl(['лес','forest'],'forest'))) return r;
@@ -24265,11 +24266,12 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     if ((r = tmpl(['остров','island'],'island'))) return r;
     if ((r = tmpl(['зим','winter','снег'],'winter'))) return r;
     if ((r = tmpl(['тропик','tropical','джунгл'],'tropical'))) return r;
-    // "город" alone → template city (without specific name)
     if ((r = tmpl(['город','city'],'city'))) return r;
 
-    // === PRIORITY 8: Basic commands ===
+    // === PRIORITY 4: Clear ===
     if (/очист|удал.*вс[её]|clear|reset|новая\s*сцен/.test(t)) return {tool:'clear_scene',params:{}};
+
+    // === EVERYTHING ELSE GOES TO LLM (shooter, characters, enemies, custom scenes) ===
     return null;
   }
 
@@ -24348,8 +24350,11 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
   // === Build LLM system prompt for 3D generation ===
   function buildGenPrompt(userPrompt) {
-    // MINIMAL prompt for speed — Qwen 7B works best with short instructions
-    return 'Сцена: "' + userPrompt + '". Выведи ТОЛЬКО JSON-массив tool calls. Инструменты: scene_clear, add_plane{width,height,color}, add_cube{x,y,z,width,height,depth,color}, add_sphere{x,y,z,radius,color}, add_cylinder, add_cone, add_torus, add_point_light{x,y,z,intensity,color}, add_directional_light{x,y,z,intensity,color}, add_ambient_light{intensity,color}, compose_model{description:"house|tree|car|sword|tower|rock",posX,posZ}, create_terrain{width,depth,heightExpression}, camera_set_position{x,y,z}, camera_set_target{x,y,z}. Цвета: "#rrggbb". Пример: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_cube","params":{"x":0,"y":0.5,"z":0,"width":2,"height":1,"depth":2,"color":"#ff8800"}},{"tool":"add_point_light","params":{"x":5,"y":8,"z":5,"intensity":1,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":8,"y":6,"z":8}}]';
+    // Rich but concise prompt — gives Qwen enough info to generate, not just templates
+    return 'Запрос: "' + userPrompt + '". Выведи ТОЛЬКО JSON-массив tool calls, без текста.\n' +
+      'Tools: scene_clear, add_plane{width,height,color}, add_cube{x,y,z,width,height,depth,color}, add_sphere{x,y,z,radius,color}, add_cylinder{x,y,z,radiusTop,radiusBottom,height,color}, add_cone{x,y,z,radius,height,color}, add_torus{x,y,z,radius,tube,color}, add_point_light{x,y,z,intensity,color}, add_directional_light{x,y,z,intensity,color}, add_ambient_light{intensity,color}, compose_model{description:"house|tree|car|sword|tower|rock|barrel|chest|campfire|torch|crystal|table|chair|gate|sign",posX,posZ}, create_terrain{width,depth,heightExpression}, camera_set_position{x,y,z}, camera_set_target{x,y,z}, add_character{type:"humanoid|knight|mage|robot|archer",x,y,z,name}, attach_player_control{objectName,speed,hp,ammo,fps}, spawn_enemy{x,y,z,hp}, start_waves{enemiesPerWave,spawnInterval,waveDelay}\n' +
+      'Colors: "#aabbcc". Координаты: -20..20. Свет: y=10-20.\n' +
+      'Пример шутера: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":50,"height":50,"color":"#2a2a3a"}},{"tool":"add_character","params":{"type":"humanoid","x":0,"y":0,"z":0,"name":"player1"}},{"tool":"attach_player_control","params":{"objectName":"player1","speed":6,"hp":100,"ammo":30,"fps":true}},{"tool":"spawn_enemy","params":{"x":-10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":10,"y":0,"z":-10,"hp":100}},{"tool":"add_directional_light","params":{"x":10,"y":20,"z":10,"intensity":0.8}},{"tool":"add_ambient_light","params":{"intensity":0.4}}]';
   }
 
   // === Build LLM system prompt for conversation ===
