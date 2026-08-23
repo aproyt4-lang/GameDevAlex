@@ -4688,6 +4688,447 @@ var SashaAIGraphics = (function() {
 })();
 
 // ============================================================
+// ============ SashaCharacterController — Player Input, Physics, Animation ===
+// ============================================================
+// Provides: WASD movement, mouse look, jump, gravity, collision,
+// walk/idle animation, shooting system with bullets + hit detection.
+// All controlled via attachPlayerControl(meshName, options).
+var SashaCharacterController = (function() {
+    var players = {};  // {name: {mesh, velocity, onGround, yaw, pitch, hp, ammo, ...}}
+    var bullets = [];  // [{mesh, velocity, life, damage, owner}]
+    var enemies = [];  // [{mesh, hp, velocity}]
+    var keys = {};     // keyboard state
+    var mouseLocked = false;
+    var canvas = null;
+    var camera = null;
+    var scene = null;
+    var initialized = false;
+
+    function init() {
+        if (initialized) return;
+        canvas = document.querySelector('#engine-canvas');
+        if (!canvas) return;
+        if (typeof SashaEngineAPI === 'undefined') return;
+        scene = SashaEngineAPI.getScene ? SashaEngineAPI.getScene() : null;
+        camera = SashaEngineAPI.getCamera ? SashaEngineAPI.getCamera() : null;
+        if (!scene || !camera) return;
+
+        // Keyboard
+        window.addEventListener('keydown', function(e) {
+            keys[e.code] = true;
+            keys[e.key.toLowerCase()] = true;
+            // R = reload
+            if (e.code === 'KeyR' || e.key.toLowerCase() === 'r' || e.key.toLowerCase() === 'к') {
+                if (typeof reload === 'function') reload();
+            }
+        });
+        window.addEventListener('keyup', function(e) {
+            keys[e.code] = false;
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // Mouse lock for FPS look
+        canvas.addEventListener('click', function() {
+            if (Object.keys(players).length > 0 && !mouseLocked) {
+                canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+                if (canvas.requestPointerLock) canvas.requestPointerLock();
+            }
+        });
+        document.addEventListener('pointerlockchange', function() {
+            mouseLocked = document.pointerLockElement === canvas;
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (!mouseLocked) return;
+            for (var name in players) {
+                var p = players[name];
+                if (!p.fps) continue;
+                p.yaw -= e.movementX * 0.002;
+                p.pitch -= e.movementY * 0.002;
+                p.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, p.pitch));
+            }
+        });
+        // Shoot on click
+        canvas.addEventListener('mousedown', function(e) {
+            if (!mouseLocked) return;
+            if (e.button === 0) shoot();
+        });
+
+        // Animation loop hook
+        if (SashaEngineAPI && SashaEngineAPI.onFrame) {
+            SashaEngineAPI.onFrame(update);
+        } else {
+            // Fallback: own RAF loop
+            var lastT = performance.now();
+            function loop() {
+                var now = performance.now();
+                var dt = Math.min(0.05, (now - lastT) / 1000);
+                lastT = now;
+                update(dt);
+                requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+        }
+        initialized = true;
+        console.log('[CharacterController] initialized');
+    }
+
+    function attachPlayerControl(meshName, options) {
+        init();
+        if (!initialized) { console.warn('[CharacterController] not initialized'); return null; }
+        options = options || {};
+        var objs = SashaEngineAPI.getObjects();
+        var mesh = objs[meshName];
+        if (!mesh) { console.warn('[CharacterController] mesh not found:', meshName); return null; }
+
+        var player = {
+            mesh: mesh,
+            name: meshName,
+            velocity: new THREE.Vector3(),
+            onGround: false,
+            yaw: 0,
+            pitch: 0,
+            speed: options.speed || 5,
+            jumpForce: options.jumpForce || 6,
+            gravity: options.gravity !== undefined ? options.gravity : 12,
+            height: options.height || 1.8,
+            radius: options.radius || 0.4,
+            fps: options.fps !== false,  // first-person by default
+            thirdPerson: options.thirdPerson || false,
+            cameraDistance: options.cameraDistance || 4,
+            cameraHeight: options.cameraHeight || 2,
+            hp: options.hp || 100,
+            maxHp: options.hp || 100,
+            ammo: options.ammo || 30,
+            maxAmmo: options.ammo || 30,
+            fireRate: options.fireRate || 0.15,  // seconds between shots
+            lastShot: 0,
+            walkPhase: 0,
+            animated: options.animation !== false,
+            moving: false
+        };
+        players[meshName] = player;
+        console.log('[CharacterController] attached to', meshName);
+        return meshName;
+    }
+
+    function detachPlayerControl(meshName) {
+        if (players[meshName]) {
+            delete players[meshName];
+            if (mouseLocked) document.exitPointerLock();
+            console.log('[CharacterController] detached from', meshName);
+        }
+    }
+
+    function getPlayer(meshName) { return players[meshName]; }
+    function getPlayers() { return players; }
+
+    function shoot() {
+        var now = performance.now() / 1000;
+        for (var name in players) {
+            var p = players[name];
+            if (now - p.lastShot < p.fireRate) continue;
+            if (p.ammo <= 0) continue;
+            p.lastShot = now;
+            p.ammo--;
+            // Create bullet
+            var bulletGeo = new THREE.SphereGeometry(0.08, 6, 4);
+            var bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            var bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            // Start position: camera pos
+            bullet.position.copy(camera.position);
+            // Direction: camera forward
+            var dir = new THREE.Vector3(0, 0, -1);
+            camera.getWorldDirection(dir);
+            var velocity = dir.clone().multiplyScalar(60);
+            scene.add(bullet);
+            bullets.push({
+                mesh: bullet,
+                velocity: velocity,
+                life: 2.0,
+                damage: 25,
+                owner: name
+            });
+            // Muzzle flash effect
+            var flash = new THREE.PointLight(0xffff00, 2, 5);
+            flash.position.copy(camera.position);
+            scene.add(flash);
+            setTimeout(function() { scene.remove(flash); }, 80);
+        }
+    }
+
+    function spawnEnemy(x, y, z, hp) {
+        init();
+        if (!scene) return null;
+        var enemyGeo = new THREE.CapsuleGeometry(0.4, 1.0, 4, 8);
+        var enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x661111, emissiveIntensity: 0.5 });
+        var enemy = new THREE.Mesh(enemyGeo, enemyMat);
+        enemy.position.set(x || (Math.random()-0.5)*20, y || 0, z || (Math.random()-0.5)*20);
+        enemy.castShadow = true;
+        scene.add(enemy);
+        var name = 'enemy_' + Date.now();
+        var objs = SashaEngineAPI.getObjects();
+        if (objs) objs[name] = enemy;
+        var types = SashaEngineAPI.getObjectTypes ? SashaEngineAPI.getObjectTypes() : null;
+        if (types) types[name] = 'enemy';
+        enemies.push({
+            mesh: enemy,
+            name: name,
+            hp: hp || 100,
+            maxHp: hp || 100,
+            velocity: new THREE.Vector3(),
+            speed: 1.5,
+            attackRange: 1.5,
+            damage: 10,
+            lastAttack: 0
+        });
+        return name;
+    }
+
+    function update(dt) {
+        if (!initialized) return;
+        // Update players
+        for (var name in players) {
+            var p = players[name];
+            if (!p.mesh || !p.mesh.parent) { delete players[name]; continue; }
+            updatePlayer(p, dt);
+        }
+        // Update bullets
+        for (var i = bullets.length - 1; i >= 0; i--) {
+            var b = bullets[i];
+            b.mesh.position.add(b.velocity.clone().multiplyScalar(dt));
+            b.life -= dt;
+            if (b.life <= 0) {
+                scene.remove(b.mesh);
+                b.mesh.geometry.dispose();
+                b.mesh.material.dispose();
+                bullets.splice(i, 1);
+                continue;
+            }
+            // Check enemy hits
+            for (var j = enemies.length - 1; j >= 0; j--) {
+                var e = enemies[j];
+                if (!e.mesh || !e.mesh.parent) { enemies.splice(j, 1); continue; }
+                var dist = b.mesh.position.distanceTo(e.mesh.position);
+                if (dist < 0.7) {
+                    e.hp -= b.damage;
+                    // Hit flash
+                    e.mesh.material.emissive.setHex(0xff8888);
+                    setTimeout(function(em){return function(){if(em&&em.material)em.material.emissive.setHex(0x661111)}}(e.mesh), 80);
+                    // Remove bullet
+                    scene.remove(b.mesh);
+                    b.mesh.geometry.dispose();
+                    b.mesh.material.dispose();
+                    bullets.splice(i, 1);
+                    // Kill enemy
+                    if (e.hp <= 0) {
+                        scene.remove(e.mesh);
+                        e.mesh.geometry.dispose();
+                        e.mesh.material.dispose();
+                        var objs = SashaEngineAPI.getObjects();
+                        if (objs && objs[e.name]) delete objs[e.name];
+                        enemies.splice(j, 1);
+                        console.log('[CharacterController] enemy killed');
+                    }
+                    break;
+                }
+            }
+        }
+        // Update enemies (chase nearest player)
+        for (var k = enemies.length - 1; k >= 0; k--) {
+            var en = enemies[k];
+            if (!en.mesh || !en.mesh.parent) { enemies.splice(k, 1); continue; }
+            // Find nearest player
+            var nearestP = null, nearestDist = Infinity;
+            for (var pn in players) {
+                var pp = players[pn];
+                if (!pp.mesh) continue;
+                var d = en.mesh.position.distanceTo(pp.mesh.position);
+                if (d < nearestDist) { nearestDist = d; nearestP = pp; }
+            }
+            if (nearestP && nearestDist < 20) {
+                // Move toward player
+                var dir = new THREE.Vector3().subVectors(nearestP.mesh.position, en.mesh.position).normalize();
+                en.velocity.x = dir.x * en.speed;
+                en.velocity.z = dir.z * en.speed;
+                en.mesh.position.x += en.velocity.x * dt;
+                en.mesh.position.z += en.velocity.z * dt;
+                // Face player
+                en.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                // Attack if close
+                if (nearestDist < en.attackRange) {
+                    var now = performance.now() / 1000;
+                    if (now - en.lastAttack > 1.0) {
+                        en.lastAttack = now;
+                        nearestP.hp -= en.damage;
+                        // Hit flash on player
+                        if (nearestP.mesh.material && nearestP.mesh.material.emissive) {
+                            nearestP.mesh.material.emissive.setHex(0xff0000);
+                            setTimeout(function(m){return function(){if(m&&m.material&&m.material.emissive)m.material.emissive.setHex(0x000000)}}(nearestP.mesh), 150);
+                        }
+                        if (nearestP.hp <= 0) {
+                            console.log('[CharacterController] player died');
+                            nearestP.hp = nearestP.maxHp;  // respawn
+                            nearestP.mesh.position.set(0, 0, 0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function updatePlayer(p, dt) {
+        // Movement input
+        var forward = (keys['KeyW'] || keys['w'] || keys['ц']) ? 1 : 0;
+        var back = (keys['KeyS'] || keys['s'] || keys['ы']) ? 1 : 0;
+        var left = (keys['KeyA'] || keys['a'] || keys['ф']) ? 1 : 0;
+        var right = (keys['KeyD'] || keys['d'] || keys['в']) ? 1 : 0;
+        var jump = keys['Space'] || false;
+        var sprint = keys['ShiftLeft'] || keys['shift'] || false;
+
+        var moveZ = forward - back;
+        var moveX = right - left;
+        var speed = p.speed * (sprint ? 1.7 : 1);
+        p.moving = (moveZ !== 0 || moveX !== 0);
+
+        // Calculate direction based on yaw (FPS)
+        if (p.fps) {
+            var sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
+            // Forward direction: -Z rotated by yaw
+            var dx = (moveX * cos + moveZ * sin) * speed;
+            var dz = (-moveX * sin + moveZ * cos) * speed;
+            p.velocity.x = dx;
+            p.velocity.z = dz;
+        } else {
+            // Third-person: movement relative to world
+            p.velocity.x = moveX * speed;
+            p.velocity.z = moveZ * speed;
+        }
+
+        // Jump + gravity
+        if (jump && p.onGround) {
+            p.velocity.y = p.jumpForce;
+            p.onGround = false;
+        }
+        p.velocity.y -= p.gravity * dt;
+
+        // Apply velocity
+        p.mesh.position.x += p.velocity.x * dt;
+        p.mesh.position.y += p.velocity.y * dt;
+        p.mesh.position.z += p.velocity.z * dt;
+
+        // Ground collision (simple — y=0 is ground)
+        if (p.mesh.position.y <= 0) {
+            p.mesh.position.y = 0;
+            p.velocity.y = 0;
+            p.onGround = true;
+        }
+
+        // Face movement direction (for third person or character body)
+        if (p.moving && !p.fps) {
+            var targetRot = Math.atan2(p.velocity.x, p.velocity.z);
+            p.mesh.rotation.y = targetRot;
+        } else if (p.fps) {
+            // Body follows yaw
+            p.mesh.rotation.y = p.yaw;
+        }
+
+        // Walk animation (swing arms/legs)
+        if (p.animated && p.moving) {
+            p.walkPhase += dt * 8;
+            var swing = Math.sin(p.walkPhase) * 0.4;
+            // Find arm/leg children and rotate
+            p.mesh.traverse(function(child) {
+                if (!child.isMesh) return;
+                // Approximate: rotate by position relative to body
+                var y = child.position.y;
+                if (y > 1.5 && y < 2.0) {
+                    // Arms — swing
+                    if (child.position.x > 0.3) child.rotation.x = swing;
+                    else if (child.position.x < -0.3) child.rotation.x = -swing;
+                } else if (y < 1.0) {
+                    // Legs — alternate swing
+                    if (child.position.x > 0) child.rotation.x = -swing;
+                    else if (child.position.x < 0) child.rotation.x = swing;
+                }
+            });
+        } else if (p.animated) {
+            // Idle — reset rotations
+            p.mesh.traverse(function(child) {
+                if (child.isMesh && child !== p.mesh) child.rotation.x *= 0.9;
+            });
+        }
+
+        // Camera follow (FPS or third-person)
+        if (p.fps) {
+            // Camera at head height
+            camera.position.set(p.mesh.position.x, p.mesh.position.y + p.height - 0.2, p.mesh.position.z);
+            // Look direction from yaw/pitch
+            var lookDir = new THREE.Vector3(
+                -Math.sin(p.yaw) * Math.cos(p.pitch),
+                Math.sin(p.pitch),
+                -Math.cos(p.yaw) * Math.cos(p.pitch)
+            );
+            camera.lookAt(camera.position.clone().add(lookDir));
+        } else if (p.thirdPerson) {
+            // Third-person camera behind player
+            var camOffset = new THREE.Vector3(
+                -Math.sin(p.yaw) * p.cameraDistance,
+                p.cameraHeight,
+                -Math.cos(p.yaw) * p.cameraDistance
+            );
+            camera.position.copy(p.mesh.position).add(camOffset);
+            camera.lookAt(p.mesh.position.x, p.mesh.position.y + 1, p.mesh.position.z);
+        }
+    }
+
+    function reload() {
+        for (var name in players) {
+            players[name].ammo = players[name].maxAmmo;
+        }
+    }
+
+    function getStats() {
+        var stats = [];
+        for (var name in players) {
+            var p = players[name];
+            stats.push({ name: name, hp: p.hp, maxHp: p.maxHp, ammo: p.ammo, maxAmmo: p.maxAmmo });
+        }
+        return { players: stats, enemies: enemies.length, bullets: bullets.length };
+    }
+
+    function clearAll() {
+        for (var i = bullets.length - 1; i >= 0; i--) {
+            scene.remove(bullets[i].mesh);
+            bullets[i].mesh.geometry.dispose();
+            bullets[i].mesh.material.dispose();
+        }
+        bullets = [];
+        for (var j = enemies.length - 1; j >= 0; j--) {
+            scene.remove(enemies[j].mesh);
+            enemies[j].mesh.geometry.dispose();
+            enemies[j].mesh.material.dispose();
+        }
+        enemies = [];
+    }
+
+    return {
+        init: init,
+        attachPlayerControl: attachPlayerControl,
+        detachPlayerControl: detachPlayerControl,
+        getPlayer: getPlayer,
+        getPlayers: getPlayers,
+        shoot: shoot,
+        reload: reload,
+        spawnEnemy: spawnEnemy,
+        getStats: getStats,
+        clearAll: clearAll,
+        _players: players,
+        _bullets: bullets,
+        _enemies: enemies
+    };
+})();
+
+// ============================================================
 // ============ SashaAIAgent — Core AI Chat & Command Router ===
 // ============================================================
 // The "brain" — receives user input, detects intent, routes to the
@@ -7329,8 +7770,17 @@ var SashaEngineAPI = (function() {
         // Save Main Camera before clearing
         var mcObj = objects[mainCameraName];
         var mcType = objectTypes[mainCameraName];
+        // Save characters (don't delete them on clear)
+        var savedCharacters = {};
+        var savedCharacterTypes = {};
+        for (var cname in objects) {
+            if (objects.hasOwnProperty(cname) && (objectTypes[cname] === 'character' || objectTypes[cname] === 'player' || cname.indexOf('char_') === 0 || cname.indexOf('player_') === 0)) {
+                savedCharacters[cname] = objects[cname];
+                savedCharacterTypes[cname] = objectTypes[cname];
+            }
+        }
         for (var name in objects) {
-            if (objects.hasOwnProperty(name) && name !== mainCameraName) { removeObject(name); }
+            if (objects.hasOwnProperty(name) && name !== mainCameraName && !savedCharacters[name]) { removeObject(name); }
         }
         animations = [];
         frameCallbacks = [];
@@ -7343,6 +7793,13 @@ var SashaEngineAPI = (function() {
         if (mcObj) {
             objects[mainCameraName] = mcObj;
             objectTypes[mainCameraName] = mcType || 'mainCamera';
+        }
+        // Restore saved characters
+        for (var scName in savedCharacters) {
+            if (savedCharacters.hasOwnProperty(scName)) {
+                objects[scName] = savedCharacters[scName];
+                objectTypes[scName] = savedCharacterTypes[scName] || 'character';
+            }
         }
     }
 
@@ -21904,6 +22361,113 @@ var SashaAvatar = (function() {
       catch(e) { console.warn('[executeCode] error:', e.message, '| code snippet:', String(args.code).slice(0,300)); throw new Error('Code error: ' + e.message); }
     }
     if (fn === 'applySceneTemplate') { var _r = applyMCPTemplate(args.template); _doRefreshUI(); return _r; }
+    // === NEW: AI-powered tools ===
+    if (fn === 'importCity') {
+      // Async — fire and return placeholder
+      if (typeof window.importCity === 'function') {
+        // Set query via dialog inputs
+        var q = args.query || args.name || args.city || 'Manhattan, New York';
+        var max = args.maxBuildings || args.max || 50;
+        var qEl = document.getElementById('cityQuery');
+        var maxEl = document.getElementById('cityMaxBuildings');
+        if (qEl) qEl.value = q;
+        if (maxEl) maxEl.value = max;
+        window.importCity();
+        return 'City import started: ' + q + ' (max ' + max + ' buildings)';
+      }
+      throw new Error('importCity not available');
+    }
+    if (fn === 'addCharacter') {
+      var charType = args.type || args.character || 'humanoid';
+      if (typeof SashaAIGraphics !== 'undefined' && SashaAIGraphics.createCharacter) {
+        var group = SashaAIGraphics.createCharacter(charType, {
+          skinColor: args.skinColor,
+          shirtColor: args.shirtColor,
+          pantsColor: args.pantsColor,
+          hairColor: args.hairColor,
+          scale: args.scale || 1
+        });
+        if (group && SashaEngineAPI && SashaEngineAPI.getScene) {
+          var scene = SashaEngineAPI.getScene();
+          var charName = args.name || ('char_' + charType + '_' + Date.now());
+          group.name = charName;
+          group.position.set(args.x || (Math.random()-0.5)*10, args.y || 0, args.z || (Math.random()-0.5)*10);
+          scene.add(group);
+          var objs = SashaEngineAPI.getObjects ? SashaEngineAPI.getObjects() : null;
+          if (objs) objs[charName] = group;
+          // Mark as character type so clear() preserves it
+          var types = SashaEngineAPI.getObjectTypes ? SashaEngineAPI.getObjectTypes() : null;
+          if (types) types[charName] = 'character';
+          _doRefreshUI();
+          return 'Character added: ' + charName;
+        }
+      }
+      throw new Error('Character generation not available');
+    }
+    if (fn === 'applyAITexture') {
+      var texPrompt = args.prompt || args.description || args.texture || 'brick wall';
+      var texSize = args.size || 256;
+      var useNormal = args.normalMap !== false;
+      var selName = args.objectName || (SashaEngineAPI && SashaEngineAPI.getSelectedObject && SashaEngineAPI.getSelectedObject());
+      var targetMesh = null;
+      if (selName && SashaEngineAPI.getObjects) {
+        var objs = SashaEngineAPI.getObjects();
+        targetMesh = objs[selName];
+      }
+      if (!targetMesh || !targetMesh.isMesh) {
+        throw new Error('No mesh selected. Select an object first or pass objectName.');
+      }
+      if (typeof SashaAIGraphics !== 'undefined' && SashaAIGraphics.applyAITextureToMesh) {
+        SashaAIGraphics.applyAITextureToMesh(targetMesh, texPrompt, {
+          size: texSize,
+          normalMap: useNormal,
+          normalStrength: args.normalStrength || 2.0,
+          roughness: args.roughness !== undefined ? args.roughness : 0.8,
+          metalness: args.metalness !== undefined ? args.metalness : 0.1
+        });
+        return 'AI texture applied: "' + texPrompt + '" to "' + (targetMesh.name || 'object') + '"';
+      }
+      throw new Error('AI texture generation not available');
+    }
+    // === Character Controller tools ===
+    if (fn === 'attachPlayerControl') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      var pName = args.objectName || args.name || (SashaEngineAPI && SashaEngineAPI.getSelectedObject && SashaEngineAPI.getSelectedObject());
+      if (!pName) throw new Error('No object name. Pass objectName or select one.');
+      var result = SashaCharacterController.attachPlayerControl(pName, {
+        speed: args.speed,
+        jumpForce: args.jumpForce,
+        gravity: args.gravity,
+        height: args.height,
+        fps: args.fps !== false,
+        thirdPerson: args.thirdPerson,
+        hp: args.hp,
+        ammo: args.ammo,
+        fireRate: args.fireRate,
+        animation: args.animation !== false
+      });
+      if (result) return 'Player control attached to "' + pName + '". Click on canvas to lock mouse. WASD=move, Space=jump, Click=shoot, R=reload.';
+      throw new Error('Failed to attach player control to ' + pName);
+    }
+    if (fn === 'detachPlayerControl') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      SashaCharacterController.detachPlayerControl(args.objectName || args.name);
+      return 'Player control detached';
+    }
+    if (fn === 'spawnEnemy') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      var eName = SashaCharacterController.spawnEnemy(args.x, args.y, args.z, args.hp);
+      return eName ? 'Enemy spawned: ' + eName : 'Failed to spawn enemy';
+    }
+    if (fn === 'reload') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      SashaCharacterController.reload();
+      return 'Reloaded';
+    }
+    if (fn === 'getPlayerStats') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      return JSON.stringify(SashaCharacterController.getStats());
+    }
     throw new Error('Unknown function: ' + fn);
   }
 
@@ -22301,7 +22865,15 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     'remove_object':'удалил объект','set_object_color':'перекрасил объект',
     'set_object_position':'сдвинул объект','set_object_rotation':'повернул объект',
     'set_object_scale':'масштабировал объект','animate_object':'запустил анимацию',
-    'export_scene':'экспортировал сцену'
+    'export_scene':'экспортировал сцену',
+    'import_city':'загрузил реальный город из OSM',
+    'add_character':'добавил персонажа',
+    'apply_ai_texture':'применил AI-текстуру',
+    'attach_player_control':'настроил управление игроком',
+    'detach_player_control':'отключил управление',
+    'spawn_enemy':'спавнил врага',
+    'reload':'перезарядил оружие',
+    'get_player_stats':'получил статистику игрока'
   };
 
   function _parseColor(c) {
@@ -22412,6 +22984,23 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         return dc('applySceneTemplate', {template:params.template});
       case 'export_scene':
         return dc('exportScene', {});
+      case 'import_city':
+        return dc('importCity', {query: params.query || params.city || params.name, maxBuildings: params.maxBuildings || params.max});
+      case 'add_character':
+        return dc('addCharacter', {type: params.type || params.character, x: params.x, y: params.y, z: params.z, scale: params.scale, skinColor: params.skinColor, shirtColor: params.shirtColor, pantsColor: params.pantsColor, hairColor: params.hairColor});
+      case 'apply_ai_texture':
+        return dc('applyAITexture', {prompt: params.prompt || params.description || params.texture, objectName: params.objectName || params.object, size: params.size, normalMap: params.normalMap, roughness: params.roughness, metalness: params.metalness});
+      // === Character Controller ===
+      case 'attach_player_control':
+        return dc('attachPlayerControl', {objectName: params.objectName || params.name, speed: params.speed, jumpForce: params.jumpForce, gravity: params.gravity, height: params.height, fps: params.fps, thirdPerson: params.thirdPerson, hp: params.hp, ammo: params.ammo, fireRate: params.fireRate, animation: params.animation});
+      case 'detach_player_control':
+        return dc('detachPlayerControl', {objectName: params.objectName || params.name});
+      case 'spawn_enemy':
+        return dc('spawnEnemy', {x: params.x, y: params.y, z: params.z, hp: params.hp});
+      case 'reload':
+        return dc('reload', {});
+      case 'get_player_stats':
+        return dc('getPlayerStats', {});
       default:
         throw new Error('Unknown tool: ' + name);
     }
@@ -22488,6 +23077,51 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     if ((r = tmpl(['остров','island'],'island'))) return r;
     if ((r = tmpl(['зим','winter','снег'],'winter'))) return r;
     if ((r = tmpl(['тропик','tropical','джунгл'],'tropical'))) return r;
+    // === NEW: AI-powered quick matches ===
+    // Real city import via OSM
+    if (/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё\s,.-]+)/i.test(text)) {
+      var cityMatch = text.match(/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё\s,.-]+)/i);
+      if (cityMatch && cityMatch[1]) {
+        var cityName = cityMatch[1].trim();
+        return {tool:'import_city', params:{query: cityName, maxBuildings: 50}};
+      }
+    }
+    if (/(нью.?йорк|manhattan|new york)/i.test(t)) return {tool:'import_city', params:{query:'Manhattan, New York', maxBuildings:50}};
+    if (/(париж|paris)/i.test(t)) return {tool:'import_city', params:{query:'Paris, France', maxBuildings:50}};
+    if (/(лондон|london)/i.test(t)) return {tool:'import_city', params:{query:'London, UK', maxBuildings:50}};
+    if (/(токио|tokyo)/i.test(t)) return {tool:'import_city', params:{query:'Tokyo, Japan', maxBuildings:50}};
+    if (/(киев|kyiv|kiev)/i.test(t)) return {tool:'import_city', params:{query:'Kyiv, Ukraine', maxBuildings:50}};
+    // Characters
+    if (/(рыцар|knight)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'knight'}};
+    if (/(маг|wizard|sorcer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'mage'}};
+    if (/(робот|robot)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'robot'}};
+    if (/(лучник|archer)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'archer'}};
+    if (/(человек|персонаж|humanoid|character)/i.test(t) && /(добав|создай|постав|покажи|make|add|create)/i.test(t)) return {tool:'add_character', params:{type:'humanoid'}};
+    // === Shooter quick match ===
+    if (/(сделай\s+шутер|шутер|shooter|fps|стрелялк)/i.test(t)) {
+      return [
+        {tool:'scene_clear', params:{}},
+        {tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}},
+        {tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}},
+        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}},
+        {tool:'spawn_enemy', params:{x:-10, y:0, z:-10, hp:100}},
+        {tool:'spawn_enemy', params:{x:10, y:0, z:-10, hp:100}},
+        {tool:'spawn_enemy', params:{x:0, y:0, z:-15, hp:100}},
+        {tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8, color:'#ffffff'}},
+        {tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}}
+      ];
+    }
+    if (/(сделай\s+игрок|управление\s+персонажем|player\s*control|player\s*controller|игрок)/i.test(t) && /(сделай|добав|включ|make|add|enable|create)/i.test(t)) {
+      return [
+        {tool:'add_character', params:{type:'humanoid', name:'player1'}},
+        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}}
+      ];
+    }
+    if (/(добав|создай|постав|spawn).*\s*(враг|зомби|enemy|zombie)/i.test(t)) {
+      return [
+        {tool:'spawn_enemy', params:{x:(Math.random()-0.5)*20, y:0, z:(Math.random()-0.5)*20, hp:100}}
+      ];
+    }
     if (/очист|удал.*вс[её]|clear|reset|новая\s*сцен/.test(t)) return {tool:'clear_scene',params:{}};
     return null;
   }
@@ -22496,11 +23130,44 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     var m = quickMatch(prompt);
     if (!m) return null;
     try {
-      execTool(m.tool, m.params);
+      // m can be a single tool call OR an array of tool calls
+      var calls = Array.isArray(m) ? m : [m];
+      var okCount = 0;
+      for (var i = 0; i < calls.length; i++) {
+        try {
+          execTool(calls[i].tool, calls[i].params || {});
+          okCount++;
+        } catch(e) { console.warn('[fastExec] tool failed:', calls[i].tool, e.message); }
+      }
       var labels = {city:'Город',forest:'Лес',desert:'Пустыня',space:'Космос',underwater:'Подводный мир',
         mountain:'Горы',castle:'Замок',room:'Комната',island:'Остров',winter:'Зима',tropical:'Тропики',default:'Сцена'};
-      var tplName = labels[m.params.template] || 'Сцена';
-      return {reply: '✅ Применил шаблон «' + tplName + '». Открой вкладку Engine, чтобы увидеть результат.'};
+      var reply = '';
+      if (calls.length === 1) {
+        var c = calls[0];
+        if (c.tool === 'apply_scene_template') {
+          var tplName = labels[c.params.template] || 'Сцена';
+          reply = '✅ Применил шаблон «' + tplName + '». Открой вкладку Engine, чтобы увидеть результат.';
+        } else if (c.tool === 'import_city') {
+          reply = '🏙️ Загружаю реальный город «' + (c.params.query || 'неизвестно') + '» из OpenStreetMap... до ' + (c.params.maxBuildings || 50) + ' зданий. Это займёт ~5 секунд.';
+        } else if (c.tool === 'add_character') {
+          var charNames = {humanoid:'Человек', knight:'Рыцарь', mage:'Маг', robot:'Робот', archer:'Лучник'};
+          reply = '👤 Добавил персонажа: ' + (charNames[c.params.type] || c.params.type) + '. Открой Engine.';
+        } else {
+          reply = '✅ Готово!';
+        }
+      } else {
+        // Multiple tool calls — summarize
+        var hasShooter = calls.some(function(c){return c.tool==='attach_player_control'});
+        var hasEnemy = calls.some(function(c){return c.tool==='spawn_enemy'});
+        if (hasShooter) {
+          reply = '🎮 Шутер готов! ' + okCount + ' действий выполнено. Кликни на canvas для захвата мыши. WASD=движение, Space=прыжок, Shift=бег, ЛКМ=стрельба, R=перезарядка.';
+        } else if (hasEnemy) {
+          reply = '⚔️ Враги добавлены! ' + okCount + ' действий.';
+        } else {
+          reply = '✅ Готово! ' + okCount + ' действий выполнено.';
+        }
+      }
+      return {reply: reply};
     } catch(e) {
       return {reply: '⚠️ ' + e.message};
     }
@@ -22530,12 +23197,25 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       '- camera_set_position: {x, y, z}',
       '- camera_set_target: {x, y, z}',
       '',
+      '=== AI POWERED TOOLS (use these for realistic scenes) ===',
+      '- import_city: {query: "Manhattan, New York" или "Paris, France", maxBuildings: 50} — загружает РЕАЛЬНЫЙ город из OpenStreetMap. Используй когда просят "город N", "Нью-Йорк", "Париж", "реальный город". НЕ комбинируй с другими — import_city сам всё сделает.',
+      '- add_character: {type: "humanoid|knight|mage|robot|archer", x, y, z} — добавляет персонажа. Используй когда просят "персонаж", "рыцарь", "маг", "робот", "лучник", "человек".',
+      '- apply_ai_texture: {prompt: "brick wall" или "metal steel" или "wood planks", objectName: "имя объекта"} — генерирует AI-текстуру 256x256 и применяет к объекту. Используй когда просят "текстура кирпича", "металлическая поверхность", "дерево". Сначала создай объект, потом примени текстуру.',
+      '',
+      '=== CHARACTER CONTROLLER & SHOOTER ===',
+      '- attach_player_control: {objectName: "имя персонажа", speed: 5, hp: 100, ammo: 30, fps: true} — привязывает управление WASD+мышь к персонажу. WASD=движение, Space=прыжок, Shift=бег, мышь=осмотр, ЛКМ=стрельба, R=перезарядка. Используй когда просят "сделай игрока", "управление персонажем", "сделай шутер".',
+      '- spawn_enemy: {x, y, z, hp: 100} — спавнит красного врага, который бежит к игроку и атакует. Используй когда просят "враги", "зомби", "противники".',
+      '- reload: {} — перезарядка оружия.',
+      '',
       'Цвета — hex-строки вида "#aabbcc". Координаты — числа.',
-      'Правила: 5-30 вызовов. Начни с scene_clear, потом set_bg_color, add_plane, потом объекты, потом свет, потом камера.',
+      'Правила: 1-30 вызовов. Для города — только import_city. Для персонажа — scene_clear + add_character + свет + камера. Для шутера — scene_clear + add_plane + add_character (запомни имя!) + attach_player_control + spawn_enemy (3-5 шт) + свет + камера.',
       'Только валидный JSON.',
       '',
-      'Пример ответа:',
-      '[{"tool":"scene_clear","params":{}},{"tool":"set_bg_color","params":{"color":"#1a1a2e"}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_cube","params":{"x":0,"y":0.5,"z":0,"width":2,"height":1,"depth":2,"color":"#ff8800"}},{"tool":"add_point_light","params":{"x":5,"y":8,"z":5,"intensity":1,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":8,"y":6,"z":8}},{"tool":"camera_set_target","params":{"x":0,"y":1,"z":0}}]',
+      'Примеры:',
+      'Запрос "Нью-Йорк": [{"tool":"import_city","params":{"query":"Manhattan, New York","maxBuildings":50}}]',
+      'Запрос "рыцарь": [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_character","params":{"type":"knight","x":0,"y":0,"z":0}},{"tool":"add_directional_light","params":{"x":5,"y":10,"z":5,"intensity":0.8,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":5,"y":3,"z":5}},{"tool":"camera_set_target","params":{"x":0,"y":1,"z":0}}]',
+      'Запрос "кирпичный куб": [{"tool":"add_cube","params":{"x":0,"y":0.5,"z":0,"width":2,"height":1,"depth":2,"color":"#888888"}},{"tool":"apply_ai_texture","params":{"prompt":"old brick wall texture","objectName":"cube_1"}}]',
+      'Запрос "сделай шутер": [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":50,"height":50,"color":"#2a2a3a"}},{"tool":"add_character","params":{"type":"humanoid","x":0,"y":0,"z":0,"name":"player1"}},{"tool":"attach_player_control","params":{"objectName":"player1","speed":6,"hp":100,"ammo":30,"fps":true}},{"tool":"spawn_enemy","params":{"x":-10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":0,"y":0,"z":-15,"hp":100}},{"tool":"add_directional_light","params":{"x":10,"y":20,"z":10,"intensity":0.8}},{"tool":"add_ambient_light","params":{"intensity":0.4}}]',
       '',
       'Теперь сгенерируй JSON для запроса: "' + userPrompt + '"'
     ].join('\n');
@@ -23592,9 +24272,12 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         var charName = 'char_' + type + '_' + Date.now();
         group.name = charName;
         scene.add(group);
-        // Register in objects map if available
+        // Register in objects map
         var objs = SashaEngineAPI.getObjects ? SashaEngineAPI.getObjects() : null;
         if (objs) objs[charName] = group;
+        // Mark as character type so clear() preserves it
+        var types = SashaEngineAPI.getObjectTypes ? SashaEngineAPI.getObjectTypes() : null;
+        if (types) types[charName] = 'character';
         status.textContent = '✅ Добавлен: ' + type + ' → ' + charName;
         status.style.color = '#10b981';
       } else {
@@ -23712,8 +24395,23 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         var h = Math.max(0.5, height * scaleFactor);
         var color = buildingColors[count % buildingColors.length];
         if (SashaEngineAPI && SashaEngineAPI.addCube) {
-          SashaEngineAPI.addCube(centerX, h / 2, centerZ, w, h, d, color);
+          var bldName = SashaEngineAPI.addCube(centerX, h / 2, centerZ, w, h, d, color);
           count++;
+          // Apply AI texture to ~30% of buildings (high-rises get glass, low get concrete/brick)
+          // Limited count for GTX performance — max 15 textured buildings
+          if (count <= 15 && Math.random() < 0.3 && SashaAIGraphics && SashaAIGraphics.applyAITextureToMesh) {
+            var objs = SashaEngineAPI.getObjects ? SashaEngineAPI.getObjects() : {};
+            var mesh = bldName ? objs[bldName] : null;
+            if (mesh && mesh.isMesh) {
+              var texPrompt = h > 10 ? 'glass skyscraper facade windows' : (h > 5 ? 'concrete office building facade' : 'brick building facade');
+              SashaAIGraphics.applyAITextureToMesh(mesh, texPrompt, {
+                size: 128,  // smaller for performance with many buildings
+                normalMap: false,  // skip normal map for performance
+                roughness: 0.7,
+                metalness: h > 10 ? 0.4 : 0.1
+              });
+            }
+          }
         }
       }
 
