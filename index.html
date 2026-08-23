@@ -487,7 +487,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         .game-mode .camera-preview { display: none !important; }
         .game-mode .view-label { display: none; }
         /* Show in-game HUD only during Play mode (game-mode class on engine section) */
-        .game-mode #gameHUD { display: block !important; }
+        #gameHUD { display: none !important; }
+        .game-mode #gameHUD.hud-active { display: block !important; }
         .game-mode #fps-crosshair { display: block !important; }
         /* Camera Preview — bottom-right corner when camera selected */
         .camera-preview { display: none; position: absolute; bottom: 8px; right: 8px; width: 240px; height: 160px; border: 1px solid rgba(99,102,241,0.6); border-radius: 6px; overflow: hidden; z-index: 8; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
@@ -5909,14 +5910,14 @@ var SashaCharacterController = (function() {
 
     // ============ HUD UPDATE ============
     function showHUD() {
-        // HUD is shown via CSS .game-mode #gameHUD — only when Play is pressed
-        // But also force-show if player is attached (for immediate feedback)
+        // HUD is controlled by CSS: .game-mode #gameHUD { display:block }
+        // Only add a flag class, don't force inline display
         var hud = document.getElementById('gameHUD');
-        if (hud) hud.style.display = 'block';
+        if (hud) hud.classList.add('hud-active');
     }
     function hideHUD() {
         var hud = document.getElementById('gameHUD');
-        if (hud) hud.style.display = 'none';
+        if (hud) { hud.classList.remove('hud-active'); hud.style.display = 'none'; }
     }
     function updateHUD() {
         for (var name in players) {
@@ -24235,27 +24236,33 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     var m = quickMatch(prompt);
     if (!m) return null;
     try {
-      // m can be a single tool call OR an array of tool calls
       var calls = Array.isArray(m) ? m : [m];
       var okCount = 0;
+      var errors = [];
       var hasAsyncUpload = false;
       for (var i = 0; i < calls.length; i++) {
         try {
           var execResult = execTool(calls[i].tool, calls[i].params || {});
-          // Check if result is a Promise (async upload)
           if (execResult && typeof execResult.then === 'function') {
             hasAsyncUpload = true;
             execResult.then(function(msg) {
               if (typeof addChat === 'function') addChat('ai', msg);
-              else if (typeof _addChatMessage === 'function') _addChatMessage('ai', msg);
             }).catch(function(e) {
-              var errMsg = '❌ Upload failed: ' + e.message;
-              if (typeof addChat === 'function') addChat('ai', errMsg);
-              else if (typeof _addChatMessage === 'function') _addChatMessage('ai', errMsg);
+              if (typeof addChat === 'function') addChat('ai', '❌ Upload: ' + e.message);
             });
           }
           okCount++;
-        } catch(e) { console.warn('[fastExec] tool failed:', calls[i].tool, e.message); }
+        } catch(e) {
+          console.error('[fastExec] FAILED:', calls[i].tool, e.message);
+          errors.push(calls[i].tool + ': ' + e.message);
+        }
+      }
+      // Auto-start Play mode if shooter/player was created
+      var hasShooter = calls.some(function(c){return c.tool==='attach_player_control'});
+      if (hasShooter && typeof EngineApp !== 'undefined' && EngineApp.play) {
+        setTimeout(function() {
+          try { EngineApp.play(); } catch(e) { console.warn('[fastExec] auto-play failed:', e.message); }
+        }, 500);
       }
       var labels = {city:'Город',forest:'Лес',desert:'Пустыня',space:'Космос',underwater:'Подводный мир',
         mountain:'Горы',castle:'Замок',room:'Комната',island:'Остров',winter:'Зима',tropical:'Тропики',default:'Сцена'};
@@ -24263,35 +24270,33 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       if (calls.length === 1) {
         var c = calls[0];
         if (c.tool === 'apply_scene_template') {
-          var tplName = labels[c.params.template] || 'Сцена';
-          reply = '✅ Применил шаблон «' + tplName + '». Открой вкладку Engine, чтобы увидеть результат.';
+          reply = '✅ Применил шаблон «' + (labels[c.params.template] || 'Сцена') + '».';
         } else if (c.tool === 'import_city') {
-          reply = '🏙️ Загружаю реальный город «' + (c.params.query || 'неизвестно') + '» из OpenStreetMap... до ' + (c.params.maxBuildings || 50) + ' зданий. Это займёт ~5 секунд.';
+          reply = '🏙️ Загружаю реальный город «' + (c.params.query || '?') + '»... ~5 сек.';
         } else if (c.tool === 'add_character') {
           var charNames = {humanoid:'Человек', knight:'Рыцарь', mage:'Маг', robot:'Робот', archer:'Лучник'};
-          reply = '👤 Добавил персонажа: ' + (charNames[c.params.type] || c.params.type) + '. Открой Engine.';
+          reply = '👤 Добавил: ' + (charNames[c.params.type] || c.params.type) + '.';
         } else if (c.tool === 'build_html') {
-          reply = '📦 HTML билд скачивается... Файл "' + (c.params.title || 'My Game') + '.html" готов к запуску в браузере.';
+          reply = '📦 HTML билд скачивается...';
         } else if (c.tool === 'build_exe') {
-          reply = '📦 EXE билд (ZIP) скачивается... Внутри: index.html + package.json + BUILD-INSTRUCTIONS.txt. Скачай NW.js с nwjs.io и следуй инструкции — будет standalone .exe!';
+          reply = '📦 EXE билд (ZIP) скачивается...';
         } else if (c.tool === 'upload_to_gameforge') {
-          reply = '🚀 Загружаю «' + (c.params.title || 'My Game') + '» на GameForge... Это займёт ~10 секунд. Результат появится здесь.';
+          reply = '🚀 Загружаю на GameForge...';
         } else {
           reply = '✅ Готово!';
         }
       } else {
-        // Multiple tool calls — summarize
-        var hasShooter = calls.some(function(c){return c.tool==='attach_player_control'});
         var hasEnemy = calls.some(function(c){return c.tool==='spawn_enemy'});
         var hasWaves = calls.some(function(c){return c.tool==='start_waves'});
         if (hasWaves) {
-          reply = '🌊 Режим выживания! Волны врагов стартовали. Кликни на canvas, WASD=движение, ЛКМ=стрельба, R=перезарядка. Выживай как можно дольше!';
+          reply = '🌊 Выживание! Нажми ▶ Play. WASD=движение, ЛКМ=стрельба, R=перезарядка.';
         } else if (hasShooter) {
-          reply = '🎮 Шутер готов! ' + okCount + ' действий выполнено. Кликни на canvas для захвата мыши. WASD=движение, Space=прыжок, Shift=бег, ЛКМ=стрельба, R=перезарядка.';
+          reply = '🎮 Шутер готов! Нажми ▶ Play для старта. WASD=ходить, мышь=осмотр, ЛКМ=стрелять, R=перезарядка.';
+          if (errors.length > 0) reply += ' ⚠️ Ошибки: ' + errors.join('; ');
         } else if (hasEnemy) {
-          reply = '⚔️ Враги добавлены! ' + okCount + ' действий.';
+          reply = '⚔️ Враги добавлены!';
         } else {
-          reply = '✅ Готово! ' + okCount + ' действий выполнено.';
+          reply = '✅ Готово! ' + okCount + ' действий.';
         }
       }
       return {reply: reply};
@@ -26288,7 +26293,6 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
-
 
 
 
