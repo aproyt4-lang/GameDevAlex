@@ -1271,6 +1271,64 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <!-- Engine Section -->
         <section id="engine" class="section">
             <div class="engine-section">
+                <!-- ============ GAME HUD OVERLAY (HP, ammo, waves, crosshair) ============ -->
+                <div id="gameHUD" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:50;font-family:'Segoe UI',system-ui,sans-serif">
+                    <!-- Crosshair -->
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;pointer-events:none">
+                        <div style="position:absolute;top:50%;left:0;width:8px;height:2px;background:rgba(255,255,255,.8);transform:translateY(-50%)"></div>
+                        <div style="position:absolute;top:50%;right:0;width:8px;height:2px;background:rgba(255,255,255,.8);transform:translateY(-50%)"></div>
+                        <div style="position:absolute;left:50%;top:0;width:2px;height:8px;background:rgba(255,255,255,.8);transform:translateX(-50%)"></div>
+                        <div style="position:absolute;left:50%;bottom:0;width:2px;height:8px;background:rgba(255,255,255,.8);transform:translateX(-50%)"></div>
+                        <div style="position:absolute;top:50%;left:50%;width:3px;height:3px;background:#ff4444;border-radius:50%;transform:translate(-50%,-50%)"></div>
+                    </div>
+                    <!-- HP bar (bottom-left) -->
+                    <div style="position:absolute;bottom:20px;left:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);min-width:200px">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                            <span style="color:#ff4444;font-size:16px">❤</span>
+                            <span style="color:#fff;font-size:13px;font-weight:600">Health</span>
+                            <span id="hudHPText" style="color:#fff;font-size:14px;font-weight:700;margin-left:auto">100/100</span>
+                        </div>
+                        <div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden">
+                            <div id="hudHPBar" style="height:100%;width:100%;background:linear-gradient(90deg,#ef4444,#f87171);transition:width .2s"></div>
+                        </div>
+                    </div>
+                    <!-- Ammo (bottom-right) -->
+                    <div style="position:absolute;bottom:20px;right:20px;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);text-align:right">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                            <span style="color:#fbbf24;font-size:16px">🔫</span>
+                            <span id="hudAmmoText" style="color:#fff;font-size:18px;font-weight:800">30 / 30</span>
+                        </div>
+                        <div id="hudReloadHint" style="color:#fbbf24;font-size:11px;display:none">Press R to reload</div>
+                    </div>
+                    <!-- Wave/score (top-center) -->
+                    <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.15);text-align:center">
+                        <div style="display:flex;gap:24px;align-items:center">
+                            <div>
+                                <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Wave</div>
+                                <div id="hudWave" style="color:#fff;font-size:20px;font-weight:800">1</div>
+                            </div>
+                            <div style="width:1px;height:30px;background:rgba(255,255,255,.15)"></div>
+                            <div>
+                                <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Enemies</div>
+                                <div id="hudEnemies" style="color:#ef4444;font-size:20px;font-weight:800">0</div>
+                            </div>
+                            <div style="width:1px;height:30px;background:rgba(255,255,255,.15)"></div>
+                            <div>
+                                <div style="color:#a1a1aa;font-size:10px;text-transform:uppercase;letter-spacing:1px">Kills</div>
+                                <div id="hudKills" style="color:#10b981;font-size:20px;font-weight:800">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Damage flash (red overlay when hit) -->
+                    <div id="hudDamageFlash" style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(239,68,68,.5) 100%);opacity:0;transition:opacity .15s;pointer-events:none"></div>
+                    <!-- Hit marker (shows when bullet hits enemy) -->
+                    <div id="hudHitMarker" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#fff;text-shadow:0 0 8px #000;opacity:0;transition:opacity .1s">✕</div>
+                    <!-- Wave announcement -->
+                    <div id="hudWaveAnnounce" style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .5s">
+                        <div id="hudWaveAnnounceText" style="font-size:48px;font-weight:900;color:#fff;text-shadow:0 0 20px rgba(0,0,0,.8);letter-spacing:2px">WAVE 1</div>
+                        <div id="hudWaveAnnounceSub" style="font-size:16px;color:#fbbf24;margin-top:8px;text-shadow:0 0 8px rgba(0,0,0,.8)">Get ready!</div>
+                    </div>
+                </div>
                 <!-- Toolbar -->
                 <div class="engine-toolbar">
                     <button class="eng-btn play-btn" onclick="EngineApp.play()" title="Play"><i class="fas fa-play"></i></button>
@@ -4807,6 +4865,11 @@ var SashaCharacterController = (function() {
             moving: false
         };
         players[meshName] = player;
+        // Show HUD when player is attached
+        showHUD();
+        updateHUD();
+        // Rebuild colliders so player collides with existing buildings
+        rebuildColliders();
         console.log('[CharacterController] attached to', meshName);
         return meshName;
     }
@@ -4815,6 +4878,13 @@ var SashaCharacterController = (function() {
         if (players[meshName]) {
             delete players[meshName];
             if (mouseLocked) document.exitPointerLock();
+            // Hide HUD if no players left
+            var hasPlayers = false;
+            for (var p in players) { hasPlayers = true; break; }
+            if (!hasPlayers) {
+                hideHUD();
+                waveSystem.active = false;
+            }
             console.log('[CharacterController] detached from', meshName);
         }
     }
@@ -4827,9 +4897,19 @@ var SashaCharacterController = (function() {
         for (var name in players) {
             var p = players[name];
             if (now - p.lastShot < p.fireRate) continue;
-            if (p.ammo <= 0) continue;
+            if (p.ammo <= 0) {
+                // Empty click sound
+                playSound('empty');
+                // Show reload hint
+                var reloadHint = document.getElementById('hudReloadHint');
+                if (reloadHint) reloadHint.style.display = 'block';
+                continue;
+            }
             p.lastShot = now;
             p.ammo--;
+            updateHUD();
+            // Play shoot sound
+            playSound('shoot');
             // Create bullet
             var bulletGeo = new THREE.SphereGeometry(0.08, 6, 4);
             var bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
@@ -4853,6 +4933,9 @@ var SashaCharacterController = (function() {
             flash.position.copy(camera.position);
             scene.add(flash);
             setTimeout(function() { scene.remove(flash); }, 80);
+            // Hide reload hint if was shown
+            var reloadHint2 = document.getElementById('hudReloadHint');
+            if (reloadHint2 && p.ammo > 0) reloadHint2.style.display = 'none';
         }
     }
 
@@ -4892,6 +4975,8 @@ var SashaCharacterController = (function() {
             if (!p.mesh || !p.mesh.parent) { delete players[name]; continue; }
             updatePlayer(p, dt);
         }
+        // Update waves
+        updateWaves(dt);
         // Update bullets
         for (var i = bullets.length - 1; i >= 0; i--) {
             var b = bullets[i];
@@ -4911,9 +4996,11 @@ var SashaCharacterController = (function() {
                 var dist = b.mesh.position.distanceTo(e.mesh.position);
                 if (dist < 0.7) {
                     e.hp -= b.damage;
-                    // Hit flash
+                    // Hit flash + sound + marker
                     e.mesh.material.emissive.setHex(0xff8888);
                     setTimeout(function(em){return function(){if(em&&em.material)em.material.emissive.setHex(0x661111)}}(e.mesh), 80);
+                    playSound('hit');
+                    showHitMarker();
                     // Remove bullet
                     scene.remove(b.mesh);
                     b.mesh.geometry.dispose();
@@ -4927,7 +5014,11 @@ var SashaCharacterController = (function() {
                         var objs = SashaEngineAPI.getObjects();
                         if (objs && objs[e.name]) delete objs[e.name];
                         enemies.splice(j, 1);
-                        console.log('[CharacterController] enemy killed');
+                        waveSystem.kills++;
+                        waveSystem.totalKillsThisWave++;
+                        playSound('enemyDie');
+                        updateHUD();
+                        console.log('[CharacterController] enemy killed, total kills:', waveSystem.kills);
                     }
                     break;
                 }
@@ -4960,15 +5051,19 @@ var SashaCharacterController = (function() {
                     if (now - en.lastAttack > 1.0) {
                         en.lastAttack = now;
                         nearestP.hp -= en.damage;
-                        // Hit flash on player
+                        // Hit flash on player + sound + screen flash
                         if (nearestP.mesh.material && nearestP.mesh.material.emissive) {
                             nearestP.mesh.material.emissive.setHex(0xff0000);
                             setTimeout(function(m){return function(){if(m&&m.material&&m.material.emissive)m.material.emissive.setHex(0x000000)}}(nearestP.mesh), 150);
                         }
+                        playSound('hurt');
+                        showDamageFlash();
+                        updateHUD();
                         if (nearestP.hp <= 0) {
                             console.log('[CharacterController] player died');
                             nearestP.hp = nearestP.maxHp;  // respawn
                             nearestP.mesh.position.set(0, 0, 0);
+                            nearestP.ammo = nearestP.maxAmmo;  // refill ammo on death
                         }
                     }
                 }
@@ -5011,10 +5106,23 @@ var SashaCharacterController = (function() {
         }
         p.velocity.y -= p.gravity * dt;
 
-        // Apply velocity
+        // Apply velocity with collision detection
+        // Try X axis
+        var oldX = p.mesh.position.x;
         p.mesh.position.x += p.velocity.x * dt;
-        p.mesh.position.y += p.velocity.y * dt;
+        if (checkCollision(p.mesh.position, p.radius)) {
+            p.mesh.position.x = oldX;  // revert
+            p.velocity.x = 0;
+        }
+        // Try Z axis
+        var oldZ = p.mesh.position.z;
         p.mesh.position.z += p.velocity.z * dt;
+        if (checkCollision(p.mesh.position, p.radius)) {
+            p.mesh.position.z = oldZ;  // revert
+            p.velocity.z = 0;
+        }
+        // Y axis (gravity + jump)
+        p.mesh.position.y += p.velocity.y * dt;
 
         // Ground collision (simple — y=0 is ground)
         if (p.mesh.position.y <= 0) {
@@ -5082,8 +5190,18 @@ var SashaCharacterController = (function() {
     }
 
     function reload() {
+        var reloaded = false;
         for (var name in players) {
-            players[name].ammo = players[name].maxAmmo;
+            if (players[name].ammo < players[name].maxAmmo) {
+                players[name].ammo = players[name].maxAmmo;
+                reloaded = true;
+            }
+        }
+        if (reloaded) {
+            playSound('reload');
+            updateHUD();
+            var reloadHint = document.getElementById('hudReloadHint');
+            if (reloadHint) reloadHint.style.display = 'none';
         }
     }
 
@@ -5109,7 +5227,306 @@ var SashaCharacterController = (function() {
             enemies[j].mesh.material.dispose();
         }
         enemies = [];
+        waveSystem.active = false;
+        waveSystem.currentWave = 0;
+        waveSystem.kills = 0;
+        hideHUD();
     }
+
+    // ============ SOUND SYSTEM (WebAudio synth — no external files) ============
+    var audioCtx = null;
+    function getAudioCtx() {
+        if (!audioCtx) {
+            try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+        }
+        return audioCtx;
+    }
+    function playSound(type) {
+        var ctx = getAudioCtx();
+        if (!ctx) return;
+        try {
+            if (type === 'shoot') {
+                // Sharp gunshot: noise burst + low freq thump
+                var osc = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(180, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + 0.1);
+                // Noise burst for "crack"
+                var bufSize = ctx.sampleRate * 0.05;
+                var buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+                var data = buf.getChannelData(0);
+                for (var i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+                var noise = ctx.createBufferSource();
+                noise.buffer = buf;
+                var ngain = ctx.createGain();
+                ngain.gain.setValueAtTime(0.15, ctx.currentTime);
+                ngain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                noise.connect(ngain); ngain.connect(ctx.destination);
+                noise.start();
+            } else if (type === 'empty') {
+                // Click
+                var osc2 = ctx.createOscillator();
+                var gain2 = ctx.createGain();
+                osc2.type = 'square';
+                osc2.frequency.value = 800;
+                gain2.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+                osc2.connect(gain2); gain2.connect(ctx.destination);
+                osc2.start(); osc2.stop(ctx.currentTime + 0.03);
+            } else if (type === 'reload') {
+                // Two clicks
+                for (var r = 0; r < 2; r++) {
+                    var oscR = ctx.createOscillator();
+                    var gainR = ctx.createGain();
+                    oscR.type = 'square';
+                    oscR.frequency.value = 400 + r * 200;
+                    var t = ctx.currentTime + r * 0.15;
+                    gainR.gain.setValueAtTime(0.15, t);
+                    gainR.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                    oscR.connect(gainR); gainR.connect(ctx.destination);
+                    oscR.start(t); oscR.stop(t + 0.05);
+                }
+            } else if (type === 'hit') {
+                // Hit marker — short high beep
+                var oscH = ctx.createOscillator();
+                var gainH = ctx.createGain();
+                oscH.type = 'sine';
+                oscH.frequency.value = 1200;
+                gainH.gain.setValueAtTime(0.15, ctx.currentTime);
+                gainH.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+                oscH.connect(gainH); gainH.connect(ctx.destination);
+                oscH.start(); oscH.stop(ctx.currentTime + 0.08);
+            } else if (type === 'enemyDie') {
+                // Low descending tone
+                var oscD = ctx.createOscillator();
+                var gainD = ctx.createGain();
+                oscD.type = 'sawtooth';
+                oscD.frequency.setValueAtTime(200, ctx.currentTime);
+                oscD.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3);
+                gainD.gain.setValueAtTime(0.2, ctx.currentTime);
+                gainD.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                oscD.connect(gainD); gainD.connect(ctx.destination);
+                oscD.start(); oscD.stop(ctx.currentTime + 0.3);
+            } else if (type === 'hurt') {
+                // Pain grunt — low noise burst
+                var bufSize2 = ctx.sampleRate * 0.2;
+                var buf2 = ctx.createBuffer(1, bufSize2, ctx.sampleRate);
+                var data2 = buf2.getChannelData(0);
+                for (var j = 0; j < bufSize2; j++) data2[j] = (Math.random() * 2 - 1) * (1 - j / bufSize2) * 0.5;
+                var noise2 = ctx.createBufferSource();
+                noise2.buffer = buf2;
+                var filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 400;
+                var ngain2 = ctx.createGain();
+                ngain2.gain.value = 0.3;
+                noise2.connect(filter); filter.connect(ngain2); ngain2.connect(ctx.destination);
+                noise2.start();
+            } else if (type === 'wave') {
+                // Wave start — rising tone
+                var oscW = ctx.createOscillator();
+                var gainW = ctx.createGain();
+                oscW.type = 'sine';
+                oscW.frequency.setValueAtTime(220, ctx.currentTime);
+                oscW.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.5);
+                gainW.gain.setValueAtTime(0.2, ctx.currentTime);
+                gainW.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+                oscW.connect(gainW); gainW.connect(ctx.destination);
+                oscW.start(); oscW.stop(ctx.currentTime + 0.6);
+            }
+        } catch(e) { console.warn('[Sound] failed:', e.message); }
+    }
+
+    // ============ HUD UPDATE ============
+    function showHUD() {
+        var hud = document.getElementById('gameHUD');
+        if (hud) hud.style.display = 'block';
+    }
+    function hideHUD() {
+        var hud = document.getElementById('gameHUD');
+        if (hud) hud.style.display = 'none';
+    }
+    function updateHUD() {
+        for (var name in players) {
+            var p = players[name];
+            // HP
+            var hpText = document.getElementById('hudHPText');
+            var hpBar = document.getElementById('hudHPBar');
+            if (hpText) hpText.textContent = Math.max(0, Math.round(p.hp)) + '/' + p.maxHp;
+            if (hpBar) hpBar.style.width = Math.max(0, (p.hp / p.maxHp) * 100) + '%';
+            // Ammo
+            var ammoText = document.getElementById('hudAmmoText');
+            if (ammoText) ammoText.textContent = p.ammo + ' / ' + p.maxAmmo;
+            // Reload hint
+            var reloadHint = document.getElementById('hudReloadHint');
+            if (reloadHint) reloadHint.style.display = (p.ammo === 0) ? 'block' : 'none';
+        }
+        // Wave/enemies/kills
+        var waveEl = document.getElementById('hudWave');
+        if (waveEl) waveEl.textContent = waveSystem.currentWave;
+        var enEl = document.getElementById('hudEnemies');
+        if (enEl) enEl.textContent = enemies.length;
+        var killsEl = document.getElementById('hudKills');
+        if (killsEl) killsEl.textContent = waveSystem.kills;
+    }
+
+    function showHitMarker() {
+        var hm = document.getElementById('hudHitMarker');
+        if (!hm) return;
+        hm.style.opacity = '1';
+        setTimeout(function() { hm.style.opacity = '0'; }, 100);
+    }
+    function showDamageFlash() {
+        var df = document.getElementById('hudDamageFlash');
+        if (!df) return;
+        df.style.opacity = '1';
+        setTimeout(function() { df.style.opacity = '0'; }, 150);
+    }
+    function showWaveAnnounce(wave) {
+        var ann = document.getElementById('hudWaveAnnounce');
+        var annText = document.getElementById('hudWaveAnnounceText');
+        var annSub = document.getElementById('hudWaveAnnounceSub');
+        if (!ann || !annText || !annSub) return;
+        annText.textContent = 'WAVE ' + wave;
+        annSub.textContent = wave === 1 ? 'Get ready!' : (waveSystem.kills + ' kills — next wave!');
+        ann.style.opacity = '1';
+        setTimeout(function() { ann.style.opacity = '0'; }, 2500);
+    }
+
+    // ============ WAVE SYSTEM ============
+    var waveSystem = {
+        active: false,
+        currentWave: 0,
+        enemiesPerWave: 3,
+        kills: 0,
+        totalKillsThisWave: 0,
+        spawnInterval: 2.0,  // seconds between spawns
+        lastSpawn: 0,
+        waveDelay: 5.0,  // seconds between waves
+        waveStartTime: 0
+    };
+
+    function startWaves(options) {
+        options = options || {};
+        waveSystem.active = true;
+        waveSystem.currentWave = 0;
+        waveSystem.kills = 0;
+        waveSystem.enemiesPerWave = options.enemiesPerWave || 3;
+        waveSystem.spawnInterval = options.spawnInterval || 2.0;
+        waveSystem.waveDelay = options.waveDelay || 5.0;
+        showHUD();
+        startNextWave();
+    }
+
+    function stopWaves() {
+        waveSystem.active = false;
+        hideHUD();
+    }
+
+    function startNextWave() {
+        if (!waveSystem.active) return;
+        waveSystem.currentWave++;
+        waveSystem.totalKillsThisWave = 0;
+        waveSystem.lastSpawn = performance.now() / 1000;
+        waveSystem.waveStartTime = performance.now() / 1000;
+        // Scale difficulty: more enemies each wave
+        var enemiesThisWave = waveSystem.enemiesPerWave + (waveSystem.currentWave - 1) * 2;
+        waveSystem.enemiesToSpawn = enemiesThisWave;
+        waveSystem.enemiesSpawnedThisWave = 0;
+        showWaveAnnounce(waveSystem.currentWave);
+        playSound('wave');
+        updateHUD();
+    }
+
+    function updateWaves(dt) {
+        if (!waveSystem.active) return;
+        var now = performance.now() / 1000;
+        // Spawn enemies over time
+        if (waveSystem.enemiesSpawnedThisWave < waveSystem.enemiesToSpawn) {
+            if (now - waveSystem.lastSpawn > waveSystem.spawnInterval) {
+                // Spawn at random position around players
+                var px = 0, pz = 0;
+                for (var name in players) {
+                    px = players[name].mesh.position.x;
+                    pz = players[name].mesh.position.z;
+                    break;
+                }
+                var angle = Math.random() * Math.PI * 2;
+                var dist = 15 + Math.random() * 10;
+                var ex = px + Math.cos(angle) * dist;
+                var ez = pz + Math.sin(angle) * dist;
+                // Scale enemy HP with wave
+                var enemyHp = 100 + (waveSystem.currentWave - 1) * 20;
+                spawnEnemy(ex, 0, ez, enemyHp);
+                waveSystem.enemiesSpawnedThisWave++;
+                waveSystem.lastSpawn = now;
+            }
+        }
+        // Check if wave complete (all spawned + all dead)
+        if (waveSystem.enemiesSpawnedThisWave >= waveSystem.enemiesToSpawn && enemies.length === 0) {
+            // Wave complete — start next after delay
+            if (now - waveSystem.waveStartTime > 3) {  // minimum 3s before next
+                if (!waveSystem.nextWaveScheduled) {
+                    waveSystem.nextWaveScheduled = true;
+                    setTimeout(function() {
+                        waveSystem.nextWaveScheduled = false;
+                        startNextWave();
+                    }, waveSystem.waveDelay * 1000);
+                }
+            }
+        }
+        updateHUD();
+    }
+
+    // ============ COLLISION WITH BUILDINGS (AABB) ============
+    var colliders = [];  // [{min: Vector3, max: Vector3, name}]
+    var collisionEnabled = true;
+
+    function rebuildColliders() {
+        colliders = [];
+        if (!SashaEngineAPI || !SashaEngineAPI.getObjects) return;
+        var objs = SashaEngineAPI.getObjects();
+        var types = SashaEngineAPI.getObjectTypes ? SashaEngineAPI.getObjectTypes() : {};
+        for (var name in objs) {
+            if (!objs.hasOwnProperty(name)) continue;
+            var obj = objs[name];
+            if (!obj || !obj.isMesh) continue;
+            // Skip ground plane, lights, characters, enemies, bullets
+            var t = types[name] || '';
+            if (t === 'light' || t === 'ambient' || t === 'character' || t === 'player' || t === 'enemy') continue;
+            if (name === 'plane' || name.indexOf('plane') === 0) continue;
+            // Compute AABB from bounding box
+            var box = new THREE.Box3().setFromObject(obj);
+            if (box.isEmpty()) continue;
+            // Only add if reasonably sized (skip tiny objects)
+            var size = new THREE.Vector3();
+            box.getSize(size);
+            if (size.y < 0.5) continue;  // skip flat things (ground)
+            colliders.push({ min: box.min, max: box.max, name: name });
+        }
+        console.log('[CharacterController] colliders rebuilt:', colliders.length);
+    }
+
+    function checkCollision(pos, radius) {
+        if (!collisionEnabled) return null;
+        for (var i = 0; i < colliders.length; i++) {
+            var c = colliders[i];
+            // Expand box by radius and check if pos is inside
+            if (pos.x + radius > c.min.x && pos.x - radius < c.max.x &&
+                pos.y + radius > c.min.y && pos.y - radius < c.max.y &&
+                pos.z + radius > c.min.z && pos.z - radius < c.max.z) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    function getColliders() { return colliders; }
 
     return {
         init: init,
@@ -5122,9 +5539,20 @@ var SashaCharacterController = (function() {
         spawnEnemy: spawnEnemy,
         getStats: getStats,
         clearAll: clearAll,
+        // New
+        startWaves: startWaves,
+        stopWaves: stopWaves,
+        rebuildColliders: rebuildColliders,
+        getColliders: getColliders,
+        playSound: playSound,
+        showHUD: showHUD,
+        hideHUD: hideHUD,
+        updateHUD: updateHUD,
         _players: players,
         _bullets: bullets,
-        _enemies: enemies
+        _enemies: enemies,
+        _colliders: colliders,
+        _waveSystem: waveSystem
     };
 })();
 
@@ -22468,6 +22896,25 @@ var SashaAvatar = (function() {
       if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
       return JSON.stringify(SashaCharacterController.getStats());
     }
+    if (fn === 'startWaves') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      SashaCharacterController.startWaves({
+        enemiesPerWave: args.enemiesPerWave,
+        spawnInterval: args.spawnInterval,
+        waveDelay: args.waveDelay
+      });
+      return 'Waves started! Enemies will spawn in waves. Survive as long as you can.';
+    }
+    if (fn === 'stopWaves') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      SashaCharacterController.stopWaves();
+      return 'Waves stopped';
+    }
+    if (fn === 'rebuildColliders') {
+      if (typeof SashaCharacterController === 'undefined') throw new Error('CharacterController not loaded');
+      SashaCharacterController.rebuildColliders();
+      return 'Colliders rebuilt';
+    }
     throw new Error('Unknown function: ' + fn);
   }
 
@@ -23001,6 +23448,12 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         return dc('reload', {});
       case 'get_player_stats':
         return dc('getPlayerStats', {});
+      case 'start_waves':
+        return dc('startWaves', {enemiesPerWave: params.enemiesPerWave, spawnInterval: params.spawnInterval, waveDelay: params.waveDelay});
+      case 'stop_waves':
+        return dc('stopWaves', {});
+      case 'rebuild_colliders':
+        return dc('rebuildColliders', {});
       default:
         throw new Error('Unknown tool: ' + name);
     }
@@ -23122,6 +23575,18 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         {tool:'spawn_enemy', params:{x:(Math.random()-0.5)*20, y:0, z:(Math.random()-0.5)*20, hp:100}}
       ];
     }
+    // === Survival/waves ===
+    if (/(выживан|surviv|волны|волн|horde|орды)/i.test(t)) {
+      return [
+        {tool:'scene_clear', params:{}},
+        {tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}},
+        {tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}},
+        {tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}},
+        {tool:'start_waves', params:{enemiesPerWave:3, spawnInterval:2, waveDelay:5}},
+        {tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8, color:'#ffffff'}},
+        {tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}}
+      ];
+    }
     if (/очист|удал.*вс[её]|clear|reset|новая\s*сцен/.test(t)) return {tool:'clear_scene',params:{}};
     return null;
   }
@@ -23159,7 +23624,10 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         // Multiple tool calls — summarize
         var hasShooter = calls.some(function(c){return c.tool==='attach_player_control'});
         var hasEnemy = calls.some(function(c){return c.tool==='spawn_enemy'});
-        if (hasShooter) {
+        var hasWaves = calls.some(function(c){return c.tool==='start_waves'});
+        if (hasWaves) {
+          reply = '🌊 Режим выживания! Волны врагов стартовали. Кликни на canvas, WASD=движение, ЛКМ=стрельба, R=перезарядка. Выживай как можно дольше!';
+        } else if (hasShooter) {
           reply = '🎮 Шутер готов! ' + okCount + ' действий выполнено. Кликни на canvas для захвата мыши. WASD=движение, Space=прыжок, Shift=бег, ЛКМ=стрельба, R=перезарядка.';
         } else if (hasEnemy) {
           reply = '⚔️ Враги добавлены! ' + okCount + ' действий.';
@@ -23205,6 +23673,8 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       '=== CHARACTER CONTROLLER & SHOOTER ===',
       '- attach_player_control: {objectName: "имя персонажа", speed: 5, hp: 100, ammo: 30, fps: true} — привязывает управление WASD+мышь к персонажу. WASD=движение, Space=прыжок, Shift=бег, мышь=осмотр, ЛКМ=стрельба, R=перезарядка. Используй когда просят "сделай игрока", "управление персонажем", "сделай шутер".',
       '- spawn_enemy: {x, y, z, hp: 100} — спавнит красного врага, который бежит к игроку и атакует. Используй когда просят "враги", "зомби", "противники".',
+      '- start_waves: {enemiesPerWave: 3, spawnInterval: 2, waveDelay: 5} — запускает бесконечные волны врагов. Каждая волна сильнее. Используй когда просят "волны", "выживание", "survival", "horde".',
+      '- rebuild_colliders: {} — пересчитать коллайдеры зданий (чтобы игрок не проходил сквозь стены). Вызови после импорта города.',
       '- reload: {} — перезарядка оружия.',
       '',
       'Цвета — hex-строки вида "#aabbcc". Координаты — числа.',
@@ -24424,6 +24894,10 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       status.textContent = '✅ Загружено ' + count + ' зданий из "' + query + '"';
       status.style.color = '#10b981';
       if (EngineApp && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+      // Rebuild colliders so player can't walk through buildings
+      if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.rebuildColliders) {
+        SashaCharacterController.rebuildColliders();
+      }
       setTimeout(function() { closeCityDialog(); }, 1500);
     } catch(e) {
       status.textContent = '❌ Ошибка: ' + e.message;
