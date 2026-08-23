@@ -24793,11 +24793,30 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         return;
       }
 
-      // 3) Generation intent — try LLM ONCE (15s timeout), then fallback to localGenerate
-      addChat('ai', '🤔 Генерирую...');
-      var toolCalls = null;
+      // 3) Generation intent — try localGenerate FIRST (instant), then LLM as fallback
+      // Step A: Check localGenerate — it knows characters, shooter, enemies, themes
+      var localCalls = localGenerate(prompt);
+      if (localCalls && localCalls.length > 1) {
+        // localGenerate recognized the prompt — execute immediately
+        var result = execToolCalls(localCalls);
+        var summary = buildSummary(result.toolCounts, result.okCount);
+        var prefix = '✨ Создал: ' + summary + '.';
+        if (result.errCount) prefix += ' (' + result.errCount + ' ошибок)';
+        // Auto-play if shooter/player
+        var hasPlayer = localCalls.some(function(c){return c.tool==='attach_player_control'});
+        if (hasPlayer && typeof EngineApp !== 'undefined' && EngineApp.play) {
+          setTimeout(function() { try { EngineApp.play(); } catch(e) {} }, 500);
+          prefix += ' Нажми ▶ Play для старта!';
+        }
+        addChat('ai', prefix);
+        chatHistory.push({role:'assistant', content: prefix});
+        busy = false;
+        return;
+      }
 
-      // Try local LLM (15s timeout via AbortController in callLocalLLM)
+      // Step B: localGenerate didn't recognize — try LLM (15s timeout)
+      addChat('ai', '🤔 Генерирую через ИИ...');
+      var toolCalls = null;
       try {
         var localGen = await callLocalLLM(prompt, false);
         var genReply = localGen.reply || localGen.text || '';
@@ -24807,27 +24826,26 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
           toolCalls = parseToolCallsFromText(genReply);
         }
       } catch(e) {
-        console.warn('[sendAI] local LLM failed/timeout:', e.message);
+        console.warn('[sendAI] LLM failed/timeout:', e.message);
       }
 
       removeThinking();
 
       if (toolCalls && toolCalls.length) {
-        // Execute LLM-generated tool calls
-        var result = execToolCalls(toolCalls);
-        var summary = buildSummary(result.toolCounts, result.okCount);
-        var prefix = '✨ Готово! Создал: ' + summary + '.';
-        if (result.errCount) prefix += ' (' + result.errCount + ' ошибок)';
-        addChat('ai', prefix);
-        chatHistory.push({role:'assistant', content: prefix});
-      } else {
-        // Fallback: local heuristic generator (instant, offline)
-        var calls2 = localGenerate(prompt);
-        var result2 = execToolCalls(calls2);
+        var result2 = execToolCalls(toolCalls);
         var summary2 = buildSummary(result2.toolCounts, result2.okCount);
-        var prefix2 = '🎨 Создал: ' + summary2 + '.';
+        var prefix2 = '✨ Готово! Создал: ' + summary2 + '.';
+        if (result2.errCount) prefix2 += ' (' + result2.errCount + ' ошибок)';
         addChat('ai', prefix2);
         chatHistory.push({role:'assistant', content: prefix2});
+      } else {
+        // Last resort: localGenerate already returned something (generic fallback)
+        var calls2 = localGenerate(prompt);
+        var result3 = execToolCalls(calls2);
+        var summary3 = buildSummary(result3.toolCounts, result3.okCount);
+        var prefix3 = '🎨 Создал: ' + summary3 + '.';
+        addChat('ai', prefix3);
+        chatHistory.push({role:'assistant', content: prefix3});
       }
     } catch(e) {
       removeThinking();
