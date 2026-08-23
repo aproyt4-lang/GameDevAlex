@@ -24411,6 +24411,93 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   function localGenerate(prompt) {
     var t = prompt.toLowerCase();
     var calls = [{tool:'scene_clear',params:{}}];
+
+    // === CHARACTER DETECTION (knight, mage, robot, archer, humanoid) ===
+    var charType = null;
+    if (/рыцар|knight/.test(t)) charType = 'knight';
+    else if (/маг|wizard|sorcer|mag/.test(t)) charType = 'mage';
+    else if (/робот|robot/.test(t)) charType = 'robot';
+    else if (/лучник|archer/.test(t)) charType = 'archer';
+    else if (/человек|персонаж|humanoid|character|герой|player/.test(t)) charType = 'humanoid';
+
+    if (charType) {
+      calls.push({tool:'add_plane', params:{width:20, height:20, color:'#3a3a4a'}});
+      calls.push({tool:'add_character', params:{type: charType, x: 0, y: 0, z: 0, name: 'hero'}});
+      calls.push({tool:'add_directional_light', params:{x:5, y:10, z:5, intensity:0.8, color:'#ffffff'}});
+      calls.push({tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}});
+      calls.push({tool:'camera_set_position', params:{x:5, y:3, z:5}});
+      calls.push({tool:'camera_set_target', params:{x:0, y:1, z:0}});
+      return calls;
+    }
+
+    // === SHOOTER DETECTION ===
+    if (/шутер|shooter|fps|стрелялк|射击/.test(t)) {
+      calls.push({tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}});
+      calls.push({tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}});
+      calls.push({tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}});
+      calls.push({tool:'spawn_enemy', params:{x:-10, y:0, z:-10, hp:100}});
+      calls.push({tool:'spawn_enemy', params:{x:10, y:0, z:-10, hp:100}});
+      calls.push({tool:'spawn_enemy', params:{x:0, y:0, z:-15, hp:100}});
+      calls.push({tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8, color:'#ffffff'}});
+      calls.push({tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}});
+      return calls;
+    }
+
+    // === ENEMY DETECTION ===
+    if (/враг|зомби|enemy|zombie|противник/.test(t)) {
+      var enemyCount = 3;
+      var cntMatch = t.match(/(\d+)/);
+      if (cntMatch) enemyCount = Math.min(parseInt(cntMatch[1]), 10);
+      calls.push({tool:'add_plane', params:{width:30, height:30, color:'#2a2a3a'}});
+      for (var e = 0; e < enemyCount; e++) {
+        calls.push({tool:'spawn_enemy', params:{x:(Math.random()-0.5)*20, y:0, z:(Math.random()-0.5)*20, hp:100}});
+      }
+      calls.push({tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8}});
+      calls.push({tool:'add_ambient_light', params:{intensity:0.4}});
+      calls.push({tool:'camera_set_position', params:{x:10, y:8, z:10}});
+      calls.push({tool:'camera_set_target', params:{x:0, y:1, z:0}});
+      return calls;
+    }
+
+    // === SURVIVAL / WAVES ===
+    if (/выживан|surviv|волны|волн|horde|орды/.test(t)) {
+      calls.push({tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}});
+      calls.push({tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}});
+      calls.push({tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}});
+      calls.push({tool:'start_waves', params:{enemiesPerWave:3, spawnInterval:2, waveDelay:5}});
+      calls.push({tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8}});
+      calls.push({tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}});
+      return calls;
+    }
+
+    // === PLAYER CONTROL ===
+    if (/игрок|player|управление|control/.test(t)) {
+      calls.push({tool:'add_plane', params:{width:20, height:20, color:'#3a3a4a'}});
+      calls.push({tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}});
+      calls.push({tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}});
+      calls.push({tool:'add_directional_light', params:{x:5, y:10, z:5, intensity:0.8}});
+      calls.push({tool:'add_ambient_light', params:{intensity:0.4}});
+      calls.push({tool:'camera_set_position', params:{x:5, y:3, z:5}});
+      return calls;
+    }
+
+    // === ARENA ===
+    if (/арена|arena|колизей/.test(t)) {
+      calls.push({tool:'add_plane', params:{width:40, height:40, color:'#333344'}});
+      calls.push({tool:'add_cylinder', params:{x:0, y:0.15, z:0, radiusTop:15, radiusBottom:15, height:0.3, color:'#444455'}});
+      for (var a = 0; a < 16; a++) {
+        var angle = a * Math.PI * 2 / 16;
+        calls.push({tool:'add_cube', params:{x:Math.cos(angle)*14, y:3, z:Math.sin(angle)*14, width:2, height:6, depth:1, color:'#444455'}});
+      }
+      calls.push({tool:'add_point_light', params:{x:0, y:10, z:0, intensity:2, color:'#ff4444'}});
+      calls.push({tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.5}});
+      calls.push({tool:'add_ambient_light', params:{intensity:0.3, color:'#202030'}});
+      calls.push({tool:'camera_set_position', params:{x:20, y:15, z:20}});
+      calls.push({tool:'camera_set_target', params:{x:0, y:2, z:0}});
+      return calls;
+    }
+
+    // === THEME SCENES ===
     var theme = null;
     if (/космос|space|звезд|планет|галакт/.test(t)) theme = 'space';
     else if (/лес|forest|дерев|tree/.test(t)) theme = 'forest';
@@ -24421,7 +24508,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     else if (/замок|castle|крепост/.test(t)) theme = 'castle';
     else if (/комнат|room|house|дом/.test(t)) theme = 'room';
     else if (/остров|island/.test(t)) theme = 'island';
-    else if (/арена|arena|колизей/.test(t)) theme = 'arena';
     else if (/платформ|platform|level/.test(t)) theme = 'platformer';
 
     if (theme === 'space') {
