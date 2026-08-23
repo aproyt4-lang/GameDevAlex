@@ -1038,6 +1038,97 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     </div>
                 </div>
             </div>
+
+            <!-- ============ ANALYTICS WIDGET ON HOME (Google Play style waves) ============ -->
+            <div class="home-analytics-widget" id="homeAnalyticsWidget" style="max-width:1200px;margin:32px auto 0;padding:0 20px">
+                <div style="background:var(--bg-card,#18181b);border-radius:16px;padding:24px;border:1px solid var(--border,#27272a);box-shadow:0 8px 32px rgba(0,0,0,.3)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+                        <div>
+                            <h2 style="font-size:20px;font-weight:800;margin:0;display:flex;align-items:center;gap:10px">
+                                <span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;animation:pulse 2s infinite"></span>
+                                📊 Статистика движка
+                            </h2>
+                            <p style="font-size:13px;color:var(--text-muted,#a1a1aa);margin:6px 0 0 0">Кто, когда и зачем посещал движок · обновляется в реальном времени</p>
+                        </div>
+                        <button onclick="openEngineAnalytics()" style="padding:8px 16px;border-radius:10px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='#10b981';this.style.color='#10b981'" onmouseout="this.style.borderColor='var(--border,#27272a)';this.style.color='var(--text-primary,#fafafa)'">
+                            <i class="fas fa-chart-bar"></i> Полная аналитика →
+                        </button>
+                    </div>
+
+                    <!-- Quick metrics row -->
+                    <div id="homeQuickStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px"></div>
+
+                    <!-- 3 wave charts (Google Play style) -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">
+                        <div style="background:var(--bg-hover,#27272a);border-radius:12px;padding:16px">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                                <span style="font-size:13px;color:var(--text-muted,#a1a1aa);font-weight:600;display:flex;align-items:center;gap:6px">
+                                    <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span>
+                                    Посещения
+                                </span>
+                                <span id="homeAwVisits" style="font-size:22px;font-weight:800;color:#10b981">0</span>
+                            </div>
+                            <div style="position:relative;height:90px"><canvas id="homeChartVisits"></canvas></div>
+                        </div>
+                        <div style="background:var(--bg-hover,#27272a);border-radius:12px;padding:16px">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                                <span style="font-size:13px;color:var(--text-muted,#a1a1aa);font-weight:600;display:flex;align-items:center;gap:6px">
+                                    <span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>
+                                    Действия
+                                </span>
+                                <span id="homeAwActions" style="font-size:22px;font-weight:800;color:#3b82f6">0</span>
+                            </div>
+                            <div style="position:relative;height:90px"><canvas id="homeChartActions"></canvas></div>
+                        </div>
+                        <div style="background:var(--bg-hover,#27272a);border-radius:12px;padding:16px">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                                <span style="font-size:13px;color:var(--text-muted,#a1a1aa);font-weight:600;display:flex;align-items:center;gap:6px">
+                                    <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+                                    Отвалы
+                                </span>
+                                <span id="homeAwLeaves" style="font-size:22px;font-weight:800;color:#ef4444">0</span>
+                            </div>
+                            <div style="position:relative;height:90px"><canvas id="homeChartLeaves"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Recent leaves list -->
+                    <div style="background:var(--bg-hover,#27272a);border-radius:12px;padding:16px;margin-bottom:20px">
+                        <div style="font-size:12px;color:var(--text-muted,#a1a1aa);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;font-weight:700">⏱ Последние отвалы (кто вышел и почему)</div>
+                        <div id="homeLeavesList" style="max-height:200px;overflow-y:auto"></div>
+                    </div>
+
+                    <!-- Rating + Feedback section -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                        <div style="background:var(--bg-hover,#27272a);border-radius:12px;padding:16px">
+                            <div style="font-size:12px;color:var(--text-muted,#a1a1aa);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;font-weight:700">⭐ Оценка движка</div>
+                            <div id="homeRatingDisplay" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                                <span id="homeRatingStars" style="font-size:32px;letter-spacing:2px">★★★★★</span>
+                                <div>
+                                    <div id="homeRatingAvg" style="font-size:24px;font-weight:800;color:#fbbf24">0.0</div>
+                                    <div id="homeRatingCount" style="font-size:11px;color:var(--text-muted,#a1a1aa)">0 голосов</div>
+                                </div>
+                            </div>
+                            <div style="font-size:12px;color:var(--text-muted,#a1a1aa);margin-bottom:8px">Поставь свою оценку:</div>
+                            <div id="homeStarInput" style="display:inline-flex;flex-direction:row-reverse;gap:4px"></div>
+                            <div id="homeRatingText" style="font-size:12px;color:var(--text-muted,#a1a1aa);margin-top:8px"></div>
+                        </div>
+                        <div style="background:var(--bg-hover,#27272a);border-radius:12px;padding:16px">
+                            <div style="font-size:12px;color:var(--text-muted,#a1a1aa);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;font-weight:700">💬 Отзывы</div>
+                            <div id="homeFeedbackList" style="max-height:140px;overflow-y:auto;margin-bottom:12px"></div>
+                            <div style="display:flex;gap:6px">
+                                <input type="text" id="homeFeedbackName" placeholder="Имя" maxlength="30" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:12px;outline:none">
+                                <input type="text" id="homeFeedbackText" placeholder="Отзыв..." maxlength="300" style="flex:2;padding:8px 10px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-card,#18181b);color:var(--text-primary,#fafafa);font-size:12px;outline:none">
+                                <button onclick="submitHomeFeedback()" style="padding:8px 14px;border-radius:8px;border:none;background:#10b981;color:#fff;font-size:12px;font-weight:600;cursor:pointer">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <style>
+            @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+            @media(max-width:768px){.home-analytics-widget{padding:0 12px!important}.home-analytics-widget > div > div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
+            </style>
         </section>
 
         <!-- Portfolio Section -->
@@ -1189,6 +1280,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     <button class="eng-btn" id="fps-mode-btn" onclick="EngineApp.toggleFPS()" title="FPS Mode (WASD + Mouse)"><i class="fas fa-crosshairs"></i> FPS</button>
                     <button class="eng-btn" onclick="EngineApp.toggleConsolePanel()" title="Console (F12)"><i class="fas fa-terminal"></i></button>
                     <button class="eng-btn" onclick="openEngineAnalytics()" title="Analytics"><i class="fas fa-chart-line"></i></button>
+                    <button class="eng-btn" onclick="openAITextureDialog()" title="AI Texture — generate texture via AI"><i class="fas fa-image"></i></button>
+                    <button class="eng-btn" onclick="openCharacterDialog()" title="Add Character"><i class="fas fa-user"></i></button>
+                    <button class="eng-btn" onclick="openCityDialog()" title="Import City from OSM"><i class="fas fa-city"></i></button>
                     <div class="eng-separator"></div>
                     <div class="gizmo-group">
                         <button class="gizmo-mode-btn active" id="gizmo-translate" onclick="EngineApp.setGizmoMode('translate')" title="Move (W)">W</button>
@@ -4286,6 +4380,293 @@ var SashaAIGraphics = (function() {
         return ['walk', 'run', 'idle', 'wave', 'jump', 'dance', 'attack', 'sit'];
     }
 
+    // ===== AI Texture Generation via Pollinations Image API (free, no token) =====
+    var aiTextureCache = {};  // prompt -> {texture, canvas}
+
+    function generateAITexture(prompt, size, callback) {
+        size = size || 256;  // small for GTX
+        if (!prompt) { if (callback) callback(null); return null; }
+        var cacheKey = prompt + '_' + size;
+        if (aiTextureCache[cacheKey]) {
+            if (callback) callback(aiTextureCache[cacheKey]);
+            return aiTextureCache[cacheKey];
+        }
+        // Pollinations Image API — returns PNG directly
+        var url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt + ' texture, top down, seamless, high quality, 4k') + '?width=' + size + '&height=' + size + '&nologo=true';
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, size, size);
+            var tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.needsUpdate = true;
+            var name = 'ai_tex_' + Date.now();
+            var result = { name: name, texture: tex, canvas: canvas, prompt: prompt };
+            aiTextureCache[cacheKey] = result;
+            textureCache[name] = { canvas: canvas, texture: tex, type: 'ai', params: { prompt: prompt } };
+            if (callback) callback(result);
+        };
+        img.onerror = function() {
+            console.warn('[AI Texture] Failed to generate for prompt:', prompt);
+            if (callback) callback(null);
+        };
+        img.src = url;
+        return null;
+    }
+
+    // ===== Procedural Normal Map from diffuse texture (Sobel filter) =====
+    function generateNormalMap(diffuseCanvas, strength) {
+        strength = strength || 2.0;
+        var w = diffuseCanvas.width, h = diffuseCanvas.height;
+        var srcCtx = diffuseCanvas.getContext('2d');
+        var srcData = srcCtx.getImageData(0, 0, w, h).data;
+        // Convert to grayscale height map
+        var heightMap = new Float32Array(w * h);
+        for (var i = 0; i < w * h; i++) {
+            var r = srcData[i*4], g = srcData[i*4+1], b = srcData[i*4+2];
+            heightMap[i] = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+        }
+        // Generate normal map using Sobel
+        var normalCanvas = document.createElement('canvas');
+        normalCanvas.width = w; normalCanvas.height = h;
+        var nCtx = normalCanvas.getContext('2d');
+        var nData = nCtx.createImageData(w, h);
+        for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+                var idx = y * w + x;
+                var xL = heightMap[y * w + Math.max(0, x - 1)];
+                var xR = heightMap[y * w + Math.min(w - 1, x + 1)];
+                var yU = heightMap[Math.max(0, y - 1) * w + x];
+                var yD = heightMap[Math.min(h - 1, y + 1) * w + x];
+                var dx = (xR - xL) * strength;
+                var dy = (yD - yU) * strength;
+                var nz = 1.0;
+                var len = Math.sqrt(dx*dx + dy*dy + nz*nz);
+                var pi = idx * 4;
+                nData.data[pi]   = Math.round(((dx / len) * 0.5 + 0.5) * 255);
+                nData.data[pi+1] = Math.round(((dy / len) * 0.5 + 0.5) * 255);
+                nData.data[pi+2] = Math.round(((nz / len) * 0.5 + 0.5) * 255);
+                nData.data[pi+3] = 255;
+            }
+        }
+        nCtx.putImageData(nData, 0, 0);
+        return normalCanvas;
+    }
+
+    function generateNormalMapTexture(diffuseCanvas, strength) {
+        var nCanvas = generateNormalMap(diffuseCanvas, strength);
+        var tex = new THREE.CanvasTexture(nCanvas);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.needsUpdate = true;
+        return tex;
+    }
+
+    // ===== Apply AI texture to an existing mesh (with optional normal map) =====
+    function applyAITextureToMesh(mesh, prompt, options) {
+        options = options || {};
+        if (!mesh || !mesh.isMesh) return;
+        generateAITexture(prompt, options.size || 256, function(result) {
+            if (!result) {
+                console.warn('[AI Texture] generation failed for:', prompt);
+                return;
+            }
+            var oldMat = mesh.material;
+            var newMat = new THREE.MeshStandardMaterial({
+                map: result.texture,
+                roughness: options.roughness !== undefined ? options.roughness : 0.8,
+                metalness: options.metalness !== undefined ? options.metalness : 0.1,
+                color: 0xffffff
+            });
+            // Generate normal map for added detail
+            if (options.normalMap !== false) {
+                try {
+                    var nMap = generateNormalMapTexture(result.canvas, options.normalStrength || 2.0);
+                    newMat.normalMap = nMap;
+                    newMat.normalScale = new THREE.Vector2(1, 1);
+                } catch(e) { console.warn('[NormalMap] failed:', e.message); }
+            }
+            mesh.material = newMat;
+            if (oldMat && oldMat.dispose) oldMat.dispose();
+            mesh.material.needsUpdate = true;
+            console.log('[AI Texture] applied to mesh:', mesh.name, '| prompt:', prompt);
+        });
+    }
+
+    // ===== Procedural Character Generation (low-poly, 2003-era style) =====
+    var characterGenerators = {
+        // Generic humanoid: capsule body + sphere head + cylinder limbs
+        humanoid: function(params) {
+            params = params || {};
+            var group = new THREE.Group();
+            var skinColor = params.skinColor || 0xffdbac;
+            var shirtColor = params.shirtColor || 0x3366cc;
+            var pantsColor = params.pantsColor || 0x222244;
+            var scale = params.scale || 1;
+            // Body (capsule)
+            var bodyMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.7 });
+            var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 4, 8), bodyMat);
+            body.position.y = 1.0 * scale;
+            body.castShadow = true;
+            group.add(body);
+            // Head (sphere)
+            var headMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+            var head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), headMat);
+            head.position.y = 1.85 * scale;
+            head.castShadow = true;
+            group.add(head);
+            // Hair (half sphere)
+            var hairMat = new THREE.MeshStandardMaterial({ color: params.hairColor || 0x3a2820, roughness: 0.9 });
+            var hair = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
+            hair.position.y = 1.92 * scale;
+            group.add(hair);
+            // Arms (cylinders)
+            var armMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.7 });
+            for (var side = -1; side <= 1; side += 2) {
+                var arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.85, 6), armMat);
+                arm.position.set(side * 0.45, 1.0 * scale, 0);
+                arm.castShadow = true;
+                group.add(arm);
+                // Hand
+                var handMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+                var hand = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), handMat);
+                hand.position.set(side * 0.45, 0.55 * scale, 0);
+                group.add(hand);
+            }
+            // Legs (cylinders)
+            var legMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.8 });
+            for (var side = -1; side <= 1; side += 2) {
+                var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.85, 6), legMat);
+                leg.position.set(side * 0.18, 0.45 * scale, 0);
+                leg.castShadow = true;
+                group.add(leg);
+                // Foot
+                var footMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+                var foot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.3), footMat);
+                foot.position.set(side * 0.18, 0.05 * scale, 0.08);
+                group.add(foot);
+            }
+            return group;
+        },
+        // Knight: armored humanoid with helmet
+        knight: function(params) {
+            params = params || {};
+            params.shirtColor = params.shirtColor || 0x888899;
+            params.pantsColor = params.pantsColor || 0x555566;
+            params.hairColor = params.hairColor || 0x2a1a10;
+            var group = characterGenerators.humanoid(params);
+            // Helmet (replace hair)
+            for (var i = group.children.length - 1; i >= 0; i--) {
+                if (group.children[i].position.y > 1.85 && group.children[i].geometry && group.children[i].geometry.type === 'SphereGeometry') {
+                    var isHair = group.children[i].material && group.children[i].material.color && group.children[i].material.color.getHex() === 0x2a1a10;
+                    if (isHair) group.remove(group.children[i]);
+                }
+            }
+            var helmetMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.4, metalness: 0.7 });
+            var helmet = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.7), helmetMat);
+            helmet.position.y = 1.88;
+            helmet.castShadow = true;
+            group.add(helmet);
+            // Sword on back
+            var swordMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3, metalness: 0.8 });
+            var sword = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.12), swordMat);
+            sword.position.set(0, 1.2, -0.3);
+            sword.rotation.x = -0.3;
+            group.add(sword);
+            return group;
+        },
+        // Mage: humanoid with robe + hat + staff
+        mage: function(params) {
+            params = params || {};
+            params.shirtColor = params.shirtColor || 0x6633aa;
+            params.pantsColor = params.pantsColor || 0x332244;
+            var group = characterGenerators.humanoid(params);
+            // Hat (cone)
+            var hatMat = new THREE.MeshStandardMaterial({ color: 0x4a2a8a, roughness: 0.7 });
+            var hat = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 8), hatMat);
+            hat.position.y = 2.25;
+            hat.castShadow = true;
+            group.add(hat);
+            // Staff
+            var staffMat = new THREE.MeshStandardMaterial({ color: 0x4a2a1a, roughness: 0.9 });
+            var staff = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.0, 6), staffMat);
+            staff.position.set(0.5, 1.0, 0.1);
+            staff.castShadow = true;
+            group.add(staff);
+            // Crystal on staff
+            var crystalMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00aaff, emissiveIntensity: 0.8, roughness: 0.2 });
+            var crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 0), crystalMat);
+            crystal.position.set(0.5, 2.1, 0.1);
+            crystal.castShadow = true;
+            group.add(crystal);
+            return group;
+        },
+        // Robot: boxy robot
+        robot: function(params) {
+            params = params || {};
+            var group = new THREE.Group();
+            var metalColor = params.color || 0x999999;
+            var metalMat = new THREE.MeshStandardMaterial({ color: metalColor, roughness: 0.4, metalness: 0.7 });
+            // Body (box)
+            var body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.5), metalMat);
+            body.position.y = 1.0;
+            body.castShadow = true;
+            group.add(body);
+            // Head (box)
+            var head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), metalMat);
+            head.position.y = 1.8;
+            head.castShadow = true;
+            group.add(head);
+            // Eyes (glowing)
+            var eyeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 });
+            for (var side = -1; side <= 1; side += 2) {
+                var eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), eyeMat);
+                eye.position.set(side * 0.12, 1.85, 0.26);
+                group.add(eye);
+            }
+            // Arms (boxes)
+            for (var side = -1; side <= 1; side += 2) {
+                var arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 0.18), metalMat);
+                arm.position.set(side * 0.55, 1.0, 0);
+                arm.castShadow = true;
+                group.add(arm);
+            }
+            // Legs (boxes)
+            for (var side = -1; side <= 1; side += 2) {
+                var leg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.22), metalMat);
+                leg.position.set(side * 0.2, 0.35, 0);
+                leg.castShadow = true;
+                group.add(leg);
+            }
+            return group;
+        },
+        // Archer: humanoid with bow
+        archer: function(params) {
+            params = params || {};
+            params.shirtColor = params.shirtColor || 0x2a6a2a;
+            params.pantsColor = params.pantsColor || 0x4a3a1a;
+            var group = characterGenerators.humanoid(params);
+            // Bow
+            var bowMat = new THREE.MeshStandardMaterial({ color: 0x4a2a1a, roughness: 0.8 });
+            var bow = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 6, 12, Math.PI), bowMat);
+            bow.position.set(0.55, 1.1, 0.1);
+            bow.rotation.y = Math.PI / 2;
+            group.add(bow);
+            return group;
+        }
+    };
+
+    function createCharacter(type, params) {
+        if (!characterGenerators[type]) return null;
+        return characterGenerators[type](params);
+    }
+
+    function getCharacterTypes() {
+        return Object.keys(characterGenerators);
+    }
+
     return {
         generateTexture: generateTexture,
         getTexture: getTexture,
@@ -4294,7 +4675,15 @@ var SashaAIGraphics = (function() {
         getModelTypes: getModelTypes,
         generateAnimationClip: generateAnimationClip,
         getAnimationTypes: getAnimationTypes,
-        _textureCache: textureCache
+        _textureCache: textureCache,
+        // New AI functions
+        generateAITexture: generateAITexture,
+        generateNormalMap: generateNormalMap,
+        generateNormalMapTexture: generateNormalMapTexture,
+        applyAITextureToMesh: applyAITextureToMesh,
+        createCharacter: createCharacter,
+        getCharacterTypes: getCharacterTypes,
+        _aiTextureCache: aiTextureCache
     };
 })();
 
@@ -20620,6 +21009,7 @@ function showSection(sectionId) {
     if (sectionId === 'engine' && typeof EngineApp !== 'undefined' && !EngineApp.isInitialized()) EngineApp.init();
     if (sectionId === 'code' && typeof MonacoEditor !== 'undefined' && !MonacoEditor.isInitialized()) MonacoEditor.init('monaco-editor', 'javascript').catch(function(e) { console.warn('Monaco init failed:', e.message); });
     if (sectionId === 'home' && typeof SashaTTS !== 'undefined') SashaTTS.init();
+    if (sectionId === 'home' && typeof renderHomeAnalytics === 'function') setTimeout(renderHomeAnalytics, 100);
 }
 
 function sendMessage() {
@@ -22827,10 +23217,163 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     document.getElementById('engFeedbackList').innerHTML = fhtml;
   }
 
+  // ============ HOME PAGE ANALYTICS WIDGET (visible on main page) ============
+  var homeCharts = {};
+
+  function renderHomeAnalytics() {
+    var api = window._sashaEngAnalytics;
+    var d = api.getData();
+    var today = dk(new Date());
+
+    // Quick stats
+    var visitsToday = 0; for (var i=0;i<d.visits.length;i++) { if (d.visits[i]===today) visitsToday++; }
+    var actionsToday = 0; if (d.dailyActions[today]) { for (var k in d.dailyActions[today]) actionsToday += d.dailyActions[today][k]; }
+    var actionsTotal = 0; for (var day in d.dailyActions) { for (var k in d.dailyActions[day]) actionsTotal += d.dailyActions[day][k]; }
+    var leavesTotal = d.sessionLeaves.length;
+    var avgRating = api.getRating();
+    var feedbackCount = d.feedback.length;
+
+    var qs = document.getElementById('homeQuickStats');
+    if (qs) {
+      qs.innerHTML =
+        '<div style="background:var(--bg-hover,#27272a);border-radius:10px;padding:12px;text-align:center">'+
+        '<div style="font-size:24px;font-weight:800;color:#10b981">'+d.visits.length+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:2px">Всего посещений</div></div>'+
+        '<div style="background:var(--bg-hover,#27272a);border-radius:10px;padding:12px;text-align:center">'+
+        '<div style="font-size:24px;font-weight:800;color:#10b981">'+visitsToday+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:2px">Сегодня</div></div>'+
+        '<div style="background:var(--bg-hover,#27272a);border-radius:10px;padding:12px;text-align:center">'+
+        '<div style="font-size:24px;font-weight:800;color:#3b82f6">'+actionsTotal+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:2px">Действий</div></div>'+
+        '<div style="background:var(--bg-hover,#27272a);border-radius:10px;padding:12px;text-align:center">'+
+        '<div style="font-size:24px;font-weight:800;color:#ef4444">'+leavesTotal+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:2px">Отвалов</div></div>'+
+        '<div style="background:var(--bg-hover,#27272a);border-radius:10px;padding:12px;text-align:center">'+
+        '<div style="font-size:24px;font-weight:800;color:#fbbf24">'+avgRating+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:2px">Рейтинг</div></div>'+
+        '<div style="background:var(--bg-hover,#27272a);border-radius:10px;padding:12px;text-align:center">'+
+        '<div style="font-size:24px;font-weight:800;color:#a855f7">'+feedbackCount+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted,#a1a1aa);margin-top:2px">Отзывов</div></div>';
+    }
+
+    // Wave charts (only if Chart.js loaded)
+    if (typeof Chart === 'undefined') return;
+    for (var k in homeCharts) { if (homeCharts[k]) { homeCharts[k].destroy(); delete homeCharts[k]; } }
+
+    var days = get14();
+    var labels = days.map(dd);
+    var visData = days.map(function(d) { var c=0; for (var i=0;i<data.visits.length;i++) { if (data.visits[i]===d) c++; } return c; });
+    var actData = days.map(function(d) { var c=0; if (data.dailyActions[d]) { for (var k in data.dailyActions[d]) c += data.dailyActions[d][k]; } return c; });
+    var leaveData = days.map(function(d) { var c=0; if (data.dailyLeaves[d]) { for (var k in data.dailyLeaves[d]) c += data.dailyLeaves[d][k]; } return c; });
+
+    var totalV = visData.reduce(function(a,b){return a+b},0);
+    var totalA = actData.reduce(function(a,b){return a+b},0);
+    var totalL = leaveData.reduce(function(a,b){return a+b},0);
+    var elV = document.getElementById('homeAwVisits'); if (elV) elV.textContent = totalV;
+    var elA = document.getElementById('homeAwActions'); if (elA) elA.textContent = totalA;
+    var elL = document.getElementById('homeAwLeaves'); if (elL) elL.textContent = totalL;
+
+    var waveOpts = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,.85)', titleColor: '#fff', bodyColor: '#fff', padding: 8, displayColors: false, callbacks: { title: function(items){return items[0].label}, label: function(item){return item.parsed.y+' событий'} } } },
+      scales: { x: { display: false }, y: { display: false, beginAtZero: true } },
+      elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: .45 } },
+      animation: { duration: 600 }
+    };
+    function grad(ctx, color) { var g = ctx.createLinearGradient(0,0,0,90); g.addColorStop(0, color+'cc'); g.addColorStop(1, color+'00'); return g; }
+
+    var cv1 = document.getElementById('homeChartVisits');
+    if (cv1) { var c1 = cv1.getContext('2d'); homeCharts.v1 = new Chart(cv1, { type: 'line', data: { labels: labels, datasets: [{ data: visData, borderColor: '#10b981', backgroundColor: grad(c1, '#10b981'), fill: true }] }, options: waveOpts }); }
+    var cv2 = document.getElementById('homeChartActions');
+    if (cv2) { var c2 = cv2.getContext('2d'); homeCharts.v2 = new Chart(cv2, { type: 'line', data: { labels: labels, datasets: [{ data: actData, borderColor: '#3b82f6', backgroundColor: grad(c2, '#3b82f6'), fill: true }] }, options: waveOpts }); }
+    var cv3 = document.getElementById('homeChartLeaves');
+    if (cv3) { var c3 = cv3.getContext('2d'); homeCharts.v3 = new Chart(cv3, { type: 'line', data: { labels: labels, datasets: [{ data: leaveData, borderColor: '#ef4444', backgroundColor: grad(c3, '#ef4444'), fill: true }] }, options: waveOpts }); }
+
+    // Leaves list
+    var listEl = document.getElementById('homeLeavesList');
+    if (listEl) {
+      var leaves = data.sessionLeaves.slice().reverse().slice(0, 8);
+      var lhtml = '';
+      if (leaves.length === 0) {
+        lhtml = '<div style="color:var(--text-muted,#a1a1aa);font-size:12px;padding:12px;text-align:center">Пока никто не отвалился — все ещё здесь!</div>';
+      } else {
+        for (var i=0;i<leaves.length;i++) {
+          var l = leaves[i];
+          var reasonText = { close: 'закрыл', escape: 'нажал Escape', 'page-unload': 'закрыл вкладку', 'overlay-click': 'кликнул мимо' }[l.reason] || l.reason;
+          lhtml += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:12px;border-bottom:1px solid var(--border,#27272a)">';
+          lhtml += '<div style="width:24px;height:24px;border-radius:6px;background:rgba(239,68,68,.15);color:#ef4444;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px">✕</div>';
+          lhtml += '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text-primary,#fafafa);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(l.action)+'</div>';
+          lhtml += '<div style="color:var(--text-muted,#a1a1aa);font-size:10px">'+fmtAgo(l.leftAt)+' · '+reasonText+'</div></div>';
+          lhtml += '<div style="color:#10b981;font-weight:700;font-size:11px;flex-shrink:0">'+fmtDur(l.durationSec)+'</div></div>';
+        }
+      }
+      listEl.innerHTML = lhtml;
+    }
+
+    // Rating display
+    var avgEl = document.getElementById('homeRatingAvg'); if (avgEl) avgEl.textContent = avgRating.toFixed(1);
+    var cntEl = document.getElementById('homeRatingCount'); if (cntEl) cntEl.textContent = d.ratings.count + ' голосов';
+    var starsEl = document.getElementById('homeRatingStars');
+    if (starsEl) {
+      var full = Math.round(avgRating);
+      var sh = '';
+      for (var s=1;s<=5;s++) { sh += s<=full ? '★' : '☆'; }
+      starsEl.textContent = sh;
+    }
+    // Star input
+    var si = document.getElementById('homeStarInput');
+    if (si) {
+      var userR = getUserRating();
+      var sihtml = '';
+      for (var s=5;s>=1;s--) {
+        sihtml += '<span onclick="setHomeRating('+s+')" style="font-size:28px;cursor:pointer;color:'+(s<=userR?'#fbbf24':'#27272a')+';transition:color .15s" onmouseover="this.style.color=\'#fbbf24\'" onmouseout="this.style.color='+(s<=userR?'\'#fbbf24\'':'\'#27272a\'')+'">★</span>';
+      }
+      si.innerHTML = sihtml;
+      var rt = document.getElementById('homeRatingText');
+      if (rt) rt.textContent = userR > 0 ? 'Ты оценил на '+userR+'★' : 'Кликни на звезду';
+    }
+
+    // Feedback list
+    var fbEl = document.getElementById('homeFeedbackList');
+    if (fbEl) {
+      var fhtml = '';
+      if (d.feedback.length === 0) {
+        fhtml = '<div style="color:var(--text-muted,#a1a1aa);font-size:12px;padding:8px;text-align:center">Пока нет отзывов</div>';
+      } else {
+        var fb = d.feedback.slice().reverse().slice(0, 5);
+        for (var i=0;i<fb.length;i++) {
+          var f = fb[i];
+          fhtml += '<div style="padding:6px 0;font-size:12px;border-bottom:1px solid var(--border,#27272a)">';
+          fhtml += '<div style="display:flex;justify-content:space-between"><span style="font-weight:700;color:#a855f7">'+esc(f.author)+'</span><span style="color:var(--text-muted,#a1a1aa);font-size:10px">'+fmtAgo(f.date)+'</span></div>';
+          fhtml += '<div style="color:var(--text-primary,#fafafa);margin-top:2px;word-break:break-word">'+esc(f.text)+'</div></div>';
+        }
+      }
+      fbEl.innerHTML = fhtml;
+    }
+  }
+
+  // Expose home widget functions
+  window.renderHomeAnalytics = renderHomeAnalytics;
+  window.setHomeRating = function(stars) {
+    setRating(stars);
+    renderHomeAnalytics();
+  };
+  window.submitHomeFeedback = function() {
+    var name = document.getElementById('homeFeedbackName').value.trim();
+    var text = document.getElementById('homeFeedbackText').value.trim();
+    if (!text) { alert('Введите текст отзыва'); return; }
+    addFeedback(name, text);
+    document.getElementById('homeFeedbackText').value = '';
+    renderHomeAnalytics();
+  };
+
   // Init
   load();
   trackVisit();
   startSession('engine');
+
+  // Render home widget after a short delay (wait for DOM + Chart.js)
+  setTimeout(function() { if (typeof renderHomeAnalytics === 'function') renderHomeAnalytics(); }, 500);
 
   // Track leave on page unload
   window.addEventListener('beforeunload', function() { trackLeave('page-unload'); });
@@ -22844,10 +23387,354 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     setRating: setRating,
     getRating: getRating,
     addFeedback: addFeedback,
-    getData: function() { return data; }
+    getData: function() { return data; },
+    renderHome: function() { renderHomeAnalytics(); }
   };
 
   console.log('[Engine Analytics] Loaded:', data.visits.length, 'visits,', data.sessionLeaves.length, 'leaves,', data.ratings.count, 'ratings');
+})();
+</script>
+
+<!-- ============ AI TEXTURE DIALOG ============ -->
+<div class="eng-analytics-overlay" id="aiTextureOverlay">
+  <div class="eng-analytics-panel" style="position:relative;max-width:500px">
+    <button class="eng-close-btn" onclick="closeAITextureDialog()">&times;</button>
+    <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0">🎨 AI Текстура</h2>
+    <p class="subtitle" style="margin:0 0 20px 0">Опиши текстуру — ИИ сгенерирует изображение 256×256 и применит к выбранному объекту</p>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:6px">Описание текстуры (на англ. лучше):</label>
+      <input type="text" id="aiTexturePrompt" placeholder="old brick wall with moss" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);font-size:14px;outline:none" onkeydown="if(event.key==='Enter')applyAITexture()">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:6px">Быстрые шаблоны:</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <button onclick="document.getElementById('aiTexturePrompt').value='old brick wall with moss'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🧱 Brick</button>
+        <button onclick="document.getElementById('aiTexturePrompt').value='wood planks'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🪵 Wood</button>
+        <button onclick="document.getElementById('aiTexturePrompt').value='metal steel brushed'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">⚙️ Metal</button>
+        <button onclick="document.getElementById('aiTexturePrompt').value='grass field top down'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🌱 Grass</button>
+        <button onclick="document.getElementById('aiTexturePrompt').value='sand desert'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🏜️ Sand</button>
+        <button onclick="document.getElementById('aiTexturePrompt').value='stone rock surface'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🪨 Stone</button>
+        <button onclick="document.getElementById('aiTexturePrompt').value='glass skyscraper facade'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🏙️ Glass</button>
+        <button onclick="document.getElementById('aiTexturePrompt').value='concrete wall'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🏗️ Concrete</button>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;display:flex;align-items:center;gap:8px;color:var(--text-muted,#a1a1aa);cursor:pointer">
+        <input type="checkbox" id="aiTextureNormal" checked style="cursor:pointer">
+        <span>Сгенерировать normal map (рельеф)</span>
+      </label>
+    </div>
+    <button onclick="applyAITexture()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#10b981;color:#fff;font-size:14px;font-weight:600;cursor:pointer">🎨 Сгенерировать и применить</button>
+    <div id="aiTextureStatus" style="margin-top:12px;font-size:13px;color:var(--text-muted,#a1a1aa);text-align:center"></div>
+    <div id="aiTexturePreview" style="margin-top:16px;text-align:center;display:none">
+      <img id="aiTexturePreviewImg" style="max-width:100%;border-radius:8px;border:1px solid var(--border,#27272a)">
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHARACTER DIALOG ============ -->
+<div class="eng-analytics-overlay" id="characterOverlay">
+  <div class="eng-analytics-panel" style="position:relative;max-width:500px">
+    <button class="eng-close-btn" onclick="closeCharacterDialog()">&times;</button>
+    <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0">👤 Добавить персонажа</h2>
+    <p class="subtitle" style="margin:0 0 20px 0">Процедурные low-poly персонажи (стиль 2003)</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px" id="charGrid">
+      <button onclick="addCharacterToScene('humanoid')" style="padding:16px 8px;border-radius:10px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:13px;transition:all .2s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:6px">🧍</div>
+        Человек
+      </button>
+      <button onclick="addCharacterToScene('knight')" style="padding:16px 8px;border-radius:10px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:13px;transition:all .2s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:6px">⚔️</div>
+        Рыцарь
+      </button>
+      <button onclick="addCharacterToScene('mage')" style="padding:16px 8px;border-radius:10px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:13px;transition:all .2s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:6px">🧙</div>
+        Маг
+      </button>
+      <button onclick="addCharacterToScene('robot')" style="padding:16px 8px;border-radius:10px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:13px;transition:all .2s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:6px">🤖</div>
+        Робот
+      </button>
+      <button onclick="addCharacterToScene('archer')" style="padding:16px 8px;border-radius:10px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:13px;transition:all .2s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--border,#27272a)'">
+        <div style="font-size:32px;margin-bottom:6px">🏹</div>
+        Лучник
+      </button>
+    </div>
+    <div id="charStatus" style="font-size:13px;color:var(--text-muted,#a1a1aa);text-align:center"></div>
+  </div>
+</div>
+
+<!-- ============ CITY IMPORT DIALOG ============ -->
+<div class="eng-analytics-overlay" id="cityOverlay">
+  <div class="eng-analytics-panel" style="position:relative;max-width:500px">
+    <button class="eng-close-btn" onclick="closeCityDialog()">&times;</button>
+    <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0">🏙️ Импорт города (OSM)</h2>
+    <p class="subtitle" style="margin:0 0 20px 0">Загружает реальные здания из OpenStreetMap по названию города</p>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:6px">Название города или координаты:</label>
+      <input type="text" id="cityQuery" placeholder="Manhattan, New York" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);font-size:14px;outline:none" onkeydown="if(event.key==='Enter')importCity()">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:6px">Быстрые города:</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <button onclick="document.getElementById('cityQuery').value='Manhattan, New York'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🗽 Manhattan</button>
+        <button onclick="document.getElementById('cityQuery').value='Paris, France'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🗼 Paris</button>
+        <button onclick="document.getElementById('cityQuery').value='London, UK'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🎡 London</button>
+        <button onclick="document.getElementById('cityQuery').value='Tokyo, Japan'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🏯 Tokyo</button>
+        <button onclick="document.getElementById('cityQuery').value='Kyiv, Ukraine'" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-primary,#fafafa);font-size:12px;cursor:pointer">🏰 Kyiv</button>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;color:var(--text-muted,#a1a1aa);display:block;margin-bottom:6px">Макс. зданий: <span id="cityMaxLabel">50</span></label>
+      <input type="range" id="cityMaxBuildings" min="10" max="150" value="50" oninput="document.getElementById('cityMaxLabel').textContent=this.value" style="width:100%">
+    </div>
+    <button onclick="importCity()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#10b981;color:#fff;font-size:14px;font-weight:600;cursor:pointer">🏙️ Загрузить город</button>
+    <div id="cityStatus" style="margin-top:12px;font-size:13px;color:var(--text-muted,#a1a1aa);text-align:center"></div>
+  </div>
+</div>
+
+<script>
+// === AI Texture / Character / City — UI & Logic ===
+(function(){
+  'use strict';
+
+  // === AI Texture Dialog ===
+  window.openAITextureDialog = function() {
+    document.getElementById('aiTextureOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    var sel = SashaEngineAPI && SashaEngineAPI.getSelectedObject && SashaEngineAPI.getSelectedObject();
+    var status = document.getElementById('aiTextureStatus');
+    if (sel) status.textContent = 'Выбран объект: ' + (sel.name || 'без имени');
+    else status.textContent = 'Выбери объект в сцене (или текстура применится к плоскости)';
+  };
+  window.closeAITextureDialog = function() {
+    document.getElementById('aiTextureOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  window.applyAITexture = function() {
+    var prompt = document.getElementById('aiTexturePrompt').value.trim();
+    if (!prompt) { alert('Введите описание текстуры'); return; }
+    var useNormal = document.getElementById('aiTextureNormal').checked;
+    var status = document.getElementById('aiTextureStatus');
+    var preview = document.getElementById('aiTexturePreview');
+    var previewImg = document.getElementById('aiTexturePreviewImg');
+    status.textContent = '⏳ Генерация через ИИ...';
+    status.style.color = '#fbbf24';
+    // Show preview
+    previewImg.src = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt + ' texture, top down, seamless, high quality') + '?width=256&height=256&nologo=true';
+    preview.style.display = 'block';
+    // Get selected mesh by name
+    var selName = SashaEngineAPI && SashaEngineAPI.getSelectedObject && SashaEngineAPI.getSelectedObject();
+    var sel = null;
+    if (selName && SashaEngineAPI.getObjects) {
+      var objs = SashaEngineAPI.getObjects();
+      sel = objs[selName];
+    }
+    if (!sel || !sel.isMesh) {
+      // Create a plane if no mesh selected
+      if (SashaEngineAPI && SashaEngineAPI.addPlane) {
+        var planeName = SashaEngineAPI.addPlane(10, 10, 0xcccccc);
+        var objs2 = SashaEngineAPI.getObjects ? SashaEngineAPI.getObjects() : {};
+        sel = objs2[planeName];
+        status.textContent = 'Создана плоскость, генерирую текстуру...';
+      }
+    }
+    if (!sel || !sel.isMesh) {
+      status.textContent = '❌ Не найден mesh. Сначала создай объект (куб/плоскость)';
+      status.style.color = '#ef4444';
+      return;
+    }
+    SashaAIGraphics.applyAITextureToMesh(sel, prompt, {
+      size: 256,
+      normalMap: useNormal,
+      normalStrength: 2.0,
+      roughness: 0.8,
+      metalness: 0.1
+    });
+    // Wait for texture to load (Pollinations takes 5-15s)
+    setTimeout(function() {
+      status.textContent = '✅ Текстура "' + prompt + '" применена к "' + (sel.name || 'объекту') + '"!';
+      status.style.color = '#10b981';
+      if (EngineApp && EngineApp.refreshInspector) EngineApp.refreshInspector();
+    }, 8000);
+  };
+
+  // === Character Dialog ===
+  window.openCharacterDialog = function() {
+    document.getElementById('characterOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  window.closeCharacterDialog = function() {
+    document.getElementById('characterOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  window.addCharacterToScene = function(type) {
+    var status = document.getElementById('charStatus');
+    if (!SashaAIGraphics || !SashaAIGraphics.createCharacter) {
+      status.textContent = '❌ Character generator not loaded';
+      status.style.color = '#ef4444';
+      return;
+    }
+    var group = SashaAIGraphics.createCharacter(type, {});
+    if (!group) {
+      status.textContent = '❌ Unknown character type: ' + type;
+      status.style.color = '#ef4444';
+      return;
+    }
+    // Place at random position
+    var x = (Math.random() - 0.5) * 10;
+    var z = (Math.random() - 0.5) * 10;
+    group.position.set(x, 0, z);
+    // Add to scene directly via SashaEngineAPI
+    if (SashaEngineAPI && SashaEngineAPI.getScene) {
+      var scene = SashaEngineAPI.getScene();
+      if (scene) {
+        var charName = 'char_' + type + '_' + Date.now();
+        group.name = charName;
+        scene.add(group);
+        // Register in objects map if available
+        var objs = SashaEngineAPI.getObjects ? SashaEngineAPI.getObjects() : null;
+        if (objs) objs[charName] = group;
+        status.textContent = '✅ Добавлен: ' + type + ' → ' + charName;
+        status.style.color = '#10b981';
+      } else {
+        status.textContent = '❌ Scene not available';
+        status.style.color = '#ef4444';
+      }
+    } else {
+      status.textContent = '❌ Engine not initialized';
+      status.style.color = '#ef4444';
+    }
+    if (EngineApp && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+    setTimeout(function() { closeCharacterDialog(); }, 800);
+  };
+
+  // === City Import (OSM Overpass API) ===
+  window.openCityDialog = function() {
+    document.getElementById('cityOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  window.closeCityDialog = function() {
+    document.getElementById('cityOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  window.importCity = async function() {
+    var query = document.getElementById('cityQuery').value.trim();
+    if (!query) { alert('Введите название города'); return; }
+    var maxBuildings = parseInt(document.getElementById('cityMaxBuildings').value) || 50;
+    var status = document.getElementById('cityStatus');
+    status.textContent = '⏳ Геокодирование...';
+    status.style.color = '#fbbf24';
+
+    try {
+      // Step 1: Geocode the city (get lat/lon)
+      var geoResp = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=1');
+      var geoData = await geoResp.json();
+      if (!geoData || !geoData.length) {
+        status.textContent = '❌ Город не найден';
+        status.style.color = '#ef4444';
+        return;
+      }
+      var lat = parseFloat(geoData[0].lat);
+      var lon = parseFloat(geoData[0].lon);
+      status.textContent = '⏳ Найдено: ' + geoData[0].display_name.substring(0, 50) + '. Загружаю здания...';
+
+      // Step 2: Query Overpass API for buildings in 500m radius
+      var overpassQuery = '[out:json][timeout:25];(' +
+        'way["building"](around:500,' + lat + ',' + lon + ');' +
+        'relation["building"](around:500,' + lat + ',' + lon + ');' +
+        ');out body;>;out skel qt;';
+      var ovResp = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(overpassQuery)
+      });
+      var ovData = await ovResp.json();
+      if (!ovData || !ovData.elements) {
+        status.textContent = '❌ Здания не найдены';
+        status.style.color = '#ef4444';
+        return;
+      }
+
+      // Step 3: Build map of nodes
+      var nodes = {};
+      var buildings = [];
+      for (var i = 0; i < ovData.elements.length; i++) {
+        var el = ovData.elements[i];
+        if (el.type === 'node') {
+          nodes[el.id] = { lat: el.lat, lon: el.lon };
+        } else if (el.type === 'way' && el.tags && el.tags.building && el.nodes) {
+          buildings.push(el);
+        }
+      }
+
+      // Step 4: Limit buildings
+      if (buildings.length > maxBuildings) buildings = buildings.slice(0, maxBuildings);
+      status.textContent = '⏳ Строю ' + buildings.length + ' зданий...';
+
+      // Step 5: Clear scene + add ground
+      if (SashaEngineAPI && SashaEngineAPI.clear) SashaEngineAPI.clear();
+      if (SashaEngineAPI && SashaEngineAPI.setBgColor) SashaEngineAPI.setBgColor(0.53, 0.81, 0.92);  // sky blue
+      if (SashaEngineAPI && SashaEngineAPI.addPlane) SashaEngineAPI.addPlane(200, 200, 0x3a3a3a);  // asphalt
+
+      // Step 6: Scale factor — 1 degree lat ≈ 111km, we want 500m radius to fit in ~100 units
+      var scaleFactor = 0.2;  // 1 meter = 0.2 units → 500m = 100 units
+
+      // Step 7: For each building, create a box with approximate height
+      var buildingColors = [0x888888, 0x999999, 0x777777, 0xaaaaaa, 0x666666, 0xb0b0b0, 0x8a8a8a];
+      var count = 0;
+      for (var b = 0; b < buildings.length; b++) {
+        var bld = buildings[b];
+        if (!bld.nodes || bld.nodes.length < 4) continue;
+        // Get building corners
+        var corners = [];
+        for (var n = 0; n < bld.nodes.length; n++) {
+          if (nodes[bld.nodes[n]]) corners.push(nodes[bld.nodes[n]]);
+        }
+        if (corners.length < 4) continue;
+        // Calculate bounding box
+        var minLat = corners[0].lat, maxLat = corners[0].lat;
+        var minLon = corners[0].lon, maxLon = corners[0].lon;
+        for (var c = 1; c < corners.length; c++) {
+          if (corners[c].lat < minLat) minLat = corners[c].lat;
+          if (corners[c].lat > maxLat) maxLat = corners[c].lat;
+          if (corners[c].lon < minLon) minLon = corners[c].lon;
+          if (corners[c].lon > maxLon) maxLon = corners[c].lon;
+        }
+        var widthM = (maxLon - minLon) * 111000 * Math.cos(lat * Math.PI / 180);
+        var depthM = (maxLat - minLat) * 111000;
+        var centerX = ((minLon + maxLon) / 2 - lon) * 111000 * Math.cos(lat * Math.PI / 180) * scaleFactor;
+        var centerZ = ((minLat + maxLat) / 2 - lat) * 111000 * scaleFactor;
+        // Height from tags or estimate
+        var height = bld.tags['height'] ? parseFloat(bld.tags['height']) : (bld.tags['building:levels'] ? parseInt(bld.tags['building:levels']) * 3 : 5 + Math.random() * 15);
+        var w = Math.max(0.5, widthM * scaleFactor);
+        var d = Math.max(0.5, depthM * scaleFactor);
+        var h = Math.max(0.5, height * scaleFactor);
+        var color = buildingColors[count % buildingColors.length];
+        if (SashaEngineAPI && SashaEngineAPI.addCube) {
+          SashaEngineAPI.addCube(centerX, h / 2, centerZ, w, h, d, color);
+          count++;
+        }
+      }
+
+      // Step 8: Add lights + camera
+      if (SashaEngineAPI && SashaEngineAPI.addDirectionalLight) SashaEngineAPI.addDirectionalLight(50, 80, 30, 0xFFFACD, 0.8);
+      if (SashaEngineAPI && SashaEngineAPI.addAmbientLight) SashaEngineAPI.addAmbientLight(0xB0C4DE, 0.5);
+      if (SashaEngineAPI && SashaEngineAPI.setCameraPos) SashaEngineAPI.setCameraPos(40, 30, 40);
+      if (SashaEngineAPI && SashaEngineAPI.setCameraTarget) SashaEngineAPI.setCameraTarget(0, 5, 0);
+
+      status.textContent = '✅ Загружено ' + count + ' зданий из "' + query + '"';
+      status.style.color = '#10b981';
+      if (EngineApp && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+      setTimeout(function() { closeCityDialog(); }, 1500);
+    } catch(e) {
+      status.textContent = '❌ Ошибка: ' + e.message;
+      status.style.color = '#ef4444';
+      console.error('[City Import] error:', e);
+    }
+  };
+
+  console.log('[AI Tools] AI Texture, Character, City import ready');
 })();
 </script>
 </body>
