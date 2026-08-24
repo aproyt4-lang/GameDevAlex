@@ -4605,9 +4605,9 @@ var SashaAIGraphics = (function() {
             var shirtColor = params.shirtColor || 0x3366cc;
             var pantsColor = params.pantsColor || 0x222244;
             var scale = params.scale || 1;
-            // Body (capsule)
+            // Body (cylinder — CapsuleGeometry doesn't exist in r128!)
             var bodyMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.7 });
-            var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 4, 8), bodyMat);
+            var body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.3, 1.4, 8), bodyMat);
             body.position.y = 1.0 * scale;
             body.castShadow = true;
             group.add(body);
@@ -4648,6 +4648,7 @@ var SashaAIGraphics = (function() {
                 foot.position.set(side * 0.18, 0.05 * scale, 0.08);
                 group.add(foot);
             }
+            console.log('[CharacterGenerator] humanoid created with', group.children.length, 'parts');
             return group;
         },
         // Knight: armored humanoid with helmet
@@ -5541,7 +5542,7 @@ var SashaCharacterController = (function() {
                 if (!scene) { console.warn('[spawnEnemy] no scene available'); return null; }
             }
         }
-        var enemyGeo = new THREE.CapsuleGeometry(0.4, 1.0, 4, 8);
+        var enemyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.4, 8);
         var enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x661111, emissiveIntensity: 0.5 });
         var enemy = new THREE.Mesh(enemyGeo, enemyMat);
         enemy.position.set(x || (Math.random()-0.5)*20, y || 0, z || (Math.random()-0.5)*20);
@@ -8486,7 +8487,7 @@ var SashaEngineAPI = (function() {
         var h = Math.max(0.01, height || 1);
         var c = color || 0x10b981;
         // Capsule = cylinder + two hemispheres
-        var geo = new THREE.CapsuleGeometry(r, h, 8, 16);
+        var geo = new THREE.CylinderGeometry(r, r, h, 8, 1, false, 0, Math.PI * 2);
         var mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: 0.15 });
         var mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x || 0, y || (h + 2 * r) / 2, z || 0);
@@ -24102,7 +24103,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         if (!group) throw new Error('Failed to create character: ' + charType);
         var charName = params.name || ('char_' + charType + '_' + Date.now());
         group.name = charName;
-        group.position.set(params.x || (Math.random()-0.5)*10, params.y || 0, params.z || (Math.random()-0.5)*10);
+        group.position.set(params.x || 0, params.y || 0, params.z || 0);
         var scene = E.getScene();
         if (scene) scene.add(group);
         var objs = E.getObjects ? E.getObjects() : null;
@@ -24110,6 +24111,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         var types = E.getObjectTypes ? E.getObjectTypes() : null;
         if (types) types[charName] = 'character';
         if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+        console.log('[execTool] character "' + charName + '" (' + charType + ') created at', group.position.x, group.position.y, group.position.z, 'with', group.children.length, 'parts');
         return charName;
       }
       case 'apply_ai_texture': {
@@ -25806,7 +25808,7 @@ function createGeometry(data) {
     case "ConeGeometry": return new THREE.ConeGeometry(p.radius||0.5, p.height||1, p.radialSegments||12);
     case "TorusGeometry": return new THREE.TorusGeometry(p.radius||0.5, p.tube||0.15, p.radialSegments||8, p.tubularSegments||24);
     case "PlaneGeometry": return new THREE.PlaneGeometry(p.width||10, p.height||10);
-    case "CapsuleGeometry": return new THREE.CapsuleGeometry(p.radius||0.25, p.length||1, p.capSegments||4, p.radialSegments||8);
+    case "CapsuleGeometry": return new THREE.CylinderGeometry(p.radius||0.25, p.radius||0.25, (p.length||1)+(p.radius||0.25)*2, p.radialSegments||8);
     default: return new THREE.BoxGeometry(1,1,1);
   }
 }
@@ -25860,7 +25862,7 @@ function shoot() {
 function reload() { if (!player || player.ammo >= player.maxAmmo) return; player.ammo = player.maxAmmo; playSound("reload"); updateHUD(); }
 
 function spawnEnemy(x, y, z, hp) {
-  var enemy = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.0, 4, 8), new THREE.MeshStandardMaterial({color: 0xff3333, emissive: 0x661111, emissiveIntensity: 0.5}));
+  var enemy = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.4, 8), new THREE.MeshStandardMaterial({color: 0xff3333, emissive: 0x661111, emissiveIntensity: 0.5}));
   enemy.position.set(x||0, y||0, z||0); enemy.castShadow = true; scene.add(enemy);
   enemies.push({ mesh: enemy, hp: hp||100, maxHp: hp||100, speed: 1.5, attackRange: 1.5, damage: 10, lastAttack: 0 });
 }
@@ -26458,7 +26460,6 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
-
 
 
 
