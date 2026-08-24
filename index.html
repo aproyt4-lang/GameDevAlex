@@ -23942,16 +23942,16 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     for (var i = 0; i < chatPatterns.length; i++) {
       if (chatPatterns[i].test(t)) return 'chat';
     }
-    // Question words → chat (unless combined with 3D verb)
-    var isQuestion = /^(что |как |почему |зачем |где |когда |кто |какой |какая |расскажи |объясни |что такое|explain|why|how|what|where|when|who)(?:\s|$|[^a-zа-яё])/.test(t);
-    var has3DVerb = /(создай|сделай|построй|сгенерир|добавь|удали|очисти|create|make|build|generate|add|remove|clear|delete)(?:\s|$|[^a-zа-яё])/.test(t);
-    var has3DNoun = /(сцен|объект|куб|сфер|цилиндр|конус|торус|плоскост|свет|камер|модел|дерев|дом|машир|меч|башн|замок|лес|город|космос|снег|остров|комнат|арен|платформ|рельеф|terrain|scene|object|cube|sphere|light|model|tree|house|car)/.test(t);
 
-    if (isQuestion && !has3DVerb) return 'chat';
-    if (isQuestion && has3DVerb && has3DNoun) return 'generate';
-    if (has3DVerb && has3DNoun) return 'generate';
-    if (has3DVerb) return 'generate';
-    // Default: treat as chat (don't pollute the scene with random generations)
+    // === CHECK FOR GENERATION KEYWORDS FIRST (before question check) ===
+    var genKeywords = /(создай|сделай|построй|сгенерир|добавь|удали|очисти|spawn|build|clear|create|make|generate|add|delete|шутер|shooter|рыцар|knight|маг|mage|робот|robot|лучник|archer|персонаж|character|герой|hero|враг|enemy|зомби|zombie|игрок|player|выживан|выживание|surviv|волны|волн|wave|арена|arena|лес|forest|космос|space|пустын|desert|замок|castle|остров|island|зим|winter|город|city|room|комнат|mountain|скал|underwater|подвод|tropical|тропик|билд|exe|html)/;
+    if (genKeywords.test(t)) return 'generate';
+
+    // Question words → chat
+    var isQuestion = /^(что |как |почему |зачем |где |когда |кто |какой |какая |расскажи |объясни |что такое|explain|why|how|what|where|when|who)(?:\s|$|[^a-zа-яё])/.test(t);
+    if (isQuestion) return 'chat';
+
+    // Default: treat as chat
     return 'chat';
   }
 
@@ -24234,8 +24234,9 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     if (/(лондон|london)/i.test(t)) return {tool:'import_city', params:{query:'London, UK', maxBuildings:50}};
     if (/(токио|tokyo)/i.test(t)) return {tool:'import_city', params:{query:'Tokyo, Japan', maxBuildings:50}};
     if (/(киев|kyiv|kiev)/i.test(t)) return {tool:'import_city', params:{query:'Kyiv, Ukraine', maxBuildings:50}};
-    var cityMatch = text.match(/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё\s,.-]+)/i);
-    if (cityMatch && cityMatch[1] && cityMatch[1].trim().length > 2) {
+    // "город XXX" → import_city, but NOT "город и..." (that's "city + something else")
+    var cityMatch = text.match(/(?:покажи\s+)?(?:город|city)\s+([a-zа-яё][a-zа-яё\s,-]*[a-zа-яё])/i);
+    if (cityMatch && cityMatch[1] && cityMatch[1].trim().length > 2 && !/^\s*и\s/i.test(cityMatch[1])) {
       return {tool:'import_city', params:{query: cityMatch[1].trim(), maxBuildings: 50}};
     }
 
@@ -24467,6 +24468,20 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       calls.push({tool:'start_waves', params:{enemiesPerWave:3, spawnInterval:2, waveDelay:5}});
       calls.push({tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8}});
       calls.push({tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}});
+      return calls;
+    }
+
+    // === COMPLEX: city + characters + enemies ===
+    if (/город.*персонаж|город.*герой|город.*враг|city.*character|city.*enemy/.test(t)) {
+      // City template + character + enemies
+      calls.push({tool:'apply_scene_template', params:{template:'city'}});
+      calls.push({tool:'add_character', params:{type:'humanoid', x:0, y:0, z:5, name:'hero'}});
+      calls.push({tool:'attach_player_control', params:{objectName:'hero', speed:6, hp:100, ammo:30, fps:true}});
+      calls.push({tool:'spawn_enemy', params:{x:-5, y:0, z:-5, hp:100}});
+      calls.push({tool:'spawn_enemy', params:{x:5, y:0, z:-5, hp:100}});
+      calls.push({tool:'spawn_enemy', params:{x:0, y:0, z:-10, hp:100}});
+      calls.push({tool:'add_directional_light', params:{x:10, y:20, z:10, intensity:0.8}});
+      calls.push({tool:'add_ambient_light', params:{intensity:0.4}});
       return calls;
     }
 
@@ -26443,6 +26458,7 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
+
 
 
 
