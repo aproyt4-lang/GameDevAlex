@@ -24175,20 +24175,23 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   // === Execute list of tool calls; produce concise summary ===
   function execToolCalls(calls) {
     var okCount = 0, errCount = 0;
-    var toolCounts = {};  // tool name → count
+    var toolCounts = {};
+    var errorDetails = [];
     for (var i = 0; i < calls.length; i++) {
       var c = calls[i];
       if (!c || !c.tool) continue;
       try {
-        execTool(c.tool, c.params || {});
+        var r = execTool(c.tool, c.params || {});
         okCount++;
         toolCounts[c.tool] = (toolCounts[c.tool] || 0) + 1;
+        console.log('[OK] ' + c.tool + ' → ' + r);
       } catch(e) {
-        console.warn('[aiExec] tool failed:', c.tool, e.message);
+        console.error('[FAIL] ' + c.tool + ': ' + e.message);
         errCount++;
+        errorDetails.push(c.tool + ': ' + e.message);
       }
     }
-    return {okCount: okCount, errCount: errCount, toolCounts: toolCounts};
+    return {okCount: okCount, errCount: errCount, toolCounts: toolCounts, errors: errorDetails};
   }
 
   // Build a short human-readable summary like:
@@ -24818,11 +24821,14 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         var result = execToolCalls(localCalls);
         var summary = buildSummary(result.toolCounts, result.okCount);
         var prefix = '✨ Создал: ' + summary + '.';
-        if (result.errCount) prefix += ' (' + result.errCount + ' ошибок)';
+        if (result.errCount) {
+          prefix += ' ⚠️ ' + result.errCount + ' ошибок: ' + (result.errors || []).join('; ');
+          console.error('[sendAI] Errors:', result.errors);
+        }
         // Auto-play if shooter/player
         var hasPlayer = localCalls.some(function(c){return c.tool==='attach_player_control'});
         if (hasPlayer && typeof EngineApp !== 'undefined' && EngineApp.play) {
-          setTimeout(function() { try { EngineApp.play(); } catch(e) {} }, 500);
+          setTimeout(function() { try { EngineApp.play(); } catch(e) { console.error('[sendAI] auto-play failed:', e); } }, 500);
           prefix += ' Нажми ▶ Play для старта!';
         }
         addChat('ai', prefix);
@@ -24894,6 +24900,48 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   };
 
   console.log('[SashaAI Chat] Real AI generation pipeline ready. Primary: ' + LOCAL_LLM_API + ' | Fallback: ' + CLOUD_LLM_API);
+
+  // === DIAGNOSTIC: test character generation directly ===
+  window.testChar = function(type) {
+    type = type || 'knight';
+    console.log('=== Testing character generation: ' + type + ' ===');
+    if (typeof SashaAIGraphics === 'undefined') { console.error('SashaAIGraphics NOT LOADED'); return; }
+    if (!SashaAIGraphics.createCharacter) { console.error('createCharacter NOT EXPOSED'); return; }
+    try {
+      var g = SashaAIGraphics.createCharacter(type, {});
+      if (!g) { console.error('createCharacter returned null for ' + type); return; }
+      console.log('✅ Character created: ' + type + ', children: ' + g.children.length);
+      var scene = SashaEngineAPI.getScene();
+      if (!scene) { console.error('Scene not available'); return; }
+      g.position.set(0, 0, 0);
+      g.name = 'test_' + type;
+      scene.add(g);
+      var objs = SashaEngineAPI.getObjects();
+      objs[g.name] = g;
+      var types = SashaEngineAPI.getObjectTypes();
+      types[g.name] = 'character';
+      if (EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+      console.log('✅ Added to scene at 0,0,0');
+      // Move camera to see it
+      SashaEngineAPI.setCameraPos(5, 3, 5);
+      SashaEngineAPI.setCameraTarget(0, 1, 0);
+      console.log('✅ Camera positioned. Check viewport!');
+    } catch(e) {
+      console.error('❌ FAILED:', e.message, e.stack);
+    }
+  };
+  window.testAll = function() {
+    var types = ['humanoid', 'knight', 'mage', 'robot', 'archer'];
+    for (var i = 0; i < types.length; i++) {
+      console.log('--- ' + types[i] + ' ---');
+      try {
+        var g = SashaAIGraphics.createCharacter(types[i], {});
+        console.log(g ? '✅ ' + g.children.length + ' parts' : '❌ null');
+      } catch(e) {
+        console.error('❌ ' + e.message);
+      }
+    }
+  };
 })();
 </script>
 
