@@ -5394,108 +5394,79 @@ var SashaGameBuilder = (function() {
             'chromium-args': '--force-disp'
         }, null, 2);
 
-        // Generate .bat script that auto-downloads NW.js and builds .exe
-        var batScript = '@echo off\r\n' +
-            'chcp 65001 >nul\r\n' +
-            'title SashaAI EXE Builder — ' + gameTitle + '\r\n' +
-            'echo ========================================\r\n' +
-            'echo   SashaAI EXE Builder\r\n' +
-            'echo   Game: ' + gameTitle + '\r\n' +
-            'echo ========================================\r\n' +
-            'echo.\r\n' +
-            'echo Step 1: Creating build folder...\r\n' +
-            'if exist build_game rmdir /s /q build_game\r\n' +
-            'mkdir build_game\r\n' +
-            'copy index.html build_game\\index.html >nul\r\n' +
-            'echo {"name":"' + slug + '","version":"1.0.0","main":"index.html","window":{"title":"' + gameTitle + '","width":1280,"height":720,"toolbar":false,"frame":true,"resizable":true,"position":"center"}} > build_game\\package.json\r\n' +
-            'echo Done.\r\n' +
-            'echo.\r\n' +
-            'echo Step 2: Checking for NW.js...\r\n' +
-            'if exist nwjs\\nw.exe (\r\n' +
-            '  echo NW.js found locally.\r\n' +
-            '  goto :build\r\n' +
-            ')\r\n' +
-            'echo NW.js not found. Downloading (~80MB)...\r\n' +
-            'echo URL: https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip\r\n' +
-            'powershell -Command "& { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri \'https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip\' -OutFile \'nwjs.zip\' }"\r\n' +
-            'if not exist nwjs.zip (\r\n' +
-            '  echo Failed to download NW.js.\r\n' +
-            '  echo Please download manually from https://nwjs.io/\r\n' +
-            '  echo Extract to folder named "nwjs" next to this script.\r\n' +
-            '  pause\r\n' +
-            '  exit /b 1\r\n' +
-            ')\r\n' +
-            'echo Extracting NW.js...\r\n' +
-            'powershell -Command "Expand-Archive -Path nwjs.zip -DestinationPath . -Force"\r\n' +
-            'for /d %%D in (nwjs-v*) do (\r\n' +
-            '  if exist "%%D\\nw.exe" (\r\n' +
-            '    ren "%%D" nwjs\r\n' +
-            '  )\r\n' +
-            ')\r\n' +
-            'del nwjs.zip\r\n' +
-            'if not exist nwjs\\nw.exe (\r\n' +
-            '  echo NW.js extraction failed. Check folder structure.\r\n' +
-            '  pause\r\n' +
-            '  exit /b 1\r\n' +
-            ')\r\n' +
-            ':build\r\n' +
-            'echo.\r\n' +
-            'echo Step 3: Building ' + slug + '.exe...\r\n' +
-            'cd build_game\r\n' +
-            'powershell -Command "Compress-Archive -Path * -DestinationPath ..\\package.nw -Force"\r\n' +
-            'cd ..\r\n' +
-            'copy /b nwjs\\nw.exe+package.nw ' + slug + '.exe >nul 2>nul\r\n' +
-            'if exist ' + slug + '.exe (\r\n' +
-            '  echo.\r\n' +
-            '  echo ========================================\r\n' +
-            '  echo   SUCCESS! ' + slug + '.exe created!\r\n' +
-            '  echo   Size: \r\n' +
-            '  dir ' + slug + '.exe | findstr /C:"' + slug + '.exe"\r\n' +
-            '  echo ========================================\r\n' +
-            '  echo   You can now run ' + slug + '.exe\r\n' +
-            '  echo   It will open as a native Windows window.\r\n' +
-            '  echo ========================================\r\n' +
-            ') else (\r\n' +
-            '  echo Failed to create .exe. Trying alternative method...\r\n' +
-            '  echo Copying NW.js files to build folder...\r\n' +
-            '  xcopy nwjs\\* build_game\\ /E /I /Y >nul\r\n' +
-            '  ren build_game\\nw.exe ' + slug + '.exe\r\n' +
-            '  echo Game folder: build_game\\\r\n' +
-            '  echo Run: build_game\\' + slug + '.exe\r\n' +
-            ')\r\n' +
-            'echo.\r\n' +
-            'pause\r\n';
+        // Create a self-extracting launcher: rename .exe to game name
+        // Strategy: Download NW.js binary directly + package.json + index.html
+        // User gets a folder with: game.exe (renamed nw.exe) + index.html + package.json
+        // Double-click game.exe → window opens
 
-        // Download the .bat + index.html together
         if (typeof JSZip !== 'undefined') {
+            // Build ZIP with: README + index.html + package.json + download-instructions
+            // The .exe itself is too large (80MB) to embed in browser ZIP
+            // Instead: provide a one-click .bat that downloads NW.js and renames nw.exe → game.exe
+            // BUT make it dead simple: one file, double-click, done
+
+            var launcher = '@echo off\r\n' +
+                'chcp 65001 >nul\r\n' +
+                'title ' + gameTitle + ' — Setup\r\n' +
+                'mode con: cols=60 lines=15\r\n' +
+                'color 0A\r\n' +
+                'echo.\r\n' +
+                'echo   ============================================\r\n' +
+                'echo     ' + gameTitle + '\r\n' +
+                'echo   ============================================\r\n' +
+                'echo.\r\n' +
+                'echo   Setting up game... please wait.\r\n' +
+                'echo.\r\n' +
+                'REM Check if nw.exe already exists\r\n' +
+                'if exist "' + slug + '.exe" (\r\n' +
+                '  echo   Game already ready! Starting...\r\n' +
+                '  start "" "' + slug + '.exe"\r\n' +
+                '  exit\r\n' +
+                ')\r\n' +
+                'echo   Downloading game engine (one-time, ~80MB)...\r\n' +
+                'powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = \'SilentlyContinue\'; Invoke-WebRequest -Uri \'https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip\' -OutFile \'nwjs.zip\'"\r\n' +
+                'if not exist nwjs.zip (\r\n' +
+                '  echo   Download failed. Check internet connection.\r\n' +
+                '  pause\r\n' +
+                '  exit\r\n' +
+                ')\r\n' +
+                'echo   Extracting...\r\n' +
+                'powershell -Command "Expand-Archive -Path nwjs.zip -DestinationPath \'nwjs_temp\' -Force"\r\n' +
+                'del nwjs.zip\r\n' +
+                'REM Move nw.exe and required files\r\n' +
+                'for /d %%D in (nwjs_temp\\nwjs-v*) do (\r\n' +
+                '  copy "%%D\\nw.exe" "' + slug + '.exe" >nul\r\n' +
+                '  copy "%%D\\*.dll" . >nul 2>nul\r\n' +
+                '  copy "%%D\\*.pak" . >nul 2>nul\r\n' +
+                '  copy "%%D\\resources\\*" . /E /I /Y >nul 2>nul\r\n' +
+                ')\r\n' +
+                'rmdir /s /q nwjs_temp\r\n' +
+                'if exist "' + slug + '.exe" (\r\n' +
+                '  echo.\r\n' +
+                '  echo   Setup complete! Starting game...\r\n' +
+                '  echo.\r\n' +
+                '  start "" "' + slug + '.exe"\r\n' +
+                ') else (\r\n' +
+                '  echo   Setup failed. Try manual download from nwjs.io\r\n' +
+                '  pause\r\n' +
+                ')\r\n';
+
             var zip = new JSZip();
+            zip.file(slug + '.bat', launcher);
             zip.file('index.html', result.html);
-            zip.file('build-exe.bat', batScript);
             zip.file('package.json', packageJson);
-            zip.file('README.txt', 'SashaAI EXE Build — ' + gameTitle + '\n\n' +
-                'HOW TO BUILD:\n' +
-                '1. Double-click build-exe.bat\n' +
-                '2. It will download NW.js (~80MB) automatically\n' +
-                '3. It will create ' + slug + '.exe\n' +
-                '4. Run ' + slug + '.exe — game opens as native Windows window\n\n' +
-                'OR manually:\n' +
-                '1. Download NW.js from https://nwjs.io/\n' +
-                '2. Extract next to index.html\n' +
-                '3. Run nw.exe');
 
             zip.generateAsync({ type: 'blob' }).then(function(blob) {
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url;
-                a.download = slug + '-exe-builder.zip';
+                a.download = slug + '.zip';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
             });
         } else {
-            // Fallback: download separately
-            downloadText(batScript, 'build-exe.bat');
             downloadText(result.html, 'index.html');
             downloadText(packageJson, 'package.json');
         }
@@ -5503,7 +5474,6 @@ var SashaGameBuilder = (function() {
         return {
             title: gameTitle,
             html: result.html,
-            batScript: batScript,
             zip: true
         };
     }
@@ -5582,9 +5552,9 @@ var SashaCharacterController = (function() {
 
     function setupInputListeners() {
         if (!canvas) return;
-        // Keyboard
+        // Keyboard — always registered, but checks inputActive inside
         window.addEventListener('keydown', function(e) {
-            if (!inputActive) return;  // Ignore all input until Play
+            if (!inputActive) return;
             keys[e.code] = true;
             keys[e.key.toLowerCase()] = true;
             if (e.code === 'KeyR' || e.key.toLowerCase() === 'r' || e.key.toLowerCase() === 'к') {
@@ -5595,12 +5565,18 @@ var SashaCharacterController = (function() {
             keys[e.code] = false;
             keys[e.key.toLowerCase()] = false;
         });
-        // Mouse lock — only works when inputActive
-        canvas.addEventListener('click', function() {
+        // Mouse — use 'mousedown' on document but check inputActive
+        // DON'T add click listener on canvas — it blocks OrbitControls in edit mode
+        document.addEventListener('mousedown', function(e) {
             if (!inputActive) return;
-            if (Object.keys(players).length > 0 && !mouseLocked) {
+            // Only respond if click was on the engine canvas
+            var target = e.target;
+            if (target !== canvas) return;
+            if (!mouseLocked) {
                 canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
                 if (canvas.requestPointerLock) canvas.requestPointerLock();
+            } else {
+                if (e.button === 0) shoot();
             }
         });
         document.addEventListener('pointerlockchange', function() {
@@ -5616,19 +5592,13 @@ var SashaCharacterController = (function() {
                 p.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, p.pitch));
             }
         });
-        canvas.addEventListener('mousedown', function(e) {
-            if (!inputActive || !mouseLocked) return;
-            if (e.button === 0) shoot();
-        });
     }
 
     function activateInput() { inputActive = true; }
     function deactivateInput() {
         inputActive = false;
         mouseLocked = false;
-        // Clear all keys
         keys = {};
-        // Exit pointer lock
         if (document.pointerLockElement) document.exitPointerLock();
     }
 
@@ -24477,15 +24447,13 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   // Build a short human-readable summary like:
   // "Готово: 5 кубов, 3 сферы, свет и камера (всего 11 объектов)"
   function buildSummary(toolCounts, okCount) {
-    if (!okCount) return 'ничего не создал 😕';
+    if (!okCount) return 'ничего не создал';
     var parts = [];
     for (var name in toolCounts) {
       if (!toolCounts.hasOwnProperty(name)) continue;
       var n = toolCounts[name];
       var label = TOOL_LABELS[name] || name;
-      // Try to pluralize roughly
       if (n > 1) {
-        // crude Russian pluralization for the most common words
         if (/куб/.test(label)) label = 'кубов';
         else if (/сфер/.test(label)) label = 'сфер';
         else if (/цилиндр/.test(label)) label = 'цилиндров';
@@ -24495,19 +24463,15 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         else if (/направлен/.test(label)) label = 'направленных света';
         else if (/фонов/.test(label)) label = 'фоновых света';
         else if (/модел/.test(label)) label = 'моделей';
-        else if (/рельеф/.test(label)) label = 'рельефов';
-        else label = label;
+        else if (/персонаж/.test(label)) label = 'персонажей';
+        else if (/враг/.test(label)) label = 'врагов';
         parts.push(n + ' ' + label);
       } else {
         parts.push(label);
       }
     }
-    if (parts.length === 0) return 'создал ' + okCount + ' объектов';
-    if (parts.length <= 3) return parts.join(', ') + ' (всего ' + okCount + ')';
-    // Compress: show first 2 + "и ещё N"
-    var head = parts.slice(0, 2).join(', ');
-    var tail = parts.length - 2;
-    return head + ' и ещё ' + tail + ' (всего ' + okCount + ' объектов)';
+    if (parts.length === 0) return okCount + ' объектов';
+    return parts.join(', ');
   }
 
   // === Quick keyword match (offline, instant) — for known templates ===
@@ -25128,13 +25092,10 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         // Execute LLM-generated tool calls
         var result = execToolCalls(toolCalls);
         var summary = buildSummary(result.toolCounts, result.okCount);
-        var prefix = '✨ ИИ создал: ' + summary + '.';
-        if (result.errCount) {
-          prefix += ' ⚠️ ' + result.errCount + ' ошибок: ' + (result.errors || []).join('; ');
-        }
-        // Show hint if shooter/player
+        var prefix = '✨ ' + summary;
+        if (result.errCount) prefix += ' ⚠️ ' + result.errCount + ' ошибок';
         var hasPlayer = toolCalls.some(function(c){return c.tool==='attach_player_control'});
-        if (hasPlayer) prefix += ' Нажми ▶ Play для старта!';
+        if (hasPlayer) prefix += '. Нажми ▶ Play';
         addChat('ai', prefix);
         chatHistory.push({role:'assistant', content: prefix});
       } else {
@@ -25142,12 +25103,10 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         var calls2 = localGenerate(prompt);
         var result2 = execToolCalls(calls2);
         var summary2 = buildSummary(result2.toolCounts, result2.okCount);
-        var prefix2 = '🎨 Создал: ' + summary2 + '.';
-        if (result2.errCount) {
-          prefix2 += ' ⚠️ ' + result2.errCount + ' ошибок: ' + (result2.errors || []).join('; ');
-        }
+        var prefix2 = '✨ ' + summary2;
+        if (result2.errCount) prefix2 += ' ⚠️ ' + result2.errCount + ' ошибок';
         var hasPlayer2 = calls2.some(function(c){return c.tool==='attach_player_control'});
-        if (hasPlayer2) prefix2 += ' Нажми ▶ Play для старта!';
+        if (hasPlayer2) prefix2 += '. Нажми ▶ Play';
         addChat('ai', prefix2);
         chatHistory.push({role:'assistant', content: prefix2});
       }
