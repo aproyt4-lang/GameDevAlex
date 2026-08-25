@@ -12296,6 +12296,14 @@ var EngineApp = (function() {
             log('▶ Play mode — Game view active', 'info');
             // Show in-game HUD (HP, ammo, crosshair) — only during Play
             if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.showHUD) SashaCharacterController.showHUD();
+            // Start pending waves if any
+            if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController._wavesPending) {
+              var wp = SashaCharacterController._wavesPending;
+              SashaCharacterController._wavesPending = null;
+              setTimeout(function() {
+                try { SashaCharacterController.startWaves(wp); } catch(e) { console.error('[Play] waves start failed:', e); }
+              }, 1000);
+            }
         } catch(e) { console.error('[GameEngine] play() error:', e); }
     }
 
@@ -24143,8 +24151,9 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         CC.reload(); return 'reloaded';
       case 'start_waves':
         if (!CC) throw new Error('CharacterController not loaded');
-        CC.startWaves({enemiesPerWave: params.enemiesPerWave||3, spawnInterval: params.spawnInterval||2, waveDelay: params.waveDelay||5});
-        return 'waves started';
+        // Don't start waves yet — just mark as pending, will start when Play is pressed
+        CC._wavesPending = {enemiesPerWave: params.enemiesPerWave||3, spawnInterval: params.spawnInterval||2, waveDelay: params.waveDelay||5};
+        return 'waves pending (press Play to start)';
       case 'stop_waves':
         if (!CC) throw new Error('CharacterController not loaded');
         CC.stopWaves(); return 'waves stopped';
@@ -24306,13 +24315,9 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
           errors.push(calls[i].tool + ': ' + e.message);
         }
       }
-      // Auto-start Play mode if shooter/player was created
+      // Don't auto-play — user should press Play manually
+      // Just show hint if shooter/player was created
       var hasShooter = calls.some(function(c){return c.tool==='attach_player_control'});
-      if (hasShooter && typeof EngineApp !== 'undefined' && EngineApp.play) {
-        setTimeout(function() {
-          try { EngineApp.play(); } catch(e) { console.warn('[fastExec] auto-play failed:', e.message); }
-        }, 500);
-      }
       var labels = {city:'Город',forest:'Лес',desert:'Пустыня',space:'Космос',underwater:'Подводный мир',
         mountain:'Горы',castle:'Замок',room:'Комната',island:'Остров',winter:'Зима',tropical:'Тропики',default:'Сцена'};
       var reply = '';
@@ -24356,11 +24361,12 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
   // === Build LLM system prompt for 3D generation ===
   function buildGenPrompt(userPrompt) {
-    // Rich but concise prompt — gives Qwen enough info to generate, not just templates
+    // Rich prompt with multiple examples for diverse generation
     return 'Запрос: "' + userPrompt + '". Выведи ТОЛЬКО JSON-массив tool calls, без текста.\n' +
-      'Tools: scene_clear, add_plane{width,height,color}, add_cube{x,y,z,width,height,depth,color}, add_sphere{x,y,z,radius,color}, add_cylinder{x,y,z,radiusTop,radiusBottom,height,color}, add_cone{x,y,z,radius,height,color}, add_torus{x,y,z,radius,tube,color}, add_point_light{x,y,z,intensity,color}, add_directional_light{x,y,z,intensity,color}, add_ambient_light{intensity,color}, compose_model{description:"house|tree|car|sword|tower|rock|barrel|chest|campfire|torch|crystal|table|chair|gate|sign",posX,posZ}, create_terrain{width,depth,heightExpression}, camera_set_position{x,y,z}, camera_set_target{x,y,z}, add_character{type:"humanoid|knight|mage|robot|archer",x,y,z,name}, attach_player_control{objectName,speed,hp,ammo,fps}, spawn_enemy{x,y,z,hp}, start_waves{enemiesPerWave,spawnInterval,waveDelay}\n' +
+      'Tools: scene_clear, set_bg_color{color}, add_plane{width,height,color}, add_cube{x,y,z,width,height,depth,color}, add_sphere{x,y,z,radius,color}, add_cylinder{x,y,z,radiusTop,radiusBottom,height,color}, add_cone{x,y,z,radius,height,color}, add_torus{x,y,z,radius,tube,color}, add_point_light{x,y,z,intensity,color}, add_directional_light{x,y,z,intensity,color}, add_ambient_light{intensity,color}, compose_model{description:"house|tree|car|sword|tower|rock|barrel|chest|campfire|torch|crystal|table|chair|gate|sign",posX,posZ}, create_terrain{width,depth,heightExpression}, camera_set_position{x,y,z}, camera_set_target{x,y,z}, add_character{type:"humanoid|knight|mage|robot|archer",x,y,z,name}, attach_player_control{objectName,speed,hp,ammo,fps}, spawn_enemy{x,y,z,hp}, start_waves{enemiesPerWave,spawnInterval,waveDelay}\n' +
       'Colors: "#aabbcc". Координаты: -20..20. Свет: y=10-20.\n' +
-      'Пример шутера: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":50,"height":50,"color":"#2a2a3a"}},{"tool":"add_character","params":{"type":"humanoid","x":0,"y":0,"z":0,"name":"player1"}},{"tool":"attach_player_control","params":{"objectName":"player1","speed":6,"hp":100,"ammo":30,"fps":true}},{"tool":"spawn_enemy","params":{"x":-10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":10,"y":0,"z":-10,"hp":100}},{"tool":"add_directional_light","params":{"x":10,"y":20,"z":10,"intensity":0.8}},{"tool":"add_ambient_light","params":{"intensity":0.4}}]';
+      'Пример шутера: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":50,"height":50,"color":"#2a2a3a"}},{"tool":"add_character","params":{"type":"humanoid","x":0,"y":0,"z":0,"name":"player1"}},{"tool":"attach_player_control","params":{"objectName":"player1","speed":6,"hp":100,"ammo":30,"fps":true}},{"tool":"spawn_enemy","params":{"x":-10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":10,"y":0,"z":-10,"hp":100}},{"tool":"add_directional_light","params":{"x":10,"y":20,"z":10,"intensity":0.8}},{"tool":"add_ambient_light","params":{"intensity":0.4}}]\n' +
+      'Пример рыцаря: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_character","params":{"type":"knight","x":0,"y":0,"z":0}},{"tool":"add_directional_light","params":{"x":5,"y":10,"z":5,"intensity":0.8,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":5,"y":3,"z":5}},{"tool":"camera_set_target","params":{"x":0,"y":1,"z":0}}]';
   }
 
   // === Build LLM system prompt for conversation ===
@@ -24813,33 +24819,11 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         return;
       }
 
-      // 3) Generation intent — try localGenerate FIRST (instant), then LLM as fallback
-      // Step A: Check localGenerate — it knows characters, shooter, enemies, themes
-      var localCalls = localGenerate(prompt);
-      if (localCalls && localCalls.length > 1) {
-        // localGenerate recognized the prompt — execute immediately
-        var result = execToolCalls(localCalls);
-        var summary = buildSummary(result.toolCounts, result.okCount);
-        var prefix = '✨ Создал: ' + summary + '.';
-        if (result.errCount) {
-          prefix += ' ⚠️ ' + result.errCount + ' ошибок: ' + (result.errors || []).join('; ');
-          console.error('[sendAI] Errors:', result.errors);
-        }
-        // Auto-play if shooter/player
-        var hasPlayer = localCalls.some(function(c){return c.tool==='attach_player_control'});
-        if (hasPlayer && typeof EngineApp !== 'undefined' && EngineApp.play) {
-          setTimeout(function() { try { EngineApp.play(); } catch(e) { console.error('[sendAI] auto-play failed:', e); } }, 500);
-          prefix += ' Нажми ▶ Play для старта!';
-        }
-        addChat('ai', prefix);
-        chatHistory.push({role:'assistant', content: prefix});
-        busy = false;
-        return;
-      }
-
-      // Step B: localGenerate didn't recognize — try LLM (15s timeout)
+      // 3) Generation intent — LLM FIRST, then localGenerate as fallback
       addChat('ai', '🤔 Генерирую через ИИ...');
       var toolCalls = null;
+
+      // Step A: Try LLM (15s timeout)
       try {
         var localGen = await callLocalLLM(prompt, false);
         var genReply = localGen.reply || localGen.text || '';
@@ -24855,20 +24839,31 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       removeThinking();
 
       if (toolCalls && toolCalls.length) {
-        var result2 = execToolCalls(toolCalls);
+        // Execute LLM-generated tool calls
+        var result = execToolCalls(toolCalls);
+        var summary = buildSummary(result.toolCounts, result.okCount);
+        var prefix = '✨ ИИ создал: ' + summary + '.';
+        if (result.errCount) {
+          prefix += ' ⚠️ ' + result.errCount + ' ошибок: ' + (result.errors || []).join('; ');
+        }
+        // Show hint if shooter/player
+        var hasPlayer = toolCalls.some(function(c){return c.tool==='attach_player_control'});
+        if (hasPlayer) prefix += ' Нажми ▶ Play для старта!';
+        addChat('ai', prefix);
+        chatHistory.push({role:'assistant', content: prefix});
+      } else {
+        // Step B: LLM didn't produce usable tool calls — fallback to localGenerate
+        var calls2 = localGenerate(prompt);
+        var result2 = execToolCalls(calls2);
         var summary2 = buildSummary(result2.toolCounts, result2.okCount);
-        var prefix2 = '✨ Готово! Создал: ' + summary2 + '.';
-        if (result2.errCount) prefix2 += ' (' + result2.errCount + ' ошибок)';
+        var prefix2 = '🎨 Создал: ' + summary2 + '.';
+        if (result2.errCount) {
+          prefix2 += ' ⚠️ ' + result2.errCount + ' ошибок: ' + (result2.errors || []).join('; ');
+        }
+        var hasPlayer2 = calls2.some(function(c){return c.tool==='attach_player_control'});
+        if (hasPlayer2) prefix2 += ' Нажми ▶ Play для старта!';
         addChat('ai', prefix2);
         chatHistory.push({role:'assistant', content: prefix2});
-      } else {
-        // Last resort: localGenerate already returned something (generic fallback)
-        var calls2 = localGenerate(prompt);
-        var result3 = execToolCalls(calls2);
-        var summary3 = buildSummary(result3.toolCounts, result3.okCount);
-        var prefix3 = '🎨 Создал: ' + summary3 + '.';
-        addChat('ai', prefix3);
-        chatHistory.push({role:'assistant', content: prefix3});
       }
     } catch(e) {
       removeThinking();
@@ -25771,7 +25766,7 @@ body{background:#000;overflow:hidden;font-family:system-ui,sans-serif}
 <div id="waveInfo">Wave 1 | Enemies 0 | Kills 0</div>
 <div id="message"></div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
 <script>
 var GAME_STATE = __GAME_STATE__;
 var GAME_TITLE = "__GAME_TITLE__";
@@ -25980,7 +25975,7 @@ function updateWaves(dt) {
 
 function animate() { requestAnimationFrame(animate); var dt = Math.min(0.05, clock.getDelta()); updatePlayer(dt); updateBullets(dt); updateEnemies(dt); updateWaves(dt); renderer.render(scene, camera); }
 window.addEventListener("load", init);
-</script>
+<\/script>
 </body>
 </html>
 </script>
@@ -26508,6 +26503,7 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
+
 
 
 
