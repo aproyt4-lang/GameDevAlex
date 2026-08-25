@@ -4789,6 +4789,220 @@ var SashaAIGraphics = (function() {
 })();
 
 // ============================================================
+// ============ SashaAssetScanner — GitHub Asset Discovery ===
+// ============================================================
+// Scans GitHub repo for .glb, .gltf, .png, .jpg assets.
+// Returns categorized list. Loads assets into scene on demand.
+var SashaAssetScanner = (function() {
+    var scannedAssets = [];  // [{path, name, type, url, size}]
+    var loadedAssets = {};   // {name: mesh/texture}
+
+    function getGFConfig() {
+        var token = localStorage.getItem('gf_token') || '';
+        var owner = localStorage.getItem('gf_owner') || '';
+        var repo = localStorage.getItem('gf_repo') || '';
+        if (token && owner && repo) return {token: token, owner: owner, repo: repo};
+        // Try unified config
+        try {
+            var raw = localStorage.getItem('gf_repo_config');
+            if (raw) return JSON.parse(raw);
+        } catch(e) {}
+        return null;
+    }
+
+    // Scan GitHub repo recursively for asset files
+    async function scanRepo(path) {
+        path = path || '';
+        var cfg = getGFConfig();
+        if (!cfg) return {error: 'GitHub не настроен. Нажми Ctrl+Shift+U или открой Build → Settings.'};
+
+        var url = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + path;
+        var headers = {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        };
+        if (cfg.token) headers['Authorization'] = 'Bearer ' + cfg.token;
+
+        try {
+            var resp = await fetch(url, {headers: headers});
+            if (!resp.ok) return {error: 'GitHub API error: HTTP ' + resp.status};
+            var items = await resp.json();
+            if (!Array.isArray(items)) return {error: 'Unexpected response'};
+
+            scannedAssets = [];
+            for (var i = 0; i < items.length; i++) {
+                await scanItem(items[i], cfg, headers);
+            }
+
+            return {
+                success: true,
+                count: scannedAssets.length,
+                assets: scannedAssets,
+                models: scannedAssets.filter(function(a){return a.type === 'model'}),
+                textures: scannedAssets.filter(function(a){return a.type === 'texture'}),
+                other: scannedAssets.filter(function(a){return a.type === 'other'})
+            };
+        } catch(e) {
+            return {error: e.message};
+        }
+    }
+
+    async function scanItem(item, cfg, headers) {
+        if (item.type === 'file') {
+            var ext = item.name.split('.').pop().toLowerCase();
+            var assetType = 'other';
+            if (['glb', 'gltf'].indexOf(ext) !== -1) assetType = 'model';
+            else if (['png', 'jpg', 'jpeg', 'webp'].indexOf(ext) !== -1) assetType = 'texture';
+
+            if (assetType !== 'other' || ['obj', 'fbx', 'wav', 'mp3', 'js'].indexOf(ext) !== -1) {
+                var rawUrl = 'https://raw.githubusercontent.com/' + cfg.owner + '/' + cfg.repo + '/main/' + item.path;
+                // Also try master branch
+                var rawUrlMaster = 'https://raw.githubusercontent.com/' + cfg.owner + '/' + cfg.repo + '/master/' + item.path;
+                scannedAssets.push({
+                    path: item.path,
+                    name: item.name,
+                    type: assetType,
+                    ext: ext,
+                    url: rawUrl,
+                    urlMaster: rawUrlMaster,
+                    size: item.size || 0,
+                    sizeKB: Math.round((item.size || 0) / 1024)
+                });
+            }
+        } else if (item.type === 'dir') {
+            // Recursively scan subdirectories (max depth 3)
+            var depth = (item.path.match(/\//g) || []).length;
+            if (depth < 3) {
+                try {
+                    var subUrl = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + item.path;
+                    var subResp = await fetch(subUrl, {headers: headers});
+                    if (subResp.ok) {
+                        var subItems = await subResp.json();
+                        if (Array.isArray(subItems)) {
+                            for (var j = 0; j < subItems.length; j++) {
+                                await scanItem(subItems[j], cfg, headers);
+                            }
+                        }
+                    }
+                } catch(e) { /* skip */ }
+            }
+        }
+    }
+
+    // Load a 3D model from scanned assets
+    function loadModel(assetUrl, options) {
+        options = options || {};
+        return new Promise(function(resolve, reject) {
+            if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
+                reject(new Error('GLTFLoader not available'));
+                return;
+            }
+            var loader = new THREE.GLTFLoader();
+            loader.load(assetUrl, function(gltf) {
+                var model = gltf.scene;
+                if (options.scale) model.scale.setScalar(options.scale);
+                if (options.position) model.position.set(options.position.x || 0, options.position.y || 0, options.position.z || 0);
+                if (options.rotation) model.rotation.set(options.rotation.x || 0, options.rotation.y || 0, options.rotation.z || 0);
+                model.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                resolve({model: model, gltf: gltf, animations: gltf.animations || []});
+            }, function(progress) {
+                // Progress callback
+            }, function(error) {
+                reject(new Error('Failed to load model: ' + error.message));
+            });
+        });
+    }
+
+    // Load asset by name (from scanned list)
+    async function loadAssetByName(name, options) {
+        options = options || {};
+        var asset = null;
+        for (var i = 0; i < scannedAssets.length; i++) {
+            if (scannedAssets[i].name === name || scannedAssets[i].path === name) {
+                asset = scannedAssets[i];
+                break;
+            }
+        }
+        if (!asset) return {error: 'Asset not found: ' + name + '. Run scan first.'};
+
+        if (asset.type === 'model') {
+            try {
+                var result = await loadModel(asset.url, options);
+                var scene = SashaEngineAPI.getScene();
+                if (scene) {
+                    var meshName = options.name || asset.name.replace(/\.[^.]+$/, '');
+                    result.model.name = meshName;
+                    scene.add(result.model);
+                    var objs = SashaEngineAPI.getObjects();
+                    if (objs) objs[meshName] = result.model;
+                    var types = SashaEngineAPI.getObjectTypes();
+                    if (types) types[meshName] = 'model';
+                    loadedAssets[meshName] = result;
+                    if (EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+                    return {success: true, name: meshName, animations: result.animations.length};
+                }
+            } catch(e) {
+                // Try master branch
+                try {
+                    var result2 = await loadModel(asset.urlMaster, options);
+                    var scene2 = SashaEngineAPI.getScene();
+                    if (scene2) {
+                        var meshName2 = options.name || asset.name.replace(/\.[^.]+$/, '');
+                        result2.model.name = meshName2;
+                        scene2.add(result2.model);
+                        var objs2 = SashaEngineAPI.getObjects();
+                        if (objs2) objs2[meshName2] = result2.model;
+                        var types2 = SashaEngineAPI.getObjectTypes();
+                        if (types2) types2[meshName2] = 'model';
+                        loadedAssets[meshName2] = result2;
+                        if (EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+                        return {success: true, name: meshName2, animations: result2.animations.length};
+                    }
+                } catch(e2) {
+                    return {error: 'Failed to load from both branches: ' + e.message + ' / ' + e2.message};
+                }
+            }
+        } else if (asset.type === 'texture') {
+            // Load as texture and apply to selected mesh
+            return {error: 'Texture loading not implemented yet. Use AI Texture button.'};
+        }
+        return {error: 'Unknown asset type: ' + asset.type};
+    }
+
+    // Load all models from scanned assets
+    async function loadAllModels(options) {
+        options = options || {};
+        var models = scannedAssets.filter(function(a){return a.type === 'model'});
+        var results = [];
+        for (var i = 0; i < models.length; i++) {
+            var opts = Object.assign({}, options);
+            opts.position = {x: (i % 5) * 3 - 6, y: 0, z: Math.floor(i / 5) * 3};
+            var r = await loadAssetByName(models[i].name, opts);
+            results.push(r);
+        }
+        return results;
+    }
+
+    function getScannedAssets() { return scannedAssets; }
+    function getLoadedAssets() { return loadedAssets; }
+
+    return {
+        scanRepo: scanRepo,
+        loadAssetByName: loadAssetByName,
+        loadAllModels: loadAllModels,
+        loadModel: loadModel,
+        getScannedAssets: getScannedAssets,
+        getLoadedAssets: getLoadedAssets,
+        _scannedAssets: scannedAssets
+    };
+})();
+
+// ============================================================
 // ============ SashaGameBuilder — Build System (HTML + EXE) ===
 // ============================================================
 // Exports current scene + player controller + game logic into:
@@ -5364,10 +5578,13 @@ var SashaCharacterController = (function() {
         console.log('[CharacterController] initialized');
     }
 
+    var inputActive = false;  // Only true during Play mode
+
     function setupInputListeners() {
         if (!canvas) return;
         // Keyboard
         window.addEventListener('keydown', function(e) {
+            if (!inputActive) return;  // Ignore all input until Play
             keys[e.code] = true;
             keys[e.key.toLowerCase()] = true;
             if (e.code === 'KeyR' || e.key.toLowerCase() === 'r' || e.key.toLowerCase() === 'к') {
@@ -5378,8 +5595,9 @@ var SashaCharacterController = (function() {
             keys[e.code] = false;
             keys[e.key.toLowerCase()] = false;
         });
-        // Mouse lock for FPS look
+        // Mouse lock — only works when inputActive
         canvas.addEventListener('click', function() {
+            if (!inputActive) return;
             if (Object.keys(players).length > 0 && !mouseLocked) {
                 canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
                 if (canvas.requestPointerLock) canvas.requestPointerLock();
@@ -5389,7 +5607,7 @@ var SashaCharacterController = (function() {
             mouseLocked = document.pointerLockElement === canvas;
         });
         document.addEventListener('mousemove', function(e) {
-            if (!mouseLocked) return;
+            if (!mouseLocked || !inputActive) return;
             for (var name in players) {
                 var p = players[name];
                 if (!p.fps) continue;
@@ -5398,11 +5616,20 @@ var SashaCharacterController = (function() {
                 p.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, p.pitch));
             }
         });
-        // Shoot on click
         canvas.addEventListener('mousedown', function(e) {
-            if (!mouseLocked) return;
+            if (!inputActive || !mouseLocked) return;
             if (e.button === 0) shoot();
         });
+    }
+
+    function activateInput() { inputActive = true; }
+    function deactivateInput() {
+        inputActive = false;
+        mouseLocked = false;
+        // Clear all keys
+        keys = {};
+        // Exit pointer lock
+        if (document.pointerLockElement) document.exitPointerLock();
     }
 
     function attachPlayerControl(meshName, options) {
@@ -6165,6 +6392,8 @@ var SashaCharacterController = (function() {
         showHUD: showHUD,
         hideHUD: hideHUD,
         updateHUD: updateHUD,
+        activateInput: activateInput,
+        deactivateInput: deactivateInput,
         _players: players,
         _bullets: bullets,
         _enemies: enemies,
@@ -12296,6 +12525,8 @@ var EngineApp = (function() {
             log('▶ Play mode — Game view active', 'info');
             // Show in-game HUD (HP, ammo, crosshair) — only during Play
             if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.showHUD) SashaCharacterController.showHUD();
+            // Activate input (WASD, mouse, shoot) — only during Play
+            if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.activateInput) SashaCharacterController.activateInput();
             // Start pending waves if any
             if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController._wavesPending) {
               var wp = SashaCharacterController._wavesPending;
@@ -12336,6 +12567,8 @@ var EngineApp = (function() {
             log('⏹ Stopped', 'info');
             // Hide in-game HUD when leaving Play mode
             if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.hideHUD) SashaCharacterController.hideHUD();
+            // Deactivate input — no WASD/mouse/shoot in edit mode
+            if (typeof SashaCharacterController !== 'undefined' && SashaCharacterController.deactivateInput) SashaCharacterController.deactivateInput();
             // Exit pointer lock if active
             if (document.pointerLockElement) document.exitPointerLock();
         } catch(e) { console.error('[GameEngine] stop() error:', e); }
@@ -24176,6 +24409,39 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
           .then(function(r) { return 'Uploaded! URL: ' + r.url; })
           .catch(function(e) { throw e; });
       }
+      // === GitHub Asset Scanner ===
+      case 'scan_assets': {
+        if (typeof SashaAssetScanner === 'undefined') throw new Error('AssetScanner not loaded');
+        // Async — return promise
+        return SashaAssetScanner.scanRepo(params.path || '').then(function(r) {
+          if (r.error) throw new Error(r.error);
+          var msg = 'Found ' + r.count + ' assets: ' + r.models.length + ' models, ' + r.textures.length + ' textures';
+          if (r.models.length > 0) {
+            msg += '. Models: ' + r.models.slice(0, 5).map(function(m){return m.name}).join(', ');
+            if (r.models.length > 5) msg += '...';
+          }
+          return msg;
+        });
+      }
+      case 'load_asset': {
+        if (typeof SashaAssetScanner === 'undefined') throw new Error('AssetScanner not loaded');
+        return SashaAssetScanner.loadAssetByName(params.name || params.path, {
+          scale: params.scale,
+          position: {x: params.x, y: params.y, z: params.z},
+          name: params.name
+        }).then(function(r) {
+          if (r.error) throw new Error(r.error);
+          return 'Loaded: ' + r.name + (r.animations ? ' (' + r.animations + ' animations)' : '');
+        });
+      }
+      case 'load_all_assets': {
+        if (typeof SashaAssetScanner === 'undefined') throw new Error('AssetScanner not loaded');
+        return SashaAssetScanner.loadAllModels({scale: params.scale || 1}).then(function(results) {
+          var ok = results.filter(function(r){return r.success}).length;
+          var fail = results.filter(function(r){return r.error}).length;
+          return 'Loaded ' + ok + ' models' + (fail ? ' (' + fail + ' failed)' : '');
+        });
+      }
       default:
         throw new Error('Unknown tool: ' + name);
     }
@@ -24267,6 +24533,14 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       var titleMatch2 = text.match(/["«]([^"»]+)["»]/);
       return [{tool:'upload_to_gameforge', params:{title: titleMatch2 ? titleMatch2[1] : 'My Game'}}];
     }
+    // === Asset scanning ===
+    if (/(достань|загрузи|скан|scan|найди)\s+(асет|asset|модел|assets)/i.test(t) || /асеты\s+с\s+гит/i.test(t)) {
+      if (/все|all/i.test(t)) return [{tool:'scan_assets', params:{}}, {tool:'load_all_assets', params:{scale:1}}];
+      return [{tool:'scan_assets', params:{}}];
+    }
+    if (/загрузи\s+все\s+(асет|модел|asset)/i.test(t)) {
+      return [{tool:'load_all_assets', params:{scale:1}}];
+    }
 
     // === PRIORITY 3: Basic scene templates ONLY (лес, космос, etc — NOT shooter/character) ===
     function tmpl(kws, tpl) { for (var i = 0; i < kws.length; i++) if (t.indexOf(kws[i]) !== -1) return {tool:'apply_scene_template',params:{template:tpl}}; return null; }
@@ -24336,6 +24610,12 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
           reply = '📦 EXE билд (ZIP) скачивается...';
         } else if (c.tool === 'upload_to_gameforge') {
           reply = '🚀 Загружаю на GameForge...';
+        } else if (c.tool === 'scan_assets') {
+          reply = '🔍 Сканирую GitHub на асеты...';
+        } else if (c.tool === 'load_asset') {
+          reply = '📦 Загружаю асет...';
+        } else if (c.tool === 'load_all_assets') {
+          reply = '📦 Загружаю все асеты с GitHub...';
         } else {
           reply = '✅ Готово!';
         }
@@ -24363,10 +24643,11 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   function buildGenPrompt(userPrompt) {
     // Rich prompt with multiple examples for diverse generation
     return 'Запрос: "' + userPrompt + '". Выведи ТОЛЬКО JSON-массив tool calls, без текста.\n' +
-      'Tools: scene_clear, set_bg_color{color}, add_plane{width,height,color}, add_cube{x,y,z,width,height,depth,color}, add_sphere{x,y,z,radius,color}, add_cylinder{x,y,z,radiusTop,radiusBottom,height,color}, add_cone{x,y,z,radius,height,color}, add_torus{x,y,z,radius,tube,color}, add_point_light{x,y,z,intensity,color}, add_directional_light{x,y,z,intensity,color}, add_ambient_light{intensity,color}, compose_model{description:"house|tree|car|sword|tower|rock|barrel|chest|campfire|torch|crystal|table|chair|gate|sign",posX,posZ}, create_terrain{width,depth,heightExpression}, camera_set_position{x,y,z}, camera_set_target{x,y,z}, add_character{type:"humanoid|knight|mage|robot|archer",x,y,z,name}, attach_player_control{objectName,speed,hp,ammo,fps}, spawn_enemy{x,y,z,hp}, start_waves{enemiesPerWave,spawnInterval,waveDelay}\n' +
+      'Tools: scene_clear, set_bg_color{color}, add_plane{width,height,color}, add_cube{x,y,z,width,height,depth,color}, add_sphere{x,y,z,radius,color}, add_cylinder{x,y,z,radiusTop,radiusBottom,height,color}, add_cone{x,y,z,radius,height,color}, add_torus{x,y,z,radius,tube,color}, add_point_light{x,y,z,intensity,color}, add_directional_light{x,y,z,intensity,color}, add_ambient_light{intensity,color}, compose_model{description:"house|tree|car|sword|tower|rock|barrel|chest|campfire|torch|crystal|table|chair|gate|sign",posX,posZ}, create_terrain{width,depth,heightExpression}, camera_set_position{x,y,z}, camera_set_target{x,y,z}, add_character{type:"humanoid|knight|mage|robot|archer",x,y,z,name}, attach_player_control{objectName,speed,hp,ammo,fps}, spawn_enemy{x,y,z,hp}, start_waves{enemiesPerWave,spawnInterval,waveDelay}, scan_assets{}, load_asset{name,x,y,z,scale}, load_all_assets{scale}\n' +
+      'scan_assets — сканирует GitHub репо на .glb/.gltf модели. load_asset{name} — загружает модель в сцену. load_all_assets — загружает все.\n' +
       'Colors: "#aabbcc". Координаты: -20..20. Свет: y=10-20.\n' +
       'Пример шутера: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":50,"height":50,"color":"#2a2a3a"}},{"tool":"add_character","params":{"type":"humanoid","x":0,"y":0,"z":0,"name":"player1"}},{"tool":"attach_player_control","params":{"objectName":"player1","speed":6,"hp":100,"ammo":30,"fps":true}},{"tool":"spawn_enemy","params":{"x":-10,"y":0,"z":-10,"hp":100}},{"tool":"spawn_enemy","params":{"x":10,"y":0,"z":-10,"hp":100}},{"tool":"add_directional_light","params":{"x":10,"y":20,"z":10,"intensity":0.8}},{"tool":"add_ambient_light","params":{"intensity":0.4}}]\n' +
-      'Пример рыцаря: [{"tool":"scene_clear","params":{}},{"tool":"add_plane","params":{"width":20,"height":20,"color":"#3a3a4a"}},{"tool":"add_character","params":{"type":"knight","x":0,"y":0,"z":0}},{"tool":"add_directional_light","params":{"x":5,"y":10,"z":5,"intensity":0.8,"color":"#ffffff"}},{"tool":"camera_set_position","params":{"x":5,"y":3,"z":5}},{"tool":"camera_set_target","params":{"x":0,"y":1,"z":0}}]';
+      'Пример загрузки асетов: [{"tool":"scan_assets","params":{}},{"tool":"load_all_assets","params":{"scale":1}}]';
   }
 
   // === Build LLM system prompt for conversation ===
@@ -26253,6 +26534,13 @@ window.addEventListener("load", init);
       <button onclick="cpRun('залей на геймфордж')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:var(--bg-hover,#27272a);color:var(--text-primary,#fafafa);cursor:pointer;font-size:12px;text-align:center">🚀 Upload</button>
     </div>
 
+    <!-- GitHub Assets -->
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted,#a1a1aa);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📦 Асеты с GitHub</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px">
+      <button onclick="cpRun('достань асеты')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:rgba(168,85,247,.15);color:#a855f7;cursor:pointer;font-size:12px;text-align:center;font-weight:600">🔍 Сканировать</button>
+      <button onclick="cpRun('загрузи все асеты')" style="padding:10px 8px;border-radius:8px;border:1px solid var(--border,#27272a);background:rgba(168,85,247,.15);color:#a855f7;cursor:pointer;font-size:12px;text-align:center;font-weight:600">📦 Загрузить все</button>
+    </div>
+
     <!-- Инструкция -->
     <div style="padding:14px;background:var(--bg-hover,#27272a);border-radius:10px;border:1px solid var(--border,#27272a);font-size:12px;color:var(--text-muted,#a1a1aa);line-height:1.6">
       <div style="font-weight:700;color:var(--text-primary,#fafafa);margin-bottom:6px">📖 Как тестировать:</div>
@@ -26503,6 +26791,7 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
+
 
 
 
