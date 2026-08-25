@@ -5817,9 +5817,10 @@ var SashaCharacterController = (function() {
             if (!p.mesh || !p.mesh.parent) { delete players[name]; continue; }
             updatePlayer(p, dt);
         }
-        // Update waves
-        updateWaves(dt);
-        // Update bullets
+        // Update waves — only when input active
+        if (inputActive) updateWaves(dt);
+        // Update bullets — only when input active
+        if (inputActive) {
         for (var i = bullets.length - 1; i >= 0; i--) {
             var b = bullets[i];
             b.mesh.position.add(b.velocity.clone().multiplyScalar(dt));
@@ -5866,7 +5867,9 @@ var SashaCharacterController = (function() {
                 }
             }
         }
-        // Update enemies (chase nearest player)
+        } // end bullets if
+        // Update enemies — only when input active (Play mode)
+        if (inputActive) {
         for (var k = enemies.length - 1; k >= 0; k--) {
             var en = enemies[k];
             if (!en.mesh || !en.mesh.parent) { enemies.splice(k, 1); continue; }
@@ -5911,10 +5914,12 @@ var SashaCharacterController = (function() {
                 }
             }
         }
+        } // end if (inputActive)
     }
 
     function updatePlayer(p, dt) {
-        // Movement input
+        // SKIP all player logic if input not active (before Play pressed)
+        if (!inputActive) return;
         var forward = (keys['KeyW'] || keys['w'] || keys['ц']) ? 1 : 0;
         var back = (keys['KeyS'] || keys['s'] || keys['ы']) ? 1 : 0;
         var left = (keys['KeyA'] || keys['a'] || keys['ф']) ? 1 : 0;
@@ -26791,7 +26796,6 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
-
 
 
 
