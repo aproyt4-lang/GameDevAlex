@@ -5393,106 +5393,176 @@ var SashaGameBuilder = (function() {
             }
         }, null, 2);
 
-        // === Reliable .bat — proper NW.js packaging pipeline ===
-        // Pipeline: download NW.js → extract → copy nw.exe→game.exe + DLLs
-        //           → Compress-Archive game files → rename package.zip → package.nw
-        //           → delete loose index.html and package.json
-        //           → verify game.exe + package.nw exist → print path & size
-        //           → DO NOT auto-launch (avoid false "SUCCESS" if window is empty)
-        // On ANY error → print BUILD FAILED + exit 1, never print SUCCESS.
+        // === Simple .bat — reads index.html + package.json from current folder ===
+        // No base64, no chunked echo, no fragile cmd parsing.
+        // User downloads a .zip containing: .bat + index.html + package.json.
+        // They unzip to a folder, double-click the .bat — it:
+        //   1) Checks index.html + package.json exist next to .bat
+        //   2) Downloads NW.js (~130MB) via PowerShell with retry + mirrors
+        //   3) Extracts NW.js
+        //   4) Copies nw.exe → game.exe + DLLs
+        //   5) Compress-Archive → package.zip → rename → package.nw
+        //   6) Deletes loose index.html + package.json
+        //   7) Verifies game.exe + package.nw exist
+        //   8) BUILD FAILED on any error, never auto-launches
         var batContent = '@echo off\r\n' +
             'setlocal enabledelayedexpansion\r\n' +
-            'chcp 65001 >nul 2>nul\r\n' +
-            'title ' + gameTitle + ' — EXE Builder\r\n' +
-            'mode con: cols=70 lines=24\r\n' +
+            'title ' + slug + ' - EXE Builder\r\n' +
+            'mode con: cols=70 lines=22\r\n' +
             'color 0B\r\n' +
             '\r\n' +
-            'echo.\r\n' +
-            'echo   ========================================================\r\n' +
-            'echo     ' + gameTitle + ' — EXE Builder (NW.js pipeline)\r\n' +
-            'echo   ========================================================\r\n' +
-            'echo.\r\n' +
             'set "GAMENAME=' + slug + '"\r\n' +
-            'set "NWURL=https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip"\r\n' +
             'set "NWZIP=nwjs-download.zip"\r\n' +
             'set "NWDIR=nwjs-extracted"\r\n' +
-            'set "PKGZIP=package.zip"\r\n' +
-            'set "PKGNW=package.nw"\r\n' +
-            'set "FAIL=0"\r\n' +
             '\r\n' +
-            'REM ===== If game already built, just report and exit (no auto-launch) =====\r\n' +
-            'if exist "%GAMENAME%.exe" if exist "%PKGNW%" (\r\n' +
-            '  echo   Game already built.\r\n' +
-            '  echo   File: %CD%\\%GAMENAME%.exe\r\n' +
-            '  echo   Run it manually to start the game.\r\n' +
-            '  pause\r\n' +
-            '  exit /b 0\r\n' +
-            ')\r\n' +
+            'echo.\r\n' +
+            'echo   ========================================================\r\n' +
+            'echo     ' + slug + ' - EXE Builder\r\n' +
+            'echo   ========================================================\r\n' +
+            'echo.\r\n' +
             '\r\n' +
-            'REM ===== STEP 1/6: verify index.html + package.json exist =====\r\n' +
-            'echo   [1/6] Checking game files...\r\n' +
+            'REM ===== STEP 1/7: check game files exist in current folder =====\r\n' +
+            'echo   [1/7] Checking game files...\r\n' +
             'if not exist "index.html" (\r\n' +
-            '  echo   BUILD FAILED: index.html not found in current folder.\r\n' +
+            '  echo.\r\n' +
+            '  echo   BUILD FAILED: index.html not found.\r\n' +
             '  echo   Put this .bat next to index.html and package.json.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
+            '  echo   Current folder: %CD%\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
             ')\r\n' +
             'if not exist "package.json" (\r\n' +
-            '  echo   BUILD FAILED: package.json not found in current folder.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
+            '  echo.\r\n' +
+            '  echo   BUILD FAILED: package.json not found.\r\n' +
+            '  echo   Current folder: %CD%\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
             ')\r\n' +
-            'echo   OK - index.html and package.json present\r\n' +
+            'echo   OK - game files found\r\n' +
             '\r\n' +
-            'REM ===== STEP 2/6: download NW.js (~130MB) =====\r\n' +
-            'echo   [2/6] Downloading NW.js v0.83.0 (~130MB)...\r\n' +
-            'if exist "%NWZIP%" del "%NWZIP%"\r\n' +
-            'powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = \'SilentlyContinue\'; Invoke-WebRequest -Uri \'%NWURL%\' -OutFile \'%NWZIP%\' -UseBasicParsing } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            'REM ===== STEP 2/7: check PowerShell is available =====\r\n' +
+            'echo   [2/7] Checking PowerShell...\r\n' +
+            'where powershell >nul 2>nul\r\n' +
             'if errorlevel 1 (\r\n' +
-            '  echo   Primary download failed. Trying WebClient fallback...\r\n' +
-            '  powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile(\'%NWURL%\', \'%NWZIP%\')"\r\n' +
-            '  if errorlevel 1 (\r\n' +
-            '    echo   BUILD FAILED: Cannot download NW.js.\r\n' +
-            '    echo   URL: %NWURL%\r\n' +
-            '    echo   Download manually and put nwjs-v0.83.0-win-x64.zip as %NWZIP% next to this .bat.\r\n' +
-            '    set "FAIL=1"\r\n' +
-            '    goto :end\r\n' +
-            '  )\r\n' +
+            '  echo.\r\n' +
+            '  echo   BUILD FAILED: PowerShell not found.\r\n' +
+            '  echo   This script needs Windows PowerShell.\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
             ')\r\n' +
-            'if not exist "%NWZIP%" (\r\n' +
-            '  echo   BUILD FAILED: NW.js zip not found after download.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
+            'echo   OK - PowerShell found\r\n' +
+            '\r\n' +
+            'REM ===== STEP 3/7: download NW.js (~130MB) with retry + mirrors =====\r\n' +
+            'echo   [3/7] Downloading NW.js v0.83.0 ~130MB...\r\n' +
+            '\r\n' +
+            'REM If nwjs-download.zip already exists and is large enough, skip download\r\n' +
+            'if exist "%NWZIP%" (\r\n' +
+            '  for %%A in ("%NWZIP%") do set "EXISTSIZE=%%~zA"\r\n' +
+            '  if !EXISTSIZE! GTR 10000000 (\r\n' +
+            '    echo   OK - %NWZIP% already exists (!EXISTSIZE! bytes), skipping download\r\n' +
+            '    goto :extract\r\n' +
+            '  )\r\n' +
+            '  del "%NWZIP%"\r\n' +
+            ')\r\n' +
+            '\r\n' +
+            'REM Try multiple mirrors with retries\r\n' +
+            'set "MIRROR1=https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip"\r\n' +
+            'set "MIRROR2=https://dl.node-webkit.org/v0.83.0/nwjs-v0.83.0-win-x64.zip"\r\n' +
+            '\r\n' +
+            'set "DOWNLOADED=0"\r\n' +
+            '\r\n' +
+            'REM Attempt 1: mirror 1, Invoke-WebRequest\r\n' +
+            'echo   Attempt 1/4: dl.nwjs.io (Invoke-WebRequest)...\r\n' +
+            'powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = \'SilentlyContinue\'; try { Invoke-WebRequest -Uri \'%MIRROR1%\' -OutFile \'%NWZIP%\' -UseBasicParsing -TimeoutSec 300 } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            'if exist "%NWZIP%" (\r\n' +
+            '  for %%A in ("%NWZIP%") do set "FS=%%~zA"\r\n' +
+            '  if !FS! GTR 10000000 set "DOWNLOADED=1"\r\n' +
+            ')\r\n' +
+            'if "!DOWNLOADED!"=="0" del "%NWZIP%" 2>nul\r\n' +
+            '\r\n' +
+            'REM Attempt 2: mirror 1, WebClient\r\n' +
+            'if "!DOWNLOADED!"=="0" (\r\n' +
+            '  echo   Attempt 2/4: dl.nwjs.io (WebClient)...\r\n' +
+            '  powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { (New-Object Net.WebClient).DownloadFile(\'%MIRROR1%\', \'%NWZIP%\') } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            '  if exist "%NWZIP%" (\r\n' +
+            '    for %%A in ("%NWZIP%") do set "FS=%%~zA"\r\n' +
+            '    if !FS! GTR 10000000 set "DOWNLOADED=1"\r\n' +
+            '  )\r\n' +
+            '  if "!DOWNLOADED!"=="0" del "%NWZIP%" 2>nul\r\n' +
+            ')\r\n' +
+            '\r\n' +
+            'REM Attempt 3: mirror 2, Invoke-WebRequest\r\n' +
+            'if "!DOWNLOADED!"=="0" (\r\n' +
+            '  echo   Attempt 3/4: dl.node-webkit.org (Invoke-WebRequest)...\r\n' +
+            '  powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = \'SilentlyContinue\'; try { Invoke-WebRequest -Uri \'%MIRROR2%\' -OutFile \'%NWZIP%\' -UseBasicParsing -TimeoutSec 300 } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            '  if exist "%NWZIP%" (\r\n' +
+            '    for %%A in ("%NWZIP%") do set "FS=%%~zA"\r\n' +
+            '    if !FS! GTR 10000000 set "DOWNLOADED=1"\r\n' +
+            '  )\r\n' +
+            '  if "!DOWNLOADED!"=="0" del "%NWZIP%" 2>nul\r\n' +
+            ')\r\n' +
+            '\r\n' +
+            'REM Attempt 4: mirror 2, WebClient\r\n' +
+            'if "!DOWNLOADED!"=="0" (\r\n' +
+            '  echo   Attempt 4/4: dl.node-webkit.org (WebClient)...\r\n' +
+            '  powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { (New-Object Net.WebClient).DownloadFile(\'%MIRROR2%\', \'%NWZIP%\') } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            '  if exist "%NWZIP%" (\r\n' +
+            '    for %%A in ("%NWZIP%") do set "FS=%%~zA"\r\n' +
+            '    if !FS! GTR 10000000 set "DOWNLOADED=1"\r\n' +
+            '  )\r\n' +
+            '  if "!DOWNLOADED!"=="0" del "%NWZIP%" 2>nul\r\n' +
+            ')\r\n' +
+            '\r\n' +
+            'if "!DOWNLOADED!"=="0" (\r\n' +
+            '  echo.\r\n' +
+            '  echo   BUILD FAILED: Cannot download NW.js after 4 attempts.\r\n' +
+            '  echo   Tried:\r\n' +
+            '    %MIRROR1%\r\n' +
+            '    %MIRROR2%\r\n' +
+            '  echo.\r\n' +
+            '  echo   Possible causes:\r\n' +
+            '    - No internet connection\r\n' +
+            '    - Antivirus blocking PowerShell download\r\n' +
+            '    - Corporate proxy / firewall\r\n' +
+            '  echo.\r\n' +
+            '  echo   Manual workaround:\r\n' +
+            '    1. Open in browser: %MIRROR1%\r\n' +
+            '    2. Save as: %NWZIP%\r\n' +
+            '    3. Put %NWZIP% next to this .bat\r\n' +
+            '    4. Re-run this .bat (it will skip download)\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
             ')\r\n' +
             'for %%A in ("%NWZIP%") do set "FILESIZE=%%~zA"\r\n' +
-            'if !FILESIZE! LSS 10000000 (\r\n' +
-            '  echo   BUILD FAILED: NW.js zip too small (!FILESIZE! bytes), download corrupted.\r\n' +
-            '  del "%NWZIP%" 2>nul\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
             'set /a SIZEMB=!FILESIZE! / 1048576\r\n' +
             'echo   OK - downloaded !SIZEMB! MB\r\n' +
             '\r\n' +
-            'REM ===== STEP 3/6: extract NW.js =====\r\n' +
-            'echo   [3/6] Extracting NW.js...\r\n' +
+            ':extract\r\n' +
+            'REM ===== STEP 4/7: extract NW.js =====\r\n' +
+            'echo   [4/7] Extracting NW.js...\r\n' +
             'if exist "%NWDIR%" rmdir /s /q "%NWDIR%"\r\n' +
-            'mkdir "%NWDIR%"\r\n' +
-            'powershell -Command "try { Expand-Archive -Path \'%NWZIP%\' -DestinationPath \'%NWDIR%\' -Force } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            'powershell -Command "Expand-Archive -Path \'%NWZIP%\' -DestinationPath \'%NWDIR%\' -Force"\r\n' +
             'if errorlevel 1 (\r\n' +
-            '  echo   Expand-Archive failed. Trying .NET fallback...\r\n' +
+            '  echo   Trying .NET extraction fallback...\r\n' +
             '  powershell -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory(\'%NWZIP%\', \'%NWDIR%\')"\r\n' +
             '  if errorlevel 1 (\r\n' +
+            '    echo.\r\n' +
             '    echo   BUILD FAILED: Cannot extract NW.js zip.\r\n' +
-            '    set "FAIL=1"\r\n' +
-            '    goto :end\r\n' +
+            '    echo   The downloaded file may be corrupted. Delete %NWZIP% and re-run.\r\n' +
+            '    echo.\r\n' +
+            '    pause\r\n' +
+            '    exit /b 1\r\n' +
             '  )\r\n' +
             ')\r\n' +
             'del "%NWZIP%" 2>nul\r\n' +
-            'echo   OK\r\n' +
+            'echo   OK - extracted\r\n' +
             '\r\n' +
-            'REM ===== STEP 4/6: locate nw.exe and copy to game.exe + DLLs =====\r\n' +
-            'echo   [4/6] Locating nw.exe and copying runtime...\r\n' +
+            'REM ===== STEP 5/7: locate nw.exe and copy to game.exe + DLLs =====\r\n' +
+            'echo   [5/7] Building %GAMENAME%.exe...\r\n' +
             'set "NWEXE="\r\n' +
             'for /d %%D in ("%NWDIR%\\nwjs-v*") do (\r\n' +
             '  if exist "%%D\\nw.exe" set "NWEXE=%%D"\r\n' +
@@ -5503,18 +5573,21 @@ var SashaGameBuilder = (function() {
             '  )\r\n' +
             ')\r\n' +
             'if not defined NWEXE (\r\n' +
+            '  echo.\r\n' +
             '  echo   BUILD FAILED: nw.exe not found in extracted files.\r\n' +
             '  echo   Contents of %NWDIR%:\r\n' +
             '  dir /b "%NWDIR%"\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
             ')\r\n' +
-            'echo   Found NW.js runtime in: !NWEXE!\r\n' +
             'copy /Y "!NWEXE!\\nw.exe" "%GAMENAME%.exe" >nul 2>nul\r\n' +
             'if not exist "%GAMENAME%.exe" (\r\n' +
+            '  echo.\r\n' +
             '  echo   BUILD FAILED: Cannot copy nw.exe to %GAMENAME%.exe\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
             ')\r\n' +
             'copy /Y "!NWEXE!\\*.dll" . >nul 2>nul\r\n' +
             'copy /Y "!NWEXE!\\*.pak" . >nul 2>nul\r\n' +
@@ -5522,102 +5595,75 @@ var SashaGameBuilder = (function() {
             'copy /Y "!NWEXE!\\*.dat" . >nul 2>nul\r\n' +
             'if exist "!NWEXE!\\resources" xcopy /E /I /Y "!NWEXE!\\resources\\*" . >nul 2>nul\r\n' +
             'if exist "!NWEXE!\\locales" xcopy /E /I /Y "!NWEXE!\\locales\\*" . >nul 2>nul\r\n' +
-            'echo   OK - %GAMENAME%.exe + DLLs + resources copied\r\n' +
+            'echo   OK - %GAMENAME%.exe + DLLs copied\r\n' +
             '\r\n' +
-            'REM ===== STEP 5/6: build package.nw from index.html + package.json =====\r\n' +
-            'echo   [5/6] Building package.nw (game archive)...\r\n' +
-            'REM PowerShell Compress-Archive only supports .zip output, so we create\r\n' +
-            'REM package.zip and rename to package.nw (NW.js reads it as a zip).\r\n' +
-            'if exist "%PKGZIP%" del "%PKGZIP%"\r\n' +
-            'if exist "%PKGNW%" del "%PKGNW%"\r\n' +
-            'powershell -Command "try { Compress-Archive -Path \'index.html\',\'package.json\' -DestinationPath \'%PKGZIP%\' -Force } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
-            'if errorlevel 1 (\r\n' +
-            '  echo   BUILD FAILED: Compress-Archive failed.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
-            'if not exist "%PKGZIP%" (\r\n' +
-            '  echo   BUILD FAILED: package.zip was not created.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
-            'for %%A in ("%PKGZIP%") do set "PKGSIZE=%%~zA"\r\n' +
-            'if !PKGSIZE! LSS 1000 (\r\n' +
-            '  echo   BUILD FAILED: package.zip is too small (!PKGSIZE! bytes), game files missing.\r\n' +
-            '  del "%PKGZIP%" 2>nul\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
-            'rename "%PKGZIP%" "%PKGNW%"\r\n' +
-            'if not exist "%PKGNW%" (\r\n' +
-            '  echo   BUILD FAILED: Cannot rename package.zip to package.nw.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
-            'echo   OK - package.nw created (!PKGSIZE! bytes)\r\n' +
-            'REM Now that game files are bundled inside package.nw, remove the loose\r\n' +
-            'REM copies so the final folder contains only: %GAMENAME%.exe + package.nw + DLLs.\r\n' +
-            'del "index.html" 2>nul\r\n' +
-            'del "package.json" 2>nul\r\n' +
-            '\r\n' +
-            'REM ===== STEP 6/6: cleanup + final verification =====\r\n' +
-            'echo   [6/6] Verifying build...\r\n' +
-            'rmdir /s /q "%NWDIR%" 2>nul\r\n' +
-            'if not exist "%GAMENAME%.exe" (\r\n' +
-            '  echo   BUILD FAILED: %GAMENAME%.exe missing after packaging.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
-            'if not exist "%PKGNW%" (\r\n' +
-            '  echo   BUILD FAILED: package.nw missing after packaging.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
-            'REM Sanity-check: ensure package.nw is a valid zip with the two files\r\n' +
-            'powershell -Command "try { Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[System.IO.Compression.ZipFile]::OpenRead((Resolve-Path \'%PKGNW%\').Path); $hasIndex=($z.Entries | Where-Object { $_.FullName -eq \'index.html\' }).Count -gt 0; $hasPkg=($z.Entries | Where-Object { $_.FullName -eq \'package.json\' }).Count -gt 0; $z.Dispose(); if (-not $hasIndex -or -not $hasPkg) { Write-Host \'Missing entries in package.nw\'; exit 1 } } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
-            'if errorlevel 1 (\r\n' +
-            '  echo   BUILD FAILED: package.nw is corrupt or missing entries.\r\n' +
-            '  set "FAIL=1"\r\n' +
-            '  goto :end\r\n' +
-            ')\r\n' +
-            'for %%A in ("%GAMENAME%.exe") do set "EXESIZE=%%~zA"\r\n' +
-            'set /a EXEMB=!EXESIZE! / 1048576\r\n' +
-            'for %%A in ("%PKGNW%") do set "NWBYTES=%%~zA"\r\n' +
-            'set /a NWKB=!NWBYTES! / 1024\r\n' +
-            'echo   OK - build verified\r\n' +
-            '\r\n' +
-            ':end\r\n' +
-            'if "!FAIL!"=="1" (\r\n' +
+            'REM ===== STEP 6/7: build package.nw =====\r\n' +
+            'echo   [6/7] Building package.nw...\r\n' +
+            'if exist "package.zip" del "package.zip"\r\n' +
+            'if exist "package.nw" del "package.nw"\r\n' +
+            'powershell -Command "Compress-Archive -Path \'index.html\',\'package.json\' -DestinationPath \'package.zip\' -Force"\r\n' +
+            'if not exist "package.zip" (\r\n' +
             '  echo.\r\n' +
-            '  echo   ========================================================\r\n' +
-            '  echo     BUILD FAILED - see errors above\r\n' +
-            '  echo   ========================================================\r\n' +
+            '  echo   BUILD FAILED: Cannot create package.zip.\r\n' +
             '  echo.\r\n' +
-            '  echo   Partial files may exist. Delete them and re-run this .bat.\r\n' +
             '  pause\r\n' +
             '  exit /b 1\r\n' +
             ')\r\n' +
+            'rename "package.zip" "package.nw"\r\n' +
+            'if not exist "package.nw" (\r\n' +
+            '  echo.\r\n' +
+            '  echo   BUILD FAILED: Cannot rename package.zip to package.nw.\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
+            ')\r\n' +
+            'REM Game files are now inside package.nw - remove loose copies\r\n' +
+            'del "index.html" 2>nul\r\n' +
+            'del "package.json" 2>nul\r\n' +
+            'echo   OK - package.nw created\r\n' +
+            '\r\n' +
+            'REM ===== STEP 7/7: cleanup + verify =====\r\n' +
+            'echo   [7/7] Verifying...\r\n' +
+            'rmdir /s /q "%NWDIR%" 2>nul\r\n' +
+            'if not exist "%GAMENAME%.exe" (\r\n' +
+            '  echo.\r\n' +
+            '  echo   BUILD FAILED: %GAMENAME%.exe missing.\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
+            ')\r\n' +
+            'if not exist "package.nw" (\r\n' +
+            '  echo.\r\n' +
+            '  echo   BUILD FAILED: package.nw missing.\r\n' +
+            '  echo.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
+            ')\r\n' +
+            'for %%A in ("%GAMENAME%.exe") do set "EXESIZE=%%~zA"\r\n' +
+            'set /a EXEMB=!EXESIZE! / 1048576\r\n' +
+            'for %%A in ("package.nw") do set "NWBYTES=%%~zA"\r\n' +
+            'set /a NWKB=!NWBYTES! / 1024\r\n' +
+            'echo   OK - verified\r\n' +
+            '\r\n' +
             'echo.\r\n' +
             'echo   ========================================================\r\n' +
             'echo     BUILD SUCCESS\r\n' +
             'echo   ========================================================\r\n' +
             'echo.\r\n' +
             'echo   Executable:  %CD%\\%GAMENAME%.exe  (!EXEMB! MB)\r\n' +
-            'echo   Game archive: %CD%\\%PKGNW%  (!NWKB! KB)\r\n' +
+            'echo   Game archive: %CD%\\package.nw  (!NWKB! KB)\r\n' +
             'echo.\r\n' +
-            'echo   To start the game, double-click %GAMENAME%.exe\r\n' +
-            'echo   (Script does NOT auto-launch — verify the file exists first.)\r\n' +
+            'echo   Double-click %GAMENAME%.exe to start the game.\r\n' +
             'echo.\r\n' +
             'pause\r\n' +
             'exit /b 0\r\n';
 
-        // Download .bat + index.html + package.json as ZIP
+        // === Download .bat + index.html + package.json as .zip ===
         if (typeof JSZip !== 'undefined') {
             var zip = new JSZip();
             zip.file(slug + '-build.bat', batContent);
             zip.file('index.html', result.html);
             zip.file('package.json', packageJson);
-
             zip.generateAsync({ type: 'blob' }).then(function(blob) {
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
@@ -5628,11 +5674,11 @@ var SashaGameBuilder = (function() {
                 document.body.removeChild(a);
                 setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
                 if (typeof addChat === 'function') {
-                    addChat('ai', '✅ Скачан ' + slug + '.zip\n\nЧто внутри:\n  • ' + slug + '-build.bat\n  • index.html\n  • package.json\n\nКак собрать .exe:\n  1. Распакуй ZIP в пустую папку\n  2. Двойной клик на ' + slug + '-build.bat\n  3. Скрипт скачает NW.js (~130МБ), соберёт ' + slug + '.exe + package.nw\n  4. index.html и package.json будут удалены (они внутри package.nw)\n  5. В финальной папке останется только .exe + package.nw + DLLs\n\nПри ошибке скрипт скажет BUILD FAILED и не запустит игру.');
+                    addChat('ai', '✅ Скачан ' + slug + '.zip\n\nВнутри 3 файла:\n  • ' + slug + '-build.bat\n  • index.html\n  • package.json\n\nКак собрать .exe:\n  1. Создай пустую папку (например на Рабочем столе)\n  2. Распакуй туда .zip\n  3. Двойной клик на ' + slug + '-build.bat\n  4. Скрипт попробует 4 способа скачать NW.js (~130МБ):\n     • dl.nwjs.io через Invoke-WebRequest\n     • dl.nwjs.io через WebClient\n     • dl.node-webkit.org через Invoke-WebRequest\n     • dl.node-webkit.org через WebClient\n  5. Если все 4 упали — скачай вручную:\n     https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip\n     и положи рядом с .bat под именем nwjs-download.zip\n  6. .bat увидит готовый архив и продолжит сборку\n\nПри ошибке .bat скажет BUILD FAILED и не закроется.');
                 }
             });
         } else {
-            // No JSZip — download files separately
+            // Fallback: download 3 files separately
             downloadText(batContent, slug + '-build.bat');
             downloadText(result.html, 'index.html');
             downloadText(packageJson, 'package.json');
@@ -25425,6 +25471,18 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         <span id="engRatingText" style="font-size:12px;color:var(--text-muted,#a1a1aa)"></span>
       </div>
     </div>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border,#27272a)">
+      <h3 style="font-size:14px;font-weight:700;margin:0 0 8px 0">🧹 Управление данными</h3>
+      <p style="font-size:12px;color:var(--text-muted,#a1a1aa);margin:0 0 12px 0;line-height:1.5">
+        Аналитика хранится локально в этом браузере. Если видишь свои собственные отвалы/визиты в графике (функция isOwner не сработала), нажми кнопку ниже — она удалит ВСЕ визиты, действия и отвалы. Оценки и отзывы сохранятся.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="wipeEngTracking()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.1);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer">🗑 Стереть мои визиты и отвалы</button>
+        <button onclick="wipeEngAll()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-muted,#a1a1aa);font-size:12px;cursor:pointer">💥 Стереть вообще всё</button>
+        <button onclick="debugEngOwner()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border,#27272a);background:transparent;color:var(--text-muted,#a1a1aa);font-size:12px;cursor:pointer">🔍 Проверить isOwner</button>
+      </div>
+      <div id="engDebugOut" style="margin-top:12px;padding:10px;background:var(--bg-hover,#27272a);border-radius:8px;font-family:monospace;font-size:11px;color:#a1a1aa;white-space:pre-wrap;display:none"></div>
+    </div>
   </div>
 </div>
 
@@ -25434,17 +25492,49 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   'use strict';
   var STORE_KEY = 'sasha_eng_analytics';
   var OWNER_KEY = 'sasha_eng_is_owner';
-  var GF_TOKEN_KEY = 'gf_token';
+  // Multiple token keys — user might have set any of them
+  var TOKEN_KEYS = ['gf_token', 'sasha_github_token', 'sasha_gf_token'];
   var data = { visits: [], dailyActions: {}, dailyLeaves: {}, sessionLeaves: [], ratings: {sum:0,count:0}, feedback: [] };
   var currentSession = null;
   var engCharts = {};
 
   // Owner mode: when true, this browser's actions (visit/action/leave) are NOT
-  // tracked. Enabled automatically when a GameForge token is set, or manually
-  // via the "I'm owner" checkbox added in the analytics panel.
+  // tracked. Enabled automatically when ANY GitHub/GameForge token is set, when
+  // the page is opened from localhost / 127.0.0.1 / file://, or manually via
+  // the "I'm owner" checkbox in the analytics panel.
   function isOwner() {
-    if (localStorage.getItem(OWNER_KEY) === '1') return true;
-    if (localStorage.getItem(GF_TOKEN_KEY)) return true;  // has GameForge token = owner
+    // 1) Manual override (highest priority)
+    if (localStorage.getItem(OWNER_KEY) === '1') {
+      if (window.console) console.log('[EngAnalytics] isOwner=TRUE (manual flag)');
+      return true;
+    }
+    // 2) Any GitHub/GameForge token present = owner
+    for (var i = 0; i < TOKEN_KEYS.length; i++) {
+      var t = localStorage.getItem(TOKEN_KEYS[i]);
+      if (t && t.trim()) {
+        if (window.console) console.log('[EngAnalytics] isOwner=TRUE (token: ' + TOKEN_KEYS[i] + ')');
+        return true;
+      }
+    }
+    // 3) Opened from localhost / 127.0.0.1 / file:// — that's the developer
+    try {
+      var h = window.location.hostname || '';
+      var p = window.location.protocol || '';
+      if (p === 'file:') {
+        if (window.console) console.log('[EngAnalytics] isOwner=TRUE (file:// protocol)');
+        return true;
+      }
+      if (h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h === '::1') {
+        if (window.console) console.log('[EngAnalytics] isOwner=TRUE (localhost: ' + h + ')');
+        return true;
+      }
+      // Also dev ports on localhost-like hostnames
+      if (h.indexOf('.') === -1 && h.length > 0) {
+        if (window.console) console.log('[EngAnalytics] isOwner=TRUE (bare hostname: ' + h + ')');
+        return true;
+      }
+    } catch(e) {}
+    if (window.console) console.log('[EngAnalytics] isOwner=FALSE (real visitor, tracked)');
     return false;
   }
   function setOwnerFlag(v) { localStorage.setItem(OWNER_KEY, v ? '1' : '0'); }
@@ -25462,6 +25552,22 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         if (!data.sessionLeaves) data.sessionLeaves = [];
         if (!data.ratings) data.ratings = {sum:0, count:0};
         if (!data.feedback) data.feedback = [];
+      }
+      // === Migration: if owner mode is active, wipe pre-existing self-data ===
+      // This prevents old self-visits/leaves (recorded before owner filter was
+      // added) from polluting the analytics dashboard.
+      if (isOwner() && !data._ownerWiped) {
+        var beforeVisits = data.visits.length;
+        var beforeLeaves = data.sessionLeaves.length;
+        data.visits = [];
+        data.dailyActions = {};
+        data.dailyLeaves = {};
+        data.sessionLeaves = [];
+        // Keep ratings + feedback (those are intentional user actions, not tracking)
+        data._ownerWiped = true;
+        data._wipeNotice = 'Owner-mode filter installed on ' + new Date().toISOString() + ' — wiped ' + beforeVisits + ' visits and ' + beforeLeaves + ' leaves that were tracked before the filter existed.';
+        save();
+        console.log('[EngAnalytics] Owner-mode wipe:', data._wipeNotice);
       }
     } catch(e) { console.warn('[EngAnalytics] load failed:', e); }
   }
@@ -25555,11 +25661,26 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       setOwnerFlag(true);
     } else {
       clearOwnerFlag();
-      // If GameForge token exists, we can't really clear owner mode unless user
-      // also clears the token. Inform them.
-      if (localStorage.getItem(GF_TOKEN_KEY)) {
-        alert('У тебя прописан GameForge токен — ты всё ещё в режиме владельца.\n\nЧтобы протестировать аналитику как посетитель, удали токен в Build → GameForge Config.');
-        // Restore the flag
+      // If any token exists OR we're on localhost/file://, we can't really
+      // clear owner mode unless user clears all tokens AND opens from a real
+      // domain. Inform them.
+      var anyToken = false;
+      for (var i = 0; i < TOKEN_KEYS.length; i++) {
+        var t = localStorage.getItem(TOKEN_KEYS[i]);
+        if (t && t.trim()) { anyToken = true; break; }
+      }
+      var isLocal = false;
+      try {
+        var h = window.location.hostname || '';
+        var p = window.location.protocol || '';
+        if (p === 'file:' || h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h === '::1' || (h.indexOf('.') === -1 && h.length > 0)) isLocal = true;
+      } catch(e) {}
+      if (anyToken || isLocal) {
+        var reasons = [];
+        if (anyToken) reasons.push('прописан GitHub/GameForge токен');
+        if (isLocal) reasons.push('страница открыта локально (localhost/file://)');
+        alert('Не могу выключить режим владельца, потому что:\n  • ' + reasons.join('\n  • ') + '\n\nЭто автоматически включает фильтр. Чтобы реально протестировать аналитику как посетитель:\n  1. Удали все токены в Build → GameForge Config\n  2. Открой index.html с реального домена (например GitHub Pages)');
+        // Restore the flag — owner mode stays ON
         setOwnerFlag(true);
         var toggle = document.getElementById('engOwnerToggle');
         if (toggle) toggle.checked = true;
@@ -25583,6 +25704,76 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   window.setEngRating = function(stars) {
     setRating(stars);
     renderEngAnalytics();
+  };
+
+  // === Manual data wipe functions ===
+  // User reported that his own visits/leaves still appear in the chart after
+  // the isOwner filter was added. These buttons let him wipe data manually.
+  window.wipeEngTracking = function() {
+    if (!confirm('Удалить ВСЕ визиты, действия и отвалы из аналитики?\nОценки и отзывы сохранятся.')) return;
+    var bv = data.visits.length;
+    var bl = data.sessionLeaves.length;
+    data.visits = [];
+    data.dailyActions = {};
+    data.dailyLeaves = {};
+    data.sessionLeaves = [];
+    data._ownerWiped = true;
+    data._wipeNotice = 'Manual wipe on ' + new Date().toISOString() + ' — removed ' + bv + ' visits and ' + bl + ' leaves.';
+    save();
+    console.log('[EngAnalytics] Manual wipe:', data._wipeNotice);
+    renderEngAnalytics();
+    alert('Готово. Удалено ' + bv + ' визитов и ' + bl + ' отвалов. Графики обновлены.');
+  };
+  window.wipeEngAll = function() {
+    if (!confirm('Удалить ВСЮ аналитику? Это including оценки и отзывы. Действие необратимо.')) return;
+    if (!confirm('Точно? Все данные будут стёрты безвозвратно.')) return;
+    data = { visits: [], dailyActions: {}, dailyLeaves: {}, sessionLeaves: [], ratings: {sum:0,count:0}, feedback: [], _ownerWiped: true };
+    save();
+    localStorage.removeItem('sasha_eng_user_rating');
+    console.log('[EngAnalytics] Full wipe done');
+    renderEngAnalytics();
+    alert('Вся аналитика стёрта.');
+  };
+  window.debugEngOwner = function() {
+    var out = document.getElementById('engDebugOut');
+    if (!out) return;
+    var lines = [];
+    lines.push('=== isOwner debug ===');
+    lines.push('Time: ' + new Date().toISOString());
+    lines.push('');
+    lines.push('localStorage flags:');
+    lines.push('  sasha_eng_is_owner = ' + JSON.stringify(localStorage.getItem('sasha_eng_is_owner')));
+    lines.push('  sasha_eng_analytics._ownerWiped = ' + JSON.stringify(data._ownerWiped));
+    lines.push('');
+    lines.push('Tokens:');
+    var tokKeys = ['gf_token', 'sasha_github_token', 'sasha_gf_token'];
+    for (var i = 0; i < tokKeys.length; i++) {
+      var t = localStorage.getItem(tokKeys[i]);
+      lines.push('  ' + tokKeys[i] + ' = ' + (t ? ('[SET, ' + t.length + ' chars]') : '[empty]'));
+    }
+    lines.push('');
+    lines.push('Location:');
+    try {
+      lines.push('  protocol = ' + window.location.protocol);
+      lines.push('  hostname = ' + window.location.hostname);
+      lines.push('  port = ' + window.location.port);
+      lines.push('  pathname = ' + window.location.pathname);
+    } catch(e) { lines.push('  [error: ' + e.message + ']'); }
+    lines.push('');
+    lines.push('isOwner() result: ' + (isOwner() ? 'TRUE (filtered out)' : 'FALSE (tracked as visitor)'));
+    lines.push('');
+    lines.push('Current data:');
+    lines.push('  visits: ' + data.visits.length);
+    lines.push('  sessionLeaves: ' + data.sessionLeaves.length);
+    lines.push('  ratings.count: ' + data.ratings.count);
+    lines.push('  feedback: ' + data.feedback.length);
+    if (data._wipeNotice) {
+      lines.push('');
+      lines.push('Last wipe: ' + data._wipeNotice);
+    }
+    out.textContent = lines.join('\n');
+    out.style.display = 'block';
+    console.log('[EngAnalytics] isOwner debug:\n' + lines.join('\n'));
   };
 
   function renderEngAnalytics() {
@@ -26780,18 +26971,37 @@ window.addEventListener("load", init);
   // Run command via chat input
   window.cpRun = function(text) {
     closeCommandPalette();
-    var input = document.getElementById('eng-ai-input');
-    if (input) {
-      input.value = text;
-      if (typeof EngineApp !== 'undefined' && EngineApp.sendAI) EngineApp.sendAI();
-    } else {
-      // Fallback: use main chat
-      var chatInput = document.getElementById('chat-input');
-      if (chatInput) {
-        chatInput.value = text;
-        if (typeof sendMessage === 'function') sendMessage();
+    // Small delay to let the overlay close cleanly before we focus the input
+    // and dispatch sendAI. Some browsers lose the input.value otherwise.
+    setTimeout(function() {
+      var input = document.getElementById('eng-ai-input');
+      if (input) {
+        input.value = text;
+        // Make sure EngineApp is loaded before calling sendAI
+        if (typeof EngineApp !== 'undefined' && EngineApp.sendAI) {
+          try { EngineApp.sendAI(); }
+          catch(e) { console.error('[cpRun] sendAI failed:', e); }
+        } else {
+          // EngineApp not ready — fall back to main chat
+          var chatInput = document.getElementById('chat-input');
+          if (chatInput) {
+            chatInput.value = text;
+            if (typeof sendMessage === 'function') sendMessage();
+          } else {
+            console.warn('[cpRun] no chat input found, command was:', text);
+          }
+        }
+      } else {
+        // Fallback: use main chat
+        var chatInput2 = document.getElementById('chat-input');
+        if (chatInput2) {
+          chatInput2.value = text;
+          if (typeof sendMessage === 'function') sendMessage();
+        } else {
+          console.warn('[cpRun] no input found at all, command was:', text);
+        }
       }
-    }
+    }, 50);
   };
   console.log('[Command Palette] ready');
 })();
@@ -27004,7 +27214,6 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
-
 
 
 
