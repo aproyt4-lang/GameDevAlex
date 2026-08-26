@@ -5233,12 +5233,15 @@ var SashaGameBuilder = (function() {
         var stateJson = JSON.stringify(state);
         var template = document.getElementById('game-runtime-template');
         var templateHTML = template ? template.innerHTML : '';
-        // Unescape </script> → </script> (template stored them as <\/script>
+        // Unescape <\/script> → </script> (template stored them as <\/script>
         // to avoid closing the parent <script type="text/plain"> wrapper).
         // Without this, the generated game HTML has literal "<\/script>" tags
         // which the browser does NOT recognise as script closers, so THREE.js
         // never loads and the game stays on the "Loading..." screen forever.
-        templateHTML = templateHTML.replace(/<\\\/script>/g, '</script>');
+        // Use string split/join (more reliable than regex across browsers).
+        templateHTML = templateHTML.split('<\\/script>').join('</script>');
+        // Also handle any remaining escaped sequences just in case
+        templateHTML = templateHTML.replace(/<\\+\/script>/g, '</script>');
         // Replace placeholders
         templateHTML = templateHTML.replace('__GAME_TITLE__', escapeHTML(title));
         templateHTML = templateHTML.replace('__GAME_STATE__', stateJson);
@@ -24260,13 +24263,13 @@ _F['src/index.js']='#!/usr/bin/env node\n// SashaAI GameDev Engine - MCP + HTTP 
 _F['START.bat']='@echo off\ntitle SashaAI GameDev Engine — MCP Server\nchcp 65001 >nul\n\necho.\necho  ╔══════════════════════════════════════════════════════╗\necho  ║     SashaAI GameDev Engine — One-Click Launcher     ║\necho  ╠══════════════════════════════════════════════════════╣\necho  ║                                                      ║\necho  ║  1. WebSocket мост  →  ws://localhost:8765         ║\necho  ║  2. HTTP REST API   →  http://localhost:3000        ║\necho  ║  3. Панель управл.  →  http://localhost:3000/panel ║\necho  ║  4. Промпт для ИИ  →  http://localhost:3000/claude-prompt ║\necho  ║                                                      ║\necho  ╚══════════════════════════════════════════════════════╝\necho.\n\n:: Check Node.js\nwhere node >nul 2>&1\nif %errorlevel% neq 0 (\n    echo [ERROR] Node.js not installed!\n    echo Download from: https://nodejs.org  ^(LTS version^)\n    echo Install it, restart PC, then run this file again.\n    echo.\n    pause\n    exit /b 1\n)\n\necho [OK] Node.js found\n\n:: Install dependencies if needed\nif not exist "node_modules" (\n    echo [..] Installing dependencies...\n    call npm install\n    if %errorlevel% neq 0 (\n        echo [ERROR] npm install failed\n        pause\n        exit /b 1\n    )\n)\necho [OK] Dependencies ready\n\n:: Open browser tabs after 3 seconds\nstart "" cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:3000/panel"\nstart "" cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:3000/claude-prompt"\n\necho.\necho ══════════════════════════════════════════════════════\necho  SERVER STARTED\necho ══════════════════════════════════════════════════════\necho.\necho  Панель:         http://localhost:3000/panel\necho  Промпт для ИИ:  http://localhost:3000/claude-prompt\necho.\necho  ЧТО ДЕЛАТЬ:\necho  1. Открой index_23.html в браузере ^(движок^)\necho  2. В панели нажми любой шаблон для теста\necho  3. Скопируй промпт из /claude-prompt и вставь в Claude Web\necho  4. Пиши Клоду: "создай город" — он сам вызовет API\necho.\necho  Нажми Ctrl+C чтобы остановить сервер.\necho ══════════════════════════════════════════════════════\necho.\n\n:: Start server\nnode src/index.js\n\nif %errorlevel% neq 0 (\n    echo.\n    echo [ERROR] Server crashed. Check error above.\n    pause\n)\n';
 _F['start.sh']='#!/bin/bash\ncd "$(dirname "$0")"\n\n# Colors\nR=\'\\033[0;31m\'; G=\'\\033[0;32m\'; Y=\'\\033[1;33m\'; B=\'\\033[0;34m\'; C=\'\\033[0;36m\'; W=\'\\033[0m\'\n\necho -e ""\necho -e "$C ╔══════════════════════════════════════════════════════╗$W"\necho -e "$C ║     SashaAI GameDev Engine — One-Click Launcher     ║$W"\necho -e "$C ╠══════════════════════════════════════════════════════╣$W"\necho -e "$C ║                                                      ║$W"\necho -e "$C ║  1. WebSocket мост  →  ws://localhost:8765         ║$W"\necho -e "$C ║  2. HTTP REST API   →  http://localhost:3000        ║$W"\necho -e "$C ║  3. Панель управл.  →  http://localhost:3000/panel ║$W"\necho -e "$C ║  4. Промпт для ИИ  →  /claude-prompt             ║$W"\necho -e "$C ║                                                      ║$W"\necho -e "$C ╚══════════════════════════════════════════════════════╝$W"\necho -e ""\n\n# Check Node.js\nif ! command -v node &> /dev/null; then\n    echo -e "$R [ERROR] Node.js не установлен!$W"\n    echo -e "  Скачай: https://nodejs.org (LTS версию)"\n    echo -e "  Установи, перезапусти терминал, запусти этот файл снова."\n    exit 1\nfi\necho -e "$G [OK]$W Node.js: $(node -v)"\n\n# Install deps\nif [ ! -d "node_modules" ]; then\n    echo -e "$Y [..] Установка зависимостей...$W"\n    npm install --silent\n    echo -e "$G [OK]$W Зависимости установлены"\nelse\n    echo -e "$G [OK]$W Зависимости на месте"\nfi\n\n# Open browser tabs in background\n(sleep 3 && xdg-open http://localhost:3000/panel 2>/dev/null &)\n(sleep 4 && xdg-open http://localhost:3000/claude-prompt 2>/dev/null &)\n\necho -e ""\necho -e "$B══════════════════════════════════════════════════════$W"\necho -e "$G  СЕРВЕР ЗАПУЩЕН$W"\necho -e "$B══════════════════════════════════════════════════════$W"\necho -e ""\necho -e "  Панель:        $C http://localhost:3000/panel $W"\necho -e "  Промпт для ИИ: $C http://localhost:3000/claude-prompt $W"\necho -e ""\necho -e "  ЧТО ДЕЛАТЬ:$Y"\necho -e "  1.$W Открой $Y index_23.html$W в браузере (твой движок)"\necho -e "  2.$W В панели нажми любой шаблон — проверь что работает"\necho -e "  3.$W Скопируй промпт с /claude-prompt и вставь в Claude Web"\necho -e "  4.$W Пиши Клоду: $Y\\"создай город\\"$W — он сам вызовет API"\necho -e ""\necho -e "  Ctrl+C — остановить сервер"\necho -e "$B══════════════════════════════════════════════════════$W"\necho -e ""\n\nnode src/index.js\n';
 _F['.gitignore']='node_modules/\npackage-lock.json\n';
-  var _P='У тебя есть доступ к 3D игровому движку SashaAI GameDev Engine через HTTP API.\n\nБазовый URL: ' + MCP_CONFIG.apiBase + '\n\nENDPOINTS:\n1. GET ' + MCP_CONFIG.apiBase + '/tools — список всех инструментов\n2. GET ' + MCP_CONFIG.apiBase + '/tools/{имя} — параметры конкретного инструмента\n3. POST ' + MCP_CONFIG.apiBase + '/call — вызвать один инструмент\n   Body: {"tool": "add_cube", "params": {"x": 1, "y": 2, "z": 3, "color": "#ff0000"}}\n4. POST ' + MCP_CONFIG.apiBase + '/call-batch — вызвать несколько инструментов подряд\n   Body: {"calls": [{"tool": "scene_clear", "params": {}}, {"tool": "add_cube", "params": {"x": 0}}]}\n\nКогда пользователь просит создать 3D сцену, ты формируешь JSON для POST /call-batch с нужными инструментами.\nНе выдумывай инструменты — сначала проверь список через GET /tools.\n\nПример: пользователь пишет "создай город"\nТы отправляешь:\nPOST ' + MCP_CONFIG.apiBase + '/call-batch\n{"calls": [\n  {"tool": "scene_clear", "params": {}},\n  {"tool": "add_plane", "params": {"width": 50, "height": 50, "color": "#555555"}},\n  {"tool": "add_cube", "params": {"x": -5, "width": 3, "height": 6, "depth": 3, "color": "#888888"}},\n  {"tool": "add_point_light", "params": {"x": 0, "y": 10, "intensity": 1}},\n  {"tool": "add_ambient_light", "params": {"intensity": 0.4}}\n]}';
-  window._tplCity=[{"tool": "scene_clear", "params": {}}, {"tool": "scene_set_background", "params": {"color": "#87CEEB"}}, {"tool": "add_plane", "params": {"width": 50, "height": 50, "color": "#555555"}}, {"tool": "add_cube", "params": {"x": -5, "width": 3, "height": 6, "depth": 3, "color": "#888888"}}, {"tool": "add_cube", "params": {"x": 0, "z": -5, "width": 4, "height": 8, "depth": 4, "color": "#777777"}}, {"tool": "add_cube", "params": {"x": 5, "z": -2, "width": 3, "height": 5, "depth": 3, "color": "#999999"}}, {"tool": "add_cube", "params": {"x": -8, "z": 2, "width": 5, "height": 10, "depth": 3, "color": "#666666"}}, {"tool": "add_point_light", "params": {"x": -5, "y": 4, "z": -3, "intensity": 0.8, "color": "#FFD700"}}, {"tool": "add_directional_light", "params": {"x": 10, "y": 20, "z": 10, "color": "#FFFACD", "intensity": 1}}, {"tool": "add_ambient_light", "params": {"color": "#B0C4DE", "intensity": 0.4}}, {"tool": "camera_set_position", "params": {"x": 12, "y": 8, "z": 12}}, {"tool": "camera_set_target", "params": {"x": 0, "y": 2, "z": 0}}];
-  window._tplForest=[{"tool": "scene_clear", "params": {}}, {"tool": "scene_set_background", "params": {"color": "#228B22"}}, {"tool": "add_plane", "params": {"width": 60, "height": 60, "color": "#3B5323"}}, {"tool": "compose_model", "params": {"description": "tree", "posX": -3, "posZ": -2}}, {"tool": "compose_model", "params": {"description": "tree", "posX": 2, "posZ": -4}}, {"tool": "compose_model", "params": {"description": "tree", "posX": -6, "posZ": 1}}, {"tool": "compose_model", "params": {"description": "tree", "posX": 4, "posZ": 3}}, {"tool": "compose_model", "params": {"description": "tree", "posX": -1, "posZ": 5}}, {"tool": "compose_model", "params": {"description": "rock", "posX": 1, "posZ": 1}}, {"tool": "add_directional_light", "params": {"x": 5, "y": 15, "z": 8, "intensity": 0.7}}, {"tool": "add_ambient_light", "params": {"color": "#90EE90", "intensity": 0.5}}, {"tool": "camera_set_position", "params": {"x": 8, "y": 6, "z": 10}}];
-  window._tplSpace=[{"tool": "scene_clear", "params": {}}, {"tool": "scene_set_background", "params": {"color": "#000011"}}, {"tool": "add_sphere", "params": {"z": -8, "radius": 3, "color": "#4169E1"}}, {"tool": "add_sphere", "params": {"x": 6, "y": 2, "z": -12, "radius": 1, "color": "#FF6347"}}, {"tool": "add_sphere", "params": {"x": -5, "z": -15, "radius": 2, "color": "#DAA520"}}, {"tool": "add_torus", "params": {"x": -5, "z": -15, "radius": 3, "tube": 0.08, "color": "#DAA520"}}, {"tool": "add_point_light", "params": {"y": 3, "z": -5, "intensity": 2}}, {"tool": "add_ambient_light", "params": {"color": "#191970", "intensity": 0.2}}, {"tool": "camera_set_position", "params": {"y": 2, "z": 5}}];
-  window._tplRoom=[{"tool": "scene_clear", "params": {}}, {"tool": "scene_set_background", "params": {"color": "#2C2C2C"}}, {"tool": "add_plane", "params": {"width": 10, "height": 10, "color": "#8B7355"}}, {"tool": "add_cube", "params": {"y": 2.5, "z": -5, "width": 10, "height": 5, "depth": 0.2, "color": "#D2B48C"}}, {"tool": "add_cube", "params": {"x": -5, "y": 2.5, "width": 0.2, "height": 5, "depth": 10, "color": "#C4A882"}}, {"tool": "add_cube", "params": {"x": 5, "y": 2.5, "width": 0.2, "height": 5, "depth": 10, "color": "#C4A882"}}, {"tool": "compose_model", "params": {"description": "table"}}, {"tool": "compose_model", "params": {"description": "chair", "posZ": 2}}, {"tool": "add_point_light", "params": {"y": 4.5, "intensity": 1.5, "color": "#FFF8DC"}}, {"tool": "add_ambient_light", "params": {"color": "#FFF8DC", "intensity": 0.3}}, {"tool": "camera_set_position", "params": {"y": 3, "z": 6}}];
-  window._tplDesert=[{"tool": "scene_clear", "params": {}}, {"tool": "scene_set_background", "params": {"color": "#F4A460"}}, {"tool": "create_terrain", "params": {"width": 40, "depth": 40, "heightExpression": "Math.sin(x*0.3)*Math.cos(z*0.2)*1.5", "resolution": 48, "color": "#EDC9AF"}}, {"tool": "add_cylinder", "params": {"x": -3, "y": 1.5, "z": 2, "radiusTop": 0.15, "radiusBottom": 0.2, "height": 3, "color": "#2E8B57"}}, {"tool": "add_sphere", "params": {"x": -2.5, "y": 3.2, "z": 2, "radius": 0.5, "color": "#2E8B57"}}, {"tool": "add_directional_light", "params": {"x": 5, "y": 20, "z": 3, "color": "#FFD700", "intensity": 1.5}}, {"tool": "add_ambient_light", "params": {"color": "#FFA500", "intensity": 0.6}}, {"tool": "camera_set_position", "params": {"x": 10, "y": 5, "z": 10}}];
-  window._tplUnderwater=[{"tool": "scene_clear", "params": {}}, {"tool": "scene_set_background", "params": {"color": "#001133"}}, {"tool": "add_plane", "params": {"width": 40, "height": 40, "color": "#1B3F5C"}}, {"tool": "create_terrain", "params": {"name": "seabed", "width": 40, "depth": 40, "heightExpression": "Math.sin(x*0.5)*Math.cos(z*0.3)*0.8", "resolution": 40, "color": "#1B3F5C"}}, {"tool": "add_sphere", "params": {"x": -2, "y": 1, "z": -3, "radius": 0.8, "color": "#FF6B6B"}}, {"tool": "add_cylinder", "params": {"x": 3, "y": 1.5, "z": 2, "radiusTop": 0.1, "radiusBottom": 0.15, "height": 3, "color": "#20B2AA"}}, {"tool": "add_torus", "params": {"y": 0.5, "radius": 1, "tube": 0.2, "color": "#FF69B4"}}, {"tool": "add_point_light", "params": {"y": 8, "intensity": 1.2, "color": "#87CEEB"}}, {"tool": "add_ambient_light", "params": {"color": "#006994", "intensity": 0.4}}, {"tool": "camera_set_position", "params": {"x": 5, "y": 3, "z": 8}}];
+  var _P='У тебя есть доступ к 3D игровому движку SashaAI GameDev Engine через HTTP API.\n\nБазовый URL: ' + MCP_CONFIG.apiBase + '\n\nENDPOINTS:\n1. GET ' + MCP_CONFIG.apiBase + '/tools — список всех инструментов\n2. GET ' + MCP_CONFIG.apiBase + '/tools/{имя} — параметры конкретного инструмента\n3. POST ' + MCP_CONFIG.apiBase + '/call — вызвать один инструмент\n   Body: {"tool": "add_cube", "params": {"x": 1, "y": 2, "z": 3, "color": "#ff0000"}}\n4. POST ' + MCP_CONFIG.apiBase + '/call-batch — вызвать несколько инструментов подряд\n   Body: {"calls": [{"tool": "add_cube", "params": {"x": 0}}]}\n\nКогда пользователь просит создать 3D сцену, ты формируешь JSON для POST /call-batch с нужными инструментами.\nНе выдумывай инструменты — сначала проверь список через GET /tools.\n\nПример: пользователь пишет "создай город"\nТы отправляешь:\nPOST ' + MCP_CONFIG.apiBase + '/call-batch\n{"calls": [\n  {"tool": "scene_clear", "params": {}},\n  {"tool": "add_plane", "params": {"width": 50, "height": 50, "color": "#555555"}},\n  {"tool": "add_cube", "params": {"x": -5, "width": 3, "height": 6, "depth": 3, "color": "#888888"}},\n  {"tool": "add_point_light", "params": {"x": 0, "y": 10, "intensity": 1}},\n  {"tool": "add_ambient_light", "params": {"intensity": 0.4}}\n]}';
+  window._tplCity=[{"tool": "scene_set_background", "params": {"color": "#87CEEB"}}, {"tool": "add_plane", "params": {"width": 50, "height": 50, "color": "#555555"}}, {"tool": "add_cube", "params": {"x": -5, "width": 3, "height": 6, "depth": 3, "color": "#888888"}}, {"tool": "add_cube", "params": {"x": 0, "z": -5, "width": 4, "height": 8, "depth": 4, "color": "#777777"}}, {"tool": "add_cube", "params": {"x": 5, "z": -2, "width": 3, "height": 5, "depth": 3, "color": "#999999"}}, {"tool": "add_cube", "params": {"x": -8, "z": 2, "width": 5, "height": 10, "depth": 3, "color": "#666666"}}, {"tool": "add_point_light", "params": {"x": -5, "y": 4, "z": -3, "intensity": 0.8, "color": "#FFD700"}}, {"tool": "add_directional_light", "params": {"x": 10, "y": 20, "z": 10, "color": "#FFFACD", "intensity": 1}}, {"tool": "add_ambient_light", "params": {"color": "#B0C4DE", "intensity": 0.4}}, {"tool": "camera_set_position", "params": {"x": 12, "y": 8, "z": 12}}, {"tool": "camera_set_target", "params": {"x": 0, "y": 2, "z": 0}}];
+  window._tplForest=[{"tool": "scene_set_background", "params": {"color": "#228B22"}}, {"tool": "add_plane", "params": {"width": 60, "height": 60, "color": "#3B5323"}}, {"tool": "compose_model", "params": {"description": "tree", "posX": -3, "posZ": -2}}, {"tool": "compose_model", "params": {"description": "tree", "posX": 2, "posZ": -4}}, {"tool": "compose_model", "params": {"description": "tree", "posX": -6, "posZ": 1}}, {"tool": "compose_model", "params": {"description": "tree", "posX": 4, "posZ": 3}}, {"tool": "compose_model", "params": {"description": "tree", "posX": -1, "posZ": 5}}, {"tool": "compose_model", "params": {"description": "rock", "posX": 1, "posZ": 1}}, {"tool": "add_directional_light", "params": {"x": 5, "y": 15, "z": 8, "intensity": 0.7}}, {"tool": "add_ambient_light", "params": {"color": "#90EE90", "intensity": 0.5}}, {"tool": "camera_set_position", "params": {"x": 8, "y": 6, "z": 10}}];
+  window._tplSpace=[{"tool": "scene_set_background", "params": {"color": "#000011"}}, {"tool": "add_sphere", "params": {"z": -8, "radius": 3, "color": "#4169E1"}}, {"tool": "add_sphere", "params": {"x": 6, "y": 2, "z": -12, "radius": 1, "color": "#FF6347"}}, {"tool": "add_sphere", "params": {"x": -5, "z": -15, "radius": 2, "color": "#DAA520"}}, {"tool": "add_torus", "params": {"x": -5, "z": -15, "radius": 3, "tube": 0.08, "color": "#DAA520"}}, {"tool": "add_point_light", "params": {"y": 3, "z": -5, "intensity": 2}}, {"tool": "add_ambient_light", "params": {"color": "#191970", "intensity": 0.2}}, {"tool": "camera_set_position", "params": {"y": 2, "z": 5}}];
+  window._tplRoom=[{"tool": "scene_set_background", "params": {"color": "#2C2C2C"}}, {"tool": "add_plane", "params": {"width": 10, "height": 10, "color": "#8B7355"}}, {"tool": "add_cube", "params": {"y": 2.5, "z": -5, "width": 10, "height": 5, "depth": 0.2, "color": "#D2B48C"}}, {"tool": "add_cube", "params": {"x": -5, "y": 2.5, "width": 0.2, "height": 5, "depth": 10, "color": "#C4A882"}}, {"tool": "add_cube", "params": {"x": 5, "y": 2.5, "width": 0.2, "height": 5, "depth": 10, "color": "#C4A882"}}, {"tool": "compose_model", "params": {"description": "table"}}, {"tool": "compose_model", "params": {"description": "chair", "posZ": 2}}, {"tool": "add_point_light", "params": {"y": 4.5, "intensity": 1.5, "color": "#FFF8DC"}}, {"tool": "add_ambient_light", "params": {"color": "#FFF8DC", "intensity": 0.3}}, {"tool": "camera_set_position", "params": {"y": 3, "z": 6}}];
+  window._tplDesert=[{"tool": "scene_set_background", "params": {"color": "#F4A460"}}, {"tool": "create_terrain", "params": {"width": 40, "depth": 40, "heightExpression": "Math.sin(x*0.3)*Math.cos(z*0.2)*1.5", "resolution": 48, "color": "#EDC9AF"}}, {"tool": "add_cylinder", "params": {"x": -3, "y": 1.5, "z": 2, "radiusTop": 0.15, "radiusBottom": 0.2, "height": 3, "color": "#2E8B57"}}, {"tool": "add_sphere", "params": {"x": -2.5, "y": 3.2, "z": 2, "radius": 0.5, "color": "#2E8B57"}}, {"tool": "add_directional_light", "params": {"x": 5, "y": 20, "z": 3, "color": "#FFD700", "intensity": 1.5}}, {"tool": "add_ambient_light", "params": {"color": "#FFA500", "intensity": 0.6}}, {"tool": "camera_set_position", "params": {"x": 10, "y": 5, "z": 10}}];
+  window._tplUnderwater=[{"tool": "scene_set_background", "params": {"color": "#001133"}}, {"tool": "add_plane", "params": {"width": 40, "height": 40, "color": "#1B3F5C"}}, {"tool": "create_terrain", "params": {"name": "seabed", "width": 40, "depth": 40, "heightExpression": "Math.sin(x*0.5)*Math.cos(z*0.3)*0.8", "resolution": 40, "color": "#1B3F5C"}}, {"tool": "add_sphere", "params": {"x": -2, "y": 1, "z": -3, "radius": 0.8, "color": "#FF6B6B"}}, {"tool": "add_cylinder", "params": {"x": 3, "y": 1.5, "z": 2, "radiusTop": 0.1, "radiusBottom": 0.15, "height": 3, "color": "#20B2AA"}}, {"tool": "add_torus", "params": {"y": 0.5, "radius": 1, "tube": 0.2, "color": "#FF69B4"}}, {"tool": "add_point_light", "params": {"y": 8, "intensity": 1.2, "color": "#87CEEB"}}, {"tool": "add_ambient_light", "params": {"color": "#006994", "intensity": 0.4}}, {"tool": "camera_set_position", "params": {"x": 5, "y": 3, "z": 8}}];
 
   function _l(m,c){var e=document.getElementById('mcpLog');if(!e)return;var d=document.createElement('div');d.className=c||'';d.textContent=m;e.appendChild(d);e.scrollTop=e.scrollHeight;}
   function _us(s,t){var d=document.getElementById('mcpDot'),f=document.getElementById('mcpFloatDot'),x=document.getElementById('mcpStatusText');if(d)d.className='mcp-status-dot '+s;if(f)f.className='mcp-float-dot '+(s==='on'?'on':'off');if(x)x.textContent=t;}
@@ -24523,22 +24526,25 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         return E.animateObj(params.name, params.property||'position.y', params.from||0, params.to||1, params.duration||1);
       case 'apply_scene_template': {
         // Direct template execution — no MCP bridge needed
+        // NOTE: Templates NO LONGER call E.clear() — they ADD to the existing
+        // scene so user can compose: forest + castle + character on one map.
+        // Only set_bg_color and add_plane are kept (they don't wipe meshes).
         var tplFns = {
-          city: function() { E.clear(); E.setBgColor(0.53,0.81,0.92); E.addPlane(50,50,0x555555); E.addCube(-5,3,-3,3,6,3,0x888888); E.addCube(0,4,-5,4,8,4,0x777777); E.addCube(5,2.5,-2,3,5,3,0x999999); E.addDirectionalLight(10,20,10,0xFFFACD,1.0); E.addAmbientLight(0xB0C4DE,0.4); E.setCameraPos(12,8,12); E.setCameraTarget(0,2,0); },
-          forest: function() { E.clear(); E.setBgColor(0.13,0.55,0.13); E.addPlane(60,60,0x3B5323); E.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); E.aiComposeModel('tree',{position:{x:2,y:0,z:-4}}); E.aiComposeModel('tree',{position:{x:-6,y:0,z:1}}); E.aiComposeModel('tree',{position:{x:4,y:0,z:3}}); E.aiComposeModel('tree',{position:{x:-1,y:0,z:5}}); E.aiComposeModel('rock',{position:{x:1,y:0,z:1},scale:{x:0.8,y:0.6,z:0.8}}); E.aiComposeModel('rock',{position:{x:-4,y:0,z:-5},scale:{x:1.2,y:0.8,z:1}}); E.addDirectionalLight(5,15,8,0xFFFACD,0.7); E.addAmbientLight(0x90EE90,0.5); E.setCameraPos(8,6,10); E.setCameraTarget(0,1,0); },
-          space: function() { E.clear(); E.setBgColor(0,0,0.07); E.addSphere(0,0,-8,3,0x4169E1); E.addSphere(6,2,-12,1,0xFF6347); E.addSphere(-5,-1,-15,2,0xDAA520); E.addTorus(-5,-1,-15,3,0.08,0xDAA520); E.addPointLight(0,3,-5,2,0xFFFFFF); E.addAmbientLight(0x191970,0.2); E.setCameraPos(0,2,5); E.setCameraTarget(0,0,-8); },
-          room: function() { E.clear(); E.setBgColor(0.17,0.17,0.17); E.addPlane(10,10,0x8B7355); E.addCube(0,2.5,-5,10,5,0.2,0xD2B48C); E.addCube(-5,2.5,0,0.2,5,10,0xC4A882); E.addCube(5,2.5,0,0.2,5,10,0xC4A882); E.aiComposeModel('table',{position:{x:0,y:0,z:0}}); E.aiComposeModel('chair',{position:{x:0,y:0,z:2}}); E.addPointLight(0,4.5,0,1.5,0xFFF8DC); E.addAmbientLight(0xFFF8DC,0.3); E.setCameraPos(0,3,6); },
-          desert: function() { E.clear(); E.setBgColor(0.96,0.64,0.38); E.createTerrain('sand',40,40,function(x,z){return Math.sin(x*0.3)*Math.cos(z*0.2)*1.5;},48,{color:0xEDC9AF}); E.aiComposeModel('rock',{position:{x:-3,y:0,z:2}}); E.aiComposeModel('rock',{position:{x:4,y:0,z:-3}}); E.addDirectionalLight(5,20,3,0xFFD700,1.5); E.addAmbientLight(0xFFA500,0.6); E.setCameraPos(12,6,12); },
-          underwater: function() { E.clear(); E.setBgColor(0,0.07,0.2); E.addPlane(40,40,0x1B3F5C); E.createTerrain('seabed',40,40,function(x,z){return Math.sin(x*0.5)*Math.cos(z*0.3)*0.8;},40,{color:0x1B3F5C}); E.addSphere(-2,1,-3,0.8,0xFF6B6B); E.addSphere(-1.5,1.8,-2.5,0.5,0xFF8E8E); E.addPointLight(0,8,0,1.2,0x87CEEB); E.addAmbientLight(0x006994,0.4); E.setCameraPos(5,3,8); },
-          castle: function() { E.clear(); E.setBgColor(0.2,0.15,0.25); E.addPlane(50,50,0x3d5c3a); E.addCube(0,4,0,8,8,8,0x808080); E.addCube(-8,2,-8,3,4,3,0x707070); E.addCube(8,2,-8,3,4,3,0x707070); E.addCube(-8,2,8,3,4,3,0x707070); E.addCube(8,2,8,3,4,3,0x707070); E.addPointLight(0,10,0,1.5,0xFFD700); E.addAmbientLight(0x4a4a6a,0.3); E.setCameraPos(18,12,18); E.setCameraTarget(0,3,0); },
-          island: function() { E.clear(); E.setBgColor(0.4,0.7,0.95); E.createTerrain('island',30,30,function(x,z){var d=Math.sqrt(x*x+z*z);return Math.max(0,(15-d)*0.6+Math.sin(x*0.5)*Math.cos(z*0.3));},48,{color:0xF4A460}); E.aiComposeModel('tree',{position:{x:-2,y:0,z:1}}); E.aiComposeModel('tree',{position:{x:3,y:0,z:-2}}); E.addDirectionalLight(5,15,8,0xFFFACD,1.0); E.addAmbientLight(0x87CEEB,0.5); E.setCameraPos(12,8,12); },
-          winter: function() { E.clear(); E.setBgColor(0.85,0.9,0.95); E.addPlane(40,40,0xE8E8F0); E.createTerrain('snow',40,40,function(x,z){return Math.sin(x*0.2)*Math.cos(z*0.15)*1.5;},32,{color:0xFFFFFF}); E.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); E.aiComposeModel('tree',{position:{x:4,y:0,z:3}}); E.addDirectionalLight(5,15,8,0xFFF8DC,0.8); E.addAmbientLight(0xB0C4DE,0.5); E.setCameraPos(10,6,10); }
+          city: function() { E.setBgColor(0.53,0.81,0.92); E.addPlane(50,50,0x555555); E.addCube(-5,3,-3,3,6,3,0x888888); E.addCube(0,4,-5,4,8,4,0x777777); E.addCube(5,2.5,-2,3,5,3,0x999999); E.addDirectionalLight(10,20,10,0xFFFACD,1.0); E.addAmbientLight(0xB0C4DE,0.4); E.setCameraPos(12,8,12); E.setCameraTarget(0,2,0); },
+          forest: function() { E.setBgColor(0.13,0.55,0.13); E.addPlane(60,60,0x3B5323); E.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); E.aiComposeModel('tree',{position:{x:2,y:0,z:-4}}); E.aiComposeModel('tree',{position:{x:-6,y:0,z:1}}); E.aiComposeModel('tree',{position:{x:4,y:0,z:3}}); E.aiComposeModel('tree',{position:{x:-1,y:0,z:5}}); E.aiComposeModel('rock',{position:{x:1,y:0,z:1},scale:{x:0.8,y:0.6,z:0.8}}); E.aiComposeModel('rock',{position:{x:-4,y:0,z:-5},scale:{x:1.2,y:0.8,z:1}}); E.addDirectionalLight(5,15,8,0xFFFACD,0.7); E.addAmbientLight(0x90EE90,0.5); E.setCameraPos(8,6,10); E.setCameraTarget(0,1,0); },
+          space: function() { E.setBgColor(0,0,0.07); E.addSphere(0,0,-8,3,0x4169E1); E.addSphere(6,2,-12,1,0xFF6347); E.addSphere(-5,-1,-15,2,0xDAA520); E.addTorus(-5,-1,-15,3,0.08,0xDAA520); E.addPointLight(0,3,-5,2,0xFFFFFF); E.addAmbientLight(0x191970,0.2); E.setCameraPos(0,2,5); E.setCameraTarget(0,0,-8); },
+          room: function() { E.setBgColor(0.17,0.17,0.17); E.addPlane(10,10,0x8B7355); E.addCube(0,2.5,-5,10,5,0.2,0xD2B48C); E.addCube(-5,2.5,0,0.2,5,10,0xC4A882); E.addCube(5,2.5,0,0.2,5,10,0xC4A882); E.aiComposeModel('table',{position:{x:0,y:0,z:0}}); E.aiComposeModel('chair',{position:{x:0,y:0,z:2}}); E.addPointLight(0,4.5,0,1.5,0xFFF8DC); E.addAmbientLight(0xFFF8DC,0.3); E.setCameraPos(0,3,6); },
+          desert: function() { E.setBgColor(0.96,0.64,0.38); E.createTerrain('sand',40,40,function(x,z){return Math.sin(x*0.3)*Math.cos(z*0.2)*1.5;},48,{color:0xEDC9AF}); E.aiComposeModel('rock',{position:{x:-3,y:0,z:2}}); E.aiComposeModel('rock',{position:{x:4,y:0,z:-3}}); E.addDirectionalLight(5,20,3,0xFFD700,1.5); E.addAmbientLight(0xFFA500,0.6); E.setCameraPos(12,6,12); },
+          underwater: function() { E.setBgColor(0,0.07,0.2); E.addPlane(40,40,0x1B3F5C); E.createTerrain('seabed',40,40,function(x,z){return Math.sin(x*0.5)*Math.cos(z*0.3)*0.8;},40,{color:0x1B3F5C}); E.addSphere(-2,1,-3,0.8,0xFF6B6B); E.addSphere(-1.5,1.8,-2.5,0.5,0xFF8E8E); E.addPointLight(0,8,0,1.2,0x87CEEB); E.addAmbientLight(0x006994,0.4); E.setCameraPos(5,3,8); },
+          castle: function() { E.setBgColor(0.2,0.15,0.25); E.addPlane(50,50,0x3d5c3a); E.addCube(0,4,0,8,8,8,0x808080); E.addCube(-8,2,-8,3,4,3,0x707070); E.addCube(8,2,-8,3,4,3,0x707070); E.addCube(-8,2,8,3,4,3,0x707070); E.addCube(8,2,8,3,4,3,0x707070); E.addPointLight(0,10,0,1.5,0xFFD700); E.addAmbientLight(0x4a4a6a,0.3); E.setCameraPos(18,12,18); E.setCameraTarget(0,3,0); },
+          island: function() { E.setBgColor(0.4,0.7,0.95); E.createTerrain('island',30,30,function(x,z){var d=Math.sqrt(x*x+z*z);return Math.max(0,(15-d)*0.6+Math.sin(x*0.5)*Math.cos(z*0.3));},48,{color:0xF4A460}); E.aiComposeModel('tree',{position:{x:-2,y:0,z:1}}); E.aiComposeModel('tree',{position:{x:3,y:0,z:-2}}); E.addDirectionalLight(5,15,8,0xFFFACD,1.0); E.addAmbientLight(0x87CEEB,0.5); E.setCameraPos(12,8,12); },
+          winter: function() { E.setBgColor(0.85,0.9,0.95); E.addPlane(40,40,0xE8E8F0); E.createTerrain('snow',40,40,function(x,z){return Math.sin(x*0.2)*Math.cos(z*0.15)*1.5;},32,{color:0xFFFFFF}); E.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); E.aiComposeModel('tree',{position:{x:4,y:0,z:3}}); E.addDirectionalLight(5,15,8,0xFFF8DC,0.8); E.addAmbientLight(0xB0C4DE,0.5); E.setCameraPos(10,6,10); }
         };
         var fn = tplFns[params.template];
         if (fn) {
           fn();
           if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
-          return params.template + ' applied';
+          return params.template + ' applied (added to existing scene)';
         }
         throw new Error('Unknown template: ' + params.template);
       }
@@ -25118,7 +25124,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       if (calls.length === 1) {
         var c = calls[0];
         if (c.tool === 'apply_scene_template') {
-          reply = '✅ Применил шаблон «' + (labels[c.params.template] || 'Сцена') + '».';
+          reply = '✅ Добавил шаблон «' + (labels[c.params.template] || 'Сцена') + '» к текущей сцене.';
         } else if (c.tool === 'import_city') {
           reply = '🏙️ Загружаю реальный город «' + (c.params.query || '?') + '»... ~5 сек.';
         } else if (c.tool === 'add_character') {
@@ -25278,7 +25284,10 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   // === Heuristic local generator (offline fallback for generation intent) ===
   function localGenerate(prompt) {
     var t = prompt.toLowerCase();
-    var calls = [{tool:'scene_clear',params:{}}];
+    // NOTE: NO scene_clear here. We ADD to the existing scene so user can
+    // compose: лес + замок + персонаж on one map. If user explicitly asks
+    // to clear, that goes through quickMatch's clear_scene, not here.
+    var calls = [];
 
     // === CHARACTER DETECTION (knight, mage, robot, archer, humanoid) ===
     var charType = null;
@@ -25289,7 +25298,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     else if (/человек|персонаж|humanoid|character|герой|player/.test(t)) charType = 'humanoid';
 
     if (charType) {
-      calls.push({tool:'add_plane', params:{width:20, height:20, color:'#3a3a4a'}});
       calls.push({tool:'add_character', params:{type: charType, x: 0, y: 0, z: 0, name: 'hero'}});
       calls.push({tool:'add_directional_light', params:{x:5, y:10, z:5, intensity:0.8, color:'#ffffff'}});
       calls.push({tool:'add_ambient_light', params:{intensity:0.4, color:'#404060'}});
@@ -25300,7 +25308,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
     // === SHOOTER DETECTION ===
     if (/шутер|shooter|fps|стрелялк|射击/.test(t)) {
-      calls.push({tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}});
       calls.push({tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}});
       calls.push({tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}});
       calls.push({tool:'spawn_enemy', params:{x:-10, y:0, z:-10, hp:100}});
@@ -25316,7 +25323,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       var enemyCount = 3;
       var cntMatch = t.match(/(\d+)/);
       if (cntMatch) enemyCount = Math.min(parseInt(cntMatch[1]), 10);
-      calls.push({tool:'add_plane', params:{width:30, height:30, color:'#2a2a3a'}});
       for (var e = 0; e < enemyCount; e++) {
         calls.push({tool:'spawn_enemy', params:{x:(Math.random()-0.5)*20, y:0, z:(Math.random()-0.5)*20, hp:100}});
       }
@@ -25329,7 +25335,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
     // === SURVIVAL / WAVES ===
     if (/выживан|surviv|волны|волн|horde|орды/.test(t)) {
-      calls.push({tool:'add_plane', params:{width:50, height:50, color:'#2a2a3a'}});
       calls.push({tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}});
       calls.push({tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}});
       calls.push({tool:'start_waves', params:{enemiesPerWave:3, spawnInterval:2, waveDelay:5}});
@@ -25354,7 +25359,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
     // === PLAYER CONTROL ===
     if (/игрок|player|управление|control/.test(t)) {
-      calls.push({tool:'add_plane', params:{width:20, height:20, color:'#3a3a4a'}});
       calls.push({tool:'add_character', params:{type:'humanoid', x:0, y:0, z:0, name:'player1'}});
       calls.push({tool:'attach_player_control', params:{objectName:'player1', speed:6, hp:100, ammo:30, fps:true}});
       calls.push({tool:'add_directional_light', params:{x:5, y:10, z:5, intensity:0.8}});
@@ -25365,7 +25369,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 
     // === ARENA ===
     if (/арена|arena|колизей/.test(t)) {
-      calls.push({tool:'add_plane', params:{width:40, height:40, color:'#333344'}});
       calls.push({tool:'add_cylinder', params:{x:0, y:0.15, z:0, radiusTop:15, radiusBottom:15, height:0.3, color:'#444455'}});
       for (var a = 0; a < 16; a++) {
         var angle = a * Math.PI * 2 / 16;
@@ -25403,7 +25406,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       calls.push({tool:'camera_set_position',params:{x:0,y:2,z:5}});
     } else if (theme === 'forest') {
       calls.push({tool:'set_bg_color',params:{color:'#87CEEB'}});
-      calls.push({tool:'add_plane',params:{width:60,height:60,color:'#3B5323'}});
       for (var i = 0; i < 12; i++) calls.push({tool:'compose_model',params:{description:'tree', posX:(Math.random()-0.5)*40, posZ:(Math.random()-0.5)*40}});
       for (var i = 0; i < 5; i++) calls.push({tool:'compose_model',params:{description:'rock', posX:(Math.random()-0.5)*30, posZ:(Math.random()-0.5)*30, scaleX:0.5+Math.random()}});
       calls.push({tool:'add_directional_light',params:{x:5,y:15,z:8,intensity:0.7,color:'#FFFACD'}});
@@ -25426,7 +25428,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       calls.push({tool:'camera_set_position',params:{x:5,y:3,z:8}});
     } else if (theme === 'winter') {
       calls.push({tool:'set_bg_color',params:{color:'#D9E8F5'}});
-      calls.push({tool:'add_plane',params:{width:50,height:50,color:'#E8E8F0'}});
       calls.push({tool:'create_terrain',params:{name:'snow',width:40,depth:40,heightExpression:'Math.sin(x*0.2)*Math.cos(z*0.15)*1.5',resolution:32,color:'#FFFFFF'}});
       for (var i = 0; i < 8; i++) calls.push({tool:'compose_model',params:{description:'tree',posX:(Math.random()-0.5)*30,posZ:(Math.random()-0.5)*30}});
       calls.push({tool:'add_directional_light',params:{x:5,y:15,z:8,intensity:0.8,color:'#FFF8DC'}});
@@ -25434,7 +25435,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       calls.push({tool:'camera_set_position',params:{x:10,y:6,z:10}});
     } else if (theme === 'castle') {
       calls.push({tool:'set_bg_color',params:{color:'#33223a'}});
-      calls.push({tool:'add_plane',params:{width:50,height:50,color:'#3d5c3a'}});
       calls.push({tool:'add_cube',params:{x:0,y:4,z:0,width:8,height:8,depth:8,color:'#808080'}});
       var towers = [[-8,-8],[8,-8],[-8,8],[8,8]];
       for (var i = 0; i < towers.length; i++) {
@@ -25448,7 +25448,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       calls.push({tool:'camera_set_target',params:{x:0,y:3,z:0}});
     } else if (theme === 'city') {
       calls.push({tool:'set_bg_color',params:{color:'#87CEEB'}});
-      calls.push({tool:'add_plane',params:{width:50,height:50,color:'#555555'}});
       for (var i = 0; i < 12; i++) calls.push({tool:'add_cube',params:{x:(Math.random()-0.5)*40, y:2+Math.random()*5, z:(Math.random()-0.5)*40, width:2+Math.random()*3, height:4+Math.random()*10, depth:2+Math.random()*3, color:['#888888','#777777','#999999','#666666','#aaaaaa'][Math.floor(Math.random()*5)]}});
       calls.push({tool:'add_directional_light',params:{x:10,y:20,z:10,intensity:1,color:'#FFFACD'}});
       calls.push({tool:'add_ambient_light',params:{intensity:0.4,color:'#B0C4DE'}});
@@ -25456,7 +25455,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       calls.push({tool:'camera_set_target',params:{x:0,y:2,z:0}});
     } else if (theme === 'room') {
       calls.push({tool:'set_bg_color',params:{color:'#2C2C2C'}});
-      calls.push({tool:'add_plane',params:{width:10,height:10,color:'#8B7355'}});
       calls.push({tool:'add_cube',params:{x:0,y:2.5,z:-5,width:10,height:5,depth:0.2,color:'#D2B48C'}});
       calls.push({tool:'add_cube',params:{x:-5,y:2.5,z:0,width:0.2,height:5,depth:10,color:'#C4A882'}});
       calls.push({tool:'add_cube',params:{x:5,y:2.5,z:0,width:0.2,height:5,depth:10,color:'#C4A882'}});
@@ -25508,7 +25506,6 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     } else {
       // Generic — extract primitives by name + count
       calls.push({tool:'set_bg_color',params:{color:'#1a1a2e'}});
-      calls.push({tool:'add_plane',params:{width:30,height:30,color:'#2e2e4a'}});
       var primMatches = [
         {re:/(\d+)\s*(?:сфер|sphere|шар)/i, tool:'add_sphere', color:'#ec4899'},
         {re:/(\d+)\s*(?:куб|cube|box)/i, tool:'add_cube', color:'#6366f1'},
