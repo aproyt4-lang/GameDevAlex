@@ -5393,70 +5393,252 @@ var SashaGameBuilder = (function() {
             }
         }, null, 2);
 
-        // Download a ZIP containing: index.html + package.json + run.exe (NW.js binary)
-        // We fetch the NW.js binary directly from CDN and bundle it
+        // === Reliable .bat — proper NW.js packaging pipeline ===
+        // Pipeline: download NW.js → extract → copy nw.exe→game.exe + DLLs
+        //           → Compress-Archive game files → rename package.zip → package.nw
+        //           → delete loose index.html and package.json
+        //           → verify game.exe + package.nw exist → print path & size
+        //           → DO NOT auto-launch (avoid false "SUCCESS" if window is empty)
+        // On ANY error → print BUILD FAILED + exit 1, never print SUCCESS.
+        var batContent = '@echo off\r\n' +
+            'setlocal enabledelayedexpansion\r\n' +
+            'chcp 65001 >nul 2>nul\r\n' +
+            'title ' + gameTitle + ' — EXE Builder\r\n' +
+            'mode con: cols=70 lines=24\r\n' +
+            'color 0B\r\n' +
+            '\r\n' +
+            'echo.\r\n' +
+            'echo   ========================================================\r\n' +
+            'echo     ' + gameTitle + ' — EXE Builder (NW.js pipeline)\r\n' +
+            'echo   ========================================================\r\n' +
+            'echo.\r\n' +
+            'set "GAMENAME=' + slug + '"\r\n' +
+            'set "NWURL=https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip"\r\n' +
+            'set "NWZIP=nwjs-download.zip"\r\n' +
+            'set "NWDIR=nwjs-extracted"\r\n' +
+            'set "PKGZIP=package.zip"\r\n' +
+            'set "PKGNW=package.nw"\r\n' +
+            'set "FAIL=0"\r\n' +
+            '\r\n' +
+            'REM ===== If game already built, just report and exit (no auto-launch) =====\r\n' +
+            'if exist "%GAMENAME%.exe" if exist "%PKGNW%" (\r\n' +
+            '  echo   Game already built.\r\n' +
+            '  echo   File: %CD%\\%GAMENAME%.exe\r\n' +
+            '  echo   Run it manually to start the game.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 0\r\n' +
+            ')\r\n' +
+            '\r\n' +
+            'REM ===== STEP 1/6: verify index.html + package.json exist =====\r\n' +
+            'echo   [1/6] Checking game files...\r\n' +
+            'if not exist "index.html" (\r\n' +
+            '  echo   BUILD FAILED: index.html not found in current folder.\r\n' +
+            '  echo   Put this .bat next to index.html and package.json.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'if not exist "package.json" (\r\n' +
+            '  echo   BUILD FAILED: package.json not found in current folder.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'echo   OK - index.html and package.json present\r\n' +
+            '\r\n' +
+            'REM ===== STEP 2/6: download NW.js (~130MB) =====\r\n' +
+            'echo   [2/6] Downloading NW.js v0.83.0 (~130MB)...\r\n' +
+            'if exist "%NWZIP%" del "%NWZIP%"\r\n' +
+            'powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = \'SilentlyContinue\'; Invoke-WebRequest -Uri \'%NWURL%\' -OutFile \'%NWZIP%\' -UseBasicParsing } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            'if errorlevel 1 (\r\n' +
+            '  echo   Primary download failed. Trying WebClient fallback...\r\n' +
+            '  powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile(\'%NWURL%\', \'%NWZIP%\')"\r\n' +
+            '  if errorlevel 1 (\r\n' +
+            '    echo   BUILD FAILED: Cannot download NW.js.\r\n' +
+            '    echo   URL: %NWURL%\r\n' +
+            '    echo   Download manually and put nwjs-v0.83.0-win-x64.zip as %NWZIP% next to this .bat.\r\n' +
+            '    set "FAIL=1"\r\n' +
+            '    goto :end\r\n' +
+            '  )\r\n' +
+            ')\r\n' +
+            'if not exist "%NWZIP%" (\r\n' +
+            '  echo   BUILD FAILED: NW.js zip not found after download.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'for %%A in ("%NWZIP%") do set "FILESIZE=%%~zA"\r\n' +
+            'if !FILESIZE! LSS 10000000 (\r\n' +
+            '  echo   BUILD FAILED: NW.js zip too small (!FILESIZE! bytes), download corrupted.\r\n' +
+            '  del "%NWZIP%" 2>nul\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'set /a SIZEMB=!FILESIZE! / 1048576\r\n' +
+            'echo   OK - downloaded !SIZEMB! MB\r\n' +
+            '\r\n' +
+            'REM ===== STEP 3/6: extract NW.js =====\r\n' +
+            'echo   [3/6] Extracting NW.js...\r\n' +
+            'if exist "%NWDIR%" rmdir /s /q "%NWDIR%"\r\n' +
+            'mkdir "%NWDIR%"\r\n' +
+            'powershell -Command "try { Expand-Archive -Path \'%NWZIP%\' -DestinationPath \'%NWDIR%\' -Force } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            'if errorlevel 1 (\r\n' +
+            '  echo   Expand-Archive failed. Trying .NET fallback...\r\n' +
+            '  powershell -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory(\'%NWZIP%\', \'%NWDIR%\')"\r\n' +
+            '  if errorlevel 1 (\r\n' +
+            '    echo   BUILD FAILED: Cannot extract NW.js zip.\r\n' +
+            '    set "FAIL=1"\r\n' +
+            '    goto :end\r\n' +
+            '  )\r\n' +
+            ')\r\n' +
+            'del "%NWZIP%" 2>nul\r\n' +
+            'echo   OK\r\n' +
+            '\r\n' +
+            'REM ===== STEP 4/6: locate nw.exe and copy to game.exe + DLLs =====\r\n' +
+            'echo   [4/6] Locating nw.exe and copying runtime...\r\n' +
+            'set "NWEXE="\r\n' +
+            'for /d %%D in ("%NWDIR%\\nwjs-v*") do (\r\n' +
+            '  if exist "%%D\\nw.exe" set "NWEXE=%%D"\r\n' +
+            ')\r\n' +
+            'if not defined NWEXE (\r\n' +
+            '  for /d %%D in ("%NWDIR%\\*") do (\r\n' +
+            '    if exist "%%D\\nw.exe" set "NWEXE=%%D"\r\n' +
+            '  )\r\n' +
+            ')\r\n' +
+            'if not defined NWEXE (\r\n' +
+            '  echo   BUILD FAILED: nw.exe not found in extracted files.\r\n' +
+            '  echo   Contents of %NWDIR%:\r\n' +
+            '  dir /b "%NWDIR%"\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'echo   Found NW.js runtime in: !NWEXE!\r\n' +
+            'copy /Y "!NWEXE!\\nw.exe" "%GAMENAME%.exe" >nul 2>nul\r\n' +
+            'if not exist "%GAMENAME%.exe" (\r\n' +
+            '  echo   BUILD FAILED: Cannot copy nw.exe to %GAMENAME%.exe\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'copy /Y "!NWEXE!\\*.dll" . >nul 2>nul\r\n' +
+            'copy /Y "!NWEXE!\\*.pak" . >nul 2>nul\r\n' +
+            'copy /Y "!NWEXE!\\*.bin" . >nul 2>nul\r\n' +
+            'copy /Y "!NWEXE!\\*.dat" . >nul 2>nul\r\n' +
+            'if exist "!NWEXE!\\resources" xcopy /E /I /Y "!NWEXE!\\resources\\*" . >nul 2>nul\r\n' +
+            'if exist "!NWEXE!\\locales" xcopy /E /I /Y "!NWEXE!\\locales\\*" . >nul 2>nul\r\n' +
+            'echo   OK - %GAMENAME%.exe + DLLs + resources copied\r\n' +
+            '\r\n' +
+            'REM ===== STEP 5/6: build package.nw from index.html + package.json =====\r\n' +
+            'echo   [5/6] Building package.nw (game archive)...\r\n' +
+            'REM PowerShell Compress-Archive only supports .zip output, so we create\r\n' +
+            'REM package.zip and rename to package.nw (NW.js reads it as a zip).\r\n' +
+            'if exist "%PKGZIP%" del "%PKGZIP%"\r\n' +
+            'if exist "%PKGNW%" del "%PKGNW%"\r\n' +
+            'powershell -Command "try { Compress-Archive -Path \'index.html\',\'package.json\' -DestinationPath \'%PKGZIP%\' -Force } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            'if errorlevel 1 (\r\n' +
+            '  echo   BUILD FAILED: Compress-Archive failed.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'if not exist "%PKGZIP%" (\r\n' +
+            '  echo   BUILD FAILED: package.zip was not created.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'for %%A in ("%PKGZIP%") do set "PKGSIZE=%%~zA"\r\n' +
+            'if !PKGSIZE! LSS 1000 (\r\n' +
+            '  echo   BUILD FAILED: package.zip is too small (!PKGSIZE! bytes), game files missing.\r\n' +
+            '  del "%PKGZIP%" 2>nul\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'rename "%PKGZIP%" "%PKGNW%"\r\n' +
+            'if not exist "%PKGNW%" (\r\n' +
+            '  echo   BUILD FAILED: Cannot rename package.zip to package.nw.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'echo   OK - package.nw created (!PKGSIZE! bytes)\r\n' +
+            'REM Now that game files are bundled inside package.nw, remove the loose\r\n' +
+            'REM copies so the final folder contains only: %GAMENAME%.exe + package.nw + DLLs.\r\n' +
+            'del "index.html" 2>nul\r\n' +
+            'del "package.json" 2>nul\r\n' +
+            '\r\n' +
+            'REM ===== STEP 6/6: cleanup + final verification =====\r\n' +
+            'echo   [6/6] Verifying build...\r\n' +
+            'rmdir /s /q "%NWDIR%" 2>nul\r\n' +
+            'if not exist "%GAMENAME%.exe" (\r\n' +
+            '  echo   BUILD FAILED: %GAMENAME%.exe missing after packaging.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'if not exist "%PKGNW%" (\r\n' +
+            '  echo   BUILD FAILED: package.nw missing after packaging.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'REM Sanity-check: ensure package.nw is a valid zip with the two files\r\n' +
+            'powershell -Command "try { Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[System.IO.Compression.ZipFile]::OpenRead((Resolve-Path \'%PKGNW%\').Path); $hasIndex=($z.Entries | Where-Object { $_.FullName -eq \'index.html\' }).Count -gt 0; $hasPkg=($z.Entries | Where-Object { $_.FullName -eq \'package.json\' }).Count -gt 0; $z.Dispose(); if (-not $hasIndex -or -not $hasPkg) { Write-Host \'Missing entries in package.nw\'; exit 1 } } catch { Write-Host $_.Exception.Message; exit 1 }"\r\n' +
+            'if errorlevel 1 (\r\n' +
+            '  echo   BUILD FAILED: package.nw is corrupt or missing entries.\r\n' +
+            '  set "FAIL=1"\r\n' +
+            '  goto :end\r\n' +
+            ')\r\n' +
+            'for %%A in ("%GAMENAME%.exe") do set "EXESIZE=%%~zA"\r\n' +
+            'set /a EXEMB=!EXESIZE! / 1048576\r\n' +
+            'for %%A in ("%PKGNW%") do set "NWBYTES=%%~zA"\r\n' +
+            'set /a NWKB=!NWBYTES! / 1024\r\n' +
+            'echo   OK - build verified\r\n' +
+            '\r\n' +
+            ':end\r\n' +
+            'if "!FAIL!"=="1" (\r\n' +
+            '  echo.\r\n' +
+            '  echo   ========================================================\r\n' +
+            '  echo     BUILD FAILED - see errors above\r\n' +
+            '  echo   ========================================================\r\n' +
+            '  echo.\r\n' +
+            '  echo   Partial files may exist. Delete them and re-run this .bat.\r\n' +
+            '  pause\r\n' +
+            '  exit /b 1\r\n' +
+            ')\r\n' +
+            'echo.\r\n' +
+            'echo   ========================================================\r\n' +
+            'echo     BUILD SUCCESS\r\n' +
+            'echo   ========================================================\r\n' +
+            'echo.\r\n' +
+            'echo   Executable:  %CD%\\%GAMENAME%.exe  (!EXEMB! MB)\r\n' +
+            'echo   Game archive: %CD%\\%PKGNW%  (!NWKB! KB)\r\n' +
+            'echo.\r\n' +
+            'echo   To start the game, double-click %GAMENAME%.exe\r\n' +
+            'echo   (Script does NOT auto-launch — verify the file exists first.)\r\n' +
+            'echo.\r\n' +
+            'pause\r\n' +
+            'exit /b 0\r\n';
+
+        // Download .bat + index.html + package.json as ZIP
         if (typeof JSZip !== 'undefined') {
-            // Show progress
-            if (typeof addChat === 'function') addChat('ai', '📦 Скачиваю NW.js (~80МБ)...');
+            var zip = new JSZip();
+            zip.file(slug + '-build.bat', batContent);
+            zip.file('index.html', result.html);
+            zip.file('package.json', packageJson);
 
-            fetch('https://dl.nwjs.io/v0.83.0/nwjs-v0.83.0-win-x64.zip')
-                .then(function(r) { return r.blob(); })
-                .then(function(nwjsBlob) {
-                    return JSZip.loadAsync(nwjsBlob);
-                })
-                .then(function(nwjsZip) {
-                    // Create new ZIP with game files + NW.js
-                    var outZip = new JSZip();
-                    // Add game files
-                    outZip.file('index.html', result.html);
-                    outZip.file('package.json', packageJson);
-
-                    // Copy all NW.js files, rename nw.exe → game slug.exe
-                    var promises = [];
-                    nwjsZip.forEach(function(path, file) {
-                        var newPath = path;
-                        // Strip the top-level folder (nwjs-v0.83.0-win-x64/)
-                        var parts = path.split('/');
-                        if (parts.length > 1) {
-                            newPath = parts.slice(1).join('/');
-                        }
-                        if (!newPath) return;
-
-                        // Rename nw.exe → game.exe
-                        if (newPath === 'nw.exe') newPath = slug + '.exe';
-
-                        promises.push(
-                            file.async('uint8array').then(function(data) {
-                                outZip.file(newPath, data);
-                            })
-                        );
-                    });
-
-                    return Promise.all(promises).then(function() {
-                        return outZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-                    });
-                })
-                .then(function(blob) {
-                    var url = URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.href = url;
-                    a.download = slug + '-windows.zip';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-                    if (typeof addChat === 'function') addChat('ai', '✅ Готово! Распакуй ZIP и запусти ' + slug + '.exe');
-                })
-                .catch(function(e) {
-                    console.error('[buildEXE] failed:', e);
-                    // Fallback: just download HTML + package.json
-                    downloadText(result.html, 'index.html');
-                    downloadText(packageJson, 'package.json');
-                    if (typeof addChat === 'function') addChat('ai', '⚠️ Не удалось скачать NW.js. Скачал index.html + package.json. Положи их в папку NW.js и запусти nw.exe');
-                });
+            zip.generateAsync({ type: 'blob' }).then(function(blob) {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = slug + '.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+                if (typeof addChat === 'function') {
+                    addChat('ai', '✅ Скачан ' + slug + '.zip\n\nЧто внутри:\n  • ' + slug + '-build.bat\n  • index.html\n  • package.json\n\nКак собрать .exe:\n  1. Распакуй ZIP в пустую папку\n  2. Двойной клик на ' + slug + '-build.bat\n  3. Скрипт скачает NW.js (~130МБ), соберёт ' + slug + '.exe + package.nw\n  4. index.html и package.json будут удалены (они внутри package.nw)\n  5. В финальной папке останется только .exe + package.nw + DLLs\n\nПри ошибке скрипт скажет BUILD FAILED и не запустит игру.');
+                }
+            });
         } else {
+            // No JSZip — download files separately
+            downloadText(batContent, slug + '-build.bat');
             downloadText(result.html, 'index.html');
             downloadText(packageJson, 'package.json');
+            if (typeof addChat === 'function') {
+                addChat('ai', '✅ Скачаны 3 файла. Положи их в одну пустую папку. Двойной клик на ' + slug + '-build.bat');
+            }
         }
 
         return {
@@ -11228,7 +11410,15 @@ var SashaEngineAPI = (function() {
         var g = new THREE.Group();
         var d = (description || '').toLowerCase();
         // Analyze description and compose accordingly
-        if (d.indexOf('дом') !== -1 || d.indexOf('house') !== -1) {
+        if (d.indexOf('дерев') !== -1 || d.indexOf('tree') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('tree', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('камен') !== -1 || d.indexOf('rock') !== -1 || d.indexOf('stone') !== -1) {
+            var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('rock', params) : null;
+            if (m) g.add(m);
+        }
+        else if (d.indexOf('дом') !== -1 || d.indexOf('house') !== -1) {
             var m = (typeof SashaAIGraphics !== 'undefined') ? SashaAIGraphics.createProceduralModel('house', params) : null;
             if (m) g.add(m);
         }
@@ -24280,12 +24470,24 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       case 'animate_object':
         return E.animateObj(params.name, params.property||'position.y', params.from||0, params.to||1, params.duration||1);
       case 'apply_scene_template': {
-        // Use built-in templates
-        if (typeof applyMCPTemplate === 'function') return applyMCPTemplate(params.template);
-        // Fallback: call template directly
-        var templates = {city:tplCity, forest:tplForest, space:tplSpace, room:tplRoom, desert:tplDesert, underwater:tplUnderwater};
-        var t = templates[params.template];
-        if (t) { mcpCallBatch(t); return 'template applied'; }
+        // Direct template execution — no MCP bridge needed
+        var tplFns = {
+          city: function() { E.clear(); E.setBgColor(0.53,0.81,0.92); E.addPlane(50,50,0x555555); E.addCube(-5,3,-3,3,6,3,0x888888); E.addCube(0,4,-5,4,8,4,0x777777); E.addCube(5,2.5,-2,3,5,3,0x999999); E.addDirectionalLight(10,20,10,0xFFFACD,1.0); E.addAmbientLight(0xB0C4DE,0.4); E.setCameraPos(12,8,12); E.setCameraTarget(0,2,0); },
+          forest: function() { E.clear(); E.setBgColor(0.13,0.55,0.13); E.addPlane(60,60,0x3B5323); E.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); E.aiComposeModel('tree',{position:{x:2,y:0,z:-4}}); E.aiComposeModel('tree',{position:{x:-6,y:0,z:1}}); E.aiComposeModel('tree',{position:{x:4,y:0,z:3}}); E.aiComposeModel('tree',{position:{x:-1,y:0,z:5}}); E.aiComposeModel('rock',{position:{x:1,y:0,z:1},scale:{x:0.8,y:0.6,z:0.8}}); E.aiComposeModel('rock',{position:{x:-4,y:0,z:-5},scale:{x:1.2,y:0.8,z:1}}); E.addDirectionalLight(5,15,8,0xFFFACD,0.7); E.addAmbientLight(0x90EE90,0.5); E.setCameraPos(8,6,10); E.setCameraTarget(0,1,0); },
+          space: function() { E.clear(); E.setBgColor(0,0,0.07); E.addSphere(0,0,-8,3,0x4169E1); E.addSphere(6,2,-12,1,0xFF6347); E.addSphere(-5,-1,-15,2,0xDAA520); E.addTorus(-5,-1,-15,3,0.08,0xDAA520); E.addPointLight(0,3,-5,2,0xFFFFFF); E.addAmbientLight(0x191970,0.2); E.setCameraPos(0,2,5); E.setCameraTarget(0,0,-8); },
+          room: function() { E.clear(); E.setBgColor(0.17,0.17,0.17); E.addPlane(10,10,0x8B7355); E.addCube(0,2.5,-5,10,5,0.2,0xD2B48C); E.addCube(-5,2.5,0,0.2,5,10,0xC4A882); E.addCube(5,2.5,0,0.2,5,10,0xC4A882); E.aiComposeModel('table',{position:{x:0,y:0,z:0}}); E.aiComposeModel('chair',{position:{x:0,y:0,z:2}}); E.addPointLight(0,4.5,0,1.5,0xFFF8DC); E.addAmbientLight(0xFFF8DC,0.3); E.setCameraPos(0,3,6); },
+          desert: function() { E.clear(); E.setBgColor(0.96,0.64,0.38); E.createTerrain('sand',40,40,function(x,z){return Math.sin(x*0.3)*Math.cos(z*0.2)*1.5;},48,{color:0xEDC9AF}); E.aiComposeModel('rock',{position:{x:-3,y:0,z:2}}); E.aiComposeModel('rock',{position:{x:4,y:0,z:-3}}); E.addDirectionalLight(5,20,3,0xFFD700,1.5); E.addAmbientLight(0xFFA500,0.6); E.setCameraPos(12,6,12); },
+          underwater: function() { E.clear(); E.setBgColor(0,0.07,0.2); E.addPlane(40,40,0x1B3F5C); E.createTerrain('seabed',40,40,function(x,z){return Math.sin(x*0.5)*Math.cos(z*0.3)*0.8;},40,{color:0x1B3F5C}); E.addSphere(-2,1,-3,0.8,0xFF6B6B); E.addSphere(-1.5,1.8,-2.5,0.5,0xFF8E8E); E.addPointLight(0,8,0,1.2,0x87CEEB); E.addAmbientLight(0x006994,0.4); E.setCameraPos(5,3,8); },
+          castle: function() { E.clear(); E.setBgColor(0.2,0.15,0.25); E.addPlane(50,50,0x3d5c3a); E.addCube(0,4,0,8,8,8,0x808080); E.addCube(-8,2,-8,3,4,3,0x707070); E.addCube(8,2,-8,3,4,3,0x707070); E.addCube(-8,2,8,3,4,3,0x707070); E.addCube(8,2,8,3,4,3,0x707070); E.addPointLight(0,10,0,1.5,0xFFD700); E.addAmbientLight(0x4a4a6a,0.3); E.setCameraPos(18,12,18); E.setCameraTarget(0,3,0); },
+          island: function() { E.clear(); E.setBgColor(0.4,0.7,0.95); E.createTerrain('island',30,30,function(x,z){var d=Math.sqrt(x*x+z*z);return Math.max(0,(15-d)*0.6+Math.sin(x*0.5)*Math.cos(z*0.3));},48,{color:0xF4A460}); E.aiComposeModel('tree',{position:{x:-2,y:0,z:1}}); E.aiComposeModel('tree',{position:{x:3,y:0,z:-2}}); E.addDirectionalLight(5,15,8,0xFFFACD,1.0); E.addAmbientLight(0x87CEEB,0.5); E.setCameraPos(12,8,12); },
+          winter: function() { E.clear(); E.setBgColor(0.85,0.9,0.95); E.addPlane(40,40,0xE8E8F0); E.createTerrain('snow',40,40,function(x,z){return Math.sin(x*0.2)*Math.cos(z*0.15)*1.5;},32,{color:0xFFFFFF}); E.aiComposeModel('tree',{position:{x:-3,y:0,z:-2}}); E.aiComposeModel('tree',{position:{x:4,y:0,z:3}}); E.addDirectionalLight(5,15,8,0xFFF8DC,0.8); E.addAmbientLight(0xB0C4DE,0.5); E.setCameraPos(10,6,10); }
+        };
+        var fn = tplFns[params.template];
+        if (fn) {
+          fn();
+          if (typeof EngineApp !== 'undefined' && EngineApp.refreshHierarchy) EngineApp.refreshHierarchy();
+          return params.template + ' applied';
+        }
         throw new Error('Unknown template: ' + params.template);
       }
       case 'export_scene':
@@ -25179,6 +25381,17 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     <button class="eng-close-btn" onclick="closeEngineAnalytics()">&times;</button>
     <h2>📊 Аналитика движка</h2>
     <p class="subtitle">Посещения, действия, отвалы и оценки — кто, когда, зачем</p>
+    <div id="engOwnerBanner" style="display:none;margin-bottom:20px;padding:12px 16px;background:linear-gradient(90deg,rgba(99,102,241,.12),rgba(99,102,241,.04));border:1px solid rgba(99,102,241,.3);border-radius:12px;font-size:13px;color:var(--text-primary,#fafafa);line-height:1.5">
+      <b style="color:#6366f1">👤 Режим владельца активен</b> — твои визиты, действия и отвалы не учитываются. Считаются только реальные посетители с других устройств и браузеров.
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--text-muted,#a1a1aa)">
+        <input type="checkbox" id="engOwnerToggle" onchange="toggleEngOwner(this.checked)" style="cursor:pointer">
+        <span>Выключи, чтобы протестировать аналитику как обычный посетитель</span>
+      </label>
+    </div>
+    <div id="engOwnerOffBanner" style="display:none;margin-bottom:20px;padding:12px 16px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;font-size:13px;color:var(--text-primary,#fafafa);line-height:1.5">
+      <b style="color:#f59e0b">⚠ Режим владельца выключен</b> — твои действия сейчас учитываются в аналитике как у обычного посетителя.
+      <button onclick="document.getElementById('engOwnerToggle').checked=true;toggleEngOwner(true)" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid rgba(245,158,11,.5);background:transparent;color:#f59e0b;font-size:11px;cursor:pointer">Включить обратно</button>
+    </div>
     <div class="eng-analytics-grid" id="engMetricsGrid"></div>
     <div class="eng-chart-card">
       <h3><span class="dot" style="background:#10b981"></span>Посещения и действия (14 дней)</h3>
@@ -25220,9 +25433,22 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
 (function(){
   'use strict';
   var STORE_KEY = 'sasha_eng_analytics';
+  var OWNER_KEY = 'sasha_eng_is_owner';
+  var GF_TOKEN_KEY = 'gf_token';
   var data = { visits: [], dailyActions: {}, dailyLeaves: {}, sessionLeaves: [], ratings: {sum:0,count:0}, feedback: [] };
   var currentSession = null;
   var engCharts = {};
+
+  // Owner mode: when true, this browser's actions (visit/action/leave) are NOT
+  // tracked. Enabled automatically when a GameForge token is set, or manually
+  // via the "I'm owner" checkbox added in the analytics panel.
+  function isOwner() {
+    if (localStorage.getItem(OWNER_KEY) === '1') return true;
+    if (localStorage.getItem(GF_TOKEN_KEY)) return true;  // has GameForge token = owner
+    return false;
+  }
+  function setOwnerFlag(v) { localStorage.setItem(OWNER_KEY, v ? '1' : '0'); }
+  function clearOwnerFlag() { localStorage.removeItem(OWNER_KEY); }
 
   function load() {
     try {
@@ -25248,6 +25474,8 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   function fmtAgo(ts) { var d=Math.round((Date.now()-ts)/1000); if(d<60)return 'только что'; if(d<3600)return Math.round(d/60)+' мин назад'; if(d<86400)return Math.round(d/3600)+' ч назад'; return Math.round(d/86400)+' дн назад'; }
 
   function trackVisit() {
+    // Owner mode: do not track own visits — only real visitors
+    if (isOwner()) return;
     var t = dk(new Date());
     var last = data.visits.length > 0 ? data.visits[data.visits.length-1] : '';
     if (last === t) return;
@@ -25257,6 +25485,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   }
 
   function trackAction(name) {
+    if (isOwner()) return;  // owner's actions are not counted
     var t = dk(new Date());
     if (!data.dailyActions[t]) data.dailyActions[t] = {};
     data.dailyActions[t][name] = (data.dailyActions[t][name] || 0) + 1;
@@ -25268,6 +25497,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   }
 
   function trackLeave(reason) {
+    if (isOwner()) return;  // owner's leaves are not counted
     if (!currentSession) return;
     var dur = Math.round((Date.now() - currentSession.startedAt) / 1000);
     var t = dk(new Date());
@@ -25304,12 +25534,43 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
   window.openEngineAnalytics = function() {
     document.getElementById('engAnalyticsOverlay').classList.add('open');
     document.body.style.overflow = 'hidden';
+    // Update owner banner based on current state
+    var isOwnerNow = isOwner();
+    document.getElementById('engOwnerBanner').style.display = isOwnerNow ? 'block' : 'none';
+    document.getElementById('engOwnerOffBanner').style.display = isOwnerNow ? 'none' : 'block';
+    var toggle = document.getElementById('engOwnerToggle');
+    if (toggle) {
+      // Checkbox is checked when owner mode is ON
+      toggle.checked = isOwnerNow;
+    }
     renderEngAnalytics();
   };
   window.closeEngineAnalytics = function() {
     document.getElementById('engAnalyticsOverlay').classList.remove('open');
     document.body.style.overflow = '';
     for (var k in engCharts) { if (engCharts[k]) { engCharts[k].destroy(); delete engCharts[k]; } }
+  };
+  window.toggleEngOwner = function(enable) {
+    if (enable) {
+      setOwnerFlag(true);
+    } else {
+      clearOwnerFlag();
+      // If GameForge token exists, we can't really clear owner mode unless user
+      // also clears the token. Inform them.
+      if (localStorage.getItem(GF_TOKEN_KEY)) {
+        alert('У тебя прописан GameForge токен — ты всё ещё в режиме владельца.\n\nЧтобы протестировать аналитику как посетитель, удали токен в Build → GameForge Config.');
+        // Restore the flag
+        setOwnerFlag(true);
+        var toggle = document.getElementById('engOwnerToggle');
+        if (toggle) toggle.checked = true;
+        return;
+      }
+    }
+    // Refresh the banner display
+    var isOwnerNow = isOwner();
+    document.getElementById('engOwnerBanner').style.display = isOwnerNow ? 'block' : 'none';
+    document.getElementById('engOwnerOffBanner').style.display = isOwnerNow ? 'none' : 'block';
+    renderEngAnalytics();
   };
   window.submitEngFeedback = function() {
     var name = document.getElementById('engFeedbackName').value.trim();
@@ -26743,6 +27004,7 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
+
 
 
 
