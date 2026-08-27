@@ -5233,15 +5233,20 @@ var SashaGameBuilder = (function() {
         var stateJson = JSON.stringify(state);
         var template = document.getElementById('game-runtime-template');
         var templateHTML = template ? template.innerHTML : '';
-        // Unescape <\/script> → </script> (template stored them as <\/script>
-        // to avoid closing the parent <script type="text/plain"> wrapper).
-        // Without this, the generated game HTML has literal "<\/script>" tags
-        // which the browser does NOT recognise as script closers, so THREE.js
-        // never loads and the game stays on the "Loading..." screen forever.
+        // Unescape escaped script-closing tags (stored as backslash-escaped
+        // in the template wrapper to avoid premature closure). Without this
+        // unescape, the generated game HTML keeps the backslash escapes and
+        // the browser does not recognise them as script closers, so THREE.js
+        // never loads and the game stays on the Loading screen forever.
         // Use string split/join (more reliable than regex across browsers).
-        templateHTML = templateHTML.split('<\\/script>').join('</script>');
+        // NOTE: All literal closing-script tags in JS strings MUST be written
+        // as backslash-escaped (like the split target above) — otherwise the
+        // HTML parser sees the unescaped closing tag and closes the parent
+        // script block prematurely, breaking every function defined after
+        // this point (inspector, etc).
+        templateHTML = templateHTML.split('<\\/script>').join('<\/script>');
         // Also handle any remaining escaped sequences just in case
-        templateHTML = templateHTML.replace(/<\\+\/script>/g, '</script>');
+        templateHTML = templateHTML.replace(/<\\+\/script>/g, '<\/script>');
         // Replace placeholders
         templateHTML = templateHTML.replace('__GAME_TITLE__', escapeHTML(title));
         templateHTML = templateHTML.replace('__GAME_STATE__', stateJson);
