@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SashaAI GameDev Engine v8.6 - 2026-08-27 20:00 (inspector fixed: no literal closing tags in JS) -->
+<!-- SashaAI GameDev Engine v8.7 - 2026-08-27 20:30 (FIXED: removed </script> from JS comment that broke inspector) -->
 <html lang="ru">
 <head>
     <!-- Google tag (gtag.js) -->
@@ -5239,8 +5239,8 @@ var SashaGameBuilder = (function() {
         // scans for that sequence to end script blocks, and would close this
         // block early if it appeared in a string literal — breaking every
         // function defined after this point (inspector, etc).
-        var CLOSE_TAG = '<' + '/script' + '>';          // produces: </script>
-        var ESCAPED_TAG = '<' + '\\/script' + '>';      // produces: <\/script
+        var CLOSE_TAG = '<' + '/script' + '>';
+        var ESCAPED_TAG = '<' + '\\/script' + '>';
         templateHTML = templateHTML.split(ESCAPED_TAG).join(CLOSE_TAG);
         // Replace placeholders
         templateHTML = templateHTML.replace('__GAME_TITLE__', escapeHTML(title));
