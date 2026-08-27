@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SashaAI GameDev Engine v8.8 - 2026-08-27 21:00 (reverted camera to default OrbitControls; gizmo W/E/R intact) -->
+<!-- SashaAI GameDev Engine v8.9 - 2026-08-27 21:30 (camera: no auto-rotate, no flip on zoom, pan only without rotation) -->
 <html lang="ru">
 <head>
     <!-- Google tag (gtag.js) -->
@@ -8350,25 +8350,29 @@ var SashaEngineAPI = (function() {
         controls = new THREE.OrbitControls(camera, canvas);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.minPolarAngle = 0;          // Full vertical rotation — can look straight down
-        controls.maxPolarAngle = Math.PI;    // Full vertical rotation — can look straight up
-        controls.minDistance = 0.5;
-        controls.maxDistance = 500;          // Allow zooming far out for big scenes
+        // Vertical angle limits — prevent camera from flipping upside-down.
+        // maxPolarAngle = Math.PI * 0.495 keeps camera from going past horizontal
+        // (no "half-up" orientation flip when zooming close to target).
+        controls.minPolarAngle = 0.05 * Math.PI;        // ~10° from straight down — never fully top-down
+        controls.maxPolarAngle = 0.495 * Math.PI;       // ~89° — never flip past horizontal
+        controls.minDistance = 2;                        // Never get closer than 2 units (prevents orientation glitches)
+        controls.maxDistance = 500;                      // Allow zooming far out for big scenes
         controls.target.set(0, 1, 0);
         // === Camera controls (default OrbitControls behaviour) ===
-        // LEFT mouse = ORBIT (rotate around target)
+        // LEFT mouse = ORBIT (rotate around target) — only way to rotate camera
         // RIGHT mouse = PAN (move target in screen plane — up/down/left/right)
         // MIDDLE mouse = DOLLY (zoom)
         // WHEEL = ZOOM
-        // No mouseButtons override — use defaults so left-drag rotates,
-        // right-drag pans (up/down/left/right), wheel zooms. WASD also works
-        // for free-fly in edit mode (handled by updateEditCamera).
+        // No autoRotate, no mouseButtons override — defaults only.
+        // WASD also pans camera+target together in edit mode (updateEditCamera).
         controls.enablePan = true;
         controls.screenSpacePanning = true;     // Pan in screen plane (up/down/left/right)
         controls.panSpeed = 1.5;
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 1.2;
         controls.keyPanSpeed = 20;              // Pan speed when using arrow keys
+        controls.autoRotate = false;            // NEVER auto-rotate
+        controls.enableRotate = true;           // Rotation only via left mouse drag
 
         // TransformControls (gizmo)
         transformCtrl = new THREE.TransformControls(camera, canvas);
@@ -27621,7 +27625,6 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
-
 
 
 
