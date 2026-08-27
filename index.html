@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- SashaAI GameDev Engine v8.6 - 2026-08-27 20:00 (inspector fixed: no literal closing tags in JS) -->
 <html lang="ru">
 <head>
     <!-- Google tag (gtag.js) -->
@@ -5233,15 +5234,14 @@ var SashaGameBuilder = (function() {
         var stateJson = JSON.stringify(state);
         var template = document.getElementById('game-runtime-template');
         var templateHTML = template ? template.innerHTML : '';
-        // Unescape <\/script> → </script> (template stored them as <\/script>
-        // to avoid closing the parent <script type="text/plain"> wrapper).
-        // Without this, the generated game HTML has literal "<\/script>" tags
-        // which the browser does NOT recognise as script closers, so THREE.js
-        // never loads and the game stays on the "Loading..." screen forever.
-        // Use string split/join (more reliable than regex across browsers).
-        templateHTML = templateHTML.split('<\\/script>').join('</script>');
-        // Also handle any remaining escaped sequences just in case
-        templateHTML = templateHTML.replace(/<\\+\/script>/g, '</script>');
+        // Build the closing script tag dynamically to avoid having a literal
+        // closing-script sequence anywhere in this JS source. The HTML parser
+        // scans for that sequence to end script blocks, and would close this
+        // block early if it appeared in a string literal — breaking every
+        // function defined after this point (inspector, etc).
+        var CLOSE_TAG = '<' + '/script' + '>';          // produces: </script>
+        var ESCAPED_TAG = '<' + '\\/script' + '>';      // produces: <\/script
+        templateHTML = templateHTML.split(ESCAPED_TAG).join(CLOSE_TAG);
         // Replace placeholders
         templateHTML = templateHTML.replace('__GAME_TITLE__', escapeHTML(title));
         templateHTML = templateHTML.replace('__GAME_STATE__', stateJson);
@@ -8321,10 +8321,10 @@ var SashaEngineAPI = (function() {
         mainCameraObj.name = mainCameraName;
         mainCameraObj.userData.isMainCamera = true;
         mainCameraObj.position.copy(gameCamera.position);
-        // Wireframe helper to show camera in viewport
+        // Wireframe helper to show camera in viewport — bigger so user can click it
         mainCameraHelper = new THREE.Mesh(
-            new THREE.BoxGeometry(0.3, 0.2, 0.4),
-            new THREE.MeshBasicMaterial({ color: 0x44aaff, wireframe: true, transparent: true, opacity: 0.6 })
+            new THREE.BoxGeometry(0.6, 0.4, 0.8),
+            new THREE.MeshBasicMaterial({ color: 0x44aaff, wireframe: true, transparent: true, opacity: 0.8 })
         );
         mainCameraHelper.name = '__mainCamera_helper';
         mainCameraObj.add(mainCameraHelper);
@@ -8353,8 +8353,24 @@ var SashaEngineAPI = (function() {
         controls.minPolarAngle = 0;          // Full vertical rotation — can look straight down
         controls.maxPolarAngle = Math.PI;    // Full vertical rotation — can look straight up
         controls.minDistance = 0.5;
-        controls.maxDistance = 200;
+        controls.maxDistance = 500;          // Allow zooming far out for big scenes
         controls.target.set(0, 1, 0);
+        // === Free camera movement (Unity/Blender-like) ===
+        // LEFT mouse = SELECT (handled separately by raycaster)
+        // RIGHT mouse = ORBIT (rotate around target)
+        // MIDDLE mouse = PAN (move target)
+        // WHEEL = ZOOM
+        controls.mouseButtons = {
+            LEFT: null,           // Don't rotate on left — that's for selecting objects
+            MIDDLE: THREE.MOUSE.PAN,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
+        controls.enablePan = true;
+        controls.screenSpacePanning = true;     // Pan in screen plane (more intuitive)
+        controls.panSpeed = 1.5;
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 1.2;
+        controls.keyPanSpeed = 20;              // Pan speed when using arrow keys
 
         // TransformControls (gizmo)
         transformCtrl = new THREE.TransformControls(camera, canvas);
@@ -8390,6 +8406,10 @@ var SashaEngineAPI = (function() {
                 inspectorAutoRefresh = false;
                 EngineApp.refreshInspector();
                 inspectorAutoRefresh = true;
+            }
+            // Sync game camera immediately when Main Camera is being dragged by gizmo
+            if (selectedObject === mainCameraName && mainCameraObj && gameCamera) {
+                gameCamera.position.copy(mainCameraObj.position);
             }
         });
         scene.add(transformCtrl);
@@ -8547,7 +8567,9 @@ var SashaEngineAPI = (function() {
         var meshes = [];
         for (var name in objects) {
             if (!objects.hasOwnProperty(name)) continue;
-            if (name.indexOf('__builtin') === 0 || name === '__selection_helper' || name === mainCameraName) continue;
+            if (name.indexOf('__builtin') === 0 || name === '__selection_helper') continue;
+            // Main Camera: include its helper mesh so user can click to select,
+            // then drag with gizmo (W/E/R) to reposition the game camera.
             var obj = objects[name];
             if (obj.isMesh) { meshes.push(obj); }
             else if (obj.isGroup || obj.isObject3D) {
@@ -13448,7 +13470,7 @@ var EngineApp = (function() {
             if (sc && sc.background) { bgCol = '#' + sc.background.getHexString(); }
             var html = '<div style="padding:6px 10px;font-size:0.82rem;font-weight:600;color:#fff;border-bottom:1px solid var(--border);">Scene Settings</div>';
             html += iSection('fa-image', 'Background', '<div class="scene-setting-row"><span class="scene-setting-label">Color</span><input class="insp-color-input" type="color" value="'+bgCol+'" onchange="EngineApp.setSceneBg(this.value)"></div>');
-            html += iSection('fa-info-circle', 'Info', '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">Select an object to edit properties.</div><div style="padding:4px 10px;font-size:0.72rem;color:var(--text-muted);">Shortcuts:</div>'+sh('W/E/R - Gizmo mode')+sh('F - Focus selected')+sh('G - Snap toggle')+sh('Del - Delete')+sh('Ctrl+D - Duplicate')+sh('Ctrl+Z/Y - Undo/Redo')+sh('Ctrl+C/V - Copy/Paste')+sh('Right-click - Context menu'));
+            html += iSection('fa-info-circle', 'Info', '<div style="padding:6px 10px;font-size:0.72rem;color:var(--text-muted);">Select an object to edit properties.</div><div style="padding:4px 10px;font-size:0.72rem;color:var(--text-muted);">Shortcuts:</div>'+sh('WASD - Move camera (free fly)')+sh('Space/Q - Up/Down')+sh('Shift - Speed boost')+sh('Right mouse - Orbit')+sh('Middle mouse - Pan')+sh('Wheel - Zoom')+sh('F - Focus selected')+sh('W/E/R - Gizmo mode')+sh('G - Snap toggle')+sh('Del - Delete')+sh('Ctrl+D - Duplicate')+sh('Ctrl+Z/Y - Undo/Redo')+sh('Ctrl+C/V - Copy/Paste'));
             container.innerHTML = html;
             return;
         }
@@ -25596,21 +25618,27 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
     }
   }
 
-  // === Call cloud LLM with timeout (15s max) ===
+  // === Call cloud LLM with timeout (30s max) ===
+  // Pollinations free tier requires Referer header (otherwise returns 402).
   async function callCloudLLM(message, isChat) {
     var sys = isChat ? buildChatPrompt(message) : buildGenPrompt(message);
     var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
+    var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
     try {
       var resp = await fetch(CLOUD_LLM_API, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Referer': 'https://sashaai-engine.local'  // required for Pollinations free tier
+        },
         body: JSON.stringify({
           model: CLOUD_MODEL,
           messages: [
-            {role: 'system', content: 'You are SashaAI. Respond in Russian. Short answers.'},
+            {role: 'system', content: 'You are SashaAI, a 3D game engine assistant. Respond in Russian. When asked to create a scene, return ONLY a JSON array of tool calls, no other text.'},
             {role: 'user', content: sys}
-          ]
+          ],
+          private: true,
+          referrer: 'sashaai-engine'
         }),
         signal: controller.signal
       });
@@ -25623,7 +25651,7 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       throw new Error('Cloud LLM bad response');
     } catch(e) {
       clearTimeout(timeoutId);
-      if (e.name === 'AbortError') throw new Error('Cloud timeout (>15s)');
+      if (e.name === 'AbortError') throw new Error('Cloud timeout (>30s)');
       throw new Error('Cloud LLM: ' + e.message);
     }
   }
@@ -25675,8 +25703,9 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
       // 3) Generation intent — LLM FIRST, then localGenerate as fallback
       addChat('ai', '🤔 Генерирую через ИИ...');
       var toolCalls = null;
+      var llmSource = null;
 
-      // Step A: Try LLM (15s timeout)
+      // Step A: Try local LLM (MCP server, 15s timeout)
       try {
         var localGen = await callLocalLLM(prompt, false);
         var genReply = localGen.reply || localGen.text || '';
@@ -25685,8 +25714,21 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         } else {
           toolCalls = parseToolCallsFromText(genReply);
         }
+        if (toolCalls && toolCalls.length) llmSource = 'local-MCP';
       } catch(e) {
-        console.warn('[sendAI] LLM failed/timeout:', e.message);
+        console.warn('[sendAI] Local LLM failed/timeout:', e.message);
+      }
+
+      // Step B: If local LLM failed, try cloud LLM (Pollinations, 15s timeout)
+      if (!toolCalls || !toolCalls.length) {
+        try {
+          var cloudGen = await callCloudLLM(prompt, false);
+          var cloudReply = cloudGen.reply || cloudGen.text || '';
+          toolCalls = parseToolCallsFromText(cloudReply);
+          if (toolCalls && toolCalls.length) llmSource = 'cloud-Pollinations';
+        } catch(e) {
+          console.warn('[sendAI] Cloud LLM failed/timeout:', e.message);
+        }
       }
 
       removeThinking();
@@ -25695,18 +25737,18 @@ _F['.gitignore']='node_modules/\npackage-lock.json\n';
         // Execute LLM-generated tool calls
         var result = execToolCalls(toolCalls);
         var summary = buildSummary(result.toolCounts, result.okCount);
-        var prefix = '✨ ' + summary;
+        var prefix = '✨ [' + (llmSource || 'AI') + '] ' + summary;
         if (result.errCount) prefix += ' ⚠️ ' + result.errCount + ' ошибок';
         var hasPlayer = toolCalls.some(function(c){return c.tool==='attach_player_control'});
         if (hasPlayer) prefix += '. Нажми ▶ Play';
         addChat('ai', prefix);
         chatHistory.push({role:'assistant', content: prefix});
       } else {
-        // Step B: LLM didn't produce usable tool calls — fallback to localGenerate
+        // Step C: Both LLMs failed — fallback to localGenerate (heuristic, 0ms)
         var calls2 = localGenerate(prompt);
         var result2 = execToolCalls(calls2);
         var summary2 = buildSummary(result2.toolCounts, result2.okCount);
-        var prefix2 = '✨ ' + summary2;
+        var prefix2 = '✨ [fallback] ' + summary2;
         if (result2.errCount) prefix2 += ' ⚠️ ' + result2.errCount + ' ошибок';
         var hasPlayer2 = calls2.some(function(c){return c.tool==='attach_player_control'});
         if (hasPlayer2) prefix2 += '. Нажми ▶ Play';
@@ -27581,6 +27623,7 @@ window.addEventListener("load", init);
 </script>
 </body>
 </html>
+
 
 
 
