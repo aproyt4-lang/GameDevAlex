@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SashaAI GameDev Engine v8.7 - 2026-08-27 20:30 (FIXED: removed </script> from JS comment that broke inspector) -->
+<!-- SashaAI GameDev Engine v8.8 - 2026-08-27 21:00 (reverted camera to default OrbitControls; gizmo W/E/R intact) -->
 <html lang="ru">
 <head>
     <!-- Google tag (gtag.js) -->
@@ -8355,18 +8355,16 @@ var SashaEngineAPI = (function() {
         controls.minDistance = 0.5;
         controls.maxDistance = 500;          // Allow zooming far out for big scenes
         controls.target.set(0, 1, 0);
-        // === Free camera movement (Unity/Blender-like) ===
-        // LEFT mouse = SELECT (handled separately by raycaster)
-        // RIGHT mouse = ORBIT (rotate around target)
-        // MIDDLE mouse = PAN (move target)
+        // === Camera controls (default OrbitControls behaviour) ===
+        // LEFT mouse = ORBIT (rotate around target)
+        // RIGHT mouse = PAN (move target in screen plane — up/down/left/right)
+        // MIDDLE mouse = DOLLY (zoom)
         // WHEEL = ZOOM
-        controls.mouseButtons = {
-            LEFT: null,           // Don't rotate on left — that's for selecting objects
-            MIDDLE: THREE.MOUSE.PAN,
-            RIGHT: THREE.MOUSE.ROTATE
-        };
+        // No mouseButtons override — use defaults so left-drag rotates,
+        // right-drag pans (up/down/left/right), wheel zooms. WASD also works
+        // for free-fly in edit mode (handled by updateEditCamera).
         controls.enablePan = true;
-        controls.screenSpacePanning = true;     // Pan in screen plane (more intuitive)
+        controls.screenSpacePanning = true;     // Pan in screen plane (up/down/left/right)
         controls.panSpeed = 1.5;
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 1.2;
