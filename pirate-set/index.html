@@ -28,6 +28,9 @@
 <script>
   gtag('js', new Date());
   gtag('config', 'AW-17305683661');
+  // Google Analytics 4 (site visitors report)
+  var GA4 = 'G-CGC6MSBF6B';
+  gtag('config', GA4);
 </script>
 
 <style>
@@ -317,6 +320,8 @@ footer{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--muted);f
   // Buy buttons: count the click as a conversion, then go to CGTrader
   document.querySelectorAll('a.buy').forEach(function(a){
     a.addEventListener('click', function(ev){
+      // Analytics: which model was clicked
+      gtag('event', 'buy_click', {send_to: GA4, item: a.dataset.item, value: Number(a.dataset.price), currency: 'USD', transport_type: 'beacon'});
       if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1) {
         gtag('event', 'conversion', {send_to: SEND_TO, value: Number(a.dataset.price), currency: 'USD', transport_type: 'beacon'});
         return;
@@ -337,6 +342,7 @@ footer{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--muted);f
     box.addEventListener('click', function(){
       if (box.classList.contains('playing')) return;
       box.classList.add('playing');
+      gtag('event', 'video_play', {send_to: GA4, video: box.dataset.id});
       box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + box.dataset.id +
         '?autoplay=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Model video"></iframe>';
     });
