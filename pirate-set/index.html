@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pirate Set - Game Ready 3D Pirate Ships, Cannon, Island and Characters</title>
+<meta name="description" content="Game ready pirate 3D models in one style: brig, man-o-war, bronze cannon, pirate island and an animated Royal Guard. PBR textures, Blend, FBX, OBJ and GLB files for Unity, Unreal and Godot.">
+<link rel="canonical" href="https://aproyt4-lang.github.io/GameDevAlex/pirate-set/">
+<meta property="og:title" content="Pirate Set - Game Ready 3D Pirate Models">
+<meta property="og:description" content="Brig, man-o-war, cannon, island and animated characters in one style. PBR, Blend / FBX / OBJ / GLB.">
+<meta property="og:image" content="https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/pack.jpg">
+
+<!-- Google tag (gtag.js) with Consent Mode v2 -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  var EEA = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE','IS','LI','NO','GB','CH'];
+  gtag('consent', 'default', {ad_storage:'denied', ad_user_data:'denied', ad_personalization:'denied', analytics_storage:'denied', region: EEA, wait_for_update: 500});
+  gtag('consent', 'default', {ad_storage:'granted', ad_user_data:'granted', ad_personalization:'granted', analytics_storage:'granted'});
+  try {
+    var c = localStorage.getItem('ps_consent');
+    if (c === 'granted' || c === 'denied') {
+      gtag('consent', 'update', {ad_storage:c, ad_user_data:c, ad_personalization:c, analytics_storage:c});
+    }
+  } catch (e) {}
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17305683661"></script>
+<script>
+  gtag('js', new Date());
+  gtag('config', 'AW-17305683661');
+</script>
+
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1d232c; --line:#2a313c;
+  --text:#e8e3d8; --muted:#a59f92; --gold:#e3b04b; --gold2:#f2cd78; --sea:#2e6f8e;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+a{color:var(--gold2)}
+img{max-width:100%;display:block}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+header.top{border-bottom:1px solid var(--line);background:#0b0e12}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;padding-bottom:12px}
+.brand{font-weight:800;letter-spacing:.04em}
+.brand span{color:var(--gold)}
+nav a{color:var(--muted);text-decoration:none;margin-left:16px;font-size:14px}
+nav a:hover{color:var(--text)}
+.hero{padding:40px 0 24px}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:32px;align-items:center}
+h1{font-size:40px;line-height:1.1;margin:0 0 12px}
+h1 em{font-style:normal;color:var(--gold)}
+.lead{color:var(--muted);font-size:18px;margin:0 0 20px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px;padding:0;list-style:none}
+.chips li{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--text)}
+.price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.price{font-size:34px;font-weight:800;color:var(--gold2)}
+.old{color:var(--muted);text-decoration:line-through}
+.save{background:#2c3a1f;color:#b9e08a;border-radius:6px;padding:2px 8px;font-size:13px}
+.btn{display:inline-block;background:var(--gold);color:#1a1205;font-weight:800;text-decoration:none;border-radius:10px;padding:13px 22px;border:0;cursor:pointer;font-size:16px}
+.btn:hover{background:var(--gold2)}
+.btn.ghost{background:transparent;color:var(--gold2);border:1px solid var(--gold);padding:10px 18px;font-weight:700}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.hero img{border-radius:14px;border:1px solid var(--line)}
+section{padding:36px 0}
+h2{font-size:28px;margin:0 0 6px}
+.sub{color:var(--muted);margin:0 0 24px}
+.why{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.why div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.why b{display:block;color:var(--gold2);margin-bottom:4px}
+.card{display:grid;grid-template-columns:1fr 1fr;gap:24px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:22px}
+.card .shots{display:grid;gap:10px}
+.card .shots img{border-radius:10px;border:1px solid var(--line)}
+.card h3{font-size:24px;margin:0 0 6px}
+.card .tag{color:var(--gold);font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.card ul{padding-left:18px;margin:10px 0 16px;color:var(--text)}
+.card li{margin:3px 0}
+.card .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.card .p{font-size:26px;font-weight:800;color:var(--gold2)}
+.yt{position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;cursor:pointer}
+.yt img{width:100%;height:100%;object-fit:cover;opacity:.85}
+.yt::after{content:"";position:absolute;left:50%;top:50%;width:68px;height:48px;margin:-24px 0 0 -34px;border-radius:12px;background:rgba(0,0,0,.7)}
+.yt::before{content:"";position:absolute;left:50%;top:50%;margin:-11px 0 0 -7px;border-left:20px solid #fff;border-top:11px solid transparent;border-bottom:11px solid transparent;z-index:1}
+.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.yt.playing::before,.yt.playing::after{display:none}
+.faq details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:10px}
+.faq summary{cursor:pointer;font-weight:700}
+.faq p{color:var(--muted);margin:8px 0 0}
+footer{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--muted);font-size:14px}
+#consent{position:fixed;left:16px;right:16px;bottom:16px;max-width:720px;margin:0 auto;background:#1b2129;border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:none;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#consent p{margin:0;font-size:14px;color:var(--text);flex:1 1 320px}
+#consent .b{display:flex;gap:8px}
+#consent button{border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;border:1px solid var(--gold);background:transparent;color:var(--gold2)}
+#consent button.ok{background:var(--gold);color:#1a1205}
+@media (max-width:860px){
+  .hero-grid,.card{grid-template-columns:1fr}
+  .why{grid-template-columns:1fr 1fr}
+  h1{font-size:30px}
+  nav{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">GameDevAlex <span>Pirate Set</span></div>
+    <nav>
+      <a href="#models">Models</a>
+      <a href="#characters">Characters</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>Pirate world for your game, <em>in one style</em></h1>
+      <p class="lead">Game ready pirate brig, three-masted man-o-war, bronze naval cannon and a full pirate island with harbour town and fort. Made to work together in one scene.</p>
+      <ul class="chips">
+        <li>PBR textures</li><li>Blend</li><li>FBX</li><li>OBJ</li><li>GLB / glTF</li><li>Unity</li><li>Unreal</li><li>Godot</li><li>Royalty free</li>
+      </ul>
+      <div class="price-row">
+        <span class="price">$35</span>
+        <span class="old">$49</span>
+        <span class="save">4 models, save $14</span>
+      </div>
+      <a class="btn buy" data-item="pack" data-price="35" href="https://www.cgtrader.com/3d-model-packs/pirate-set-brig-man-o-war-cannon-and-island-game-ready-pack">Buy the Pirate Set on CGTrader</a>
+      <p class="note">Sold and delivered by CGTrader, a 3D model marketplace. Instant download after purchase.</p>
+    </div>
+    <img src="img/pack.jpg" width="1200" height="1002" alt="Pirate Set: brig, man-o-war, cannon and pirate island 3D models">
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="why">
+      <div><b>One art style</b>Ships, cannon, island and characters were made to sit in the same scene.</div>
+      <div><b>Real game assets</b>Separate parts, clean scale, PBR materials, GLB for engines.</div>
+      <div><b>Every format</b>Blender with packed textures, FBX, OBJ + MTL and GLB in every model.</div>
+      <div><b>Pack discount</b>Buy the set for $35 instead of $49 for the four models one by one.</div>
+    </div>
+  </div>
+</section>
+
+<section id="models">
+  <div class="wrap">
+    <h2>Models in the set</h2>
+    <p class="sub">Each model is also sold separately.</p>
+
+    <article class="card">
+      <div class="shots">
+        <img src="img/brig.jpg" width="1200" height="675" alt="Pirate brig 3D model, two-masted sailing ship" loading="lazy">
+        <div class="yt" data-id="qe9p1zN6VGs"><img src="https://i.ytimg.com/vi/qe9p1zN6VGs/hqdefault.jpg" alt="Pirate brig video" loading="lazy"></div>
+      </div>
+      <div>
+        <div class="tag">Ship</div>
+        <h3>Pirate Brig</h3>
+        <p>Two-masted pirate brig with full sails, rigging and a Jolly Roger flag.</p>
+        <ul>
+          <li>34,966 triangles / 22,477 vertices, 29 objects</li>
+          <li>Deck guns as separate objects, can be animated or removed</li>
+          <li>Separate hull, sails, rigging, rails, gun ports, wheel, flag</li>
+          <li>PBR: wood and metal 2048, sails and rigging 1024</li>
+          <li>Real-world scale, about 44 m long</li>
+        </ul>
+        <div class="row"><span class="p">$12</span>
+          <a class="btn ghost buy" data-item="brig" data-price="12" href="https://www.cgtrader.com/3d-models/watercraft/historic-watercraft/pirate-brig-two-masted-sailing-ship-game-ready-pbr">Buy on CGTrader</a></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="shots">
+        <img src="img/manowar.jpg" width="1200" height="675" alt="Pirate man-o-war three-masted warship 3D model" loading="lazy">
+        <div class="yt" data-id="7LJIZz7J4P8"><img src="https://i.ytimg.com/vi/7LJIZz7J4P8/hqdefault.jpg" alt="Man-o-war video" loading="lazy"></div>
+      </div>
+      <div>
+        <div class="tag">Ship</div>
+        <h3>Pirate Man-o-War</h3>
+        <p>Three-masted warship with square sails, jibs, rigging, brass lanterns and pirate flag.</p>
+        <ul>
+          <li>55,256 triangles / 35,611 vertices, 79 objects</li>
+          <li>Gun deck cannons as separate objects</li>
+          <li>Separate hull, sails, rigging, rails, gun ports, details</li>
+          <li>PBR: hull, wood and metal 2048, sails 1024</li>
+          <li>Real-world scale, about 75 m long</li>
+        </ul>
+        <div class="row"><span class="p">$15</span>
+          <a class="btn ghost buy" data-item="manowar" data-price="15" href="https://www.cgtrader.com/3d-models/watercraft/historic-watercraft/pirate-man-o-war-three-masted-warship-game-ready-pbr">Buy on CGTrader</a></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="shots">
+        <img src="img/cannon.jpg" width="1200" height="675" alt="Bronze naval cannon on wooden carriage 3D model" loading="lazy">
+        <div class="yt" data-id="a2xZC8hRw2c"><img src="https://i.ytimg.com/vi/a2xZC8hRw2c/hqdefault.jpg" alt="Pirate cannon video" loading="lazy"></div>
+      </div>
+      <div>
+        <div class="tag">Prop / weapon</div>
+        <h3>Pirate Cannon</h3>
+        <p>Ornate bronze cannon on an oak carriage with iron-banded spoked wheels.</p>
+        <ul>
+          <li>Two versions in one file: detailed parts (barrel, cheeks, wheels, axle) and a merged game version with baked normal map</li>
+          <li>19,504 triangles total, 34 objects</li>
+          <li>PBR 2048 wood and metal + 2048 baked normal</li>
+        </ul>
+        <div class="row"><span class="p">$7</span>
+          <a class="btn ghost buy" data-item="cannon" data-price="7" href="https://www.cgtrader.com/3d-models/military/gun/pirate-cannon-bronze-naval-cannon-on-wooden-carriage-pbr">Buy on CGTrader</a></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="shots">
+        <img src="img/island.jpg" width="1200" height="675" alt="Pirate island 3D environment with harbour town and fort" loading="lazy">
+        <div class="yt" data-id="WSFLkOE9cPw"><img src="https://i.ytimg.com/vi/WSFLkOE9cPw/hqdefault.jpg" alt="Pirate island video" loading="lazy"></div>
+      </div>
+      <div>
+        <div class="tag">Environment</div>
+        <h3>Pirate Island</h3>
+        <p>Complete island scene: harbour town, stone fort on the hill, forest, beach and ships in the bay.</p>
+        <ul>
+          <li>70 town houses, cobblestone streets, 24 street lamps</li>
+          <li>Stone fort with towers, stone pier and wooden docks, lookout post</li>
+          <li>Galleon, brig, 3 sloops and a shipwreck in the bay</li>
+          <li>Forest: broadleaf and conifer trees, palms, grass, rocks</li>
+          <li>Terrain about 490 x 270 m; 426,296 triangles, 116 objects</li>
+        </ul>
+        <div class="row"><span class="p">$15</span>
+          <a class="btn ghost buy" data-item="island" data-price="15" href="https://www.cgtrader.com/3d-models/exterior/landscape/pirate-island-harbour-town-fort-and-forest-environment">Buy on CGTrader</a></div>
+      </div>
+    </article>
+
+    <p style="text-align:center;margin-top:8px">
+      <a class="btn buy" data-item="pack" data-price="35" href="https://www.cgtrader.com/3d-model-packs/pirate-set-brig-man-o-war-cannon-and-island-game-ready-pack">Get all 4 in the Pirate Set - $35</a>
+    </p>
+  </div>
+</section>
+
+<section id="characters">
+  <div class="wrap">
+    <h2>Characters for the same world</h2>
+    <p class="sub">Rigged and animated, ready to drop into the scene.</p>
+    <article class="card">
+      <div class="shots">
+        <img src="img/royal.jpg" width="1200" height="1200" alt="Royal Guard rigged and animated 3D character" loading="lazy">
+      </div>
+      <div>
+        <div class="tag">Character</div>
+        <h3>Royal Guard</h3>
+        <p>Soldier in a red tunic and bearskin hat, armed with a sabre.</p>
+        <ul>
+          <li>7 animations: idle, walk, run, jump, attack, hit, death</li>
+          <li>27,698 triangles / 14,415 vertices</li>
+          <li>21-bone humanoid rig, ready for Unity, Unreal and Godot</li>
+          <li>PBR 2048: base color, normal, roughness, metallic</li>
+          <li>Blend, FBX and GLB with all animations</li>
+        </ul>
+        <img src="img/royal_anims.jpg" width="1200" height="1300" alt="Royal Guard animations sheet" loading="lazy" style="border-radius:10px;border:1px solid var(--line);margin-bottom:14px">
+        <div class="row"><span class="p">$15</span>
+          <a class="btn ghost buy" data-item="royal_guard" data-price="15" href="https://www.cgtrader.com/3d-models/character/man/royal-guard-rigged-and-animated-game-ready-character-pbr">Buy on CGTrader</a></div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="faq" class="faq">
+  <div class="wrap">
+    <h2>FAQ</h2>
+    <details><summary>Where do I buy and download the files?</summary><p>All models are sold on CGTrader. Click a Buy button, pay on CGTrader and download the files right away from your CGTrader account.</p></details>
+    <details><summary>What license do I get?</summary><p>CGTrader Royalty Free license: you can use the models in commercial games and renders. The exact terms are on the CGTrader product page.</p></details>
+    <details><summary>Which engines are supported?</summary><p>Every model has FBX, OBJ and GLB files, so it imports into Unity, Unreal Engine, Godot and most 3D software. The Blender file has textures packed in.</p></details>
+    <details><summary>Are the sea and sky included?</summary><p>No. The sea and lighting in the previews are only for rendering. You get the ships, cannon, island and characters.</p></details>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Made by GameDevAlex (CGTrader seller <a href="https://www.cgtrader.com/designers/alexandr741">alexandr741</a>, YouTube <a href="https://www.youtube.com/@gamedevalex7858">@gamedevalex7858</a>). This page is not run by CGTrader.</p>
+    <p id="privacy">Privacy: this page uses the Google tag to measure how many visitors from Google Ads click a Buy button. In the EU, UK and Switzerland it only stores cookies if you accept. No personal data is collected through forms. <a href="#" id="consent-reset">Change cookie choice</a></p>
+  </div>
+</footer>
+
+<div id="consent" role="dialog" aria-label="Cookie consent">
+  <p>We use a Google cookie to measure ad clicks on the Buy buttons. Is that OK?</p>
+  <div class="b">
+    <button type="button" id="c-no">Decline</button>
+    <button type="button" class="ok" id="c-yes">Accept</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SEND_TO = 'AW-17305683661/7wFzCK2o07QdEM2N_7tA';
+
+  // Buy buttons: count the click as a conversion, then go to CGTrader
+  document.querySelectorAll('a.buy').forEach(function(a){
+    a.addEventListener('click', function(ev){
+      if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1) {
+        gtag('event', 'conversion', {send_to: SEND_TO, value: Number(a.dataset.price), currency: 'USD', transport_type: 'beacon'});
+        return;
+      }
+      ev.preventDefault();
+      var url = a.href, gone = false;
+      function go(){ if (!gone) { gone = true; window.location.href = url; } }
+      gtag('event', 'conversion', {
+        send_to: SEND_TO, value: Number(a.dataset.price), currency: 'USD',
+        transport_type: 'beacon', event_callback: go
+      });
+      setTimeout(go, 900);
+    });
+  });
+
+  // YouTube: load the player only after a click (privacy-friendly domain)
+  document.querySelectorAll('.yt').forEach(function(box){
+    box.addEventListener('click', function(){
+      if (box.classList.contains('playing')) return;
+      box.classList.add('playing');
+      box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + box.dataset.id +
+        '?autoplay=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Model video"></iframe>';
+    });
+  });
+
+  // Consent banner
+  var bar = document.getElementById('consent');
+  function saved(){ try { return localStorage.getItem('ps_consent'); } catch(e){ return null; } }
+  function choose(v){
+    try { localStorage.setItem('ps_consent', v); } catch(e){}
+    gtag('consent', 'update', {ad_storage:v, ad_user_data:v, ad_personalization:v, analytics_storage:v});
+    bar.style.display = 'none';
+  }
+  if (!saved()) bar.style.display = 'flex';
+  document.getElementById('c-yes').onclick = function(){ choose('granted'); };
+  document.getElementById('c-no').onclick = function(){ choose('denied'); };
+  document.getElementById('consent-reset').onclick = function(e){ e.preventDefault(); bar.style.display = 'flex'; };
+})();
+</script>
+</body>
+</html>
