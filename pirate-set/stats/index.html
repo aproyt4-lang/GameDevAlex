@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Статистика витрины — Pirate Set</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1d232c;--line:#2a313c;--text:#e8e3d8;--muted:#a59f92;--gold:#e3b04b;--gold2:#f2cd78}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  .wrap{max-width:1440px;margin:0 auto;padding:0 16px}
+  header{border-bottom:1px solid var(--line);background:var(--panel)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px}
+  .brand{font-weight:700;letter-spacing:.3px;color:var(--text);text-decoration:none}
+  .brand span{color:var(--gold)}
+  h1{font-size:26px;margin:22px 0 6px;color:var(--gold2)}
+  .links{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 14px}
+  .btn{display:inline-block;padding:9px 14px;border-radius:8px;border:1px solid var(--gold);color:var(--gold);text-decoration:none;font-weight:600}
+  .btn:hover{background:var(--gold);color:#1a1405}
+  .hint{color:var(--muted);font-size:14px;margin:0 0 6px}
+  .frame{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:12px 0 28px}
+  .frame iframe{display:block;width:100%;height:1800px;border:0;background:#fff}
+  @media (max-width:900px){.frame iframe{height:1400px}}
+  @media (max-width:560px){h1{font-size:22px}.frame iframe{height:1100px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <a class="brand" href="../">GameDevAlex <span>Pirate Set</span></a>
+  <span class="hint">только для владельца</span>
+</div></header>
+<main class="wrap">
+  <h1>Статистика витрины</h1>
+  <p class="hint">Просмотры, пользователи, клики «Купить», источники, страницы и страны. По умолчанию — последние 28 дней, период можно поменять вверху отчёта.</p>
+  <p class="hint">Если видно «нет доступа» — войди в Google аккаунт aproyt4… (тот, где Google Analytics).</p>
+  <p class="hint">Таблица «Клики Купить по моделям» начала собирать данные 11.11.2026, поэтому сначала там пусто.</p>
+  <div class="links">
+    <a class="btn" href="https://datastudio.google.com/reporting/8f41a3c4-f816-4557-83df-581ff89110d3/page/TlJ0C" target="_blank" rel="noopener">Открыть отчёт целиком</a>
+    <a class="btn" href="https://analytics.google.com/analytics/web/#/a415518571p563410871/reports/intelligenthome" target="_blank" rel="noopener">Google Analytics</a>
+  </div>
+  <div class="frame">
+    <iframe src="https://datastudio.google.com/embed/reporting/8f41a3c4-f816-4557-83df-581ff89110d3/page/TlJ0C" allowfullscreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" title="Статистика витрины Pirate Set"></iframe>
+  </div>
+</main>
+</body>
+</html>
