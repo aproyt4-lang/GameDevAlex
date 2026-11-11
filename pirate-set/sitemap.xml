@@ -1,10 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/</loc></url>
-  <url><loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-brig-3d-model/</loc></url>
-  <url><loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-man-o-war-3d-model/</loc></url>
-  <url><loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-cannon-3d-model/</loc></url>
-  <url><loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-island-3d-model/</loc></url>
-  <url><loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/royal-guard-3d-model/</loc></url>
-  <url><loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/cyber-pirate-3d-model/</loc></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/</loc>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/pack.jpg</image:loc><image:caption>Pirate Set: brig, man-o-war, cannon and pirate island 3D models</image:caption></image:image>
+  </url>
+  <url>
+    <loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-brig-3d-model/</loc>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/brig.jpg</image:loc><image:caption>Pirate brig 3D model, two-masted sailing ship with full sails</image:caption></image:image>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/brig_wire.jpg</image:loc><image:caption>Pirate brig 3D model wireframe, game ready topology</image:caption></image:image>
+  </url>
+  <url>
+    <loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-man-o-war-3d-model/</loc>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/manowar.jpg</image:loc><image:caption>Man-o-war three-masted pirate warship 3D model</image:caption></image:image>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/manowar_close.jpg</image:loc><image:caption>Man-o-war 3D model close-up: gun ports, lanterns and rigging</image:caption></image:image>
+  </url>
+  <url>
+    <loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-cannon-3d-model/</loc>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/cannon.jpg</image:loc><image:caption>Pirate cannon 3D model, bronze naval cannon on wooden carriage</image:caption></image:image>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/cannon_close.jpg</image:loc><image:caption>Bronze cannon 3D model close-up with ornate barrel</image:caption></image:image>
+  </url>
+  <url>
+    <loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/pirate-island-3d-model/</loc>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/island.jpg</image:loc><image:caption>Pirate island 3D environment with harbour town and fort</image:caption></image:image>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/island_town.jpg</image:loc><image:caption>Pirate island harbour town 3D model with cobblestone streets</image:caption></image:image>
+  </url>
+  <url>
+    <loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/royal-guard-3d-model/</loc>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/royal.jpg</image:loc><image:caption>Royal Guard rigged and animated 3D character with sabre</image:caption></image:image>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/royal_anims.jpg</image:loc><image:caption>Royal Guard 3D character animations: idle, walk, run, jump, attack, hit, death</image:caption></image:image>
+  </url>
+  <url>
+    <loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/cyber-pirate-3d-model/</loc>
+    <image:image><image:loc>https://aproyt4-lang.github.io/GameDevAlex/pirate-set/img/cyber_pirate.jpg</image:loc><image:caption>Cyber Pirate rigged sci-fi pirate captain 3D character</image:caption></image:image>
+  </url>
 </urlset>
