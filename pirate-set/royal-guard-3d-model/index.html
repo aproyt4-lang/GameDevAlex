@@ -34,6 +34,8 @@
   gtag('config', 'AW-17305683661');
   // Google Analytics 4 (site visitors report)
   var GA4 = 'G-CGC6MSBF6B';
+  // Владелец (отметился на странице /stats/) не считается в статистике
+  try { if (localStorage.getItem('ps_owner') === '1') window['ga-disable-' + GA4] = true; } catch (e) {}
   gtag('config', GA4);
 </script>
 
@@ -249,6 +251,33 @@ footer{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--muted);f
   document.getElementById('c-yes').onclick = function(){ choose('granted'); };
   document.getElementById('c-no').onclick = function(){ choose('denied'); };
   document.getElementById('consent-reset').onclick = function(e){ e.preventDefault(); bar.style.display = 'flex'; };
+})();
+</script>
+<!-- Статистика для владельца: видна только на компьютере, где открыта страница /stats/ -->
+<div id="owner-stats" style="display:none">
+  <button id="owner-stats-btn" type="button" style="position:fixed;right:16px;bottom:16px;z-index:60;background:#e3b04b;color:#1a1205;border:0;border-radius:999px;padding:12px 18px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5)">&#128202; Статистика</button>
+  <div id="owner-stats-panel" style="display:none;position:fixed;inset:16px;z-index:70;background:#0e1116;border:1px solid #2a313c;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.7)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #2a313c">
+      <b style="color:#f2cd78">Статистика витрины</b>
+      <span><a href="https://datastudio.google.com/reporting/8f41a3c4-f816-4557-83df-581ff89110d3/page/TlJ0C" target="_blank" rel="noopener" style="margin-right:14px">Открыть целиком</a>
+      <button id="owner-stats-close" type="button" style="background:transparent;color:#e8e3d8;border:1px solid #4a5463;border-radius:8px;padding:4px 10px;cursor:pointer">Закрыть</button></span>
+    </div>
+    <iframe id="owner-stats-frame" title="Статистика витрины" style="width:100%;height:calc(100% - 50px);border:0;background:#fff" allowfullscreen></iframe>
+  </div>
+</div>
+<script>
+(function(){
+  var owner = false;
+  try { owner = localStorage.getItem('ps_owner') === '1'; } catch (e) {}
+  if (!owner) return;
+  var box = document.getElementById('owner-stats'), panel = document.getElementById('owner-stats-panel'),
+      frame = document.getElementById('owner-stats-frame');
+  box.style.display = 'block';
+  document.getElementById('owner-stats-btn').onclick = function(){
+    if (!frame.src) frame.src = 'https://datastudio.google.com/embed/reporting/8f41a3c4-f816-4557-83df-581ff89110d3/page/TlJ0C';
+    panel.style.display = 'block';
+  };
+  document.getElementById('owner-stats-close').onclick = function(){ panel.style.display = 'none'; };
 })();
 </script>
 </body>
